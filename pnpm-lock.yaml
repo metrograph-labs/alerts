@@ -677,8 +677,8 @@ importers:
         specifier: ^0.11.6
         version: 0.11.6(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
       '@mark1russell7/sqlite':
-        specifier: ^0.4.0
-        version: 0.4.0
+        specifier: ^0.4.1
+        version: 0.4.1
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -704,12 +704,18 @@ importers:
       '@mark1russell7/cue':
         specifier: ^2.0.0
         version: 2.1.4
+      '@mark1russell7/rigor-testkit':
+        specifier: ^0.1.20
+        version: 0.1.20(@mark1russell7/rigor-chaos@0.3.3)(@mark1russell7/rigor-generators@0.1.19)(@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7))(@opentelemetry/api@1.10.0)(fast-check@4.10.2)(ltx@3.1.2)
       '@types/node':
         specifier: ^26.6.5
         version: 26.6.6
       '@vitest/coverage-v8':
         specifier: ^5.0.3
         version: 5.1.0(vitest@5.1.0)
+      fast-check:
+        specifier: ^4.10.2
+        version: 4.10.2
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
@@ -738,8 +744,8 @@ importers:
         specifier: ^1.5.0
         version: 1.5.0
       '@mark1russell7/sqlite':
-        specifier: ^0.4.0
-        version: 0.4.0
+        specifier: ^0.4.1
+        version: 0.4.1
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -1738,8 +1744,8 @@ importers:
         specifier: ^0.11.6
         version: 0.11.6(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
       '@mark1russell7/sqlite':
-        specifier: ^0.4.0
-        version: 0.4.0
+        specifier: ^0.4.1
+        version: 0.4.1
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -2221,8 +2227,8 @@ packages:
     resolution: {integrity: sha512-LANgtuaGCvL1VGbU61F51sgd3ytmqrgMN3pSihPs5EdD1xq93te7rPllmyPV9mH7QetUabHlcVVUZsf+Ju98cA==}
     engines: {node: '>=22.13'}
 
-  '@mark1russell7/sqlite@0.4.0':
-    resolution: {integrity: sha512-htHK+Ui+UqL/52bszg3zFuWoC8RCUceocoBrpWqU2OXp3TdKY3x8VQ8Tu6GiIQ3iOJNpqZ8B1wj1t6ELj8aUgQ==}
+  '@mark1russell7/sqlite@0.4.1':
+    resolution: {integrity: sha512-+80XkXJvko5XQC/V0tP+gL2k9K9d6K9sOiiyDQzh9Oa5+cENgy71RcSfNy1IMR5ddzhUCc7h1RCpbleuQujjrA==}
     engines: {node: '>=22.13'}
 
   '@mark1russell7/ste-lint@0.4.0':
@@ -3825,7 +3831,7 @@ snapshots:
 
   '@mark1russell7/sqlite@0.3.12': {}
 
-  '@mark1russell7/sqlite@0.4.0': {}
+  '@mark1russell7/sqlite@0.4.1': {}
 
   '@mark1russell7/ste-lint@0.4.0':
     dependencies:

@@ -43,7 +43,7 @@
     "@mark1russell7/rigor-generators": "^0.1.19",
     "@mark1russell7/rigor-statistics": "^0.2.8",
     "@mark1russell7/service": "^0.11.6",
-    "@mark1russell7/sqlite": "^0.4.0",
+    "@mark1russell7/sqlite": "^0.4.1",
     "@mark1russell7/text": "^0.0.17",
     "@procedures/client": "^0.68.0",
     "@procedures/fs": "^0.68.0",
@@ -54,8 +54,10 @@
   },
   "devDependencies": {
     "@mark1russell7/cue": "^2.0.0",
+    "@mark1russell7/rigor-testkit": "^0.1.20",
     "@types/node": "^26.6.5",
     "@vitest/coverage-v8": "^5.0.3",
+    "fast-check": "^4.10.2",
     "typescript": "^7.0.2",
     "vitest": "^5.0.3"
   }

@@ -1,0 +1,63 @@
+# The measure of the state at its plateau for each quiet horizon (AL-109). Each run seeds one log in a scratch folder. Then
+# it folds the log with each quiet horizon, and it rebuilds it. The records have counts and JSON bytes only, with no time
+# and no heap. A large log needs more memory than a shared computer has, thus the measure runs in CI only. It is a
+# measure, not a gate: the gate of the state is a test of the testkit. A quiet horizon of 168 hours is the rule before AL-109.
+name: Measure state
+
+on:
+  # A pull request that changes the measure gets a run of one day of the live mix.
+  pull_request:
+    paths:
+      - packages/testkit/scripts/start-hold.ts
+      - .github/workflows/measure-state.yml
+  # A person starts a run of other sizes: gh workflow run measure-state.yml -f sizes=96 -f quiet=3,6,12,24,168
+  workflow_dispatch:
+    inputs:
+      sizes:
+        description: The sizes of the logs in MB, as a comma list
+        default: "96"
+      quiet:
+        description: The quiet horizons in hours, as a comma list
+        default: "3,6,12,24,168"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: measure-state-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The horizon is 168 hours and the life of a tombstone is 720 hours, as in the live copies.
+      - name: Measure the state of each quiet horizon
+        working-directory: packages/testkit
+        env:
+          SIZES: ${{ github.event_name == 'pull_request' && '48' || inputs.sizes || '96' }}
+          QUIET: ${{ github.event_name == 'pull_request' && '3,6,12,168' || inputs.quiet || '3,6,12,24,168' }}
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/state"
+          node scripts/start-hold.ts "$RUNNER_TEMP/seed" "$SIZES" 168 720 "$QUIET" | tee "$GITHUB_WORKSPACE/state/records.jsonl"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: measure-state-${{ github.run_id }}-${{ github.run_attempt }}
+          path: state/
+          if-no-files-found: error
+          retention-days: 90

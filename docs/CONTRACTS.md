@@ -138,6 +138,29 @@ A delivery is one accepted send. A failed send makes no delivery, so its step st
 
 Property tests hold each law. They use the seeded generator of `@mark1russell7/rigor-generators`, and the variable `SEED` replays a run. They also examine that each order of arrival gives the same incidents.
 
+### The retention
+
+The merge state keeps only the recent incidents (AL-47, AL-109). Thus the work of a pass and the memory of a start follow the recent incidents, not the age of the log.
+
+- An incident retires as a whole when it is not live and nothing of it changed in its horizon.
+- The last change is the latest sent, received, expiry, end mark, delivery or acknowledgment time of its reports. Thus an expiry in the future keeps an incident.
+- The horizon of an incident that a person received is 7 days (`RETENTION_HORIZON`). A report of it has a delivery or an acknowledgment.
+- The horizon of a quiet incident is 6 hours (`QUIET_HORIZON`). No person received it. Most incidents are quiet, for example an alert of a far area.
+- The function `quietKeeps` of the runtime gives the full horizon to more incidents. These are incidents with an escalation, a hold or a suppression of this copy.
+- It also gives the full horizon to an incident with a report of a source in observe mode, or with a report that starts the check of an expectation.
+- A retired report gets a tombstone for 30 days (`TOMBSTONE_LIFE`). The tombstone keeps out a late copy of the report, also from another copy of the system.
+- The tombstone also keeps out the late deliveries, acknowledgments and end marks of its report.
+- A tombstone keeps out only the parts of its report id. An update of the source has a new id. Thus it opens a new incident, and the route sends it.
+
+The fold of the runtime retires on a cadence of the event time (AL-109):
+
+- The step comes before the first event at one interval or more after the last step. The interval is 1 hour (`RETIRE_EVERY`). The step has the time of that event.
+- A step of the clock, an import and an observation get no step. An import has the time of another copy, and the start reads no observation.
+- No wall clock decides a retirement, and the step writes no event. Thus the live runtime and the rebuild of its log give the same state at each event.
+- A `retired` event of an older build still folds. It removes its reports and gives them tombstones.
+
+The history of a quiet incident is shorter. The log keeps each event, but it has no index by time. Thus `/history` gives a quiet incident for 6 hours after its last change.
+
 ## The source contract
 
 Each source package registers three or more procedures under `alerts.source.<id>`:
@@ -430,11 +453,22 @@ A copy report has no area. Its subject is `{ system: "alerts.copy", id: <copy id
 | `skew` | The clocks of the two copies differed by more than `skewLimit` at the last read |
 | `config` | The other copy had a different hash of the configuration at the last read |
 | `unread` | No read passed for the maximum age or longer (`copyUnreadAt`) |
+| `unsteady` | The copy is not steady for `COPY_STEADY_LIMIT` (20 minutes) or longer (`copyUnsteadyAt`) |
 
 - The facts of a line are the copy and the stage. A new difference or a new age gives no update.
 - `skew` and `config` come from the last read that passed, also when the read is old. A read that passes ends `unread`.
 - A snapshot with no copies keeps each open line of a copy.
-- The time of `unread` is a timer of the pass.
+- The times of `unread` and `unsteady` are timers of the pass.
+
+A copy that starts again and again is not steady (AL-108). It answers the exchange in each try, and it stops after each try.
+
+- The answer of the exchange tells if the copy is steady (`steady`). The passes of a steady start span `LOUD_STEADY` (5 minutes) or more, as for the first success to the loud check.
+- The watch keeps the first read that tells that the copy is not steady (`CopyWatch.unsteadySince`). A failed read keeps it, and a steady read ends it.
+- The limit is longer than a normal start: the longest ready window (10 minutes) and the steady wait, plus 5 minutes.
+- An open line `unread` of a copy that is not steady stays open at a read that passes. Thus the line opens one time, not at each stop of the copy.
+- An open line `unsteady` stays open over a restart of this copy, until the first steady read.
+- A copy of an older build tells nothing. Its watch has no `unsteadySince`, and a read that passes ends `unread` as before.
+- On 2026-11-21, a copy made 125 starts. The line `unread` of the other copy opened at each stop and ended at each start, and no line told of the loop.
 
 A drill report has no area. Its subject is `{ system: "alerts.drill", id: <drill id> }` (`DRILL_SUBJECT`). Each copy has its own lines, thus the name of a line holds the copy id.
 
@@ -1388,6 +1422,34 @@ The runtime appends the events of step 4 at each boot, from `listRecoveries` of 
 
 A WAL, SHM or journal file with no database file also goes into a quarantine folder. Its event has the fault `orphan-journal`. A quarantine folder with no record gives the fault `no-read`.
 
+### The snapshot of the start (AL-105)
+
+The log keeps each event, thus the fold of the whole log grows with the age of the log. The snapshot of the start keeps the state and the entry index at one position of the log. The next start reads the snapshot, and it folds only the events after that position.
+
+- The snapshot is in its own file `snapshot.sqlite`, next to the log. The store is `foldSnapshot` of `@mark1russell7/sqlite`.
+- After the good start, a pass writes the snapshot at most once in each 30 minutes of the wall clock (`START_SNAPSHOT_EVERY`). The write is one transaction. A failed write keeps the old snapshot.
+- The mark of the snapshot is the position and the id of the last event of the log.
+- Each part of the state is one row: one row for each report, each delivery and each end mark. The views `merge` and `escalationEnds` get no row, because the read joins the two sides again.
+
+The start reads the snapshot only when its key and its mark agree with the log. The key has these parts:
+
+1. `FOLD_VERSION`. A change of the fold raises it. A test pins the hash of the snapshot of seeded logs for each version. Thus the test fails until the change raises the version.
+2. The id of the first event of the log, and the count of its `recovered` events. A new log and a salvage give a new key.
+3. The hash of the context of the fold: the sources, the health options, the retention with its defaults, the link policy and the expectations.
+
+The store also checks that the log has the event of the mark at the position of the mark. In each other case, the start folds the whole log:
+
+- The file has no snapshot, or a snapshot of another key or of another log.
+- The read of the snapshot throws. Then the output has the name of the error.
+- The file is broken. Then it goes into the quarantine folder `snapshot.sqlite.broken-<time>`, and the store starts empty.
+- The file does not open. Then the runtime starts with no store.
+
+The snapshot is a copy of a fold of the log. Thus the loss of the file loses no event. After a salvage of the log, the entry clears the snapshot.
+
+The output of each start has one line for the read. The line gives the position of the snapshot and the count of the events that the start folded. It has counts and positions only.
+
+The property test of the cadence also checks the snapshot. It writes the rows of the live state at each position of a random log. Then it starts from the rows at the last position, at the position before it and at the half of the log. Each start gives the state, the size of the entry index and the times of entry of the whole log.
+
 ### The host on one computer
 
 The module `host.ts` gives the host of the live instance as data. A boot task starts a supervisor, and the supervisor starts the runtime:
@@ -1955,7 +2017,8 @@ The file `schemas.ts` of the core has one zod 4 schema for each data type of the
 - The link rule has two families, the earthquakes and the geomagnetic storms. Each other kind with two sources of different ids gets its family with its second source.
 - The calculation of the level from probabilities and costs (AL-31), with the base rates from the event log.
 - The count of misses that ends a report of a snapshot source is 2 (`SNAPSHOT_MISSES`). This value is a shortcut. A measure of the flap rate of the IEM list replaces it (AL-8).
-- The merge state grows with each report. A compaction of the incidents that ended before a horizon keeps it small. It must keep the three laws.
+- A copy can read the log of another copy more than 6 hours late. Then it can retire a quiet incident that the other copy sent. The tombstone keeps out the late delivery.
+- The log has no index by time. Thus `/history` gives a quiet incident only for its quiet horizon of 6 hours.
 - The frame clock does not see a step while the process is down, because the first frame starts with the process. Then a time of the log can be after the first pass.
 - The park times of the hosts in `polite-crawler` do not move at a step of the wall clock.
 - The quota gates read the wall clock with no frame. Their windows are civil times, thus a step changes them as it changes the calendar.

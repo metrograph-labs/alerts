@@ -1746,7 +1746,7 @@ export const sourceHealthViewSchema: z.ZodType<SourceHealthView, SourceHealthVie
 );
 
 /** This schema checks a stage of another copy. */
-export const copyStageSchema: z.ZodType<CopyStage, CopyStage> = schemaOf<CopyStage>()(z.enum(["skew", "config", "unread"]));
+export const copyStageSchema: z.ZodType<CopyStage, CopyStage> = schemaOf<CopyStage>()(z.enum(["skew", "config", "unread", "unsteady"]));
 
 /** This schema checks one read of the log of another copy that passed. */
 export const copyReadSchema: z.ZodType<CopyRead, CopyRead> = schemaOf<CopyRead>()(

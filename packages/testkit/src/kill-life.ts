@@ -34,8 +34,9 @@ function die(point: KillPoint): never {
  */
 function killingLog(log: RuntimeLog, point: KillPoint | "none"): RuntimeLog {
   return {
-    read: (types) => log.read(types),
+    read: (types, after) => log.read(types, after),
     has: (id) => log.has(id),
+    get: (id) => log.get(id),
     entries: (options) => log.entries(options),
     count: () => log.count(),
     counts: () => log.counts(),

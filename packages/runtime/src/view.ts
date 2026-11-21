@@ -11,6 +11,7 @@ import {
   carriages,
   CLOCK_STEP_WINDOW,
   copyUnreadAt,
+  copyUnsteadyAt,
   drillWatchAt,
   sharedHandoverAt,
   sourceClearAt,
@@ -175,7 +176,7 @@ export function systemView(state: RuntimeState, config: ViewConfig, at: Instant,
   const ends = found.flatMap((incident) => (incident.live && incident.expires !== undefined && incident.expires > at ? [incident.expires] : []));
   // The handover of the facts of a shared account is a timer too, because this copy then reports a low balance.
   const handover = sharedHandoverAt(copy, copies);
-  const unread = [...(balances ?? []).map(balanceUnreadAt), ...(copies ?? []).map(copyUnreadAt), ...(stores ?? []).filter((fill) => fill.entries === 0).map(storeEmptyAt), ...(held ?? []).map((entry) => entry.until), ...(drillWatches ?? []).flatMap((watch) => drillWatchAt(step.lines, watch, copies ?? []) ?? []), ...(handover === undefined ? [] : [handover])].filter((time) => time > at);
+  const unread = [...(balances ?? []).map(balanceUnreadAt), ...(copies ?? []).map(copyUnreadAt), ...(copies ?? []).flatMap((watch) => copyUnsteadyAt(watch) ?? []), ...(stores ?? []).filter((fill) => fill.entries === 0).map(storeEmptyAt), ...(held ?? []).map((entry) => entry.until), ...(drillWatches ?? []).flatMap((watch) => drillWatchAt(step.lines, watch, copies ?? []) ?? []), ...(handover === undefined ? [] : [handover])].filter((time) => time > at);
   const stepped = recentStep(state.steps, at);
   const recovered = recentRecovery(state.recoveries, at);
   // The end of the clear time of each source that is up with an open line is a timer too (AL-75).

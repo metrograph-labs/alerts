@@ -4,9 +4,10 @@ import { describe, expect, it } from "vitest";
 import { envelope, type RuntimeEvent } from "./events.ts";
 import { CLOCK_SKEW_LIMIT, COPY_MAX_AGE, EXCHANGE_LIMIT } from "./copy.ts";
 import { EXCHANGE_CHECKPOINT, EXCHANGE_FORMAT, EXCHANGE_PAGE, importOf, importPage, itemProblem, parsePage, sharedItem, sharePage, type ExchangePage, type ImportInput, type ReceivedPage, type SharedItem } from "./exchange.ts";
+import { LOUD_STEADY, steadyPasses } from "./instance.ts";
 import { openRuntimeLog, type RuntimeLog } from "./log.ts";
 import { exchangeWorker, serveEntries, type ExchangeCall, type ExchangeRound, type ExchangeWorker, type ExchangeWorkerOptions } from "./peers.ts";
-import { openRuntime, type CopyChecks, type Runtime, type RuntimeOptions } from "./runtime.ts";
+import { openRuntime, type CopyChecks, type Pass, type Runtime, type RuntimeOptions } from "./runtime.ts";
 import { EMPTY_RUNTIME, fold, rebuild, type FoldContext, type RuntimeState } from "./state.ts";
 
 const T0 = Date.UTC(2026, 3, 1, 18, 0, 0);
@@ -772,6 +773,54 @@ describe("two runtimes", () => {
         expect(bad.watches()[0]).not.toHaveProperty("drills");
         expect(bad.watches()[0]!.read).toMatchObject({ at: T0 });
       }
+    });
+
+    it("keeps the time of the first read of a copy that is not steady until a steady read (AL-108)", async () => {
+      const clock = fakeWallClock(T0);
+      const a = open("a", [], clock);
+      const b = open("b", [], clock);
+      let steady: boolean | undefined = false;
+      let fail = false;
+      const call: ExchangeCall = async (_peer, input) => {
+        if (fail) throw new Error("The copy stopped.");
+        return wire(serveEntries({ runtime: b.runtime, clock, configHash: HASH, ...(steady === undefined ? {} : { steady: () => steady ?? false }) }, input));
+      };
+      const worker = workerOf(a.runtime, call, clock);
+      await worker.round();
+      expect(worker.watches()[0]).toMatchObject({ read: { at: T0 }, unsteadySince: T0 });
+      // A later read that is not steady, and a failed read, keep the first time.
+      await clock.advance(MINUTE);
+      await worker.round();
+      fail = true;
+      await clock.advance(MINUTE);
+      await worker.round();
+      expect(worker.watches()[0]).toMatchObject({ read: { at: T0 + MINUTE }, unsteadySince: T0 });
+      // A shift of the clock moves the time, as it moves the read.
+      worker.shift(-4 * SECOND);
+      expect(worker.watches()[0]).toMatchObject({ read: { at: T0 + MINUTE - 4 * SECOND }, unsteadySince: T0 - 4 * SECOND });
+      // A steady read ends it. A read of an older build, with no value, also ends it.
+      fail = false;
+      steady = true;
+      await worker.round();
+      expect(worker.watches()[0]).not.toHaveProperty("unsteadySince");
+      steady = false;
+      await worker.round();
+      expect(worker.watches()[0]).toHaveProperty("unsteadySince");
+      steady = undefined;
+      await worker.round();
+      expect(worker.watches()[0]).not.toHaveProperty("unsteadySince");
+      // A value that is not a boolean gives none, and the read still passes.
+      const bad = workerOf(a.runtime, async (_peer, input) => ({ ...(wire(serveEntries({ runtime: b.runtime, clock, configHash: HASH }, input)) as object), steady: "no" }), clock);
+      expect((await bad.round()).problems).toEqual([]);
+      expect(bad.watches()[0]).not.toHaveProperty("unsteadySince");
+      expect(bad.watches()[0]!.read).toBeDefined();
+    });
+
+    it("tells that a start is steady after LOUD_STEADY of passes", () => {
+      const pass = (at: number) => ({ at }) as Pass;
+      expect(steadyPasses(undefined, undefined)).toBe(false);
+      expect(steadyPasses(pass(T0), pass(T0 + LOUD_STEADY - 1))).toBe(false);
+      expect(steadyPasses(pass(T0), pass(T0 + LOUD_STEADY))).toBe(true);
     });
 
     it("checks the input of the procedure and the options of the worker", () => {

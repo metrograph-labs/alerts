@@ -306,6 +306,9 @@ describe("the facts of the delivery", () => {
     ]);
     expect(facts({ copies: [copy(["skew"], { skew: -42_400, sameConfig: true })] })).toMatchObject([{ word: "Clock skew", text: "The clock of the copy is 42 seconds behind." }]);
     expect(facts({ copies: [copy(["skew"], { skew: 5 * MINUTE, sameConfig: true })] })).toMatchObject([{ text: "The clock of the copy is 5 minutes ahead." }]);
+    expect(facts({ copies: [copy(["unread", "unsteady"])] })).toMatchObject([
+      { word: "Not steady", text: "The copy starts again and again, and it sends no alert. This copy is the only copy that sends. No read of the copy passed yet. The two copies can both send an alert." },
+    ]);
     expect(facts({ copies: [copy(["skew", "config", "unread"], { skew: 1000, sameConfig: false })] })).toMatchObject([
       {
         word: "Not read",
