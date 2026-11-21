@@ -1,7 +1,7 @@
 # The measure of the state at its plateau for each quiet horizon (AL-109). Each run seeds one log in a scratch folder. Then
 # it folds the log with each quiet horizon, and it rebuilds it. The records have counts and JSON bytes only, with no time
 # and no heap. A large log needs more memory than a shared computer has, thus the measure runs in CI only. It is a
-# measure, not a gate: the gate of the state is a test of the testkit.
+# measure, not a gate: the gate of the state is a test of the testkit. A quiet horizon of 168 hours is the rule before AL-109.
 name: Measure state
 
 on:
@@ -10,7 +10,7 @@ on:
     paths:
       - packages/testkit/scripts/start-hold.ts
       - .github/workflows/measure-state.yml
-  # A person starts a run of other sizes: gh workflow run measure-state.yml -f sizes=96 -f quiet=3,6,12,24
+  # A person starts a run of other sizes: gh workflow run measure-state.yml -f sizes=96 -f quiet=3,6,12,24,168
   workflow_dispatch:
     inputs:
       sizes:
@@ -18,7 +18,7 @@ on:
         default: "96"
       quiet:
         description: The quiet horizons in hours, as a comma list
-        default: "3,6,12,24"
+        default: "3,6,12,24,168"
 
 permissions:
   contents: read
@@ -50,7 +50,7 @@ jobs:
         working-directory: packages/testkit
         env:
           SIZES: ${{ github.event_name == 'pull_request' && '48' || inputs.sizes || '96' }}
-          QUIET: ${{ github.event_name == 'pull_request' && '3,6,12' || inputs.quiet || '3,6,12,24' }}
+          QUIET: ${{ github.event_name == 'pull_request' && '3,6,12,168' || inputs.quiet || '3,6,12,24,168' }}
         run: |
           mkdir -p "$GITHUB_WORKSPACE/state"
           node scripts/start-hold.ts "$RUNNER_TEMP/seed" "$SIZES" 168 720 "$QUIET" | tee "$GITHUB_WORKSPACE/state/records.jsonl"

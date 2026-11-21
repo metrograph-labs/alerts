@@ -46,8 +46,8 @@ export interface RetentionOptions {
 /**
  * This function gives the options with each default.
  *
- * @throws Error when the horizon, the life or the quiet horizon is not a finite number of 0 or more, when the interval is
- *   not above 0, or when the quiet horizon is longer than the horizon.
+ * @throws Error when the horizon, the life or the quiet horizon is not a finite number of 0 or more.
+ * @throws Error when the interval is not above 0, or when the quiet horizon is longer than the horizon.
  */
 export function retention(options: RetentionOptions = {}): Required<RetentionOptions> {
   const every = options.every ?? RETIRE_EVERY;

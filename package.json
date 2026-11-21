@@ -23,9 +23,10 @@
       "gate-trigger": {
         "allow": [
           "measure.yml",
-          "measure-wea.yml"
+          "measure-wea.yml",
+          "measure-state.yml"
         ],
-        "reason": "measure.yml and measure-wea.yml are measures of outside servers, not gates. A pull request that changes a measure gets a smoke run, and no other pull request starts it."
+        "reason": "measure.yml and measure-wea.yml are measures of outside servers, and measure-state.yml is a measure of the state for each quiet horizon. They are not gates. A pull request that changes a measure gets a smoke run, and no other pull request starts it."
       }
     }
   },

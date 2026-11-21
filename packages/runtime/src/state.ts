@@ -373,7 +373,7 @@ function retireStep(state: RuntimeState, event: RuntimeEvent, context: FoldConte
 
 // The parts of one side of a rebuild, in the order of the log.
 function collector(): {
-  readonly parts: MergeParts;
+  readonly parts: Required<Omit<MergeParts, "retired">>;
   push(parts: MergeParts | undefined): void;
   shift(size: Duration): void;
   compact(tombstones: readonly Tombstone[]): MergeState;

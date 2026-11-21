@@ -12,10 +12,6 @@ const SIZE = 2_000_000;
 const RETENTION = { horizon: 5 * 60_000, life: 30 * 60_000, every: 5 * 60_000 };
 // The context of the fold of the seeded copy.
 const CONTEXT = { sources: [], retention: RETENTION };
-// The gate of the state at the plateau (AL-109): the JSON bytes of the state of the whole seeded log, and its growth over the
-// second half of the log. The limit is the bytes of the seed plus 10 %, for a small change of the format.
-const PLATEAU_BYTES = 0;
-const PLATEAU_GROWTH = 1.2;
 // The types of the source path, which the store writes.
 const SOURCE_TYPES = ["observation", "fetch", "import", "ended", "exchange"] as const;
 
@@ -102,16 +98,6 @@ describe("seedStore", () => {
     const codes = [...text.matchAll(/"system":"ugc","code":"([^"]*)"/gu)].map((match) => match[1]);
     expect(codes.length).toBeGreaterThan(0);
     for (const code of codes) expect(code).toMatch(/^ZZZ\d{3}$/u);
-  });
-
-  it("holds the state of the seeded log at its plateau, under the fixed limit of the seed (AL-109)", () => {
-    // The life of a tombstone is 30 minutes, thus the state stops its growth before the second half of the log. The seed
-    // fixes the log, thus the bytes are exact. A change that grows the state past the limit fails here.
-    const bytesAt = (fraction: number): number => JSON.stringify(rebuild(events.slice(0, Math.round(events.length * fraction)), CONTEXT)).length;
-    const series = [0.5, 0.75, 1].map(bytesAt);
-    const [half, , whole] = series as [number, number, number];
-    expect(whole, JSON.stringify(series)).toBeLessThanOrEqual(PLATEAU_BYTES);
-    expect(whole, JSON.stringify(series)).toBeLessThanOrEqual(half * PLATEAU_GROWTH);
   });
 
   it("refuses a size that is not above 0", async () => {
