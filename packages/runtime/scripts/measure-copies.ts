@@ -15,7 +15,7 @@ import { COPY_SUFFIX, SOURCE_ID as IPAWS } from "@mark1russell7/alerts-source-ip
 import { COPY_EXPECTATION } from "@mark1russell7/alerts-source-nwws";
 import { openDatabase } from "@mark1russell7/sqlite";
 import { copySummaries, type CopyCandidate } from "../src/copy-store.ts";
-import { parseEvent } from "../src/events.ts";
+import { parseEvent, type RuntimeEvent } from "../src/events.ts";
 import { INSTANCE_EXPECTATIONS, INSTANCE_SOURCES } from "../src/instance.ts";
 import { rebuild } from "../src/state.ts";
 
@@ -37,17 +37,23 @@ const CANDIDATES: readonly CopyCandidate[] = [
   { expectation: COPY_EXPECTATION },
 ];
 
+// The rows go from SQLite into the fold one at a time, thus the script keeps no copy of the log (AL-103). Its memory is
+// the memory of the state, as at a start of the runtime.
+let count = 0;
+function* eventsOf(rows: Iterable<{ readonly body: string }>): Generator<RuntimeEvent> {
+  for (const row of rows) {
+    count += 1;
+    yield parseEvent(JSON.parse(row.body));
+  }
+}
 const db = openDatabase(store, { readOnly: true });
-let rows: readonly { body: string }[];
+let state: ReturnType<typeof rebuild>;
 try {
-  rows = db.prepare("SELECT body FROM events ORDER BY seq").all() as unknown as readonly { body: string }[];
+  const rows = db.prepare("SELECT body FROM events ORDER BY seq").iterate() as unknown as Iterable<{ readonly body: string }>;
+  state = rebuild(eventsOf(rows), { sources: INSTANCE_SOURCES });
 } finally {
   db.close();
 }
-const state = rebuild(
-  rows.map((row) => parseEvent(JSON.parse(row.body))),
-  { sources: INSTANCE_SOURCES },
-);
 const summaries = copySummaries(state.merge.reports, state.time, CANDIDATES, {
   censor: censorMinutes * 60_000,
   eventOf: nwsEvent,
@@ -56,7 +62,7 @@ const summaries = copySummaries(state.merge.reports, state.time, CANDIDATES, {
 
 const iso = (at: number | undefined): string => (at === undefined ? "none" : new Date(at).toISOString());
 const seconds = (ms: number): string => (ms / 1000).toFixed(1);
-console.log(`log: ${String(rows.length)} events, end ${iso(state.time)}`);
+console.log(`log: ${String(count)} events, end ${iso(state.time)}`);
 for (const summary of summaries) {
   console.log(`\n${summary.id} (${summary.from} -> ${summary.to}), since ${iso(summary.since)}`);
   console.log(`  counts: ${JSON.stringify(summary.counts)}`);
