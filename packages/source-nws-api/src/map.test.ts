@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from "node:fs";
-import type { MapProblem, Observation, ObservationId, Report } from "@mark1russell7/alerts";
+import { capMessageKey, type MapProblem, type Observation, type ObservationId, type Report } from "@mark1russell7/alerts";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { NWS_DESCRIPTOR } from "./descriptor.ts";
@@ -84,8 +84,12 @@ describe("the map of the recorded alerts", () => {
 
     const vtec = ((properties.parameters.VTEC ?? []) as string[]).map((one) => parseVtec(one)).filter((one): one is Vtec => one !== undefined);
     const main = mainVtec(vtec);
+    // Each alert has the key of its CAP message. An alert with no VTEC has only that key.
+    const messageKey = capMessageKey({ sender: properties.sender, identifier: properties.id, sent: report.sent });
+    expect(messageKey).toBeDefined();
+    expect(report.correlation).toContainEqual(messageKey);
     if (main === undefined) {
-      expect(report.correlation).toEqual([]);
+      expect(report.correlation).toEqual([messageKey]);
     } else {
       expect(PHENOMENA[main.phenomenon]?.code).toBe(report.kind.code);
       expect(report.correlation).toContainEqual(vtecKey(main, report.sent));
@@ -432,8 +436,9 @@ describe("the VTEC key at the new year", () => {
   it("gives two keys, and the CAP reference still links the two reports", () => {
     const one = (mapOne(first)).report;
     const two = (mapOne(second)).report;
-    expect(one?.correlation).toEqual([{ system: "vtec", id: "PAFG.BZ.W.0099.2026" }]);
-    expect(two?.correlation).toEqual([{ system: "vtec", id: "PAFG.BZ.W.0099.2027" }]);
+    const vtecOf = (report: Report | undefined) => report?.correlation.filter((key) => key.system === "vtec");
+    expect(vtecOf(one)).toEqual([{ system: "vtec", id: "PAFG.BZ.W.0099.2026" }]);
+    expect(vtecOf(two)).toEqual([{ system: "vtec", id: "PAFG.BZ.W.0099.2027" }]);
     expect(two?.references).toContain(one?.key);
   });
 });

@@ -51,8 +51,10 @@ Two copies can get one report id with two contents, for example from two version
 The groups of reports are a function of the merge state alone, with no clock. Two reports of one status are in one incident when:
 
 1. one report references the other (the CAP references), or
-2. they share a correlation key (an NWS VTEC event, a USGS event id), or
+2. they share a correlation key (an NWS VTEC event, a USGS event id, one CAP message), or
 3. the link rule of their kinds matches: the same family of kind, two onsets near in time and two points near on the ground (below).
+
+The key of a CAP message (`capMessageKey`) is a hash of its sender, its identifier and its sent time. Thus two sources that carry one message give one key, also with no VTEC. The hash keeps the sender out of the key, because a sender can be the address of a person.
 
 The links are transitive: when A links to B and B links to C, the three reports are in one incident. A link rule gives the blocks of a report, for example its family of kind and its day. The merge tests only two reports that share a block. So the cost grows with the size of the blocks, not with the square of the count of reports.
 

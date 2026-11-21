@@ -1,4 +1,4 @@
-import { incidents, normalize, Problems, reportId, type Observation, type ObservationId, type Report, type SourceId } from "@mark1russell7/alerts";
+import { CAP_MESSAGE_SYSTEM, incidents, normalize, Problems, reportId, type Observation, type ObservationId, type Report, type SourceId } from "@mark1russell7/alerts";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_LANGUAGES } from "./info.ts";
@@ -86,8 +86,9 @@ describe("the reports of one CAP message", () => {
     expect(reports.map(codesOf)).toEqual([["ugc:KSZ083"], ["ugc:KSZ082"], ["ugc:KSZ081"]]);
     expect(reports.map((report) => report.areaText)).toEqual(["Zone A", "Zone B", "Zone C"]);
     expect(reports.map((report) => report.severity)).toEqual(["severe", "minor", "moderate"]);
-    // Each block has its own VTEC, so each report has its own correlation key.
-    expect(new Set(reports.flatMap((report) => report.correlation.map((key) => key.id))).size).toBe(3);
+    // Each block has its own VTEC and its own part, so each report has its own two correlation keys.
+    expect(reports.map((report) => report.correlation.map((key) => key.system))).toEqual([0, 1, 2].map(() => ["vtec", CAP_MESSAGE_SYSTEM]));
+    expect(new Set(reports.flatMap((report) => report.correlation.map((key) => key.id))).size).toBe(6);
     // Keyed areas: each area has the path of its own block.
     expect(reports.map((report) => report.areas.map((area) => (area.type === "place" ? "" : area.block)))).toEqual([["info[0].area[0]"], ["info[1].area[0]"], ["info[2].area[0]"]]);
   });

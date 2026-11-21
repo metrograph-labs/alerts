@@ -9,7 +9,7 @@
  * of content hashes. It is pure JavaScript, so the ids are synchronous in Node and in browsers.
  */
 import { canonicalHash } from "@mark1russell7/rigor-generators";
-import type { Instant, Level, ObservationId, PersonId, ReportId, SourceId } from "./contracts.ts";
+import type { CorrelationKey, Instant, Level, ObservationId, PersonId, ReportId, SourceId } from "./contracts.ts";
 
 /** The version of the id scheme. A change of the input of an id function raises it. */
 export const ID_SCHEME = "alerts-id/1";
@@ -78,6 +78,38 @@ export function observationId(input: ObservationIdInput): ObservationId {
 export function reportId(input: ReportIdInput): ReportId {
   const fields = ["report", input.source, input.key, input.version ?? input.sent];
   return digest(input.part === undefined ? fields : [...fields, input.part]) as ReportId;
+}
+
+/** The system of the correlation key of one CAP message (`capMessageKey`). */
+export const CAP_MESSAGE_SYSTEM = "cap";
+
+/** The input of `capMessageKey`: the values that name one CAP message, as in the field `references` of CAP 1.2. */
+export interface CapMessageKeyInput {
+  readonly sender: string;
+  readonly identifier: string;
+  readonly sent: Instant;
+  /**
+   * The part of a message that gives two or more reports, for example `info[1]`. Each part gets its own key, because
+   * two info blocks of one message can tell of two events.
+   */
+  readonly part?: string | undefined;
+}
+
+/**
+ * This function gives the correlation key of one CAP message. Two sources that carry one message give it the same
+ * sender, identifier and sent time. Thus the key joins the copies of a message in one incident, also with no VTEC
+ * key. A special weather statement of the NWS is an example (AL-8).
+ *
+ * - The id is a hash, because the sender of a local authority can be the address of a person.
+ * - The sent time is a number in the hash input. Thus two forms of one time give one key.
+ * - An empty sender or identifier gives no key, because the two values do not name a message then.
+ */
+export function capMessageKey(input: CapMessageKeyInput): CorrelationKey | undefined {
+  const sender = input.sender.trim();
+  const identifier = input.identifier.trim();
+  if (sender === "" || identifier === "") return undefined;
+  const fields = ["cap-message", sender, identifier, input.sent];
+  return { system: CAP_MESSAGE_SYSTEM, id: digest(input.part === undefined ? fields : [...fields, input.part]) };
 }
 
 /**

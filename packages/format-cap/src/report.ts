@@ -10,6 +10,7 @@
  */
 
 import {
+  capMessageKey,
   categoryOf,
   reportId,
   type Area,
@@ -221,6 +222,9 @@ function blockReport(alert: CapAlert, message: Message, block: Block | undefined
     const correlationKey = vtecKey(one, message.sent);
     correlation.set(correlationKey.id, correlationKey);
   }
+  // The key of the message joins its copies from other sources, also with no VTEC (AL-8).
+  const messageKey = capMessageKey({ sender: alert.sender, identifier: message.key, sent: message.sent, part });
+  if (messageKey !== undefined) correlation.set(messageKey.id, messageKey);
 
   const areaText = [...new Set((info?.areas ?? []).map((area) => area.areaDesc.trim()).filter((text) => text !== ""))].join("; ");
   const expires = capTime(info?.expires, `${at}.expires`, problems);

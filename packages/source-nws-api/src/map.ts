@@ -20,7 +20,7 @@ import type {
   Status,
   Urgency,
 } from "@mark1russell7/alerts";
-import { categoryOf, Problems, reportId } from "@mark1russell7/alerts";
+import { capMessageKey, categoryOf, Problems, reportId } from "@mark1russell7/alerts";
 import { isRecord, type Fields } from "@mark1russell7/optional/read";
 import { errorMessage } from "@mark1russell7/text";
 
@@ -410,6 +410,9 @@ function mapFeature(feature: unknown, observation: Observation, problems: Proble
   }
   const senderName = textAt(properties["senderName"], "properties.senderName", problems);
   const sender = textAt(properties["sender"], "properties.sender", problems);
+  // The key of the CAP message joins the copy of NWWS-OI or of another CAP source, also with no VTEC (AL-8).
+  const messageKey = sender === undefined ? undefined : capMessageKey({ sender, identifier: key, sent });
+  if (messageKey !== undefined) correlation.set(messageKey.id, messageKey);
   const headline = textAt(properties["headline"], "properties.headline", problems);
   const report: Report = {
     id: reportId({ source: SOURCE_ID, key, sent }),
