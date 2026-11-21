@@ -46,7 +46,7 @@ import { SYSTEM_SOURCE } from "./contracts.ts";
 import { channelDownPolicy, runOpens, type ChannelDownConfig, type ChannelDownPolicy, type ChannelRun, type ChannelSnapshot } from "./channel-down.ts";
 import { coverageShort } from "./coverage.ts";
 import type { Exhaustion } from "./delivery.ts";
-import { drillVerdict, type DrillConfig, type DrillRun } from "./drill.ts";
+import { drillVerdict, watchedDrillMiss, watchedDrillReportAt, type DrillConfig, type DrillRun, type DrillWatch, type DrillWatchMiss } from "./drill.ts";
 import { observationId, reportId } from "./ids.ts";
 import type { Lateness } from "./lateness.ts";
 import type { ObserveCondition } from "./observe.ts";
@@ -299,6 +299,11 @@ export interface SystemSnapshot {
    */
   readonly drills?: readonly DrillSnapshot[];
   /**
+   * The drills that other copies start, in the watch of this copy (AL-43). The watch reads `copies`. A start that the
+   * watch did not see is a condition (`watchedDrillMiss`). With no watches, each open line of a watch stays open.
+   */
+  readonly drillWatches?: readonly DrillWatch[];
+  /**
    * The exhausted escalations of the real warnings (`exhaustions`, AL-21). Each one is a condition, for the people who
    * watch the person. Only one copy reports them (`reportsShared`). With no list, each open line of an exhaustion stays open.
    */
@@ -482,6 +487,7 @@ export function gapGrade(entry: Coverage, threatened: boolean): { readonly sever
  * - The latest step of the wall clock in `CLOCK_STEP_WINDOW` before `at`.
  * - The latest recovery of the log in `LOG_RECOVERY_WINDOW` before `at`.
  * - Each run of a drill that waits for its acknowledgment, and each drill whose last run failed.
+ * - Each start of a drill of another copy that the watch of this copy did not see (`watchedDrillMiss`).
  * - Each exhausted escalation of a real warning. Only one copy reports it (`reportsShared`).
  * - Each person with a hold of the send limit in its window. The report is private. Only one copy reports it (`reportsShared`).
  * - Each down channel of the copy: a run that opens a line, or an open line with no good call since its onset.
@@ -539,6 +545,12 @@ export function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: 
     if (verdict.state === "pending") conditions.set(drillName(copy, drill.id), drillRunCondition(copy, drill, run));
     else if (verdict.state === "failed") conditions.set(`${drillName(copy, drill.id)}/failed`, drillFailedCondition(copy, drill, run, verdict.why));
   }
+  // A copy that stops for the full window of a start tells nothing in that time. Thus each other copy tells of it.
+  for (const watch of snapshot.drillWatches ?? []) {
+    const name = drillWatchName(watch);
+    const miss = watchedDrillMiss(watch, snapshot.copies ?? [], at, heldDue(lines.open[name]));
+    if (miss !== undefined) conditions.set(name, drillWatchCondition(watch, miss));
+  }
   // The two copies see the same exhaustion in the shared log. Thus one copy reports it, as with a shared balance.
   if (shared) for (const entry of snapshot.exhausted ?? []) conditions.set(exhaustionName(entry), exhaustionCondition(entry));
   // Each copy counts the deliveries of all the copies, thus each copy holds the same burst. One copy tells each person (AL-81).
@@ -568,6 +580,7 @@ export function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: 
     if (condition === undefined && snapshot.balances === undefined && name.startsWith(BALANCE_LINE)) continue;
     if (condition === undefined && snapshot.copies === undefined && name.startsWith(COPY_LINE)) continue;
     if (condition === undefined && snapshot.drills === undefined && name.startsWith(DRILL_LINE)) continue;
+    if (condition === undefined && snapshot.drillWatches === undefined && name.startsWith(DRILL_WATCH_LINE)) continue;
     if (condition === undefined && snapshot.exhausted === undefined && name.startsWith(EXHAUSTION_LINE)) continue;
     if (condition === undefined && snapshot.held === undefined && name.startsWith(HELD_LINE)) continue;
     if (condition === undefined && snapshot.channels === undefined && name.startsWith(CHANNEL_LINE)) continue;
@@ -676,6 +689,28 @@ const DRILL_LINE = "drill/";
 
 function drillName(copy: string, drill: string): string {
   return `${DRILL_LINE}${encodeURIComponent(copy)}/${encodeURIComponent(drill)}`;
+}
+
+// The start of the name of each line of the watch of a drill of another copy. A watch with no copy has an empty part.
+const DRILL_WATCH_LINE = "drill-watch/";
+
+function drillWatchName(watch: DrillWatch): string {
+  return `${DRILL_WATCH_LINE}${encodeURIComponent(watch.copy ?? "")}/${encodeURIComponent(watch.drill.id)}`;
+}
+
+// The due start of an open line of a watch. The line keeps it over a restart of this copy, because the log rebuilds the lines.
+function heldDue(line: SystemLine | undefined): Instant | undefined {
+  if (line === undefined) return undefined;
+  const { due } = JSON.parse(line.facts) as { readonly due?: unknown };
+  return typeof due === "number" && Number.isFinite(due) ? due : undefined;
+}
+
+/**
+ * This function gives the time when the watch of a drill of another copy tells of a miss. The open line of the watch in
+ * `lines` keeps its due start. The function gives `undefined` when the watch waits for no start. A timer can wait for the time.
+ */
+export function drillWatchAt(lines: SystemLines, watch: DrillWatch, copies: readonly CopyWatch[]): Instant | undefined {
+  return watchedDrillReportAt(watch, copies, heldDue(lines.open[drillWatchName(watch)]));
 }
 
 // The name of the line of the steps of the wall clock. A step in the window of an open line gives an update.
@@ -985,6 +1020,36 @@ function drillNoStartCondition(copy: string, drill: DrillConfig): Condition {
     description: `Each time of the window of the drill is in the quiet window of the person, or too near to it. The copy ${copy} does not test the path on the channel ${drill.path.channel}.`,
     instruction: "Change the window of the drill or the quiet window of the person in the configuration.",
     parameters: { drill: [drill.id], copy: [copy], why: ["no-start"] },
+  };
+}
+
+function drillWatchCondition(watch: DrillWatch, miss: DrillWatchMiss): Condition {
+  const code = `${DRILL_KIND}.failed`;
+  const { drill } = watch;
+  const copy = watch.copy === undefined ? "the copy of rank 0" : `the copy ${watch.copy}`;
+  const Copy = `T${copy.slice(1)}`;
+  const noRead = miss.why === "no-read";
+  const due = `The drill was due at ${new Date(miss.due).toISOString()}, and its window ended at ${new Date(miss.end).toISOString()}.`;
+  const read = miss.read === undefined ? `No read of ${copy} passed after the start of the watch.` : `The last read of ${copy} that passed was at ${new Date(miss.read).toISOString()}.`;
+  const last = miss.last === undefined ? "No read gave a start of the drill." : `The last start of the drill in the reads was at ${new Date(miss.last).toISOString()}.`;
+  return {
+    // The due start and the reason are the only facts. Thus a new read and a restart of this copy give no update.
+    facts: { watched: watch.copy ?? "", drill: drill.id, due: miss.due, why: miss.why },
+    kind: { code, label: kindLabel(code) },
+    severity: noRead ? "minor" : "moderate",
+    urgency: "expected",
+    response: ["assess"],
+    onset: miss.end,
+    areas: [],
+    about: [{ system: DRILL_SUBJECT, id: drill.id, label: `Drill ${drill.id}` }],
+    headline: noRead ? `This copy cannot tell if the drill ${drill.id} started.` : `No start of the drill ${drill.id} came from ${copy}.`,
+    description: noRead
+      ? `${due} ${Copy} answers, but its answers give no starts of drills. A copy of an older build gives none.`
+      : `${due} ${read} ${last} The path of the life-safety warnings on the channel ${drill.path.channel} has no test from that copy.`,
+    instruction: noRead
+      ? `Update ${copy} to the build of this copy. The next start of the drill ends this message.`
+      : `Examine ${copy}: its state, its log and the configuration of the drill. The next start of the drill ends this message.`,
+    parameters: { drill: [drill.id], ...(watch.copy === undefined ? {} : { copy: [watch.copy] }), why: [miss.why] },
   };
 }
 

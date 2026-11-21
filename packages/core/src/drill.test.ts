@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { ChannelDescriptor, ChannelId, PersonId, QuietWindow } from "./contracts.ts";
-import { drillDue, drillInCopy, drillProblems, drillVerdict, joinRuns, lastRun, missedDrillAt, nextDrillAt, type DrillConfig, type DrillRun } from "./drill.ts";
+import type { ChannelDescriptor, ChannelId, CopyRead, CopyWatch, PersonId, QuietWindow } from "./contracts.ts";
+import { drillDue, drillInCopy, drillProblems, drillVerdict, joinRuns, lastRun, missedDrillAt, nextDrillAt, watchedDrillMiss, watchedDrillReportAt, DRILL_WATCH_GRACE, type DrillConfig, type DrillRun, type DrillWatch } from "./drill.ts";
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
@@ -156,6 +156,70 @@ describe("missedDrillAt", () => {
     const quiet: QuietWindow = { zone: ZONE, start: "22:00", end: "12:00" };
     expect(missedDrillAt(WEEKLY, [run(SATURDAY + HOUR)], next + 6 * HOUR, quiet)).toBe(next + HOUR);
     expect(missedDrillAt(WEEKLY, [run(SATURDAY + HOUR)], next + 30 * MINUTE, quiet)).toBeUndefined();
+  });
+});
+
+describe("watchedDrillMiss and watchedDrillReportAt", () => {
+  const next = SATURDAY + 7 * DAY;
+  // The window of each Saturday ends at 17:00 in Chicago, 6 hours after its start.
+  const end = next + 6 * HOUR;
+  const watch: DrillWatch = { drill: { ...WEEKLY, copies: ["cloud"] }, copy: "cloud" };
+  const read = (at: number): CopyRead => ({ at, skew: 0, sameConfig: true });
+  const peer = (extra: Partial<CopyWatch> = {}): CopyWatch => ({ copy: "cloud", skewLimit: MINUTE, maxAge: 5 * MINUTE, since: SATURDAY - DAY, ...extra });
+
+  it("gives the start after the last start of the other copy when its window ended with no start", () => {
+    const copies = [peer({ read: read(SATURDAY + HOUR), drills: { [WEEKLY.id]: SATURDAY } })];
+    expect(watchedDrillReportAt(watch, copies)).toBe(end + DRILL_WATCH_GRACE);
+    expect(watchedDrillMiss(watch, copies, end + DRILL_WATCH_GRACE - 1)).toBeUndefined();
+    expect(watchedDrillMiss(watch, copies, end + DRILL_WATCH_GRACE)).toEqual({ due: next, end, why: "unseen", last: SATURDAY, read: SATURDAY + HOUR });
+    // Two weeks with no start still give the first missed start.
+    expect(watchedDrillMiss(watch, copies, end + 7 * DAY)).toMatchObject({ due: next });
+  });
+
+  it("ends the miss at a start at the due time or later, also at a late start in the window", () => {
+    const late = [peer({ read: read(end + HOUR), drills: { [WEEKLY.id]: next + 2 * HOUR } })];
+    expect(watchedDrillMiss(watch, late, end + HOUR)).toBeUndefined();
+    // The watch then waits for the start of the next week.
+    expect(watchedDrillReportAt(watch, late)).toBe(end + 7 * DAY + DRILL_WATCH_GRACE);
+  });
+
+  it("counts from the start of the watch when no read gives a start", () => {
+    // The watch starts on Friday. The first start is then the Saturday after it.
+    const first = SATURDAY + 6 * HOUR + DRILL_WATCH_GRACE;
+    expect(watchedDrillMiss(watch, [peer()], first)).toEqual({ due: SATURDAY, end: SATURDAY + 6 * HOUR, why: "unseen" });
+    expect(watchedDrillMiss(watch, [peer({ read: read(first), drills: {} })], first)).toMatchObject({ why: "unseen", read: first });
+  });
+
+  it("tells that it cannot read when the copy answers with no starts of drills", () => {
+    const old = [peer({ read: read(end + HOUR) })];
+    expect(watchedDrillMiss(watch, old, end + HOUR)).toMatchObject({ due: SATURDAY, why: "no-read" });
+    // An answer before the end of the window does not tell that the copy cannot give the start.
+    expect(watchedDrillMiss(watch, [peer({ read: read(SATURDAY - HOUR) })], end + HOUR)).toMatchObject({ why: "unseen" });
+  });
+
+  it("keeps the start of an open line over a restart of this copy", () => {
+    // After a restart, the watch starts again on Sunday, and with no start in the reads it waits for the next Saturday.
+    const restarted = [peer({ since: next + DAY })];
+    expect(watchedDrillMiss(watch, restarted, next + DAY + HOUR)).toBeUndefined();
+    expect(watchedDrillMiss(watch, restarted, next + DAY + HOUR, next)).toMatchObject({ due: next, end });
+    // A start before the held start does not end the line. A start at the held start or later ends it.
+    expect(watchedDrillMiss(watch, [peer({ drills: { [WEEKLY.id]: SATURDAY } })], next + 7 * DAY + 7 * HOUR, next)).toMatchObject({ due: next });
+    expect(watchedDrillMiss(watch, [peer({ drills: { [WEEKLY.id]: next + 7 * DAY } })], next + 7 * DAY + 7 * HOUR, next)).toBeUndefined();
+  });
+
+  it("counts from the next start out of the quiet window of the person", () => {
+    const quiet: QuietWindow = { zone: ZONE, start: "22:00", end: "12:00" };
+    const copies = [peer({ drills: { [WEEKLY.id]: SATURDAY + HOUR } })];
+    expect(watchedDrillMiss({ ...watch, quiet }, copies, end + DRILL_WATCH_GRACE)).toMatchObject({ due: next + HOUR, end });
+  });
+
+  it("reads each peer for a drill of the copy of rank 0, and only the named copy for a drill with a list", () => {
+    const copies = [peer({ copy: "b", read: read(end + HOUR), drills: {} }), peer({ copy: "c", read: read(end + HOUR), drills: { [WEEKLY.id]: next + HOUR } })];
+    expect(watchedDrillMiss({ drill: WEEKLY }, copies, end + HOUR)).toBeUndefined();
+    expect(watchedDrillMiss({ drill: WEEKLY, copy: "b" }, copies, end + HOUR)).toMatchObject({ due: SATURDAY, why: "unseen" });
+    // A watch of a copy that is not a peer has no read, and it waits for no start.
+    expect(watchedDrillMiss({ drill: WEEKLY, copy: "d" }, copies, end + HOUR)).toBeUndefined();
+    expect(watchedDrillReportAt({ drill: WEEKLY, copy: "d" }, copies)).toBeUndefined();
   });
 });
 

@@ -100,7 +100,7 @@ import { replyWatch, type ReplyWatch } from "./replies.ts";
 import { parseSecrets, requireKey, SECRETS_FILE, type FileText, type InstanceCheck } from "./config.ts";
 import { CLOCK_SKEW_LIMIT, COPY_FILE, COPY_TOKEN_KEY, EXCHANGE_EVERY, EXCHANGE_LIMIT } from "./copy.ts";
 import { overdueLimit, type DeliveryOptions } from "./delivery.ts";
-import { copyDrills } from "./drills.ts";
+import { copyDrills, watchedDrills } from "./drills.ts";
 import type { RuntimeLog } from "./log.ts";
 import { createLoop, loopTimes, shortestFetchLimit, type LoopTimes, type RuntimeLoop } from "./loop.ts";
 import { outageDeploy, outageDeployWorker, outageSetup, type OutageDeployWorker } from "./outage.ts";
@@ -1009,6 +1009,8 @@ export function openInstance(options: InstanceOptions): Instance {
     delivery,
     // The drills of the live paths that this copy starts (AL-43). Each person keeps the quiet window of the configuration.
     drills: copyDrills(config.drills ?? [], recipients, copy.id, copy.rank),
+    // The drills of the other copies, in the watch of this copy. A copy that stops for a full window tells nothing.
+    drillWatches: watchedDrills(config.drills ?? [], recipients, copy.id, copy.rank),
     // The loop exists before the first pass, and only a pass starts a wake.
     wake: () => loop.wake(),
     // Each stage of a quota is a line of system reports, and so is each stage of a balance.
@@ -1107,7 +1109,7 @@ export function openInstance(options: InstanceOptions): Instance {
   const copies: InstanceCopies | undefined =
     options.exchange === undefined
       ? undefined
-      : { source: { runtime, clock: wall, configHash: options.exchange.configHash }, ...(worker === undefined || rounds === undefined ? {} : { worker, loop: rounds }) };
+      : { source: { runtime, clock: wall, configHash: options.exchange.configHash, drills: () => runtime.state().drills }, ...(worker === undefined || rounds === undefined ? {} : { worker, loop: rounds }) };
   const outage = outageWorker(options, loop.times.passLimit);
   return {
     runtime,

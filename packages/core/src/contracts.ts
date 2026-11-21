@@ -924,6 +924,11 @@ export interface CopyWatch {
   readonly since: Instant;
   /** The last read that passed. */
   readonly read?: CopyRead;
+  /**
+   * The last start of each drill of the other copy, by the id of the drill, on the clock of that copy (AL-43). The last
+   * read that passed gives them. A copy of an older build gives none.
+   */
+  readonly drills?: Readonly<Record<string, Instant>>;
 }
 
 /** The watch of the balance of one provider account, at one time. */

@@ -5,7 +5,7 @@
  * that it gets.
  */
 import { isFrameClock, type WallClock } from "@mark1russell7/algebra/clock";
-import { channelDownPolicy, DEFAULT_LINK_POLICY, DEFAULT_SEND_LIMITS, downChannels, heldPersons, indicatorBreadth, limitShare, linkRule, observeConditions, ONLY_COPY, type ChannelQuota, type ChannelSnapshot, type CopyWatch, type Duration, type EntryTimes, type Exhaustion, type FetchOutcome, type HeldPerson, type Incident, type IndicatorBreadth, type Instant, type LatenessFolds, type ObserveCondition, type ReportId, type SourceDescriptor, type SourceId, type StoreFill, type SourceProcedures, type Watch, type ZoneRegions } from "@mark1russell7/alerts";
+import { channelDownPolicy, DEFAULT_LINK_POLICY, DEFAULT_SEND_LIMITS, downChannels, heldPersons, indicatorBreadth, limitShare, linkRule, observeConditions, ONLY_COPY, type ChannelQuota, type ChannelSnapshot, type CopyWatch, type DrillWatch, type Duration, type EntryTimes, type Exhaustion, type FetchOutcome, type HeldPerson, type Incident, type IndicatorBreadth, type Instant, type LatenessFolds, type ObserveCondition, type ReportId, type SourceDescriptor, type SourceId, type StoreFill, type SourceProcedures, type Watch, type ZoneRegions } from "@mark1russell7/alerts";
 import { errorMessage } from "@mark1russell7/text";
 import type { BalanceWatch } from "./balance.ts";
 import { channelWatch, lastFetchSuccess } from "./channel-watch.ts";
@@ -108,6 +108,11 @@ export interface RuntimeOptions {
    * drills, the view ends each open line of a drill of this copy.
    */
   readonly drills?: readonly CopyDrill[];
+  /**
+   * The drills that other copies start, in the watch of this copy (`watchedDrills`, AL-43). The watch reads the checks of
+   * the copies. Without the checks, each open line of a watch stays open.
+   */
+  readonly drillWatches?: readonly DrillWatch[];
   /**
    * The store of the indicator readings. The runtime writes the readings of each fetch before its events. Without a store,
    * the runtime keeps no reading.
@@ -469,7 +474,7 @@ export function openRuntime(options: RuntimeOptions): Runtime {
       const stores = readStores();
       // The persons with a hold of the send limit (AL-81). With no delivery, no person has a hold, and each open line stays.
       const held = dispatcher === undefined ? undefined : heldOf(at);
-      const view = systemView(state, config, at, { drills: drilled.snapshots, ...(quotas === undefined ? {} : { quotas }), ...(stores === undefined ? {} : { stores }), balances: watches.flatMap((watch) => watch.balance() ?? []), ...(options.copies === undefined ? {} : { copies: options.copies.watches(), copy: self }), ...(folds === undefined ? {} : { folds }), ...(exhausted === undefined ? {} : { exhausted }), ...(held === undefined ? {} : { held }), ...(channels === undefined ? {} : { channels: channels.snapshots() }), ...(observing === undefined ? {} : { observing }) });
+      const view = systemView(state, config, at, { drills: drilled.snapshots, ...(quotas === undefined ? {} : { quotas }), ...(stores === undefined ? {} : { stores }), balances: watches.flatMap((watch) => watch.balance() ?? []), ...(options.copies === undefined ? {} : { copies: options.copies.watches(), copy: self, drillWatches: options.drillWatches ?? [] }), ...(folds === undefined ? {} : { folds }), ...(exhausted === undefined ? {} : { exhausted }), ...(held === undefined ? {} : { held }), ...(channels === undefined ? {} : { channels: channels.snapshots() }), ...(observing === undefined ? {} : { observing }) });
       folds = view.folds;
       const event = systemEvent(view);
       if (event !== undefined) conflicts.push(...append([event]));
