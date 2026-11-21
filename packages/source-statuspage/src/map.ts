@@ -10,9 +10,9 @@
  */
 
 import { categoryOf, kindLabel, Problems, reportId, type Instant, type MapResult, type Observation, type Report, type Severity, type Urgency } from "@mark1russell7/alerts";
+import { isRecord, textOf, timeOf, type Fields } from "@mark1russell7/optional/read";
 import { errorMessage } from "@mark1russell7/text";
 
-import { isFields, textOf, timeOf, type Fields } from "./fields.ts";
 import { subjectsOf, type ComponentKey, type StatusPage } from "./page.ts";
 import { mapComponent } from "./statusiq.ts";
 
@@ -43,7 +43,7 @@ export const URGENCY_OF_STATUS: Readonly<Record<string, Urgency>> = { investigat
 
 /** This function tells if a body is the head of a page: a page with an id, and only the fields of `HEAD_FIELDS`. */
 export function isHead(fields: Fields): boolean {
-  return isFields(fields["page"]) && typeof fields["page"]["id"] === "string" && Object.keys(fields).every((field) => (HEAD_FIELDS as readonly string[]).includes(field));
+  return isRecord(fields["page"]) && typeof fields["page"]["id"] === "string" && Object.keys(fields).every((field) => (HEAD_FIELDS as readonly string[]).includes(field));
 }
 
 /** This function tells if an incident has the structure of Statuspage: an id, a name, a status and a time of its last change. */
@@ -58,14 +58,14 @@ export function sentOf(incident: Fields): Instant | undefined {
 
 /** This function gives the updates of an incident with a body, the newest first. An update with no time of display goes last. */
 export function updatesOf(incident: Fields): readonly Fields[] {
-  const updates = Array.isArray(incident["incident_updates"]) ? incident["incident_updates"].filter(isFields) : [];
+  const updates = Array.isArray(incident["incident_updates"]) ? incident["incident_updates"].filter(isRecord) : [];
   const shown = (update: Fields): number => timeOf(update, "display_at") ?? timeOf(update, "created_at") ?? Number.NEGATIVE_INFINITY;
   return [...updates].sort((a, b) => shown(b) - shown(a));
 }
 
 /** This function gives the names of the components of an incident, with no name twice. */
 export function componentsOf(incident: Fields): readonly string[] {
-  const components = Array.isArray(incident["components"]) ? incident["components"].filter(isFields) : [];
+  const components = Array.isArray(incident["components"]) ? incident["components"].filter(isRecord) : [];
   return [...new Set(components.flatMap((component) => (textOf(component, "name") === undefined ? [] : [textOf(component, "name")!])))];
 }
 
@@ -74,8 +74,8 @@ export function componentsOf(incident: Fields): readonly string[] {
  * of the key. Or an update gives the id of the key as the code of an affected component. The order is the order of the page.
  */
 export function keysOf(incident: Fields, page: Pick<StatusPage, "components">): readonly ComponentKey[] {
-  const components = Array.isArray(incident["components"]) ? incident["components"].filter(isFields) : [];
-  const affected = updatesOf(incident).flatMap((update) => (Array.isArray(update["affected_components"]) ? update["affected_components"].filter(isFields) : []));
+  const components = Array.isArray(incident["components"]) ? incident["components"].filter(isRecord) : [];
+  const affected = updatesOf(incident).flatMap((update) => (Array.isArray(update["affected_components"]) ? update["affected_components"].filter(isRecord) : []));
   const ids = new Set([...components.flatMap((component) => [textOf(component, "id"), textOf(component, "group_id")]), ...affected.map((component) => textOf(component, "code"))]);
   return (page.components ?? []).filter((key) => ids.has(key.id));
 }
@@ -98,12 +98,12 @@ function mapOrThrow(observation: Observation, page: StatusPage): MapResult {
     return { reports: [], problems: [{ path: "", message: "the body is not JSON", fatal: true }] };
   }
   if (page.format === "statusiq") {
-    if (!isFields(fields)) return { reports: [], problems: [{ path: "", message: "the observation is not one component of a feed of StatusIQ: the format changed", fatal: true }] };
+    if (!isRecord(fields)) return { reports: [], problems: [{ path: "", message: "the observation is not one component of a feed of StatusIQ: the format changed", fatal: true }] };
     return mapComponent(observation, page, fields);
   }
-  if (isFields(fields) && isHead(fields)) return { reports: [], problems: [] };
+  if (isRecord(fields) && isHead(fields)) return { reports: [], problems: [] };
   // The fetch gives the whole answer as one observation when the answer is not the summary of a page.
-  if (!isFields(fields) || !Object.hasOwn(fields, "id")) {
+  if (!isRecord(fields) || !Object.hasOwn(fields, "id")) {
     return { reports: [], problems: [{ path: "", message: "the observation is not one incident of a status page: the format changed", fatal: true }] };
   }
   const problems = new Problems();

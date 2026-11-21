@@ -8,6 +8,7 @@
 
 import { observationId, type FetchFailure, type FetchOutcome, type FetchSignal, type Instant, type Observation, type SourceId, type Watch } from "@mark1russell7/alerts";
 import { createRequester, type Requested } from "@mark1russell7/alerts-fetch";
+import { isRecord, type Fields } from "@mark1russell7/optional/read";
 import type { Pace, Transport } from "polite-crawler/api";
 
 import { ANOMALIES_PATH, ANOMALIES_SOURCE, OUTAGES_PATH, OUTAGES_SOURCE, PAGE_LIMIT, RADAR_BASE } from "./feed.ts";
@@ -72,11 +73,6 @@ export interface RadarFetchInput {
   readonly watch: Watch;
 }
 
-type Fields = Readonly<Record<string, unknown>>;
-
-/** This function tells if a value is an object of fields, as the other source packages do. The move of this guard to one home is open. */
-const isFields = (value: unknown): value is Fields => typeof value === "object" && value !== null && !Array.isArray(value);
-
 /** One error of an answer of the API. */
 interface ApiError {
   readonly code?: number;
@@ -91,9 +87,9 @@ function errorsOf(body: string): readonly ApiError[] {
   } catch {
     return [];
   }
-  const errors = isFields(parsed) && Array.isArray(parsed["errors"]) ? (parsed["errors"] as unknown[]) : [];
+  const errors = isRecord(parsed) && Array.isArray(parsed["errors"]) ? (parsed["errors"] as unknown[]) : [];
   return errors.flatMap((error) => {
-    if (!isFields(error) || typeof error["message"] !== "string") return [];
+    if (!isRecord(error) || typeof error["message"] !== "string") return [];
     return [typeof error["code"] === "number" ? { code: error["code"], message: error["message"] } : { message: error["message"] }];
   });
 }
@@ -164,15 +160,15 @@ export function readRecords(list: RadarList, body: string, now: Instant): Record
   } catch {
     return undefined;
   }
-  if (!isFields(parsed) || parsed["success"] !== true || !isFields(parsed["result"])) return undefined;
+  if (!isRecord(parsed) || parsed["success"] !== true || !isRecord(parsed["result"])) return undefined;
   const records = parsed["result"][facts.field];
   if (!Array.isArray(records)) return undefined;
   const seen = new Set<string>();
   const bodies: string[] = [];
   let complete = records.length < PAGE_LIMIT;
   for (const record of records as unknown[]) {
-    const id = isFields(record) ? idOf(record, facts.id) : undefined;
-    if (!isFields(record) || id === undefined) {
+    const id = isRecord(record) ? idOf(record, facts.id) : undefined;
+    if (!isRecord(record) || id === undefined) {
       bodies.push(JSON.stringify(record));
       complete = false;
       continue;

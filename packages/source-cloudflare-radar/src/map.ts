@@ -16,6 +16,7 @@
  */
 
 import { categoryOf, kindLabel, Problems, reportId, type Area, type Certainty, type CorrelationKey, type Instant, type MapResult, type Observation, type Report, type Severity, type Subject } from "@mark1russell7/alerts";
+import { isRecord, numberOf, textOf, timeOf, type Fields } from "@mark1russell7/optional/read";
 import { errorMessage } from "@mark1russell7/text";
 
 import {
@@ -89,29 +90,15 @@ export const CERTAINTY_OF_STATUS: Readonly<Record<string, Certainty>> = {
 /** The count of names in the place of a headline. The headline counts the other names. */
 export const HEADLINE_NAMES = 3;
 
-type Fields = Readonly<Record<string, unknown>>;
-
-/** This function tells if a value is an object of fields, as the other source packages do. The move of this guard to one home is open. */
-const isFields = (value: unknown): value is Fields => typeof value === "object" && value !== null && !Array.isArray(value);
-
-/** This function gives the text of a field, or `undefined` for an empty or absent text. A number gives its text. */
-function textOf(fields: Fields, field: string): string | undefined {
-  const value = fields[field];
-  if (typeof value === "number" && Number.isFinite(value)) return String(value);
-  return typeof value === "string" && value.trim() !== "" ? value.trim() : undefined;
-}
-
-/** This function gives the time of a field, or `undefined` for an absent value or a value that is not a time. */
-function timeOf(fields: Fields, field: string): Instant | undefined {
-  const text = textOf(fields, field);
-  const time = text === undefined ? Number.NaN : Date.parse(text);
-  return Number.isFinite(time) ? time : undefined;
+/** This function gives the text of a field, or the text of its finite number. The API gives some ids as numbers, for example an ASN. */
+function textOrNumberOf(fields: Fields, field: string): string | undefined {
+  return textOf(fields, field) ?? numberOf(fields, field)?.toString();
 }
 
 /** This function gives the objects of a list field. A value that is not an object gives no entry. */
 function listOf(fields: Fields, field: string): readonly Fields[] {
   const value = fields[field];
-  return Array.isArray(value) ? value.filter(isFields) : [];
+  return Array.isArray(value) ? value.filter(isRecord) : [];
 }
 
 /** This function gives the texts of a list field. A number gives its text, and each other value gives no entry. */
@@ -144,11 +131,11 @@ interface Network {
 
 /** This function gives the network of the details of a network, or `undefined` for details with no number. */
 function networkOf(details: Fields): Network | undefined {
-  const asn = textOf(details, "asn");
+  const asn = textOrNumberOf(details, "asn");
   if (asn === undefined) return undefined;
-  const name = textOf(details, "name");
+  const name = textOrNumberOf(details, "name");
   const location = details["location"];
-  const countryName = isFields(location) ? textOf(location, "name") : undefined;
+  const countryName = isRecord(location) ? textOrNumberOf(location, "name") : undefined;
   return { asn, ...(name === undefined ? {} : { name }), ...(countryName === undefined ? {} : { countryName }) };
 }
 
@@ -200,7 +187,7 @@ function originNames(origins: readonly { readonly origin: string; readonly name?
 
 /** This function gives the URL of a record when it is an https URL. */
 function httpsOf(fields: Fields, field: string): string | undefined {
-  const url = textOf(fields, field);
+  const url = textOrNumberOf(fields, field);
   return url !== undefined && url.startsWith("https://") ? url : undefined;
 }
 
@@ -273,7 +260,7 @@ function recordOf(observation: Observation, idField: string, what: string): Pars
     return { ok: false, result: { reports: [], problems: [{ path: "", message: "the body is not JSON", fatal: true }] } };
   }
   // The fetch gives a record with no id as its own observation.
-  if (!isFields(fields) || textOf(fields, idField) === undefined) {
+  if (!isRecord(fields) || textOrNumberOf(fields, idField) === undefined) {
     return { ok: false, result: { reports: [], problems: [{ path: "", message: `the observation is not one ${what} of Cloudflare Radar: the format changed`, fatal: true }] } };
   }
   return { ok: true, record: fields };
@@ -297,16 +284,16 @@ function outageResult(observation: Observation, record: Fields): MapResult {
     problems.add("startDate", "the outage has no start: the map makes no report", "fatal");
     return { reports: [], problems: problems.list };
   }
-  const outage = isFields(record["outage"]) ? record["outage"] : {};
-  const cause = textOf(outage, "outageCause");
-  const scope = textOf(outage, "outageType");
+  const outage = isRecord(record["outage"]) ? record["outage"] : {};
+  const cause = textOrNumberOf(outage, "outageCause");
+  const scope = textOrNumberOf(outage, "outageType");
   const severity = scope !== undefined && Object.hasOwn(SEVERITY_OF_SCOPE, scope) ? SEVERITY_OF_SCOPE[scope]! : undefined;
   if (severity === undefined) problems.add("outage.outageType", `the scope ${scope ?? "(none)"} is unknown: the severity is unknown`);
   if (cause === undefined || !Object.hasOwn(CAUSE_WORDS, cause)) problems.add("outage.outageCause", `the cause ${cause ?? "(none)"} is unknown`, "note");
   const kind = scope === "PLATFORM" ? CLOUD_KIND : cause === "GOVERNMENT_DIRECTED" ? SHUTDOWN_KIND : OUTAGE_KIND;
 
   const locations = listOf(record, "locationsDetails");
-  const countries = unique([...textsOf(record, "locations"), ...locations.flatMap((each) => textOf(each, "code") ?? [])].map((code) => code.toUpperCase()), (code) => code);
+  const countries = unique([...textsOf(record, "locations"), ...locations.flatMap((each) => textOrNumberOf(each, "code") ?? [])].map((code) => code.toUpperCase()), (code) => code);
   const regions = unique(textsOf(record, "geoIds"), (id) => id);
   const networks = unique(
     [...listOf(record, "asnsDetails").flatMap((each) => networkOf(each) ?? []), ...textsOf(record, "asns").map((asn): Network => ({ asn }))],
@@ -316,23 +303,23 @@ function outageResult(observation: Observation, record: Fields): MapResult {
   // only a place with that code.
   const areas: Area[] = [...countries.map(countryArea), ...regions.map((id): Area => ({ type: "code", system: GEONAMES_SYSTEM, code: id }))];
   const regionNames = unique(
-    listOf(record, "entities").flatMap((entity) => (textOf(entity, "entityType") === "GEOLOCATION" && regions.includes(textOf(entity, "entityValue") ?? "") ? (textOf(entity, "entityName") ?? []) : [])),
+    listOf(record, "entities").flatMap((entity) => (textOrNumberOf(entity, "entityType") === "GEOLOCATION" && regions.includes(textOrNumberOf(entity, "entityValue") ?? "") ? (textOrNumberOf(entity, "entityName") ?? []) : [])),
     (name) => name,
   );
 
   const originsDetails = listOf(record, "originsDetails").flatMap((each) => {
-    const origin = textOf(each, "origin");
-    const name = textOf(each, "name");
+    const origin = textOrNumberOf(each, "origin");
+    const name = textOrNumberOf(each, "name");
     return origin === undefined ? [] : [{ origin, ...(name === undefined ? {} : { name }) }];
   });
   const origins = unique([...originsDetails, ...textsOf(record, "origins").map((origin) => ({ origin }))], (each) => each.origin);
   const about = [...networks.map(networkSubject), ...originSubjects(origins, problems)];
 
-  const placeNames = [...locations.flatMap((each) => textOf(each, "name") ?? []), ...regionNames];
+  const placeNames = [...locations.flatMap((each) => textOrNumberOf(each, "name") ?? []), ...regionNames];
   const names = placeNames.length > 0 ? placeNames : networks.length > 0 ? networks.map(networkName) : originNames(origins);
   const scopeWords = scope !== undefined && Object.hasOwn(SCOPE_WORDS, scope) ? SCOPE_WORDS[scope]! : "internet outage";
   const causeWords = cause !== undefined && Object.hasOwn(CAUSE_WORDS, cause) ? CAUSE_WORDS[cause]! : "unknown cause";
-  const key = textOf(record, "id")!;
+  const key = textOrNumberOf(record, "id")!;
   const report = reportOf(observation, {
     source: OUTAGES_SOURCE,
     key,
@@ -346,12 +333,12 @@ function outageResult(observation: Observation, record: Fields): MapResult {
     areaText: placeNames.length > 0 ? placeNames.join(", ") : undefined,
     about,
     headline: `Cloudflare Radar: ${scopeWords} (${causeWords}): ${placeOf(names)}`,
-    description: textOf(record, "description"),
+    description: textOrNumberOf(record, "description"),
     web: httpsOf(record, "linkedUrl") ?? OUTAGE_CENTER,
     parameters: {
       cause: cause === undefined ? [] : [cause],
       scope: scope === undefined ? [] : [scope],
-      dataSource: textOf(record, "dataSource") === undefined ? [] : [textOf(record, "dataSource")!],
+      dataSource: textOrNumberOf(record, "dataSource") === undefined ? [] : [textOrNumberOf(record, "dataSource")!],
       origin: origins.map((each) => each.origin),
     },
   });
@@ -376,30 +363,30 @@ function anomalyResult(observation: Observation, record: Fields): MapResult {
     problems.add("startDate", "the anomaly has no start: the map makes no report", "fatal");
     return { reports: [], problems: problems.list };
   }
-  const type = textOf(record, "type");
-  const status = textOf(record, "status");
+  const type = textOrNumberOf(record, "type");
+  const status = textOrNumberOf(record, "status");
   const severity = type !== undefined && Object.hasOwn(SEVERITY_OF_ANOMALY, type) ? SEVERITY_OF_ANOMALY[type]! : undefined;
   if (severity === undefined) problems.add("type", `the type ${type ?? "(none)"} is unknown: the severity is unknown`);
   const certainty = status !== undefined && Object.hasOwn(CERTAINTY_OF_STATUS, status) ? CERTAINTY_OF_STATUS[status]! : undefined;
   if (certainty === undefined) problems.add("status", `the status ${status ?? "(none)"} is unknown: the certainty is unknown`);
 
-  const location = isFields(record["locationDetails"]) ? record["locationDetails"] : undefined;
-  const network = isFields(record["asnDetails"]) ? networkOf(record["asnDetails"]) : undefined;
-  const originDetails = isFields(record["originDetails"]) ? record["originDetails"] : undefined;
-  const origin = originDetails === undefined ? undefined : textOf(originDetails, "origin");
-  const originName = originDetails === undefined ? undefined : textOf(originDetails, "name");
+  const location = isRecord(record["locationDetails"]) ? record["locationDetails"] : undefined;
+  const network = isRecord(record["asnDetails"]) ? networkOf(record["asnDetails"]) : undefined;
+  const originDetails = isRecord(record["originDetails"]) ? record["originDetails"] : undefined;
+  const origin = originDetails === undefined ? undefined : textOrNumberOf(originDetails, "origin");
+  const originName = originDetails === undefined ? undefined : textOrNumberOf(originDetails, "name");
   // Only an anomaly of a country has an area. The country of a network or of a region is not an area.
-  const country = location === undefined ? undefined : textOf(location, "code");
-  const countryName = location === undefined ? undefined : textOf(location, "name");
+  const country = location === undefined ? undefined : textOrNumberOf(location, "code");
+  const countryName = location === undefined ? undefined : textOrNumberOf(location, "name");
   const about = [
     ...(network === undefined ? [] : [networkSubject(network)]),
     ...(origin === undefined ? [] : originSubjects([{ origin, ...(originName === undefined ? {} : { name: originName }) }], problems)),
   ];
   const where = network !== undefined ? `${networkName(network)}${network.countryName === undefined ? "" : `, ${network.countryName}`}` : (countryName ?? originName ?? origin ?? "no place");
-  const outageId = textOf(record, "outageId");
+  const outageId = textOrNumberOf(record, "outageId");
   const report = reportOf(observation, {
     source: ANOMALIES_SOURCE,
-    key: textOf(record, "uuid")!,
+    key: textOrNumberOf(record, "uuid")!,
     sent,
     ends: timeOf(record, "endDate"),
     kind: type === "ORIGIN" ? CLOUD_KIND : OUTAGE_KIND,

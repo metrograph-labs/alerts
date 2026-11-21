@@ -7,7 +7,8 @@
  * with its status, for example `Service disruption: Increased Error Rates`.
  */
 
-import { categoryOf, kindLabel, Problems, reportId, type Instant, type MapResult, type Observation, type Report, type Severity, type Subject, type Urgency } from "@mark1russell7/alerts";
+import { categoryOf, kindLabel, Problems, reportId, type MapResult, type Observation, type Report, type Severity, type Subject, type Urgency } from "@mark1russell7/alerts";
+import { isRecord, textOf, timeOf, type Fields } from "@mark1russell7/optional/read";
 import { errorMessage } from "@mark1russell7/text";
 
 import { AWS_BASE, AWS_DOMAIN, AWS_KIND, AWS_ORIGIN, AWS_SOURCE, DOMAIN_SYSTEM, REGION_SYSTEM, regionId, serviceOf } from "./feed.ts";
@@ -35,23 +36,6 @@ export const LEVEL_OF_STATUS: Readonly<Record<string, StatusLevel>> = {
 /** The rank of each severity that a status gives. */
 const RANK: Readonly<Record<string, number>> = { minor: 1, moderate: 2, severe: 3 };
 
-type Fields = Readonly<Record<string, unknown>>;
-
-const isFields = (value: unknown): value is Fields => typeof value === "object" && value !== null && !Array.isArray(value);
-
-/** This function gives the text of a field, or `undefined` for an empty or absent text. */
-function textOf(fields: Fields, field: string): string | undefined {
-  const value = fields[field];
-  return typeof value === "string" && value.trim() !== "" ? value.trim() : undefined;
-}
-
-/** This function gives the time of a field, or `undefined` for an absent value or a value that is not a time. */
-function timeOf(fields: Fields, field: string): Instant | undefined {
-  const text = textOf(fields, field);
-  const time = text === undefined ? Number.NaN : Date.parse(text);
-  return Number.isFinite(time) ? time : undefined;
-}
-
 /** This function gives the status of a title: the text before the first colon. A title with no colon gives `undefined`. */
 export function statusOf(title: string | undefined): string | undefined {
   const index = title === undefined ? -1 : title.indexOf(":");
@@ -76,16 +60,16 @@ function mapOrThrow(observation: Observation): MapResult {
     return { reports: [], problems: [{ path: "", message: "the body is not JSON", fatal: true }] };
   }
   // The fetch gives an item with no key of a service as its own observation, with no key.
-  if (!isFields(fields) || !Object.hasOwn(fields, "key")) {
+  if (!isRecord(fields) || !Object.hasOwn(fields, "key")) {
     return { reports: [], problems: [{ path: "", message: "the observation is not one event of the AWS Health Dashboard: the format changed", fatal: true }] };
   }
   const problems = new Problems();
-  const latest = isFields(fields["latest"]) ? fields["latest"] : {};
+  const latest = isRecord(fields["latest"]) ? fields["latest"] : {};
   if (textOf(fields, "key") === undefined || textOf(fields, "service") === undefined) problems.add("key", "the event has no key of a service: the map makes no report", "fatal");
   if (timeOf(latest, "time") === undefined) problems.add("latest.time", "the newest update has no time: the map makes no report", "fatal");
   if (textOf(latest, "title") === undefined) problems.add("latest.title", "the newest update has no title: the map makes no report", "fatal");
   if (problems.fatal > 0) return { reports: [], problems: problems.list };
-  const earlier = Array.isArray(fields["earlier"]) ? fields["earlier"].filter(isFields) : [];
+  const earlier = Array.isArray(fields["earlier"]) ? fields["earlier"].filter(isRecord) : [];
   const updates = [latest, ...earlier];
   const levels: StatusLevel[] = [];
   updates.forEach((update, index) => {

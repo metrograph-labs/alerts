@@ -831,6 +831,9 @@ importers:
       '@mark1russell7/alerts-format-cap':
         specifier: workspace:*
         version: link:../format-cap
+      '@mark1russell7/optional':
+        specifier: ^1.4.0
+        version: 1.4.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -868,6 +871,9 @@ importers:
       '@mark1russell7/alerts-format-cap':
         specifier: workspace:*
         version: link:../format-cap
+      '@mark1russell7/optional':
+        specifier: ^1.4.0
+        version: 1.4.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -973,6 +979,9 @@ importers:
       '@mark1russell7/alerts-fetch':
         specifier: workspace:*
         version: link:../fetch
+      '@mark1russell7/optional':
+        specifier: ^1.4.0
+        version: 1.4.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -1016,6 +1025,9 @@ importers:
       '@mark1russell7/alerts-source-gcp':
         specifier: workspace:*
         version: link:../source-gcp
+      '@mark1russell7/optional':
+        specifier: ^1.4.0
+        version: 1.4.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -1164,6 +1176,9 @@ importers:
       '@mark1russell7/alerts-fetch':
         specifier: workspace:*
         version: link:../fetch
+      '@mark1russell7/optional':
+        specifier: ^1.4.0
+        version: 1.4.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -1471,6 +1486,9 @@ importers:
       '@mark1russell7/alerts-format-cap':
         specifier: workspace:*
         version: link:../format-cap
+      '@mark1russell7/optional':
+        specifier: ^1.4.0
+        version: 1.4.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17

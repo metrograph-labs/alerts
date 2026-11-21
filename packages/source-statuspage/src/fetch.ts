@@ -14,9 +14,9 @@
 
 import { observationId, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch } from "@mark1russell7/alerts";
 import { createRequester } from "@mark1russell7/alerts-fetch";
+import { isRecord, type Fields } from "@mark1russell7/optional/read";
 import type { Condition, Pace, Transport } from "polite-crawler/api";
 
-import { isFields, type Fields } from "./fields.ts";
 import { COMPONENT_FIELDS, INCIDENT_FIELDS, isIncident, PAGE_FIELDS, UPDATE_FIELDS } from "./map.ts";
 import type { PageFormat, StatusPage } from "./page.ts";
 import { readComponents, STATUSIQ_PATH } from "./statusiq.ts";
@@ -60,7 +60,7 @@ function pick(value: Fields, order: readonly string[]): Record<string, unknown> 
 
 /** This function gives the listed values of a field, each with only the fields of `order`. */
 function pickEach(value: unknown, order: readonly string[]): unknown {
-  return Array.isArray(value) ? value.map((each) => (isFields(each) ? pick(each, order) : each)) : value;
+  return Array.isArray(value) ? value.map((each) => (isRecord(each) ? pick(each, order) : each)) : value;
 }
 
 /**
@@ -98,16 +98,16 @@ export function readSummary(body: string): Summary | undefined {
   } catch {
     return undefined;
   }
-  const page = isFields(parsed) ? parsed["page"] : undefined;
-  const incidents = isFields(parsed) ? parsed["incidents"] : undefined;
-  if (!isFields(parsed) || !isFields(page) || typeof page["id"] !== "string" || !Array.isArray(incidents)) return { head: body, incidents: [], complete: false };
-  const status = isFields(parsed["status"]) ? pick(parsed["status"], STATUS_FIELDS) : parsed["status"];
+  const page = isRecord(parsed) ? parsed["page"] : undefined;
+  const incidents = isRecord(parsed) ? parsed["incidents"] : undefined;
+  if (!isRecord(parsed) || !isRecord(page) || typeof page["id"] !== "string" || !Array.isArray(incidents)) return { head: body, incidents: [], complete: false };
+  const status = isRecord(parsed["status"]) ? pick(parsed["status"], STATUS_FIELDS) : parsed["status"];
   const head = JSON.stringify({ page: pick(page, PAGE_FIELDS), ...(status === undefined ? {} : { status }) });
   const updated = typeof page["updated_at"] === "string" ? Date.parse(page["updated_at"]) : Number.NaN;
   return {
     head,
-    incidents: [...new Set(incidents.map((incident) => (isFields(incident) ? incidentBody(incident) : JSON.stringify(incident))))],
-    complete: incidents.every((incident) => isFields(incident) && isIncident(incident)),
+    incidents: [...new Set(incidents.map((incident) => (isRecord(incident) ? incidentBody(incident) : JSON.stringify(incident))))],
+    complete: incidents.every((incident) => isRecord(incident) && isIncident(incident)),
     ...(Number.isFinite(updated) ? { asOf: updated } : {}),
   };
 }

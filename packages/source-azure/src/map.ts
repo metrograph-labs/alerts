@@ -9,6 +9,7 @@
  */
 
 import { categoryOf, kindLabel, Problems, reportId, type Instant, type MapResult, type Observation, type Report, type Subject } from "@mark1russell7/alerts";
+import { isRecord, textOf, type Fields } from "@mark1russell7/optional/read";
 import { errorMessage } from "@mark1russell7/text";
 import { scanHtml } from "@mark1russell7/text/html";
 import { decodeReferences } from "@mark1russell7/text/references";
@@ -21,19 +22,11 @@ import { AZURE_DOMAIN, AZURE_KIND, AZURE_ORIGIN, AZURE_PAGE, AZURE_SOURCE, categ
  */
 export const AZURE_SEVERITY = "moderate";
 
-type Fields = Readonly<Record<string, unknown>>;
-
-/** This function tells if a value is an object of fields, as the other source packages do. The move of this guard to one home is open. */
-const isFields = (value: unknown): value is Fields => typeof value === "object" && value !== null && !Array.isArray(value);
-
-/** This function gives the text of a field, or `undefined` for an empty or absent text. */
-function textOf(fields: Fields, field: string): string | undefined {
-  const value = fields[field];
-  return typeof value === "string" && value.trim() !== "" ? value.trim() : undefined;
-}
-
-/** This function gives the time of a field, or `undefined` for an absent value or a value that is not a time. */
-function timeOf(fields: Fields, field: string): Instant | undefined {
+/**
+ * This function gives the time of the RSS date of a field, or `undefined`. An RSS date is RFC 822, and `readTime` reads
+ * only ISO 8601. `readHttpTime` of `@mark1russell7/optional/read` replaces this function at its release (AL-71).
+ */
+function rssTimeOf(fields: Fields, field: string): Instant | undefined {
   const text = textOf(fields, field);
   const time = text === undefined ? Number.NaN : Date.parse(text);
   return Number.isFinite(time) ? time : undefined;
@@ -73,12 +66,12 @@ function mapOrThrow(observation: Observation): MapResult {
     return { reports: [], problems: [{ path: "", message: "the body is not JSON", fatal: true }] };
   }
   // The fetch gives an item with no guid as its own observation, with no key.
-  if (!isFields(fields) || !Object.hasOwn(fields, "key")) {
+  if (!isRecord(fields) || !Object.hasOwn(fields, "key")) {
     return { reports: [], problems: [{ path: "", message: "the observation is not one incident of Azure Status: the format changed", fatal: true }] };
   }
   const problems = new Problems();
   if (textOf(fields, "key") === undefined) problems.add("key", "the incident has no guid: the map makes no report", "fatal");
-  if (timeOf(fields, "published") === undefined) problems.add("published", "the incident has no time: the map makes no report", "fatal");
+  if (rssTimeOf(fields, "published") === undefined) problems.add("published", "the incident has no time: the map makes no report", "fatal");
   if (textOf(fields, "title") === undefined) problems.add("title", "the incident has no title: the map makes no report", "fatal");
   if (problems.fatal > 0) return { reports: [], problems: problems.list };
   return { reports: [reportOf(observation, fields)], problems: problems.list };
@@ -88,7 +81,7 @@ function mapOrThrow(observation: Observation): MapResult {
 function reportOf(observation: Observation, incident: Fields): Report {
   const key = textOf(incident, "key")!;
   const title = textOf(incident, "title")!;
-  const sent = timeOf(incident, "published")!;
+  const sent = rssTimeOf(incident, "published")!;
   const { regions, services } = categoriesOf(textsOf(incident, "categories"));
   const description = plainText(textOf(incident, "description"));
   const link = textOf(incident, "link");
