@@ -2536,6 +2536,37 @@
     "round": 1
   },
   {
+    "id": "personal.death",
+    "subjectKinds": [
+      "entity"
+    ],
+    "examples": [
+      "A parent of the household dies at home",
+      "A person of the household dies in a hospital"
+    ],
+    "references": [
+      "CAP 1.2: Other"
+    ],
+    "gap": "A death in one household has no public feed. The household reports it.",
+    "round": 17
+  },
+  {
+    "id": "personal.income-loss",
+    "subjectKinds": [
+      "entity"
+    ],
+    "examples": [
+      "A layoff at the employer of a person",
+      "A closure of the business of a person"
+    ],
+    "references": [
+      "WARN Act: the notice of a plant closing or a mass layoff",
+      "CAP 1.2: Other"
+    ],
+    "gap": "The loss of income of one person has no public feed. Each US state publishes the WARN notices of mass layoffs, with the employer, about 60 days before. A user who names an employer can match its notices. No source is adopted.",
+    "round": 17
+  },
+  {
     "id": "rescue.disaster-assistance",
     "subjectKinds": [
       "place"
