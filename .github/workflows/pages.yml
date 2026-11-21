@@ -4,6 +4,7 @@
 # The Pages source of the repository is "GitHub Actions" (Settings > Pages).
 # A scheduled build takes the newest commit of main, or the newest green one if CI failed on it.
 # A pull request builds and checks the site in a browser, with no deploy.
+# The site values (the build, the pages of the browser check, the probe) are in .github/site.json.
 name: Pages
 
 on:
@@ -38,18 +39,3 @@ jobs:
       statuses: read
       pages: write
       id-token: write
-    with:
-      # site-pages adds releases/ and status/ next to the home page.
-      build: pnpm --filter @alerts/site run build
-      out: packages/site/dist
-      env: '{"SITE_BASE": "/${{ github.event.repository.name }}"}'
-      deploy: ${{ github.event_name != 'pull_request' }}
-      packages: ""
-      site-name: alerts
-      # The open items for the Status page. check:conventions parses the file on each pull request (roadmap-parses).
-      roadmap: docs/ROADMAP.md
-      # The check opens each page in a browser at 360, 400 and 1280 pixels, in light and dark.
-      site-check: true
-      site-check-pages: /,/releases/,/status/,/texts/privacy/,/texts/terms/,/texts/opt-in/
-      # The probe drives the demo of the home page at each width: the steps, the levels, the map and the incidents.
-      site-check-probe: packages/site/src/check-probe.ts

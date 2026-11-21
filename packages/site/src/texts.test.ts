@@ -79,7 +79,8 @@ describe("the pages of the alert texts", () => {
   it("is in the build and in the browser check of the site", () => {
     const vite = readFileSync(new URL("../vite.config.ts", import.meta.url), "utf8");
     for (const name of NAMES) expect(vite).toContain(`page("texts/${name}/index.html")`);
-    const workflow = readFileSync(new URL("../../../.github/workflows/pages.yml", import.meta.url), "utf8");
-    expect(workflow).toContain("site-check-pages: /,/releases/,/status/,/texts/privacy/,/texts/terms/,/texts/opt-in/");
+    // The site config of the repository gives the pages of the browser check to the shared workflows of the template.
+    const site = JSON.parse(readFileSync(new URL("../../../.github/site.json", import.meta.url), "utf8")) as { readonly "site-check-pages"?: string };
+    expect(site["site-check-pages"]?.split(",")).toEqual(["/", "/releases/", "/status/", "/texts/privacy/", "/texts/terms/", "/texts/opt-in/"]);
   });
 });
