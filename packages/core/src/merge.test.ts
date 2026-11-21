@@ -134,6 +134,26 @@ describe("the join", () => {
     expect(normalize({ reports: [b, a] }).reports).toEqual([b]);
   });
 
+  it("keeps the smallest of three contents of one id in each order, through normalize and through add", () => {
+    const contents = ["C", "A", "B"].map((headline) => report({ key: "k", headline }));
+    const smallest = contents[1]!;
+    const orders = [
+      [0, 1, 2],
+      [0, 2, 1],
+      [1, 0, 2],
+      [1, 2, 0],
+      [2, 0, 1],
+      [2, 1, 0],
+    ].map((order) => order.map((at) => contents[at]!));
+    for (const order of orders) {
+      expect(normalize({ reports: order }).reports).toEqual([smallest]);
+      expect(order.reduce((state, item) => add(state, { reports: [item] }), EMPTY_STATE).reports).toEqual([smallest]);
+    }
+    // The same object two times is one content.
+    expect(normalize({ reports: [smallest, smallest] }).reports).toEqual([smallest]);
+    expect(add(normalize({ reports: [smallest] }), { reports: [smallest] }).reports).toEqual([smallest]);
+  });
+
   it("keeps each delivery and each acknowledgment one time", () => {
     const delivery: Delivery = { key: "m", incident: report({ key: "k" }).id, level: "urgent", person, channel: pushover, step: 0, at: T0 };
     const state = add(add(EMPTY_STATE, { deliveries: [delivery] }), { deliveries: [{ ...delivery }] });
