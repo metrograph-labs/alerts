@@ -194,7 +194,19 @@ describe("the file of the snapshot of a start (AL-105)", () => {
  * the fold, of the form of the state or of the form of the rows changes a hash. Then the change raises `FOLD_VERSION` and pins the
  * new hashes, and each start ignores the snapshots of the old fold.
  */
-const DIGESTS: Readonly<Record<number, readonly string[]>> = {};
+const DIGESTS: Readonly<Record<number, readonly string[]>> = {
+  1: [
+    "eb8b5af3d14034645f27a9faadf3f723fc4def978157bb21de435c99ad34757e",
+    "0e38293fc511add878f43d74ef3ae717322af6007a176ce77d06955e2a02a832",
+    "a6af89a97795482aa68b68348c25e5763d165aa013ed9f8625bf031a2728443a",
+    "3118de5c7fb0a2b2b8ca33898e4e62ec182b060fe53b132946148a2da3a1723a",
+    "f0a775964463fb0e989ac5e14ea290205529a40dd7515c38926d1ebf1a32c23b",
+    "09fb50e7c5ba249143897916722f8a4dd6e7aeb2651d94b42569ba5de44fe091",
+    "d697353e33ce7d1c5f40927d74e75d67143fed88f7e6b124f3b6996a572ef67e",
+    "ff62ec9f17935caa6c76a1b602e609aa4e00e419c42e6b9e1d0dd4c7eee1528f",
+    "a433217afb26fe8b3380cc30154fe661ed2897d3dd4e77b26c12c1c0538805a2",
+  ],
+};
 const POOL = ["w0", "w1", "w2", "w3"];
 const AFTER = [0, MINUTE, 10 * MINUTE, HOUR, 3 * HOUR, 7 * HOUR, 24 * HOUR];
 

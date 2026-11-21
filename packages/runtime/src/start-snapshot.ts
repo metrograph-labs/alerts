@@ -87,7 +87,7 @@ export function readSnapshot(rows: Iterable<FoldRow>): StartSnapshot {
     } else if (part.endsWith("{}")) {
       const record = at(root, part.slice(0, -2));
       const [key, item] = Array.isArray(value) && value.length === 2 ? (value as unknown[]) : [];
-      if (!isRecord(record) || typeof key !== "string") throw new Error(`The snapshot has a bad entry of ${part.slice(0, -2)}.`);
+      if (!isObject(record) || typeof key !== "string") throw new Error(`The snapshot has a bad entry of ${part.slice(0, -2)}.`);
       record[key] = item;
     } else put(root, part, value);
   }
@@ -155,12 +155,15 @@ function at(root: Record<string, unknown>, path: string): unknown {
   return value;
 }
 
+// The rows come from JSON.parse, thus each object of the read is a plain object that the read can change.
+const isObject = (value: unknown): value is Record<string, unknown> => isRecord(value);
+
 // This function puts a value at a path of field names. The objects of the path come before it in the rows.
 function put(root: Record<string, unknown>, path: string, value: unknown): void {
   const keys = path.split(".");
   const last = keys.pop() as string;
   const holder = keys.length === 0 ? root : at(root, keys.join("."));
-  if (!isRecord(holder)) throw new Error(`The snapshot has the part ${path} before its object.`);
+  if (!isObject(holder)) throw new Error(`The snapshot has the part ${path} before its object.`);
   holder[last] = value;
 }
 
