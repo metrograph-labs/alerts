@@ -168,8 +168,10 @@ async function runtime(): Promise<ServiceBuilder> {
       held: (at) => heldOf(instance.runtime.state(), at),
       // The body of each ping tells the state of each quota, and each failed read of the replies or of the spend. Thus the check shows the reserve.
       notes: () => [...instance.quotas().map(quotaNote), ...replyNotes(instance.replies), ...spendNotes(instance.spend)],
-      // The shared loud check gets only the success pings (AL-100). Thus it calls only when no copy can tell the person.
+      // The shared loud check gets only the success pings, after a steady run (AL-100). Thus it calls only when no copy can
+      // tell the person, and one time for each outage.
       successOnly: target.successOnly,
+      steadyAfter: target.steadyAfter,
       onError: (message) => console.error(redactSecrets(target.key === LOUD_PING_URL_KEY ? `The loud check: ${message}` : message, values)),
     }),
   );

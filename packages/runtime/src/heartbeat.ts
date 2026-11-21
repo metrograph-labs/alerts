@@ -5,7 +5,9 @@
  * `/fail`, because then the system cannot tell the person itself.
  *
  * A check that the copies share gets only the success pings (`successOnly`). Thus it goes down only when
- * the success pings of all the copies stop: no copy can tell the person.
+ * the success pings of all the copies stop: no copy can tell the person. Its first success ping waits for a
+ * steady run after the start (`steadyAfter`). Thus a start that stops after a few passes does not end the
+ * down, and one outage gives one down.
  *
  * The ping URL and the key of the management API are secrets. No ping body and no error text holds
  * them. A ping body holds no place and no person.
@@ -232,6 +234,11 @@ export interface HeartbeatOptions {
    * success. The default is `false`.
    */
   readonly successOnly?: boolean;
+  /**
+   * The hook sends no success ping before this time passed after its first pass. The wait counts on the monotonic clock
+   * of the passes. A start that stops in this time thus sends no success. The default is 0: no wait.
+   */
+  readonly steadyAfter?: Duration;
   /** The heartbeat gives each failed ping to this function. Its text holds no URL. */
   readonly onError: (message: string) => void;
 }
@@ -259,8 +266,11 @@ export function heartbeat(options: HeartbeatOptions): (pass: PassSummary) => voi
   if (parsed.protocol !== "https:") throw new Error("The ping URL of the heartbeat does not start with https.");
   const every = options.every ?? HEARTBEAT_EVERY;
   const limit = options.limit ?? HEARTBEAT_LIMIT;
+  const steadyAfter = options.steadyAfter ?? 0;
   let state = HEARTBEAT_START;
   let started = false;
+  // The time of the first pass. A step of the wall clock moves it, as it moves the times of the state.
+  let firstAt: Instant = 0;
   let flight = false;
   // A fault of the notes does not stop the ping. The ping then goes with no note.
   const notes = (at: Instant): readonly string[] => {
@@ -282,11 +292,20 @@ export function heartbeat(options: HeartbeatOptions): (pass: PassSummary) => voi
       // The fails of the log are in the frame of the pass already. The step of the pass moves them again, thus the
       // start moves them back by the same size first.
       state = shiftHeartbeat({ held: options.held?.(pass.at) ?? {} }, -(pass.stepped ?? 0));
+      firstAt = pass.at;
+    } else {
+      firstAt += pass.stepped ?? 0;
     }
     const step = heartbeatStep(state, pass, every, flight);
     state = step.state;
+    if (step.ping === undefined) return;
     // The state keeps the fail, thus the next pass with success pings at once: the kind changed.
-    if (step.ping === undefined || (options.successOnly === true && step.ping.kind === "fail")) return;
+    if (options.successOnly === true && step.ping.kind === "fail") return;
+    if (step.ping.kind === "success" && pass.at - firstAt < steadyAfter) {
+      // The state keeps no ping, thus the first pass after the wait pings at once.
+      state = { held: state.held };
+      return;
+    }
     flight = true;
     const controller = new AbortController();
     const cancel = options.clock.after(limit, () => controller.abort());

@@ -126,6 +126,14 @@ export const PING_URL_KEY = "HEALTHCHECKS_PING_URL";
 export const LOUD_PING_URL_KEY = "HEALTHCHECKS_LOUD_PING_URL";
 
 /**
+ * The steady run of a copy before its first success ping to the loud check: 5 minutes after its first pass (AL-100).
+ * On 2026-11-21, the starts of a copy with too little memory stopped after one to three minutes of passes. Each of their
+ * success pings ended the down of the loud check, and the next down called again. A copy that stops in this time sends
+ * no success, thus one outage gives one call.
+ */
+export const LOUD_STEADY: Duration = 5 * 60_000;
+
+/**
  * This function gives the key of `secrets.env` with the address of the first check of a copy. Each copy has its own
  * first check, thus a stop of one copy makes its own alert. The default key is `PING_URL_KEY`.
  */
@@ -138,6 +146,8 @@ export interface PingTarget {
   readonly url: string;
   /** The value `true` gives only the success pings to the check: the option `successOnly` of the heartbeat. The loud check has it. */
   readonly successOnly: boolean;
+  /** The wait before the first success ping: the option `steadyAfter` of the heartbeat. It is `LOUD_STEADY` for the loud check, else 0. */
+  readonly steadyAfter: Duration;
 }
 
 /**
@@ -147,12 +157,13 @@ export interface PingTarget {
  * - The first check of the copy gets each ping. Thus a fail of the copy goes at once to the owner.
  * - The copies share the loud check, thus it gets only the success pings. It goes down only when the success pings of all
  *   the copies stop for its grace: no copy can tell the person. Thus a fail of one copy makes no call while another copy
- *   works, and one outage gives one call.
+ *   works. Its first success ping waits for `LOUD_STEADY` after the first pass of the copy. Thus one outage gives one call.
  */
 export function pingTargets(secret: (key: string) => string | undefined, copy: CopySettings = ONLY_COPY): readonly PingTarget[] {
   return [pingKeyOf(copy), LOUD_PING_URL_KEY].flatMap((key): PingTarget[] => {
     const url = secret(key) ?? "";
-    return url === "" ? [] : [{ key, url, successOnly: key === LOUD_PING_URL_KEY }];
+    const loud = key === LOUD_PING_URL_KEY;
+    return url === "" ? [] : [{ key, url, successOnly: loud, steadyAfter: loud ? LOUD_STEADY : 0 }];
   });
 }
 

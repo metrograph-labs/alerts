@@ -20,6 +20,7 @@ import {
   shiftHeartbeat,
   UNREACHABLE,
   type HeartbeatFetch,
+  type HeartbeatOptions,
   type HeartbeatState,
   type PassSummary,
   type RefusalView,
@@ -77,7 +78,7 @@ function pings(answer: () => Promise<number> = async () => 200) {
   return { calls, fetch };
 }
 
-function open(answer?: () => Promise<number>, onError: (message: string) => void = () => undefined, held?: (at: number) => HeartbeatState["held"], successOnly?: boolean) {
+function open(answer?: () => Promise<number>, onError: (message: string) => void = () => undefined, held?: (at: number) => HeartbeatState["held"], extra: Pick<HeartbeatOptions, "successOnly" | "steadyAfter"> = {}) {
   const clock = fakeWallClock(T0);
   const server = pings(answer);
   const errors: string[] = [];
@@ -87,7 +88,7 @@ function open(answer?: () => Promise<number>, onError: (message: string) => void
     clock,
     userAgent: AGENT,
     ...(held === undefined ? {} : { held }),
-    ...(successOnly === undefined ? {} : { successOnly }),
+    ...extra,
     onError: (message) => {
       errors.push(message);
       onError(message);
@@ -461,7 +462,7 @@ describe("the hook of the heartbeat", () => {
   });
 
   it("sends only the success pings to a shared check: a fail sends nothing, and the next success pings at once (AL-100)", async () => {
-    const { server, hook } = open(undefined, undefined, undefined, true);
+    const { server, hook } = open(undefined, undefined, undefined, { successOnly: true });
     hook(healthy(T0));
     await settle();
     // The fail starts, and it holds past the period of the pings. A hook with each ping sends /fail two times here.
@@ -492,6 +493,40 @@ ipaws: failing"],
       await settle();
     }
     expect(server.calls.map((call) => call.url)).toEqual([URL_OF_CHECK, URL_OF_CHECK, URL_OF_CHECK]);
+  });
+
+  it("sends no success before the steady wait after the first pass: two starts that stop early give no ping (AL-100)", async () => {
+    const MINUTE = 60 * SECOND;
+    const server = pings();
+    const start = () => heartbeat({ url: URL_OF_CHECK, fetch: server.fetch, clock: fakeWallClock(T0), userAgent: AGENT, successOnly: true, steadyAfter: 5 * MINUTE, onError: () => undefined });
+    // Two starts of one copy stop after three minutes of passes, as the starts with too little memory of 11-21.
+    for (const offset of [0, 10 * MINUTE]) {
+      const hook = start();
+      for (let minute = 0; minute <= 3; minute++) hook(healthy(T0 + offset + minute * MINUTE));
+      await settle();
+    }
+    expect(server.calls).toEqual([]);
+    // The third start runs on. Its first success goes at the first pass after the wait, then once in each 60 s.
+    const hook = start();
+    for (const second of [0, 60, 120, 180, 240, 299, 300, 330, 360]) {
+      hook(healthy(T0 + 20 * MINUTE + second * SECOND));
+      await settle();
+    }
+    expect(server.calls.map((call) => call.url)).toEqual([URL_OF_CHECK, URL_OF_CHECK]);
+  });
+
+  it("counts the steady wait on the monotonic clock: a step of the wall clock does not end it (AL-100)", async () => {
+    const HOUR = 3_600_000;
+    const { server, hook } = open(undefined, undefined, undefined, { successOnly: true, steadyAfter: 5 * 60 * SECOND });
+    hook(healthy(T0));
+    // The wall clock steps forward 1 h, one minute after the first pass.
+    hook({ ...healthy(T0 + 60 * SECOND + HOUR), stepped: HOUR });
+    hook(healthy(T0 + 4 * 60 * SECOND + HOUR));
+    await settle();
+    expect(server.calls).toEqual([]);
+    hook(healthy(T0 + 5 * 60 * SECOND + HOUR));
+    await settle();
+    expect(server.calls).toHaveLength(1);
   });
 
   it("starts from the refused channels of the log at its first pass, and reads them one time", async () => {

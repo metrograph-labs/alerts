@@ -44,7 +44,7 @@ import { readCopySettings } from "./copy.ts";
 import { checkOfPingUrl, checksRequest, checkTimesProblem, heartbeatGap } from "./heartbeat.ts";
 import { discoveryPid, hostReadyWindow, hostTask, readinessProbe, RUNTIME_GRACE, runtimeDiscovery, supervisorDiscovery } from "./host.ts";
 import { hostFileText } from "./start-times.ts";
-import { checksKeys, daemonCheck, INSTANCE_TIMES, USER_AGENT_NAME } from "./instance.ts";
+import { checksKeys, daemonCheck, INSTANCE_TIMES, LOUD_STEADY, USER_AGENT_NAME } from "./instance.ts";
 import { checkStart, GOOD_FILE, privateFiles, readStartTexts, requestRestart, restartUse, type RestartOutcome } from "./reload.ts";
 import { liveRoot } from "./slots.ts";
 
@@ -133,10 +133,10 @@ interface OutsideCheck {
 
 /**
  * This function reads one check of the heartbeat through the management API of Healthchecks.io. The
- * check fails when its period plus its grace is shorter than the gap of two pings. The output holds no key and no URL.
+ * check fails when its period plus its grace is shorter than `gap`, by default the gap of two pings. The output holds no
+ * key and no URL.
  */
-async function outsideCheck(key: string, url: string, secrets: readonly string[]): Promise<OutsideCheck> {
-  const gap = heartbeatGap(INSTANCE_TIMES);
+async function outsideCheck(key: string, url: string, secrets: readonly string[], gap = heartbeatGap(INSTANCE_TIMES)): Promise<OutsideCheck> {
   const neededSeconds = Math.ceil(gap / 1000);
   // The request has the User-Agent with no contact: the status reads no configuration.
   const exchange = checksRequest(key, USER_AGENT_NAME);
@@ -169,8 +169,10 @@ if (action === "install") {
   const neededSeconds = Math.ceil(heartbeatGap(INSTANCE_TIMES) / 1000);
   const secrets = keys.tag === "ok" ? [keys.value.key, keys.value.url, ...(keys.value.loudUrl === undefined ? [] : [keys.value.loudUrl])] : [];
   const heartbeat: OutsideCheck = keys.tag === "err" ? { ok: false, neededSeconds, problem: keys.error.join(" ") } : await outsideCheck(keys.value.key, keys.value.url, secrets);
-  // The loud check is optional. Without its key, the status has no field of it.
-  const loud = keys.tag === "ok" && keys.value.loudUrl !== undefined ? { loud: await outsideCheck(keys.value.key, keys.value.loudUrl, secrets) } : {};
+  // The loud check is optional. Without its key, the status has no field of it. Its first success after a start waits for
+  // `LOUD_STEADY`, thus a restart of the only copy needs the gap plus that wait.
+  const loudGap = heartbeatGap(INSTANCE_TIMES) + LOUD_STEADY;
+  const loud = keys.tag === "ok" && keys.value.loudUrl !== undefined ? { loud: await outsideCheck(keys.value.key, keys.value.loudUrl, secrets, loudGap) } : {};
   // The start marker tells the files of the runtime, and the check of the files tells the files of the next start.
   // A runtime on the last good set, or private files with problems, give the code 1. The problems hold no value.
   const files = privateFiles(home, configPath(process.env, process.cwd()));
