@@ -10,8 +10,8 @@
  *   `secrets.env` and no `copy.json`. Thus the runtime is the only copy, with no exchange and no heartbeat.
  * - The start takes the lock of the home folder. Thus a measure stops when a live runtime holds the folder.
  *
- * Give a scratch copy of a home folder, because the passes append events to its log. The start is ready at the end of
- * its first pass, as a live start is.
+ * Give a scratch copy of a home folder, because the passes append events to its log. A measured start has two points,
+ * as a live start has. At `opened`, the probe `/readiness` of a live start passes. At the end of the first pass, the start is good.
  */
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
@@ -57,7 +57,16 @@ export interface MeasuredOptions {
 export interface MeasuredRuntime {
   /** The instance of the start. A measure reads its state and its runtime here. */
   readonly instance: Instance;
-  /** The first pass. A live start is ready at the end of this pass. */
+  /**
+   * The value of `performance.now()` at the end of `openInstance`, in milliseconds from the start of the process. After this
+   * point, a live start does only small steps, and then its probe `/readiness` passes. The ready window of the supervisor
+   * counts from the start of the process to that probe. Thus this value is the measure of a start against the window.
+   */
+  readonly opened: number;
+  /**
+   * The first pass. At the end of this pass, a live start is good: it writes its start time and its last good set.
+   * The file `host/start-times.json` holds the time to this point, not the time to `opened`.
+   */
   readonly first: Pass;
   /** This function does one more pass, as the loop of a live runtime does after the start. */
   pass(): Promise<Pass>;
@@ -116,11 +125,14 @@ export async function openMeasuredRuntime(home: string, options: MeasuredOptions
       startGood: () => ready,
       onError: (error, failures) => report(`A pass failed (${String(failures)} in sequence): ${error instanceof Error ? error.name : typeof error}.`),
     });
+    // A live start reads the log and folds its state in openInstance. Its probe /readiness passes soon after this point.
+    const opened = performance.now();
     const first = await instance.runtime.pass();
     ready = true;
     let closed = false;
     return {
       instance,
+      opened,
       first,
       pass: () => instance.runtime.pass(),
       async close() {

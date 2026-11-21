@@ -63,7 +63,12 @@ afterEach(async () => {
 // Each test does a full start of the runtime. On a loaded computer a start takes more than the default limit of 5 s.
 describe("openMeasuredRuntime", { timeout: 30_000 }, () => {
   it("resolves after the first pass, and no fetch or send leaves the process", async () => {
+    const before = performance.now();
     const measured = await open();
+    const after = performance.now();
+    // The open of the instance comes before the first pass, and both are in this start.
+    expect(measured.opened).toBeGreaterThan(before);
+    expect(measured.opened).toBeLessThan(after);
     expect(measured.first.fetched.length).toBeGreaterThan(0);
     expect(measured.instance.runtime.skipped).toBe(0);
     // A pass after the start also starts the work of the stores. It has no network either.
