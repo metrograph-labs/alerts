@@ -93,7 +93,7 @@ export interface FakeDrive {
 export async function driveFakeLoop(drive: FakeDrive): Promise<void> {
   const { loop, clock, flight } = drive;
   const signal = new AbortController().signal;
-  await loop.worker.start(signal, detachedLifecycle());
+  await loop.worker.start(signal, detachedLifecycle(clock));
   try {
     await clock.advance(0);
     await flight.quiet();

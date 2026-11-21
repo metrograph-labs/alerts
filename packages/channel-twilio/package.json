@@ -20,10 +20,10 @@
   },
   "dependencies": {
     "@mark1russell7/alerts": "workspace:*",
-    "@mark1russell7/algebra": "^0.9.7",
+    "@mark1russell7/algebra": "^0.9.9",
     "@mark1russell7/rigor-generators": "^0.1.18",
     "@mark1russell7/text": "^0.0.17",
-    "@procedures/notify": "^0.64.0",
+    "@procedures/notify": "^0.68.0",
     "esbuild": "^0.28.2",
     "libphonenumber-js": "^1.13.16",
     "polite-crawler": "^0.7.10",

@@ -166,7 +166,7 @@ async function start(steps: readonly Step[], more: Partial<OutageDeployOptions> 
   });
   running.push(outage);
   expect(outage.state()).toEqual({ state: "pending" });
-  await outage.worker.start(new AbortController().signal, detachedLifecycle());
+  await outage.worker.start(new AbortController().signal, detachedLifecycle(clock));
   await clock.advance(0);
   await settle();
   return { clock, outage, starts, lines, errors };
