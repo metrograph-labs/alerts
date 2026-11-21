@@ -7,12 +7,12 @@ import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { add, sum, valueIn, type Quantity } from "@mark1russell7/quantity";
-import { daemon, service, type Profile, type ServiceBuilder } from "@mark1russell7/service";
+import { daemon, service, type Logger, type LogFields, type LogLevel, type Profile, type ServiceBuilder } from "@mark1russell7/service";
 import type { GroupSpec, ServiceSpec } from "@mark1russell7/service/host";
 import { holdingPasses, READINESS, STARTUP_BUDGET, STOP_MESSAGE } from "./index.ts";
 import { alertsHome, HOME_VARIABLE, readText, type FileText } from "./config.ts";
 import { INSTANCE_TIMES } from "./instance.ts";
-import { parseStartTimes, readyWindow, startTimesPath, type ReadyWindow } from "./start-times.ts";
+import { parseStartTimes, READY_GROWTH_FACTOR, readyWindow, startTimesPath, WINDOW_CAP_MS, type ReadyWindow } from "./start-times.ts";
 
 const ms = (value: number): Quantity => ({ value, unit: "ms" });
 const s = (value: number): Quantity => ({ value, unit: "s" });
@@ -146,6 +146,38 @@ export function hostReadyWindow(home: string, read: (path: string) => string | u
   return readyWindow(parseStartTimes(read(startTimesPath(hostFolder(home)))), valueIn(READY_WITHIN, "ms"));
 }
 
+/**
+ * This function gives the window in milliseconds that a start of the runtime missed, from one entry of the log of the
+ * supervisor. It gives `undefined` for each other entry. The supervisor of `@mark1russell7/service` writes a warning
+ * with the fields `window` and `next` when a start is not ready in its window.
+ */
+export function missedWindow(level: LogLevel, fields: LogFields): number | undefined {
+  if (level !== "warn" || fields["program"] !== RUNTIME_PROGRAM || fields["next"] === undefined) return undefined;
+  const window = fields["window"];
+  if (typeof window !== "object" || window === null) return undefined;
+  const { value, unit } = window as Record<string, unknown>;
+  return unit === "ms" && typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
+/**
+ * This function gives the logger of the supervisor. Each entry goes to `log`. Each start of the runtime that misses its
+ * ready window also goes to `missed`, with the window. A fault of `missed` does not stop the log.
+ */
+export function supervisorLogger(log: Logger, missed: (windowMs: number) => void): Logger {
+  return {
+    log(level, message, fields) {
+      log.log(level, message, fields);
+      const window = missedWindow(level, fields);
+      if (window === undefined) return;
+      try {
+        missed(window);
+      } catch {
+        // The record of a missed start is a hint for the next supervisor. The log already has the entry.
+      }
+    },
+  };
+}
+
 /** This function gives the process ID in the text of a discovery file, or `undefined` when the text has no process ID. */
 export function discoveryPid(text: FileText): number | undefined {
   if ("code" in text) return undefined;
@@ -162,6 +194,8 @@ export function discoveryPid(text: FileText): number | undefined {
  * This function gives the group of the supervisor: one program, the runtime.
  *
  * - The runtime is ready when `/readiness` passes in the ready window: `options.readyWithin`, or else `READY_WITHIN`.
+ * - After each start that is not ready in its window, the next start gets a window `READY_GROWTH_FACTOR` times longer,
+ *   to `WINDOW_CAP_MS` (AL-99). A ready start sets the window back. Thus a slow host does not stop each start at the same time.
  * - A ready runtime that fails `/liveness` 3 times in sequence, 10 s apart, stops. Then the supervisor
  *   starts it again. One slow answer does not stop it.
  * - The stop goes on the IPC channel, because a Windows process cannot catch a signal of its parent.
@@ -170,6 +204,9 @@ export function discoveryPid(text: FileText): number | undefined {
 export function hostGroup(options: HostOptions): GroupSpec {
   const port = options.port ?? HOST_PORTS.port;
   const probePort = options.probePort ?? HOST_PORTS.probePort;
+  const within = options.readyWithin ?? READY_WITHIN;
+  // The cap is not shorter than the window, because the runner refuses a growth with a cap shorter than `within`.
+  const grow = { factor: READY_GROWTH_FACTOR, cap: ms(Math.max(WINDOW_CAP_MS, valueIn(within, "ms"))) };
   const probes = `http://127.0.0.1:${probePort}`;
   return {
     name: HOST_NAME,
@@ -182,7 +219,7 @@ export function hostGroup(options: HostOptions): GroupSpec {
         cwd: options.root,
         env: { ALERTS_HOME: options.home, PORT: String(port), PROBE_PORT: String(probePort), SERVICE_PROFILE: "daemon" },
         ipc: true,
-        ready: { probe: readinessProbe(probePort), interval: ms(500), timeout: ms(250), within: options.readyWithin ?? READY_WITHIN },
+        ready: { probe: readinessProbe(probePort), interval: ms(500), timeout: ms(250), within, grow },
         alive: { probe: { kind: "http", url: `${probes}/liveness` }, interval: s(10), timeout: s(2), failures: 3 },
         stop: { grace: RUNTIME_GRACE, message: STOP_MESSAGE },
         listen: { port, url: `http://127.0.0.1:${port}/` },

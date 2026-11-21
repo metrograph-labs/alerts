@@ -6,7 +6,7 @@ import { valueIn } from "@mark1russell7/quantity";
 import { groupProblems, renderSystemdUnit, renderTaskXml, serviceProblems, superviseGroup } from "@mark1russell7/service/host";
 import { fakeHost } from "@mark1russell7/service/testing";
 import { describe, expect, it } from "vitest";
-import { addStartTime, BOOTSTRAP_WINDOW_MS, startTimesPath } from "./start-times.ts";
+import { addMissedStart, addStartTime, BOOTSTRAP_WINDOW_MS, parseStartTimes, READY_GROWTH_FACTOR, startTimesPath, WINDOW_CAP_MS } from "./start-times.ts";
 import {
   declareSupervisor,
   discoveryPid,
@@ -32,6 +32,8 @@ import {
   SUPERVISOR_PROFILE,
   supervisorDiscovery,
   supervisorHome,
+  supervisorLogger,
+  missedWindow,
 } from "./host.ts";
 import { STOP_MESSAGE } from "./index.ts";
 import { INSTANCE_TIMES } from "./instance.ts";
@@ -106,6 +108,7 @@ describe("the host of the instance", () => {
     expect(readinessProbe()).toEqual({ kind: "http", url: `${PROBES}/readiness` });
     expect(ready?.probe).toEqual(readinessProbe());
     expect(ready?.within).toEqual(READY_WITHIN);
+    expect(ready?.grow?.factor).toBe(READY_GROWTH_FACTOR);
   });
 
   it("gives the supervisor the ready window of the measured starts of its host", () => {
@@ -114,8 +117,56 @@ describe("the host of the instance", () => {
     const text = starts.reduce<string | undefined>((file, start) => addStartTime(file, start), undefined);
     const read = (path: string) => (path === startTimesPath(hostFolder(HOME)) ? text : undefined);
     // The worst start is 52 s, and the spread is 12 s.
-    expect(hostReadyWindow(HOME, read)).toEqual({ ms: 64_000, starts: 5, measured: true });
-    expect(hostReadyWindow(join(HOME, "other"), read)).toEqual({ ms: BOOTSTRAP_WINDOW_MS, starts: 0, measured: false });
+    expect(hostReadyWindow(HOME, read)).toEqual({ ms: 64_000, starts: 5, measured: true, missed: 0 });
+    expect(hostReadyWindow(join(HOME, "other"), read)).toEqual({ ms: BOOTSTRAP_WINDOW_MS, starts: 0, measured: false, missed: 0 });
+  });
+
+  it("gives the runtime a ready window that grows after each missed start, to the cap", () => {
+    expect(hostGroup(OPTIONS).programs[0]?.ready?.grow).toEqual({ factor: READY_GROWTH_FACTOR, cap: { value: WINDOW_CAP_MS, unit: "ms" } });
+    // A window longer than the cap keeps a cap of the window, because the runner refuses a cap shorter than the window.
+    const long = hostGroup({ ...OPTIONS, readyWithin: { value: WINDOW_CAP_MS + 1, unit: "ms" } });
+    expect(long.programs[0]?.ready?.grow?.cap).toEqual({ value: WINDOW_CAP_MS + 1, unit: "ms" });
+    expect(groupProblems(long)).toEqual([]);
+  });
+
+  it("records each start that the supervisor stops at its ready window, with the window of the try", async () => {
+    // The runtime never answers its readiness probe. The supervisor stops each start at its window.
+    const misses: number[] = [];
+    const entries: string[] = [];
+    const logger = supervisorLogger({ log: (_level, message) => entries.push(message) }, (windowMs) => misses.push(windowMs));
+    const host = fakeHost({ platform: "win32", logger });
+    host.polite = true;
+    const within = 1000;
+    const group = superviseGroup(hostGroup({ ...OPTIONS, readyWithin: { value: within, unit: "ms" } }), host.ports, { random: () => 0 });
+    group.start();
+    await host.settle();
+    for (let steps = 0; steps < 2000 && misses.length < 3; steps += 1) {
+      await host.clock.advance(100);
+      await host.settle();
+    }
+    await group.stop();
+    expect(misses).toEqual([within, within * READY_GROWTH_FACTOR, within * READY_GROWTH_FACTOR ** 2]);
+    expect(entries.filter((entry) => entry.includes("is not ready in its time"))).toHaveLength(3);
+    // The file of the start times then gives the next supervisor the window after the last miss.
+    const text = misses.reduce<string | undefined>((file, windowMs, index) => addMissedStart(file, `2026-11-21T16:0${String(index)}:00.000Z`, windowMs), undefined);
+    expect(parseStartTimes(text)).toHaveLength(3);
+    expect(hostReadyWindow(HOME, (path) => (path === startTimesPath(hostFolder(HOME)) ? text : undefined)).ms).toBe(Math.max(BOOTSTRAP_WINDOW_MS, within * READY_GROWTH_FACTOR ** 3));
+  });
+
+  it("reads a missed window only from the warning of the runtime with a window and a next window", () => {
+    const fields = { program: RUNTIME_PROGRAM, window: { value: 5000, unit: "ms" }, next: { value: 10_000, unit: "ms" } };
+    expect(missedWindow("warn", fields)).toBe(5000);
+    expect(missedWindow("info", fields)).toBeUndefined();
+    expect(missedWindow("warn", { ...fields, program: "other" })).toBeUndefined();
+    expect(missedWindow("warn", { ...fields, next: undefined })).toBeUndefined();
+    expect(missedWindow("warn", { ...fields, window: { value: 5, unit: "s" } })).toBeUndefined();
+    // A fault of the record does not stop the log.
+    const entries: string[] = [];
+    const logger = supervisorLogger({ log: (_level, message) => entries.push(message) }, () => {
+      throw new Error("The disk is full.");
+    });
+    expect(() => logger.log("warn", "runtime is not ready in its time, thus it stops", fields)).not.toThrow();
+    expect(entries).toEqual(["runtime is not ready in its time, thus it stops"]);
   });
 
   it("gives a group and a boot task with no problems", () => {
