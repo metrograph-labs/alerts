@@ -160,6 +160,11 @@ export interface MapPayloadInput extends Omit<MapInput, "assessments"> {
   readonly basemap: readonly MapRegion[];
   /** The priors of the shadow score. Without them, no incident of the payload has a score. */
   readonly priors?: ScorePriors;
+  /**
+   * The test of an incident of only the sources of other copies (`foreignIncidents`, AL-76). Thus the level on the map
+   * is the level of the route. Without the test, each incident is an incident of this copy.
+   */
+  readonly foreign?: ((incident: Pick<Incident, "anchor" | "reports">) => boolean) | undefined;
   /** The breadth of the indicator signals of the last pass. Without it, the payload has no field `breadth`. */
   readonly breadth?: IndicatorBreadth;
 }
@@ -180,11 +185,11 @@ function withShadow(view: MapView, live: readonly Incident[], priors: ScorePrior
  * With the priors, each incident that reaches a person gets its shadow score.
  */
 export function mapPayload(input: MapPayloadInput): MapPayload {
-  const { at, people, policy, basemap, priors, breadth, ...given } = input;
+  const { at, people, policy, basemap, priors, breadth, foreign, ...given } = input;
   // Each viewer of the page sees the map, so it shows no private incident (AL-92, `audience.ts`).
   const view = { ...given, incidents: given.incidents.filter((incident) => !isPrivate(incident)) };
   const live = view.incidents.filter((incident) => incident.live);
-  const assessments = live.flatMap((incident) => people.map((person) => reachedAssessment(assess(incident, person, view.places, policy, at ?? undefined))));
+  const assessments = live.flatMap((incident) => people.map((person) => reachedAssessment(assess(incident, person, view.places, policy, at ?? undefined, foreign?.(incident) ?? false))));
   const drawn = mapView({ ...view, assessments });
   return { format: MAP_FORMAT, at, view: priors === undefined ? drawn : withShadow(drawn, live, priors), basemap, ...(breadth === undefined ? {} : { breadth }) };
 }

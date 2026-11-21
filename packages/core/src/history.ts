@@ -4,7 +4,7 @@
  * state. The runtime gives it on its route `GET /history`, and a page replays how each incident grew.
  */
 import { compareCodeUnits } from "@mark1russell7/text/order";
-import { assess, classOf, DEFAULT_ASSESS_POLICY, higherLevel, matchPlaces, reachedAssessment } from "./assess.ts";
+import { assess, classOf, DEFAULT_ASSESS_POLICY, foreignIncidents, higherLevel, matchPlaces, reachedAssessment } from "./assess.ts";
 import { isPrivate } from "./audience.ts";
 import type { AssessedLevel, AssessPolicy, EndMark, Incident, Instant, Kind, MergeState, PersonWatch, PlaceId, RegionCode, Report, ReportId, Severity, Status } from "./contracts.ts";
 import { compareRegionCodes, regionCodeKey, SEVERITY_ORDER, type MapPlaceInput, type MapShape, type ShapeLookup } from "./map.ts";
@@ -129,6 +129,8 @@ export interface HistoryInput {
   readonly places: readonly MapPlaceInput[];
   /** The policy of the assessment: the policy of the delivery. The default is the policy of the core. */
   readonly policy?: AssessPolicy;
+  /** The ids of the sources of this copy, as `RouteInput.sources` tells (AL-76). Thus the level of each change is the level of the route. */
+  readonly sources?: ReadonlySet<string> | undefined;
   readonly shape: ShapeLookup;
   /** The link rule of the delivery step and the view. */
   readonly link?: LinkRule;
@@ -152,6 +154,7 @@ export function historyPayload(input: HistoryInput): HistoryPayload {
   const publicIds = new Set(reports.map((report) => report.id));
   const state: MergeState = { ...input.merge, reports, ends: input.merge.ends.filter((mark) => publicIds.has(mark.report)) };
   const byId = new Map(state.reports.map((report) => [report.id, report]));
+  const foreign = foreignIncidents(state.reports, input.sources);
   const entries = new Map(state.reports.map((report) => [report.id, entered.report(report)]));
   // Each end mark has its time of entry. Thus the parts at a time have only the marks that this copy knew at that time.
   const marks = new Map<ReportId, EndMark[]>();
@@ -192,7 +195,7 @@ export function historyPayload(input: HistoryInput): HistoryPayload {
       const fact = came.length > 0 || known.some((report) => marked.has(report.id));
       if (!fact && !edges.has(at)) continue;
       const parts = incidents({ ...state, reports: known, ends: ownMarks }, at, options);
-      const change = changeOf(at, parts, came.sort(compareCodeUnits), input, lookup);
+      const change = changeOf(at, parts, came.sort(compareCodeUnits), input, lookup, foreign);
       const previous = changes.at(-1);
       // A time edge with no new fact gives a change only when the view changes.
       if (!fact && previous !== undefined && sameView(previous, change)) continue;
@@ -234,7 +237,14 @@ function sameView(a: HistoryChange, b: HistoryChange): boolean {
 
 // The change of the parts of one incident at a time. The map shows only live incidents, thus the change has only the live
 // parts. With no live part, the change has each part, and the reader does not show it.
-function changeOf(at: Instant, all: readonly Incident[], reports: readonly ReportId[], input: HistoryInput, lookup: ShapeLookup): HistoryChange {
+function changeOf(
+  at: Instant,
+  all: readonly Incident[],
+  reports: readonly ReportId[],
+  input: HistoryInput,
+  lookup: ShapeLookup,
+  foreign: (part: Incident) => boolean,
+): HistoryChange {
   const live = all.filter((part) => part.live);
   const parts = live.length > 0 ? live : all;
   let level: AssessedLevel = "none";
@@ -242,7 +252,7 @@ function changeOf(at: Instant, all: readonly Incident[], reports: readonly Repor
   for (const part of parts) {
     for (const match of matchPlaces(part, input.places)) if (!placeLevels.has(match.place)) placeLevels.set(match.place, "none");
     for (const person of input.people) {
-      const assessment = reachedAssessment(assess(part, person, input.places, input.policy, at));
+      const assessment = reachedAssessment(assess(part, person, input.places, input.policy, at, foreign(part)));
       level = higherLevel(level, assessment.level);
       for (const id of assessment.places) placeLevels.set(id, higherLevel(placeLevels.get(id) ?? "none", assessment.level));
     }

@@ -42,6 +42,7 @@ import type {
   Urgency,
   WatchedPlace,
 } from "./contracts.ts";
+import { SYSTEM_SOURCE } from "./contracts.ts";
 import { channelDownPolicy, runOpens, type ChannelDownConfig, type ChannelDownPolicy, type ChannelRun, type ChannelSnapshot } from "./channel-down.ts";
 import { coverageShort } from "./coverage.ts";
 import type { Exhaustion } from "./delivery.ts";
@@ -51,9 +52,6 @@ import type { Lateness } from "./lateness.ts";
 import type { ObserveCondition } from "./observe.ts";
 import type { HeldPerson } from "./send-limit.ts";
 import { kindLabel } from "./taxonomy.ts";
-
-/** The source of each report of the core. No adapter has this id. */
-export const SYSTEM_SOURCE = "system" as SourceId;
 
 /** The system of the subjects of the health reports. The id of a subject is the id of a source. */
 export const SOURCE_SUBJECT = "alerts.source";

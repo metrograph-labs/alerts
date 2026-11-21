@@ -4,9 +4,10 @@
  * the runtime does each call of a channel.
  */
 import { compareCodeUnits } from "@mark1russell7/text/order";
-import { assess, COVERAGE_KIND, DEFAULT_ASSESS_POLICY, hasKind, LIFE_SAFETY_KINDS, matchSubjects, PERSON_SUBJECT, QUOTA_KIND, reachedAssessment } from "./assess.ts";
+import { assess, COVERAGE_KIND, DEFAULT_ASSESS_POLICY, foreignIncidents, hasKind, LIFE_SAFETY_KINDS, matchSubjects, PERSON_SUBJECT, QUOTA_KIND, reachedAssessment } from "./assess.ts";
 import { isPrivate } from "./audience.ts";
 import {
+  ASSESSED_LEVELS,
   LEVELS,
   type Acknowledgment,
   type Address,
@@ -178,7 +179,12 @@ export interface RouteInput {
   readonly places: readonly WatchedPlace[];
   /** The policy of the assessment. The default is `DEFAULT_ASSESS_POLICY`. */
   readonly assess?: AssessPolicy | undefined;
-  /** The starts that the log has. */
+  /**
+   * The ids of the sources that this copy runs by its config, also a source whose fetch fails at this time (AL-76). A kind with
+   * no class in an incident of only other sources gets `FOREIGN_TABLE`. Without the set, each source is a source of this copy.
+   */
+  readonly sources?: ReadonlySet<string> | undefined;
+  /** The starts that the log has. They are the starts of this copy: the copies do not share their starts. */
   readonly starts: readonly EscalationStart[];
   /** The ends that the log has. The default is none. */
   readonly ends?: readonly EscalationEnd[] | undefined;
@@ -236,6 +242,12 @@ export interface Route {
   /** The hold of the send limit (`limitRoutes`). A held route has no send in its plan. Its cancels stay. */
   readonly held?: EscalationHold;
   /**
+   * This value is true when only the deliveries of another copy give the level, and the own assessment of the live
+   * incident is lower (AL-76). This copy has no start at the level. The route sends nothing, writes no start and gives
+   * no exhaustion. Its polls, its cancels and its end stay.
+   */
+  readonly imported?: true;
+  /**
    * The first suppression of the throttle (`throttleRoutes`), when the escalation has no delivery. The person did not get
    * its message, thus such a route gives no exhaustion.
    */
@@ -284,6 +296,10 @@ function byReport<T extends { readonly incident: ReportId }>(items: readonly T[]
  * - The start of an escalation is the start in the log. A new escalation starts at `now`, or earlier when the ledger shows an earlier start.
  * - The channel rules of the person (`ruleSteps`) remove steps of a system, test or exercise incident before the plan.
  * - The level `digest` has no escalation. The digest (`planDigests`) tells it, thus a route has no delivery and no start of it.
+ * - Copies of two builds (AL-76). A level with no start of this copy, above the own assessment of the live incident,
+ *   comes only from the deliveries of another copy. Its route sends nothing and writes no start (`Route.imported`).
+ *   The level still holds the top, thus a lower own level starts nothing. A later own assessment at that level sends.
+ * - A kind with no class in an incident of only the sources of other copies (`RouteInput.sources`) gets `FOREIGN_TABLE`.
  */
 export function route(input: RouteInput): Route[] {
   const { state, now } = input;
@@ -296,8 +312,10 @@ export function route(input: RouteInput): Route[] {
   const startsOf = byReport(input.starts);
   const acksOf = byReport(state.acks);
   const endsOf = byReport(input.ends ?? []);
+  const isForeign = foreignIncidents(state.reports, input.sources);
   for (const incident of input.incidents) {
     const reports = new Set<string>([incident.anchor, ...incident.reports]);
+    const foreign = isForeign(incident);
     // A delivery of a digest is not a step of an escalation. The digest plan reads it.
     const deliveries = deliveriesOf(reports);
     const open = deliveries.some((delivery) => !input.cancelled.has(delivery.key));
@@ -319,7 +337,7 @@ export function route(input: RouteInput): Route[] {
       // The first time of an episode: its earliest start or delivery, or `now`.
       const firstOf = (episode: number): Instant =>
         Math.min(now, ...[...mine(starts), ...mine(deliveries)].filter((item) => episodeOf(item.at) === episode).map((item) => item.at).filter(Number.isFinite));
-      const assessment = incident.live ? assess(incident, recipient.watch, input.places, policy, now) : undefined;
+      const assessment = incident.live ? assess(incident, recipient.watch, input.places, policy, now, foreign) : undefined;
       // A mute with the effect `absent` keeps the incident from the person. With `silent`, the level stays and the mode changes.
       const muted = assessment?.muted;
       const assessed: AssessedLevel | undefined = assessment === undefined ? undefined : reachedAssessment(assessment).level;
@@ -333,6 +351,11 @@ export function route(input: RouteInput): Route[] {
         if (!current && ownDeliveries.every((delivery) => input.cancelled.has(delivery.key))) continue;
         const levels = new Set<Level>();
         for (const item of [...ownStarts, ...ownDeliveries]) levels.add(item.level);
+        // The starts are the starts of this copy. A level with no start of this copy and above the own assessment of the
+        // live incident comes only from the deliveries of another copy. This copy sends nothing at it (AL-76).
+        const startedHere = new Set(ownStarts.map((item) => item.level));
+        const lower = assessed === undefined ? undefined : ASSESSED_LEVELS.indexOf(assessed);
+        const imported = (level: Level): boolean => current && lower !== undefined && !startedHere.has(level) && ASSESSED_LEVELS.indexOf(level) > lower;
         // The level does not go down: an assessed level below a level of the episode starts nothing.
         const top = Math.max(-1, ...[...levels].map((level) => LEVELS.indexOf(level)));
         // The mode of the episode: silent when each of its starts is silent. With no start, a delivery tells a loud
@@ -374,7 +397,7 @@ export function route(input: RouteInput): Route[] {
           const chosen = ruled.policy;
           // The silent mode sends step 0 only, and only when the person has no other delivery of the incident.
           const others = silent && mine(deliveries).some((item) => item.level !== level || episodeOf(item.at) !== episode);
-          const plan = escalate({
+          const planned = escalate({
             policy: silent ? { ...chosen, steps: others ? [] : chosen.steps.slice(0, 1) } : chosen,
             person,
             incident,
@@ -391,11 +414,14 @@ export function route(input: RouteInput): Route[] {
             silent,
             now,
           });
+          // A level of another copy only keeps its timers, polls and cancels. Its sends and its start are the other copy's.
+          const shared = imported(level);
+          const plan = shared ? { ...planned, sends: [] } : planned;
           const ours = ownDeliveries.filter((delivery) => delivery.level === level);
           const active = plan.state === "sent" || plan.state === "last" || plan.state === "exhausted";
           const polls = active ? ours.filter((delivery) => delivery.receipt !== undefined && !input.cancelled.has(delivery.key) && polling.has(delivery.channel)) : [];
           const found = logged[index];
-          const fresh = found === undefined;
+          const fresh = found === undefined && !shared;
           const start: EscalationStart = { incident: found?.incident ?? incident.anchor, level, person, at: plan.start, ...(silent ? { silent: true } : {}) };
           routes.push({
             incident,
@@ -411,6 +437,7 @@ export function route(input: RouteInput): Route[] {
             ...(closing === undefined ? {} : { end: closing }),
             freshEnd,
             ...(why === undefined ? {} : { why }),
+            ...(shared ? { imported: true as const } : {}),
           });
         });
       }
@@ -462,6 +489,7 @@ export function asksForAck(policy: EscalationPolicy, channels: readonly ChannelD
  * - A step of its policy asks for an acknowledgment (`asksForAck`). Without such a step, no acknowledgment can come.
  * - The send limit did not hold it (`Route.held`). A held escalation sent nothing, and the digest tells it.
  * - The throttle did not stop it with no delivery (`Route.suppressed`). Such an escalation sent nothing, and the digest tells it.
+ * - Its level is not a level of another copy only (`Route.imported`). That copy gives the exhaustion of its own escalation.
  *
  * The reports give the title of each warning (`incidentTitle`).
  */
@@ -469,7 +497,7 @@ export function exhaustions(routes: readonly Route[], channels: readonly Channel
   const found: Exhaustion[] = [];
   for (const entry of routes) {
     const { incident, plan, policy } = entry;
-    if (entry.held !== undefined || entry.suppressed !== undefined || incident.status !== "actual" || plan.state !== "exhausted" || plan.exhaustedAt === undefined) continue;
+    if (entry.held !== undefined || entry.suppressed !== undefined || entry.imported === true || incident.status !== "actual" || plan.state !== "exhausted" || plan.exhaustedAt === undefined) continue;
     if (policy.steps.length === 0 || !asksForAck(policy, channels)) continue;
     // The people who watch the person are not in the addresses of a private incident: its title stays out (AL-92).
     found.push({ incident: entry.start.incident, person: entry.person, level: policy.level, episode: entry.episode, at: plan.exhaustedAt, kind: incident.kind, title: isPrivate(incident) ? incident.kind.label : incidentTitle(incident, reports) });

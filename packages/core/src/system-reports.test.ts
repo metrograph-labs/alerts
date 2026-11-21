@@ -4,6 +4,7 @@ import { assess, PERSON_SUBJECT } from "./assess.ts";
 import { CONFIG_FORMAT } from "./config.ts";
 import { messageOf } from "./delivery.ts";
 import type { ChannelId, ChannelQuota, CopyRead, CopyWatch, Coverage, HealthState, Incident, Observation, PersonId, PersonWatch, PlaceId, ProviderBalance, Report, ReportId, SourceDescriptor, SourceHealth, SourceId, WatchedPlace } from "./contracts.ts";
+import { SYSTEM_SOURCE } from "./contracts.ts";
 import type { DrillConfig, DrillRun } from "./drill.ts";
 import type { Lateness } from "./lateness.ts";
 import type { ObserveCondition } from "./observe.ts";
@@ -43,7 +44,6 @@ import {
   STORE_SUBJECT,
   storeEmptyAt,
   stepSizeText,
-  SYSTEM_SOURCE,
   systemReports,
   threats,
   type LogRecovery,

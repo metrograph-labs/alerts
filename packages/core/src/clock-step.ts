@@ -12,7 +12,7 @@ import type { Acknowledgment, Delivery, Duration, EndMark, Instant, MergeState, 
 import type { EscalationEnd, EscalationStart } from "./delivery.ts";
 import type { HealthTrack } from "./health.ts";
 import { normalize } from "./merge.ts";
-import { SYSTEM_SOURCE } from "./system-reports.ts";
+import { SYSTEM_SOURCE } from "./contracts.ts";
 
 /** A change of the wall clock against the monotonic clock larger than this size is a step. A smaller change is a drift. */
 export const CLOCK_STEP_ABOVE: Duration = 2000;

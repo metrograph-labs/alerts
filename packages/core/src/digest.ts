@@ -14,7 +14,7 @@
  * the digest stays due.
  */
 import { compareCodeUnits } from "@mark1russell7/text/order";
-import { assess, DEFAULT_ASSESS_POLICY, reachedAssessment } from "./assess.ts";
+import { assess, DEFAULT_ASSESS_POLICY, foreignIncidents, reachedAssessment } from "./assess.ts";
 import {
   LEVELS,
   type AssessPolicy,
@@ -45,6 +45,8 @@ export interface DigestInput {
   readonly places: readonly WatchedPlace[];
   /** The policy of the assessment. The default is `DEFAULT_ASSESS_POLICY`. */
   readonly assess?: AssessPolicy | undefined;
+  /** The ids of the sources of this copy, as `RouteInput.sources` tells (AL-76). Without the set, each source is a source of this copy. */
+  readonly sources?: ReadonlySet<string> | undefined;
   /** The channels of the system. The rank floor applies to the exclusive channels. */
   readonly channels: readonly ChannelDescriptor[];
   /** The rank of this copy of the system, from 0. A copy waits `rank × max(rank delay, floor)` before each send. */
@@ -120,6 +122,7 @@ export function planDigests(input: DigestInput): DigestPlan {
   const floors = rankFloors(input.channels, input.rankFloor);
   const rank = nonNegative(input.rank);
   const delay = nonNegative(rankDelayOf("digest", input.rankDelays, input.rankDelay));
+  const isForeign = foreignIncidents(state.reports, input.sources);
   const received = new Map<string, Instant>();
   for (const report of state.reports) {
     const known = received.get(report.id);
@@ -165,7 +168,7 @@ export function planDigests(input: DigestInput): DigestPlan {
           continue;
         }
         if (louder.length > 0 || told.length > 0 || !incident.live || !(receiptOf(incident) <= at)) continue;
-        if (reachedAssessment(assess(incident, watch, input.places, policy, now)).level === "digest") entries.push({ incident, level: "digest" });
+        if (reachedAssessment(assess(incident, watch, input.places, policy, now, isForeign(incident))).level === "digest") entries.push({ incident, level: "digest" });
       }
       if (entries.length === 0) return;
       const due = at + nonNegative(step.at) + waitOf(step.channel);
