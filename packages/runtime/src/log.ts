@@ -27,12 +27,15 @@ export interface EntriesOptions {
 /** The log of the runtime. */
 export interface RuntimeLog {
   /**
-   * This function gives the events of the log, in their order. It gives only the types of `EVENT_TYPES`. A later build
-   * can add a type, and this build then skips its events. Thus a rollback to this build starts on the log of a later build.
+   * This function gives the events of the log, in their order. It gives only the types of `EVENT_TYPES`, or the types
+   * `types` when the call gives them. A later build can add a type, and this build then skips its events. Thus a rollback
+   * to this build starts on the log of a later build.
    */
-  read(): Iterable<RuntimeEvent>;
-  /** This function gives the count of the events of the log, of each type. */
+  read(types?: readonly RuntimeEvent["type"][]): Iterable<RuntimeEvent>;
+  /** This function gives the count of the events of the log. */
   count(): number;
+  /** This function gives the count of the events of each type, also of the types that this build does not know. It parses no event. */
+  counts(): ReadonlyMap<string, number>;
   /** This function gives the entries of the log after a position, in their order. */
   entries(options: EntriesOptions): Iterable<RuntimeLogEntry>;
   /** This function gives the position of the last event, or 0 for an empty log. */
@@ -141,8 +144,9 @@ function fileOptions(options: RuntimeLogOptions): { readonly makeFolder: true; r
 function runtimeLog(log: EventLogFile<RuntimeEvent>): RuntimeLog {
   return {
     // The filter is on the type of the row, thus the parse does not get a type that this build does not know.
-    read: () => log.read({ types: EVENT_TYPES }),
+    read: (types = EVENT_TYPES) => log.read({ types }),
     count: () => log.count(),
+    counts: () => log.counts(),
     entries: (options) => log.entries(options),
     head: () => log.head(),
     has: (id) => log.get(id) !== undefined,

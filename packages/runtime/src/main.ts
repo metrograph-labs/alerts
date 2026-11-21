@@ -156,7 +156,7 @@ async function runtime(): Promise<ServiceBuilder> {
   const pushoverReserveNotices = quotaGate(PUSHOVER_RESERVE_NOTICES, { key: "pushover:reserve-notices", store: quotas, now: () => wall.now() });
 
   // The outside heartbeat. Without it, a stop of this process is silent. The check of the profile daemon needs it.
-  // Each check has its own hook. The hooks make the same pings, and a slow ping to one check does not hold the other.
+  // Each check has its own hook, thus a slow ping to one check does not hold the other. The loud check gets only the success pings.
   const targets = pingTargets(secret, copy);
   if (!targets.some((target) => target.key === pingKeyOf(copy))) console.warn(`The file secrets.env has no ${pingKeyOf(copy)}. This runtime has no outside heartbeat.`);
   const beats = targets.map((target) =>
@@ -168,6 +168,10 @@ async function runtime(): Promise<ServiceBuilder> {
       held: (at) => heldOf(instance.runtime.state(), at),
       // The body of each ping tells the state of each quota, and each failed read of the replies or of the spend. Thus the check shows the reserve.
       notes: () => [...instance.quotas().map(quotaNote), ...replyNotes(instance.replies), ...spendNotes(instance.spend)],
+      // The shared loud check gets only the success pings, after a steady run (AL-100). Thus it calls only when no copy can
+      // tell the person, and one time for each outage.
+      successOnly: target.successOnly,
+      steadyAfter: target.steadyAfter,
       onError: (message) => console.error(redactSecrets(target.key === LOUD_PING_URL_KEY ? `The loud check: ${message}` : message, values)),
     }),
   );

@@ -47,7 +47,7 @@ import { DATE_FORMAT as EIA_DATE_FORMAT, EIA_930_DESCRIPTOR, HOUR_MS, periodEnd,
 import { memoryQuotaStore, quotaGate, type Exchange, type Transport } from "polite-crawler/api";
 import { DEFAULT_POLICY } from "polite-crawler/politeness";
 import { afterEach, describe, expect, it } from "vitest";
-import { ACCOUNT_SOURCES, BOM_SWS_KEY, CHECKS_KEY, EIA_KEY, CLOUDFLARE_RADAR_KEY, checksKeys, DAEMON_CHECK, daemonCheck, DELIVERY_TIMES, INSTANCE_CHANNELS, INSTANCE_CHECK, INSTANCE_EXPECTATIONS, INSTANCE_FETCH_LIMIT, INSTANCE_SOURCES, INSTANCE_TIMES, instanceCheck, instanceProblems, instanceServices, shownNode, shownServices, LOUD_PING_URL_KEY, nwwsKeys, nwwsSetup, openInstance, PING_URL_KEY, pingKeyOf, pingTargets, RANK_DELAY, RANK_FLOOR, SOURCE_POLICY, sourcePace, twilioSetup, USER_AGENT_NAME, type Instance, type InstanceOptions } from "./instance.ts";
+import { ACCOUNT_SOURCES, BOM_SWS_KEY, CHECKS_KEY, EIA_KEY, CLOUDFLARE_RADAR_KEY, checksKeys, DAEMON_CHECK, daemonCheck, DELIVERY_TIMES, INSTANCE_CHANNELS, INSTANCE_CHECK, INSTANCE_EXPECTATIONS, INSTANCE_FETCH_LIMIT, INSTANCE_SOURCES, INSTANCE_TIMES, instanceCheck, instanceProblems, instanceServices, shownNode, shownServices, LOUD_PING_URL_KEY, LOUD_STEADY, nwwsKeys, nwwsSetup, openInstance, PING_URL_KEY, pingKeyOf, pingTargets, RANK_DELAY, RANK_FLOOR, SOURCE_POLICY, sourcePace, twilioSetup, USER_AGENT_NAME, type Instance, type InstanceOptions } from "./instance.ts";
 import { heartbeatGap } from "./heartbeat.ts";
 import { spendGates, spendQuota } from "./balance.ts";
 import { CLOCK_SKEW_LIMIT, COPY_TOKEN_KEY, EXCHANGE_EVERY, EXCHANGE_LIMIT } from "./copy.ts";
@@ -1454,16 +1454,16 @@ describe("the keys of the status check", () => {
     expect(checksKeys({ text: `${CHECKS_KEY}=${KEY}\n${PING_URL_KEY}=${URL_OF_CHECK}\n${LOUD_PING_URL_KEY}=\n` })).toEqual({ tag: "ok", value: { key: KEY, url: URL_OF_CHECK } });
   });
 
-  it("gives the checks of the heartbeat: the check, then the loud check, and none for a missing or empty key", () => {
+  it("gives the checks of the heartbeat: the check with each ping, then the loud check with only the success pings, and none for a missing or empty key", () => {
     const loud = `${URL_OF_CHECK}-loud`;
     const lookup = (values: Record<string, string>) => (key: string) => values[key];
     expect(pingTargets(lookup({ [LOUD_PING_URL_KEY]: loud, [PING_URL_KEY]: URL_OF_CHECK }))).toEqual([
-      { key: PING_URL_KEY, url: URL_OF_CHECK },
-      { key: LOUD_PING_URL_KEY, url: loud },
+      { key: PING_URL_KEY, url: URL_OF_CHECK, successOnly: false, steadyAfter: 0 },
+      { key: LOUD_PING_URL_KEY, url: loud, successOnly: true, steadyAfter: LOUD_STEADY },
     ]);
-    expect(pingTargets(lookup({ [PING_URL_KEY]: URL_OF_CHECK }))).toEqual([{ key: PING_URL_KEY, url: URL_OF_CHECK }]);
-    expect(pingTargets(lookup({ [PING_URL_KEY]: URL_OF_CHECK, [LOUD_PING_URL_KEY]: "" }))).toEqual([{ key: PING_URL_KEY, url: URL_OF_CHECK }]);
-    expect(pingTargets(lookup({ [LOUD_PING_URL_KEY]: loud }))).toEqual([{ key: LOUD_PING_URL_KEY, url: loud }]);
+    expect(pingTargets(lookup({ [PING_URL_KEY]: URL_OF_CHECK }))).toEqual([{ key: PING_URL_KEY, url: URL_OF_CHECK, successOnly: false, steadyAfter: 0 }]);
+    expect(pingTargets(lookup({ [PING_URL_KEY]: URL_OF_CHECK, [LOUD_PING_URL_KEY]: "" }))).toEqual([{ key: PING_URL_KEY, url: URL_OF_CHECK, successOnly: false, steadyAfter: 0 }]);
+    expect(pingTargets(lookup({ [LOUD_PING_URL_KEY]: loud }))).toEqual([{ key: LOUD_PING_URL_KEY, url: loud, successOnly: true, steadyAfter: LOUD_STEADY }]);
     expect(pingTargets(lookup({}))).toEqual([]);
   });
 
@@ -1614,15 +1614,15 @@ describe("the copies of the system", () => {
     expect(server.calls).toHaveLength(1);
   });
 
-  it("pings the first check of the copy and the shared loud check", () => {
+  it("pings the first check of the copy with each ping, and the shared loud check with only the success pings (AL-100)", () => {
     const loud = `${URL_OF_CHECK}-loud`;
     const own = `${URL_OF_CHECK}-cloud`;
     const secrets = lookup({ [PING_URL_KEY]: URL_OF_CHECK, [CLOUD_KEY]: own, [LOUD_PING_URL_KEY]: loud });
     expect(pingKeyOf(ONLY_COPY)).toBe(PING_URL_KEY);
     expect(pingKeyOf(CLOUD)).toBe(CLOUD_KEY);
     expect(pingTargets(secrets, CLOUD)).toEqual([
-      { key: CLOUD_KEY, url: own },
-      { key: LOUD_PING_URL_KEY, url: loud },
+      { key: CLOUD_KEY, url: own, successOnly: false, steadyAfter: 0 },
+      { key: LOUD_PING_URL_KEY, url: loud, successOnly: true, steadyAfter: LOUD_STEADY },
     ]);
     expect(pingTargets(secrets)).toEqual(pingTargets(secrets, ONLY_COPY));
     expect(checksKeys({ text: `${CHECKS_KEY}=${"k".repeat(32)}
