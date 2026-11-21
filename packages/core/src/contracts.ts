@@ -65,7 +65,7 @@ export type ResponseType =
   | "allclear"
   | "none";
 
-/** The CAP categories, and four more: cyber, market, civic and system. */
+/** The CAP categories, and five more: cyber, market, civic, personal and system. */
 export type Category =
   | "geo"
   | "met"
@@ -82,6 +82,7 @@ export type Category =
   | "cyber"
   | "market"
   | "civic"
+  | "personal"
   | "system";
 
 /** The stage of a hazard message. NWS VTEC gives it the name significance. */

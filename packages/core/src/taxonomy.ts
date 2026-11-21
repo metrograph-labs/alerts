@@ -41,6 +41,7 @@ const CATEGORY_ENTRIES: Readonly<Record<Category, KindEntry>> = {
   cyber: entry("Cyber", "A cyber threat: an exploited flaw, an attack, a breach or a malicious package."),
   market: entry("Markets", "A move or a failure in finance: banks, exchanges, prices, crypto and prediction markets."),
   civic: entry("Civic", "An action of a government or a public body: declarations, rules, elections, closures and holidays."),
+  personal: entry("Personal", "A change in the life of one person or one household, for example a loss of income or a death."),
   system: entry("The alert system", "A message of the alert system about itself: the health of a source, coverage, quota and tests."),
 };
 
@@ -387,6 +388,8 @@ export const TAXONOMY: Readonly<Record<string, KindEntry>> = {
   "civic.sanctions": entry("Sanctions action", "OFAC adds, removes or licenses sanctions on a country, bank, company or person."),
   "civic.school-closure": entry("School closure or delay", "Schools close, start late or go remote for weather, threats or other events."),
   "civic.tax-relief": entry("Disaster tax relief", "A tax authority postpones deadlines for people in a disaster area."),
+  "personal.death": entry("Death in the household", "A person of the household dies, and the others must act on the care, the money and the papers."),
+  "personal.income-loss": entry("Loss of income", "A person loses a job or another main source of money, for example after a layoff, a closure or an injury."),
 
   [UNKNOWN_KIND]: entry("Unknown event", "An event that the kind tables of an adapter do not know."),
 

@@ -913,5 +913,43 @@
       "members": 1757,
       "cause": "Round 16 adds the class health.medical-emergency with a gap. The classes go from 201 to 202, and the gaps from 104 to 105. No source changes."
     }
+  },
+  {
+    "round": 17,
+    "date": "2026-11-21",
+    "by": "One session, for the personal case codes of a household plan (AL-110).",
+    "method": "One web search for a public source of a loss of income. The round adds two classes for new codes of the taxonomy, with their gaps.",
+    "lists": [
+      "WARN notices of the US states, a monthly panel (ICPSR 155161): https://www.openicpsr.org/openicpsr/project/155161"
+    ],
+    "queries": [
+      "WARN Act layoff notices Department of Labor state WARN notice data"
+    ],
+    "notes": [
+      "The new category personal holds a change in the life of one person or one household. Its codes are personal.income-loss and personal.death.",
+      "A missing person of a household uses the existing code security.missing-person. Thus it gets no new class.",
+      "The WARN notices of a state name the employer of a mass layoff. They are a possible source of personal.income-loss when a user names an employer. The panel of ICPSR gives monthly counts for each state, not the notices."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 204,
+      "gaps": 107,
+      "cover": {
+        "adopted": 54,
+        "paths": 54,
+        "origins": 4
+      },
+      "total": {
+        "adopted": 146,
+        "paths": 146,
+        "origins": 67
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 5,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 17 adds the classes personal.income-loss and personal.death with gaps. The classes go from 202 to 204, and the gaps from 105 to 107. No source changes."
+    }
   }
 ]

@@ -839,7 +839,7 @@ The mirror does these steps before each read of the reload hook (`config-sync.ts
 
 `TAXONOMY` of the core holds each kind code, its plain name and a summary of one sentence. A code is dotted, for example `met.flood.flash`.
 
-- The first part is a category: the 12 categories of CAP 1.2, then `cyber`, `market`, `civic` and `system`. `categoryOf` gives it.
+- The first part is a category: the 12 categories of CAP 1.2, then `cyber`, `market`, `civic`, `personal` and `system`. `categoryOf` gives it.
 - The taxonomy is a tree. The parent of each code is also a code, and each category is a root. `parentKind` gives the parent.
 - The taxonomy is closed. `knownKind` tells if a code is in it. The coverage codes `system.coverage.<code>` are a family of the core.
 - A parent code is a group of its descendants. An adapter gives the leaf code of its event. A person, a rule or a class of the atlas can name a group.
