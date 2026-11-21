@@ -370,7 +370,7 @@ export async function runCopiesArm(arm: CopiesArm, settings: CopiesSettings = CA
 
     const signal = new AbortController().signal;
     for (const part of parts) {
-      await part.loop.start(signal, detachedLifecycle());
+      await part.loop.start(signal, detachedLifecycle(monotonic));
       closers.push(async () => {
         await part.loop.stopIntake();
         await part.loop.drain(monotonic.now() + EXCHANGE_LIMIT, signal);
