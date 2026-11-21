@@ -1,16 +1,21 @@
 /**
  * The property of the cadence of the retirement (AL-109). The fold of the live runtime and the rebuild of the start give
- * the same state, and the same times of entry, at each prefix of a random log. The live runtime retires on the event
- * time, thus no wall clock decides a retirement. The logs also have `retired` events of an older build.
+ * the same state at each prefix of a random log. They also give the same times of entry. The live runtime retires on the
+ * event time, thus no wall clock decides a retirement. The logs also have `retired` events of an older build.
+ *
+ * The same model checks the snapshot of the start (AL-105). The rebuild starts from the rows of the snapshot at a position, and
+ * it reads only the events after that position. It gives the state and the times of entry of the whole log.
  */
 import { reportId, type Delivery, type EntryTimes, type Expectation, type ObservationId, type PersonId, type ChannelId, type Report, type ReportId, type SourceId } from "@mark1russell7/alerts";
 import { seedsFrom } from "@mark1russell7/rigor-generators";
 import { runModel, step, type Step } from "@mark1russell7/rigor-testkit/model";
+import type { FoldRow } from "@mark1russell7/sqlite";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { entryIndex, type EntryIndex } from "./entries.ts";
 import { envelope, type RuntimeEvent } from "./events.ts";
 import { importOf, sharedItem } from "./exchange.ts";
+import { readSnapshot, snapshotRows } from "./start-snapshot.ts";
 import { EMPTY_RUNTIME, fold, rebuild, type FoldContext, type RuntimeState } from "./state.ts";
 
 const T0 = Date.UTC(2026, 3, 1, 18, 0, 0);
@@ -75,6 +80,8 @@ interface Log {
   readonly events: RuntimeEvent[];
   time: number;
   count: number;
+  /** The rows of the snapshot of the live state at each count of events. The check of the resume writes them. */
+  readonly snapshots?: Map<number, readonly FoldRow[]>;
 }
 
 function append(live: Live, log: Log, event: RuntimeEvent, context: FoldContext): void {
@@ -174,6 +181,19 @@ function replay(events: readonly RuntimeEvent[], context: FoldContext): { readon
   return { state: rebuild(read(), context, (merge) => entries.prune(merge)), entries };
 }
 
+// The start from a snapshot: the index and the state come from the rows, and the rebuild reads only the events after them.
+function resume(rows: readonly FoldRow[], events: readonly RuntimeEvent[], context: FoldContext): { readonly state: RuntimeState; readonly entries: EntryIndex } {
+  const snapshot = readSnapshot(rows);
+  const entries = entryIndex(snapshot.entries);
+  function* read(): Generator<RuntimeEvent> {
+    for (const event of events) {
+      entries.add(event);
+      yield event;
+    }
+  }
+  return { state: rebuild(read(), context, (merge) => entries.prune(merge), snapshot.state), entries };
+}
+
 const EXPECTATION: Expectation = { id: "e1", from: API, to: OTHER, when: { kinds: ["met.flood"] } };
 const CONTEXTS: readonly (readonly [string, FoldContext])[] = [
   ["the defaults", { sources: [], retention: {} }],
@@ -201,6 +221,38 @@ describe("the live fold and the rebuild of each prefix (AL-109)", () => {
       });
       // The logs are long enough that some reports retire.
       if (context.retention !== undefined) expect(retirements).toBeGreaterThan(0);
+    });
+  }
+});
+
+describe("the resume of a start from a snapshot at a position (AL-105)", () => {
+  for (const [name, context] of CONTEXTS) {
+    it.each(SEEDS)(`gives the state and the times of entry of the whole log, with ${name} (seed %i)`, (seed) => {
+      let resumes = 0;
+      runModel<Live, Log>({
+        create: () => ({ sut: { state: EMPTY_RUNTIME, entries: entryIndex() }, model: { events: [], time: T0, count: 0, snapshots: new Map() } }),
+        steps: stepsOf(context),
+        check: (live, log) => {
+          const count = log.events.length;
+          // The rows of the live state at this position. A later check resumes from them.
+          log.snapshots?.set(count, [...snapshotRows({ state: live.state, entries: live.entries.snapshot() })]);
+          const times = timesOf(live.state, live.entries.times(live.state.own.merge));
+          // The round trip of the rows at this position, the position before it, and the position at the half of the log.
+          for (const at of new Set([count, count - 1, Math.floor(count / 2)])) {
+            const rows = log.snapshots?.get(at);
+            if (rows === undefined) continue;
+            const again = resume(rows, log.events.slice(at), context);
+            expect(again.state).toEqual(live.state);
+            expect(again.entries.size).toBe(live.entries.size);
+            expect(timesOf(again.state, again.entries.times(again.state.own.merge))).toEqual(times);
+            resumes += 1;
+          }
+        },
+        maxSteps: 60,
+        numRuns: 25,
+        parameters: { seed },
+      });
+      expect(resumes).toBeGreaterThan(0);
     });
   }
 });

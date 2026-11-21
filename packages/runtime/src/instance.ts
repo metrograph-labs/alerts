@@ -108,6 +108,7 @@ import { outageDeploy, outageDeployWorker, outageSetup, type OutageDeployWorker 
 import { exchangeLoop, exchangeWorker, type EntriesSource, type ExchangeCall, type ExchangeRound, type ExchangeWorker } from "./peers.ts";
 import { channelQuota } from "./quota.ts";
 import { openRuntime, type Pass, type Runtime, type RuntimeOptions } from "./runtime.ts";
+import { START_SNAPSHOT_EVERY } from "./start-snapshot.ts";
 import { addZoneCodes, keepShapes, placeCodesKey, refreshUntil, shapeSources, type InstanceShapes, type ShapeOutcome, type ZoneCodeCounts } from "./shapes.ts";
 import { chooseFeeds, feedsKey, keepTransit, type InstanceTransit, type TransitCache, type TransitOutcome } from "./transit.ts";
 import { tellSource, type TellIntake } from "./tell-intake.ts";
@@ -754,6 +755,13 @@ export interface InstanceOptions {
   /** The instance gives each fault of the store of the readings to this function. */
   readonly onReadingsFault?: RuntimeOptions["onReadingsFault"];
   /**
+   * The store of the snapshot of the start (AL-105). The open of the runtime reads it. After the good start, a pass writes it
+   * at most once in each `START_SNAPSHOT_EVERY` of the wall clock. The entry gives the file `snapshot.sqlite` next to the log.
+   */
+  readonly startSnapshot?: RuntimeOptions["startSnapshot"];
+  /** The instance gives each fault of a write of the snapshot of the start to this function. The pass continues. */
+  readonly onStartSnapshotFault?: (error: unknown) => void;
+  /**
    * The priors of the shadow score. With them, the map gives the score of each incident that reaches a person. The log
    * keeps the score at the start of each escalation. The score does not change a level.
    */
@@ -1011,6 +1019,8 @@ export function openInstance(options: InstanceOptions): Instance {
   let first: Pass | undefined;
   // The start of this instance. Each family of a store gets its first entry in its window after this time (AL-86).
   const startedAt = wall.now();
+  // The wall time of the last write of the snapshot of the start, or undefined before the first write.
+  let snapshotAt: Instant | undefined;
   const runtime: Runtime = openRuntime({
     log: options.log,
     clock: wall,
@@ -1046,6 +1056,7 @@ export function openInstance(options: InstanceOptions): Instance {
     // The readings of each fetch go to their store, not to the log.
     ...(options.readings === undefined ? {} : { readings: options.readings }),
     ...(options.onReadingsFault === undefined ? {} : { onReadingsFault: options.onReadingsFault }),
+    ...(options.startSnapshot === undefined ? {} : { startSnapshot: options.startSnapshot }),
     // After each pass, the store of shapes gets the outlines that are due, and it ends before the next fetch from its host (AL-33).
     // The keeper of the transit catalog reads the catalog when its copy is due. The pass does not wait for the two.
     // The two start at a pass after the good start (AL-75). The entry marks the start after this function, thus the pass that
@@ -1056,6 +1067,15 @@ export function openInstance(options: InstanceOptions): Instance {
       if (options.startGood?.() ?? true) {
         shapes.afterPass(pass.view.incidents, refreshUntil(runtime.config.sources, (descriptor) => nextFetch(runtime.state(), descriptor)));
         transit?.afterPass();
+        // The snapshot of the start (AL-105). The first write is at the first pass after the good start. A failed write tries again at the next pass.
+        if (options.startSnapshot !== undefined && (snapshotAt === undefined || wall.now() >= snapshotAt + START_SNAPSHOT_EVERY)) {
+          try {
+            runtime.writeStartSnapshot();
+            snapshotAt = wall.now();
+          } catch (error) {
+            options.onStartSnapshotFault?.(error);
+          }
+        }
       }
       await options.onPass?.(pass);
     },

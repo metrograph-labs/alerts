@@ -6,6 +6,7 @@
  */
 import { isFrameClock, type WallClock } from "@mark1russell7/algebra/clock";
 import { channelDownPolicy, DEFAULT_SEND_LIMITS, downChannels, heldPersons, indicatorBreadth, limitShare, observeConditions, ONLY_COPY, type ChannelQuota, type ChannelSnapshot, type CopyWatch, type DrillWatch, type Duration, type EntryTimes, type Exhaustion, type FetchOutcome, type HeldPerson, type Incident, type IndicatorBreadth, type Instant, type LatenessFolds, type MergeState, type ObserveCondition, type ReportId, type SourceDescriptor, type SourceId, type StoreFill, type SourceProcedures, type Watch, type ZoneRegions } from "@mark1russell7/alerts";
+import type { FoldMark, FoldSnapshot } from "@mark1russell7/sqlite";
 import { errorMessage } from "@mark1russell7/text";
 import type { BalanceWatch } from "./balance.ts";
 import { channelWatch, lastFetchSuccess } from "./channel-watch.ts";
@@ -20,6 +21,7 @@ import type { RuntimeLog } from "./log.ts";
 import { cutIncidents, modeEvents, modeStatus, observeStep, type ModeStatus, type ObserveParts } from "./observe.ts";
 import { READING_RETENTION, type ReadingStore } from "./readings.ts";
 import { SNAPSHOT_MISSES, snapshotStep } from "./snapshot.ts";
+import { readSnapshot, snapshotKey, snapshotRows, type StartRead, type StartSnapshot } from "./start-snapshot.ts";
 import { retention, type RetentionOptions } from "./retention.ts";
 import type { ReadWatch } from "./schedule.ts";
 import { seriesReads } from "./series-reads.ts";
@@ -133,6 +135,11 @@ export interface RuntimeOptions {
    * the table, a series with the area of a zone is in the list `unplaced` of the breadth.
    */
   readonly zones?: readonly ZoneRegions[];
+  /**
+   * The store of the snapshot of the fold (AL-105). The open reads it. With a snapshot of the same key, the open folds only
+   * the events after the mark of the snapshot. `writeStartSnapshot` writes it. Without the store, the open folds the whole log.
+   */
+  readonly startSnapshot?: FoldSnapshot;
 }
 
 /** The action of the store of the readings that gave a fault: a write, a delete or a read of the series. */
@@ -194,6 +201,14 @@ export interface Runtime {
    * A later build wrote them, thus a count above 0 tells of a rollback.
    */
   readonly skipped: number;
+  /** The read of the log at the open: the snapshot that it read, and the count of the events that it folded (AL-105). */
+  readonly start: StartRead;
+  /**
+   * This function writes the snapshot of the state and of the entry index at the last event of the log, in one transaction
+   * (AL-105). It gives the count of the rows. It throws when the runtime has no store or the write fails. Then the old
+   * snapshot stays.
+   */
+  writeStartSnapshot(): number;
   /**
    * This function does one pass. It throws when a write to the log fails. Then the state is the state of
    * the log, and the next pass does the work again.
@@ -245,13 +260,22 @@ export function openRuntime(options: RuntimeOptions): Runtime {
   // The index of the times of entry is a fold of the same events as the state. The start reads only the types of the fold
   // (AL-102): an observation changes neither. The counts of each type give the events of the types that this build does
   // not know, with no parse. The index drops the stamps of the gone reports at each retirement, as the append does.
-  const entries = entryIndex();
+  // With a snapshot of the same key, the index and the state start at its mark, and the open folds only the events after it (AL-105).
+  const counts = log.counts();
+  const resumed = readStart(options.startSnapshot, log, config, counts);
+  const entries = entryIndex(resumed.snapshot?.entries);
+  let folded = 0;
   let state = rebuild(
-    counted(log.read(FOLD_TYPES), (event) => entries.add(event)),
+    counted(resumed.mark === undefined ? log.read(FOLD_TYPES) : log.read(FOLD_TYPES, resumed.mark.seq), (event) => {
+      folded += 1;
+      entries.add(event);
+    }),
     config,
     (merge) => entries.prune(merge),
+    resumed.snapshot?.state,
   );
-  const skipped = unknownEvents(log.counts());
+  const skipped = unknownEvents(counts);
+  const start: StartRead = { events: folded, ...(resumed.mark === undefined ? {} : { snapshot: resumed.mark }), ...(resumed.fault === undefined ? {} : { fault: resumed.fault }) };
 
   // The fold runs on a draft before each write. The state changes only when the transaction commits.
   const append = (events: readonly RuntimeEvent[]): readonly string[] => {
@@ -280,7 +304,7 @@ export function openRuntime(options: RuntimeOptions): Runtime {
   // broken file gives new positions, thus a recovered log has the id of its last recovery.
   const self = options.copy ?? ONLY_COPY.id;
   const recovery = state.recoveries.at(-1);
-  const logId = recovery === undefined ? ([...log.entries({ after: 0, types: EVENT_TYPES, limit: 1 })][0]?.event.id ?? `started:${options.run}`) : `recovered:${recovery.quarantine}`;
+  const logId = recovery === undefined ? (firstEventId(log) ?? `started:${options.run}`) : `recovered:${recovery.quarantine}`;
   // The position of the next read of each other copy. It starts at the position of the log, and it moves at each page.
   const positions = new Map<string, ExchangeCursor>();
 
@@ -445,6 +469,18 @@ export function openRuntime(options: RuntimeOptions): Runtime {
     config,
     state: () => state,
     skipped,
+    start,
+    writeStartSnapshot() {
+      const store = options.startSnapshot;
+      if (store === undefined) throw new Error("The runtime has no store of the snapshot.");
+      // The mark is the last event of the log. Each write of the log goes through `append`, thus the state has each event up to it.
+      const head = log.head();
+      const last = [...log.entries({ after: head - 1, types: EVENT_TYPES, limit: 1 })][0];
+      const first = firstEventId(log);
+      if (last === undefined || last.seq !== head || first === undefined) throw new Error("The last event of the log has a type that this build does not know.");
+      const key = snapshotKey(config, { first, recoveries: log.counts().get("recovered") ?? 0 });
+      return store.write(key, { seq: head, id: last.event.id }, snapshotRows({ state, entries: entries.snapshot() }));
+    },
     async pass(stop) {
       if (closed !== undefined) throw new Error("The runtime is closed: its sources have no session.");
       const stepped = followStep();
@@ -552,6 +588,31 @@ export function openRuntime(options: RuntimeOptions): Runtime {
     channels: () => channels?.snapshots() ?? [],
     close,
   };
+}
+
+// The id of the first event of the log of a type that this build knows, or undefined for an empty log.
+function firstEventId(log: RuntimeLog): string | undefined {
+  return [...log.entries({ after: 0, types: EVENT_TYPES, limit: 1 })][0]?.event.id;
+}
+
+/** The snapshot of the start and its mark, or the fault of its read. With no snapshot, the open folds the whole log. */
+interface StartResume {
+  readonly snapshot?: StartSnapshot;
+  readonly mark?: FoldMark;
+  readonly fault?: string;
+}
+
+// The snapshot of a store for the open of a log (AL-105). A snapshot of another key, of another log or of a broken file is not used.
+function readStart(store: FoldSnapshot | undefined, log: RuntimeLog, config: ViewConfig, counts: ReadonlyMap<string, number>): StartResume {
+  if (store === undefined) return {};
+  const first = firstEventId(log);
+  if (first === undefined) return {};
+  try {
+    const key = snapshotKey(config, { first, recoveries: counts.get("recovered") ?? 0 });
+    return store.read(key, log, (mark, rows) => ({ mark, snapshot: readSnapshot(rows) })) ?? {};
+  } catch (error) {
+    return { fault: error instanceof Error ? error.name : typeof error };
+  }
 }
 
 /**

@@ -298,11 +298,20 @@ function foldEvent(state: RuntimeState, event: RuntimeEvent, context: FoldContex
  * This function gives the state of the events of a log, in their order. It equals a fold of each event, and `retired`
  * gets the same calls. The merge is a join of a semilattice, thus the function joins the parts only at a step of the
  * retirement and at the end.
+ *
+ * With `from`, the rebuild starts at that state: the state of the events before `events`, for example from the snapshot of
+ * a start (AL-105). The rebuild of the events after a prefix from the state of the prefix equals the rebuild of the whole log.
  */
-export function rebuild(events: Iterable<RuntimeEvent>, context: FoldContext, retired?: RetireHook): RuntimeState {
+export function rebuild(events: Iterable<RuntimeEvent>, context: FoldContext, retired?: RetireHook, from?: RuntimeState): RuntimeState {
   let state = EMPTY_RUNTIME;
   const own = collector();
   const imported = collector();
+  if (from !== undefined) {
+    // The collectors hold the parts of each side, and the state holds only the own tombstones, as in a rebuild from the first event.
+    own.push(from.own.merge);
+    imported.push(from.imported.merge);
+    state = withSides(from, { ...EMPTY_RUNTIME.own.merge, retired: from.own.merge.retired }, EMPTY_RUNTIME.imported.merge);
+  }
   const removed = (): void => retired?.({ reports: [...own.parts.reports, ...imported.parts.reports] });
   for (const event of events) {
     const at = stepTime(state, event, context);
@@ -337,6 +346,14 @@ export function rebuild(events: Iterable<RuntimeEvent>, context: FoldContext, re
   }
   // The live tombstones are in the state, because the collectors keep no tombstone.
   return withSides(state, normalize({ ...own.parts, retired: state.own.merge.retired }), normalize(imported.parts));
+}
+
+/**
+ * This function gives the state with the views of its two sides: `merge` and `escalationEnds` are the join of `own` and
+ * `imported`. The fold and the rebuild keep the views in this form. Thus a snapshot keeps only the sides (AL-105).
+ */
+export function withJoins(state: Omit<RuntimeState, "merge" | "escalationEnds">): RuntimeState {
+  return { ...state, ...joined(state.own, state.imported) };
 }
 
 // The state with the merge state of each side, and their join.
