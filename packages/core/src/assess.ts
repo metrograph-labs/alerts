@@ -32,7 +32,7 @@ import type {
   SubjectWatch,
   WatchedPlace,
 } from "./contracts.ts";
-import { ASSESSED_LEVELS, SUBJECT_SYSTEMS } from "./contracts.ts";
+import { ASSESSED_LEVELS, SUBJECT_SYSTEMS, SYSTEM_SOURCE } from "./contracts.ts";
 import { hasKind } from "./kind-prefix.ts";
 import type { MapShape } from "./map.ts";
 import { DEFAULT_ENTRY_MAX, DEFAULT_RELEVANCE_POLICY, canReach, relevance, topicEntry } from "./relevance.ts";
@@ -352,7 +352,8 @@ export function tableLevel(
 /**
  * This function gives the test of an incident of the sources of other copies (AL-76). The test is true when each report
  * of the incident comes from a source that is not in `sources`. Such an incident came from another copy only. A report
- * with no known source counts as a report of this copy. Without `sources`, the test is always false.
+ * with no known source counts as a report of this copy. A report of `SYSTEM_SOURCE` also counts as a report of this
+ * copy, because each copy makes its own system reports. Without `sources`, the test is always false.
  */
 export function foreignIncidents(
   reports: readonly { readonly id: string; readonly source: string }[],
@@ -363,7 +364,7 @@ export function foreignIncidents(
   return (incident) =>
     [incident.anchor, ...incident.reports].every((report) => {
       const source = sourceOf.get(report);
-      return source !== undefined && !sources.has(source);
+      return source !== undefined && source !== SYSTEM_SOURCE && !sources.has(source);
     });
 }
 

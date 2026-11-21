@@ -21,7 +21,7 @@ import type {
   Urgency,
   WatchedPlace,
 } from "./contracts.ts";
-import { ASSESSED_LEVELS } from "./contracts.ts";
+import { ASSESSED_LEVELS, SYSTEM_SOURCE } from "./contracts.ts";
 import {
   CONTEXT_KINDS,
   DEFAULT_ASSESS_POLICY,
@@ -266,6 +266,20 @@ describe("the reports of another copy (AL-76)", () => {
     // A report with no known source counts as a report of this copy.
     expect(foreignIncidents(reports.slice(0, 1), new Set(["source-1"]))(both)).toBe(false);
     expect(foreignIncidents(reports, undefined)(both)).toBe(false);
+  });
+
+  it("counts a system report as a report of this copy", () => {
+    const a = "a".repeat(64) as ReportId;
+    const b = "b".repeat(64) as ReportId;
+    // Each copy makes its own system reports, and no descriptor has the id of the system source.
+    const sources = new Set(["source-1"]);
+    expect(sources.has(SYSTEM_SOURCE)).toBe(false);
+    const system = [{ id: a, source: SYSTEM_SOURCE }] as const;
+    expect(foreignIncidents(system, sources)({ anchor: a, reports: [a] })).toBe(false);
+    // A system report and a report of another copy in one incident: the system report keeps it own.
+    const mixed = [...system, { id: b, source: "source-2" }] as const;
+    expect(foreignIncidents(mixed, sources)({ anchor: a, reports: [a, b] })).toBe(false);
+    expect(foreignIncidents(mixed, sources)({ anchor: b, reports: [b] })).toBe(true);
   });
 });
 
