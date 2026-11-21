@@ -204,6 +204,7 @@ function balanceFact({ balance, stages }: BalanceHealth, at: number): DeliveryFa
 
 function copyFact({ copy, stages, read }: CopyHealth, at: number): DeliveryFact | undefined {
   const parts: { readonly word: string; readonly text: string }[] = [];
+  if (stages.includes("unsteady")) parts.push({ word: "Not steady", text: "The copy starts again and again, and it sends no alert. This copy is the only copy that sends." });
   if (stages.includes("unread")) {
     const last = read === undefined ? "No read of the copy passed yet." : `The last read of the copy was ${ageText(at - read.at)} ago.`;
     parts.push({ word: "Not read", text: `${last} The two copies can both send an alert.` });
