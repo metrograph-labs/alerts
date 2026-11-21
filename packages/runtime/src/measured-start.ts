@@ -29,6 +29,7 @@ import { loadPriors } from "./priors.ts";
 import { openReadingStore, READINGS_FILE } from "./readings.ts";
 import { checkStart, privateFiles, readStartTexts } from "./reload.ts";
 import type { Pass } from "./runtime.ts";
+import { openStartSnapshot, START_SNAPSHOT_FILE, type OpenedStartSnapshot } from "./start-snapshot.ts";
 import { openTransitCache, TRANSIT_FILE } from "./transit.ts";
 
 /** The fake keys of a measure with no option `keys`: the token of the Pushover application and one Pushover user key. */
@@ -51,6 +52,11 @@ export interface MeasuredOptions {
    * Default: the wall clock of the platform. For a seeded log, give `wallClock({ start })` with the time of its last event.
    */
   readonly wall?: WallClock;
+  /**
+   * The start reads and writes the snapshot of the start in the home folder, as a live start does (AL-105). Default: false.
+   * Then the start folds the whole log, and it writes no snapshot.
+   */
+  readonly startSnapshot?: boolean;
 }
 
 /** A runtime of a measured start. */
@@ -101,6 +107,9 @@ export async function openMeasuredRuntime(home: string, options: MeasuredOptions
     const quotas = new SqliteHostStateStore(join(home, "quotas.sqlite"));
     const { log, recovered } = openCheckedRuntimeLog(join(home, "runtime.sqlite"), { now: () => wall.now() });
     if (recovered !== undefined) report(`The log file was broken. The new log kept ${String(recovered.added)} events and lost ${String(recovered.lost)}.`);
+    const snapshot: OpenedStartSnapshot = options.startSnapshot === true ? openStartSnapshot(join(home, START_SNAPSHOT_FILE)) : {};
+    if (snapshot.fault !== undefined) report(`The file ${START_SNAPSHOT_FILE} did not open (${snapshot.fault}).`);
+    if (recovered !== undefined) snapshot.store?.clear();
     const shapes = openShapeCache(join(home, SHAPES_FILE));
     const readings = openReadingStore(join(home, READINGS_FILE));
     const transit = openTransitCache(join(home, TRANSIT_FILE), (problem) => report(`The copy of the transit catalog is not used: ${problem}.`));
@@ -123,6 +132,8 @@ export async function openMeasuredRuntime(home: string, options: MeasuredOptions
       readings,
       transit,
       startGood: () => ready,
+      ...(snapshot.store === undefined ? {} : { startSnapshot: snapshot.store }),
+      onStartSnapshotFault: (error) => report(`A write of the snapshot of the start failed: ${error instanceof Error ? error.name : typeof error}.`),
       onError: (error, failures) => report(`A pass failed (${String(failures)} in sequence): ${error instanceof Error ? error.name : typeof error}.`),
     });
     // A live start reads the log and folds its state in openInstance. Its probe /readiness passes soon after this point.
@@ -144,6 +155,7 @@ export async function openMeasuredRuntime(home: string, options: MeasuredOptions
           await instance.transit?.close();
           quotas.close();
           readings.close();
+          snapshot.store?.close();
           log.close();
         } finally {
           await held.lock.release();

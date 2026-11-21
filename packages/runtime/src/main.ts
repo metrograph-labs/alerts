@@ -74,6 +74,7 @@ import { GOOD_FILE, privateFiles, readStartTexts, reloadHook, startConfig, type 
 import { shapeReport, zoneCodesText } from "./shapes.ts";
 import { openTransitCache, TRANSIT_FILE, transitReport, transitText } from "./transit.ts";
 import { hostFolder, signalWarning } from "./host.ts";
+import { openStartSnapshot, START_SNAPSHOT_FILE, startReadText } from "./start-snapshot.ts";
 import { addStartTime, startTimesPath, type StartTime } from "./start-times.ts";
 import { supervisor } from "./supervise.ts";
 
@@ -243,6 +244,11 @@ async function runtime(): Promise<ServiceBuilder> {
   // A broken log file goes into quarantine. The new file gets each event that the salvage reads, and a system report tells the loss.
   const { log, recovered } = openCheckedRuntimeLog(join(home, "runtime.sqlite"), { now: () => wall.now() });
   if (recovered !== undefined) console.error(`The log file was broken. It is in the quarantine folder ${recovered.quarantine}. The new log kept ${String(recovered.added)} events and lost ${String(recovered.lost)}.`);
+  // The snapshot of the start (AL-105). A salvaged log has a new key, and the clear frees the rows of the old log.
+  const snapshot = openStartSnapshot(join(home, START_SNAPSHOT_FILE));
+  if (snapshot.quarantined !== undefined) console.error(`The file ${START_SNAPSHOT_FILE} was broken. It is in quarantine, and the start folds the whole log.`);
+  if (snapshot.fault !== undefined) console.error(`The file ${START_SNAPSHOT_FILE} did not open (${snapshot.fault}). Each start folds the whole log.`);
+  if (recovered !== undefined) snapshot.store?.clear();
   // A broken file of shapes goes into quarantine, and the store starts empty. Then the outlines come again from the NWS API.
   const shapes = openShapeCache(join(home, SHAPES_FILE));
   if (shapes.quarantined !== undefined) console.error(`The file ${SHAPES_FILE} was broken. It is in quarantine, and the store of shapes starts empty.`);
@@ -290,6 +296,9 @@ async function runtime(): Promise<ServiceBuilder> {
     readings,
     // The kind of the error only: its message can quote a value of a reading.
     onReadingsFault: (error, action) => console.error(`The store of readings failed (${action}): ${error instanceof Error ? error.name : typeof error}.`),
+    ...(snapshot.store === undefined ? {} : { startSnapshot: snapshot.store }),
+    // The kind of the error only, as for the readings.
+    onStartSnapshotFault: (error) => console.error(`A write of the snapshot of the start failed: ${error instanceof Error ? error.name : typeof error}.`),
     // The store of shapes and the keeper of the transit catalog start their work at a pass after the good start (AL-75).
     startGood: () => marked,
     onShapes: (outcome) => {
@@ -311,6 +320,7 @@ async function runtime(): Promise<ServiceBuilder> {
   });
   if (instance.zones !== undefined) console.log(zoneCodesText(instance.zones));
   if (instance.transit !== undefined) console.log(transitText(instance.transit.chosen, instance.transit.copied));
+  console.log(startReadText(instance.runtime.start));
   if (instance.runtime.skipped > 0) {
     console.error(`The log has ${String(instance.runtime.skipped)} events of types that this build does not know. A later build wrote them. The runtime skips them.`);
   }
@@ -339,6 +349,7 @@ async function runtime(): Promise<ServiceBuilder> {
     ...(instance.transit === undefined ? {} : { transit: instance.transit }),
     quotas,
     readings,
+    ...(snapshot.store === undefined ? {} : { startSnapshot: snapshot.store }),
     sources: instance.runtime,
     map: instance.map,
     health: instance.health,

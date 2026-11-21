@@ -29,9 +29,9 @@ export interface RuntimeLog {
   /**
    * This function gives the events of the log, in their order. It gives only the types of `EVENT_TYPES`, or the types
    * `types` when the call gives them. A later build can add a type, and this build then skips its events. Thus a rollback
-   * to this build starts on the log of a later build.
+   * to this build starts on the log of a later build. With `after`, it gives only the events after that position.
    */
-  read(types?: readonly RuntimeEvent["type"][]): Iterable<RuntimeEvent>;
+  read(types?: readonly RuntimeEvent["type"][], after?: number): Iterable<RuntimeEvent>;
   /** This function gives the count of the events of the log. */
   count(): number;
   /** This function gives the count of the events of each type, also of the types that this build does not know. It parses no event. */
@@ -42,6 +42,8 @@ export interface RuntimeLog {
   head(): number;
   /** This function tells if the log has an event with an id. */
   has(id: string): boolean;
+  /** This function gives the event with an id and its position, or undefined when the log has no event with the id. */
+  get(id: string): RuntimeLogEntry | undefined;
   /**
    * This function appends events in one transaction. `accept` gets each new event before the write,
    * in order. An event with an id that the log has changes nothing, and `accept` does not get it.
@@ -144,12 +146,13 @@ function fileOptions(options: RuntimeLogOptions): { readonly makeFolder: true; r
 function runtimeLog(log: EventLogFile<RuntimeEvent>): RuntimeLog {
   return {
     // The filter is on the type of the row, thus the parse does not get a type that this build does not know.
-    read: (types = EVENT_TYPES) => log.read({ types }),
+    read: (types = EVENT_TYPES, after) => log.read({ types, after }),
     count: () => log.count(),
     counts: () => log.counts(),
     entries: (options) => log.entries(options),
     head: () => log.head(),
     has: (id) => log.get(id) !== undefined,
+    get: (id) => log.get(id),
     appendAll(events, accept) {
       let results;
       try {

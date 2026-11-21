@@ -4,11 +4,13 @@ import { join } from "node:path";
 import { fakeWallClock, type WallClock } from "@mark1russell7/algebra/clock";
 import { reportId, type ChannelId, type ChannelProcedures, type ChannelQuota, type Expectation, type FetchOutcome, type FetchSignal, type Observation, type ObservationId, type PlaceId, type Report, type SourceDescriptor, type SourceId, type SourceProcedures, type Watch, type WatchedPlace } from "@mark1russell7/alerts";
 import { random, seedsFrom } from "@mark1russell7/rigor-generators";
+import { openFoldSnapshot, type FoldSnapshot } from "@mark1russell7/sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import { balanceWatch, type BalanceReading } from "./balance.ts";
-import type { RuntimeEvent } from "./events.ts";
+import { FOLD_TYPES, type RuntimeEvent } from "./events.ts";
 import { openRuntimeLog, type RuntimeLog } from "./log.ts";
 import { openRuntime, type Pass, type RuntimeOptions } from "./runtime.ts";
+import type { StartRead } from "./start-snapshot.ts";
 import { rebuild, type RuntimeState } from "./state.ts";
 import type { ViewConfig } from "./view.ts";
 
@@ -150,8 +152,9 @@ function crashing(inner: RuntimeLog, at: number): RuntimeLog {
   let accepted = 0;
   let gone = false;
   return {
-    read: (types) => inner.read(types),
+    read: (types, after) => inner.read(types, after),
     has: (id) => inner.has(id),
+    get: (id) => inner.get(id),
     entries: (options) => inner.entries(options),
     count: () => inner.count(),
     counts: () => inner.counts(),
@@ -177,19 +180,28 @@ interface WorldRun {
   readonly events: readonly RuntimeEvent[];
   readonly passes: readonly Pass[];
   readonly restarts: number;
+  /** The read of the log at each open of a runtime. */
+  readonly starts: readonly StartRead[];
 }
 
-/** This function runs a world for two hours. With `cutAt`, the process stops at that event, and a new runtime opens the file again. */
-async function runWorld(seed: number, path: string, cutAt?: number): Promise<WorldRun> {
+// The count of the passes between two writes of the snapshot of the start in a world with a store of the snapshot.
+const SNAPSHOT_PASSES = 10;
+
+/**
+ * This function runs a world for two hours. With `cutAt`, the process stops at that event, and a new runtime opens the file again.
+ * With `snapshot`, each runtime reads the snapshot of the start at its open, and it writes it after each `SNAPSHOT_PASSES` passes.
+ */
+async function runWorld(seed: number, path: string, cutAt?: number, snapshot?: FoldSnapshot): Promise<WorldRun> {
   const warnings = warningsOf(seed);
   const clock = fakeWallClock(T0);
   const sources = [worldSource(API, MINUTE, seed, warnings, clock), worldSource(WEA, 2 * MINUTE, seed, warnings, clock, 20 * MINUTE)];
-  const options = (log: RuntimeLog, run: string): RuntimeOptions => ({ log, clock, sources, watch: () => ({ places: [KANSAS], kinds: ["met"] }), view: VIEW, run });
+  const options = (log: RuntimeLog, run: string): RuntimeOptions => ({ log, clock, sources, watch: () => ({ places: [KANSAS], kinds: ["met"] }), view: VIEW, run, ...(snapshot === undefined ? {} : { startSnapshot: snapshot }) });
   const end = T0 + 120 * MINUTE;
   let log = openRuntimeLog(path);
   let runtime = openRuntime(options(cutAt === undefined ? log : crashing(log, cutAt), "run-0"));
   let restarts = 0;
   const passes: Pass[] = [];
+  const starts: StartRead[] = [runtime.start];
   while (clock.now() < end) {
     let pass: Pass;
     try {
@@ -201,14 +213,16 @@ async function runWorld(seed: number, path: string, cutAt?: number): Promise<Wor
       log = openRuntimeLog(path);
       restarts += 1;
       runtime = openRuntime(options(log, `run-${restarts}`));
+      starts.push(runtime.start);
       continue;
     }
     passes.push(pass);
+    if (snapshot !== undefined && passes.length % SNAPSHOT_PASSES === 0) runtime.writeStartSnapshot();
     await clock.advance(Math.max(1, Math.min(pass.wakeAt ?? end, end) - clock.now()));
   }
   const events = [...log.read()];
   log.close();
-  return { state: runtime.state(), config: runtime.config, events, passes, restarts };
+  return { state: runtime.state(), config: runtime.config, events, passes, restarts, starts };
 }
 
 describe("a restart of the runtime", () => {
@@ -243,6 +257,73 @@ describe("a restart of the runtime", () => {
     expect(carried).toBeGreaterThan(0);
     expect(systemReports).toBeGreaterThan(0);
   }, 120_000);
+});
+
+describe("a restart from the snapshot of the start (AL-105)", () => {
+  it("reads the snapshot, folds only the events after it, and gives the state of a run with no cut", async () => {
+    for (const seed of SEEDS) {
+      const label = `seed ${seed} (SEED=${seed} repeats it)`;
+      const place = folder();
+      const whole = await runWorld(seed, join(place, "whole.sqlite"));
+      // A cut in the second half of the log: the first runtime wrote some snapshots before it.
+      const cutAt = random(seed).fork("snapshot cut").int(Math.floor(whole.events.length / 2), whole.events.length - 1);
+      const store = openFoldSnapshot(join(place, "snapshot.sqlite"));
+      try {
+        const cut = await runWorld(seed, join(place, "cut.sqlite"), cutAt, store);
+        expect(cut.restarts, label).toBe(1);
+        // The first start had no snapshot. The restart read one, and it folded only a part of the log.
+        expect(cut.starts[0], label).toEqual({ events: 0 });
+        const restart = cut.starts[1];
+        expect(restart?.snapshot, label).toBeDefined();
+        expect(restart?.fault, label).toBeUndefined();
+        expect(restart?.events ?? Infinity, label).toBeLessThan(cutAt);
+        expect(cut.state, `${label}, cut at the event ${cutAt}`).toEqual(whole.state);
+        expect(rebuild(cut.events, cut.config), label).toEqual(cut.state);
+      } finally {
+        store.close();
+      }
+    }
+  }, 120_000);
+
+  it("folds the whole log when the snapshot has another key, and writes no snapshot with no store", async () => {
+    const place = folder();
+    const path = join(place, "runtime.sqlite");
+    const store = openFoldSnapshot(join(place, "snapshot.sqlite"));
+    const clock = fakeWallClock(T0);
+    const options = (log: RuntimeLog, extra: Partial<RuntimeOptions> = {}, withStore = true): RuntimeOptions => ({ log, clock, sources: [], watch: () => ({ places: [KANSAS], kinds: ["met"] }), view: VIEW, run: "run-0", ...(withStore ? { startSnapshot: store } : {}), ...extra });
+    // The count of the events of the fold in the log.
+    const folded = (log: RuntimeLog): number => [...log.read(FOLD_TYPES)].length;
+    try {
+      let log = openRuntimeLog(path);
+      const first = openRuntime(options(log));
+      await first.pass();
+      await clock.advance(MINUTE);
+      await first.pass();
+      expect(first.writeStartSnapshot()).toBeGreaterThan(0);
+      const state = first.state();
+      log.close();
+
+      log = openRuntimeLog(path);
+      const head = log.head();
+      // The same configuration: the start reads the snapshot at the last event, and it folds no event. Each open adds its start event.
+      const same = openRuntime(options(log));
+      expect(same.start).toEqual({ events: 0, snapshot: { seq: head, id: expect.any(String) } });
+      expect(rebuild(log.read(FOLD_TYPES), same.config)).toEqual(same.state());
+      expect(rebuild(log.read(FOLD_TYPES, head), same.config, undefined, state)).toEqual(same.state());
+      // A different retention gives a different key: the start folds the whole log.
+      let count = folded(log);
+      const other = openRuntime(options(log, { retention: { horizon: 24 * 60 * MINUTE } }));
+      expect(other.start).toEqual({ events: count });
+      // No store: the start folds the whole log, and a write throws.
+      count = folded(log);
+      const none = openRuntime(options(log, {}, false));
+      expect(none.start).toEqual({ events: count });
+      expect(() => none.writeStartSnapshot()).toThrow("no store");
+      log.close();
+    } finally {
+      store.close();
+    }
+  });
 });
 
 describe("one pass of the runtime", () => {
