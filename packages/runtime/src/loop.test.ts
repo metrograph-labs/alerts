@@ -39,7 +39,7 @@ async function start(script: Script, times = TIMES) {
     },
   });
   const signal = new AbortController().signal;
-  await loop.worker.start(signal, detachedLifecycle());
+  await loop.worker.start(signal, detachedLifecycle(clock));
   const stop = async (): Promise<void> => {
     await loop.worker.stopIntake();
     await loop.worker.drain(clock.now() + times.passLimit, signal);

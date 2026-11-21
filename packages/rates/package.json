@@ -18,7 +18,7 @@
     "@mark1russell7/optional": "^1.3.0",
     "@mark1russell7/rigor-statistics": "^0.2.8",
     "@mark1russell7/text": "^0.0.17",
-    "@procedures/json": "^0.64.0"
+    "@procedures/json": "^0.68.0"
   },
   "devDependencies": {
     "@mark1russell7/alerts-fetch": "workspace:*",

@@ -10,6 +10,7 @@
 
 import { observationId, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch } from "@mark1russell7/alerts";
 import { createRequester } from "@mark1russell7/alerts-fetch";
+import { isRecord, type Fields } from "@mark1russell7/optional/read";
 import type { Condition, Pace, Reply, Transport } from "polite-crawler/api";
 
 import { dueEnd, ENTRY_FIELDS, HEAD_FIELDS, isKevEntry, SOURCE_ID } from "./map.ts";
@@ -43,10 +44,6 @@ export interface KevFetchOptions {
 export interface KevFetchInput {
   readonly watch: Watch;
 }
-
-type Fields = Readonly<Record<string, unknown>>;
-
-const isFields = (value: unknown): value is Fields => typeof value === "object" && value !== null && !Array.isArray(value);
 
 /** This function gives the JSON text of the fields of `fields` that `order` names, in that order. */
 function bodyOf(value: Fields, order: readonly string[]): string {
@@ -91,16 +88,16 @@ export function readCatalog(body: string, fetched: Instant): Catalog | undefined
   } catch {
     return undefined;
   }
-  const entries = isFields(parsed) && Array.isArray(parsed["vulnerabilities"]) ? (parsed["vulnerabilities"] as unknown[]) : undefined;
-  if (!isFields(parsed) || entries === undefined || typeof parsed["catalogVersion"] !== "string") return { head: body, listed: [], complete: false };
+  const entries = isRecord(parsed) && Array.isArray(parsed["vulnerabilities"]) ? (parsed["vulnerabilities"] as unknown[]) : undefined;
+  if (!isRecord(parsed) || entries === undefined || typeof parsed["catalogVersion"] !== "string") return { head: body, listed: [], complete: false };
   const listed: Listed[] = [];
   let valid = 0;
   for (const entry of entries) {
-    if (isFields(entry) && isKevEntry(entry)) {
+    if (isRecord(entry) && isKevEntry(entry)) {
       valid += 1;
       const until = dueEnd(entry["dueDate"])!;
       if (until > fetched) listed.push({ body: entryBody(entry), until });
-    } else listed.push({ body: isFields(entry) ? entryBody(entry) : JSON.stringify(entry) });
+    } else listed.push({ body: isRecord(entry) ? entryBody(entry) : JSON.stringify(entry) });
   }
   const released = typeof parsed["dateReleased"] === "string" ? Date.parse(parsed["dateReleased"]) : Number.NaN;
   const complete = valid === entries.length && parsed["count"] === entries.length && Number.isFinite(released);
@@ -177,7 +174,7 @@ export function createKevFetch(options: KevFetchOptions): (input: KevFetchInput,
 export function releasedOf(head: string): Instant | undefined {
   try {
     const fields: unknown = JSON.parse(head);
-    if (!isFields(fields) || typeof fields["dateReleased"] !== "string") return undefined;
+    if (!isRecord(fields) || typeof fields["dateReleased"] !== "string") return undefined;
     const time = Date.parse(fields["dateReleased"]);
     return Number.isFinite(time) ? time : undefined;
   } catch {

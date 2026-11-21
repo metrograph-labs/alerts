@@ -32,6 +32,11 @@ export interface EntriesOutput {
   readonly time: Instant;
   /** The hash of the configuration of the copy. */
   readonly configHash: string;
+  /**
+   * The last start of each drill of the copy, by the id of the drill (AL-43). The watch of each other copy reads them. A
+   * copy of an older build gives none.
+   */
+  readonly drills?: Readonly<Record<string, Instant>>;
 }
 
 /** The output of the procedure `alerts.log.entries` after its checks on the side of the reader. */
@@ -39,6 +44,8 @@ export interface ReceivedEntries {
   readonly page: ReceivedPage;
   readonly time: Instant;
   readonly configHash: string;
+  /** The starts of the drills of the answer. An answer with no starts, or with starts that are not valid, gives none. */
+  readonly drills?: Readonly<Record<string, Instant>>;
 }
 
 /** The parts of a runtime that serve the procedure `alerts.log.entries`. */
@@ -48,6 +55,8 @@ export interface EntriesSource {
   readonly clock: WallClock;
   /** The hash of the configuration of the runtime. */
   readonly configHash: string;
+  /** This function gives the last start of each drill of the runtime. Without it, the answer gives no starts. */
+  readonly drills?: () => Readonly<Record<string, Instant>>;
 }
 
 /** The longest hash of a configuration that a reader accepts. */
@@ -63,20 +72,33 @@ export function serveEntries(source: EntriesSource, input: EntriesInput): Entrie
   if (!(Number.isSafeInteger(after) && after >= 0)) throw new Error("The position after is not a whole number of 0 or more.");
   if (limit !== undefined && !(Number.isSafeInteger(limit) && limit >= 1 && limit <= EXCHANGE_PAGE)) throw new Error(`The limit is not a whole number from 1 to ${EXCHANGE_PAGE}.`);
   const page = source.runtime.share(after, limit);
-  return { page, time: source.clock.now(), configHash: source.configHash };
+  return { page, time: source.clock.now(), configHash: source.configHash, ...(source.drills === undefined ? {} : { drills: source.drills() }) };
 }
 
 /** This function checks the output of the procedure `alerts.log.entries` on the side of the reader. A problem holds no value. */
 export function parseEntries(value: unknown): Result<ReceivedEntries, readonly string[]> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return err(["The answer is not an object."]);
-  const { page, time, configHash } = value as Readonly<Record<string, unknown>>;
+  const { page, time, configHash, drills } = value as Readonly<Record<string, unknown>>;
   const problems: string[] = [];
   if (!(typeof time === "number" && Number.isFinite(time))) problems.push("The time of the answer is not a finite number.");
   if (!(typeof configHash === "string" && configHash.length > 0 && configHash.length <= HASH_LENGTH)) problems.push(`The hash of the configuration is not a text of 1 to ${HASH_LENGTH} characters.`);
   const parsed = parsePage(page);
   if (parsed.tag === "err") problems.push(...parsed.error);
   if (problems.length > 0 || parsed.tag === "err") return err(problems);
-  return ok({ page: parsed.value, time: time as Instant, configHash: configHash as string });
+  const starts = drillStarts(drills);
+  return ok({ page: parsed.value, time: time as Instant, configHash: configHash as string, ...(starts === undefined ? {} : { drills: starts }) });
+}
+
+// The longest id of a drill, as the schema of the configuration has it.
+const DRILL_ID_LENGTH = 32;
+
+// The starts of the drills of an answer. A field that is not valid gives none, and the read still passes: the watch of the
+// drills then tells that it has no read (AL-43). The pages of the log stay the test of the exchange.
+function drillStarts(value: unknown): Readonly<Record<string, Instant>> | undefined {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined;
+  const entries = Object.entries(value as Readonly<Record<string, unknown>>);
+  const valid = entries.every(([id, at]) => id.length > 0 && id.length <= DRILL_ID_LENGTH && typeof at === "number" && Number.isFinite(at));
+  return valid ? (Object.fromEntries(entries) as Readonly<Record<string, Instant>>) : undefined;
 }
 
 /**
@@ -164,6 +186,8 @@ export function exchangeWorker(options: ExchangeWorkerOptions): ExchangeWorker {
 
   let since: Instant = clock.now();
   const reads = new Map<string, CopyRead>();
+  // The starts of the drills of the last read that passed, by the id of the copy. They are on the clock of that copy.
+  const starts = new Map<string, Readonly<Record<string, Instant>>>();
   const failures = new Map<string, string>();
   // Each shift moves the times into a new frame. A read with a shift during its call has times of two frames.
   let frames = 0;
@@ -178,9 +202,11 @@ export function exchangeWorker(options: ExchangeWorkerOptions): ExchangeWorker {
   const watches = (): CopyWatch[] =>
     peers.map((peer) => {
       const read = reads.get(peer.id);
-      return { copy: peer.id, skewLimit, maxAge, since, ...(read === undefined ? {} : { read }) };
+      const drills = starts.get(peer.id);
+      return { copy: peer.id, skewLimit, maxAge, since, ...(read === undefined ? {} : { read }), ...(drills === undefined ? {} : { drills }) };
     });
-  const stagesAt = (at: Instant): string => JSON.stringify(watches().map((watch) => copyStages(watch, at)));
+  // A new start of a drill of a copy changes the watch of the drills, thus it is a change of the round.
+  const stagesAt = (at: Instant): string => JSON.stringify(watches().map((watch) => [copyStages(watch, at), watch.drills ?? null]));
 
   const call = async (peer: CopyPeer, after: number, stop: AbortSignal | undefined): Promise<Answer | undefined> => {
     if (stop?.aborted === true) return undefined;
@@ -250,6 +276,8 @@ export function exchangeWorker(options: ExchangeWorkerOptions): ExchangeWorker {
       if (frames === frame) {
         const at = Math.round(started + (ended - started) / 2);
         reads.set(peer.id, { at, skew: entries.time - at, sameConfig: entries.configHash === configHash });
+        if (entries.drills === undefined) starts.delete(peer.id);
+        else starts.set(peer.id, entries.drills);
       }
       if (take.next >= entries.page.head || take.next === after) return result(false);
     }

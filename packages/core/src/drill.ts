@@ -7,7 +7,7 @@
  * into one run. Thus the order of the runs has no effect.
  */
 import { inWindow, nextBoundary, windowProblems, type TimeWindow } from "@mark1russell7/algebra/clock";
-import type { ChannelDescriptor, ChannelId, Duration, Instant, PersonId, QuietWindow } from "./contracts.ts";
+import type { ChannelDescriptor, ChannelId, CopyWatch, Duration, Instant, PersonId, QuietWindow } from "./contracts.ts";
 import { inQuietWindow } from "./escalation.ts";
 
 /**
@@ -148,6 +148,111 @@ export function missedDrillAt(drill: DrillConfig, runs: readonly DrillRun[], at:
   if (last === undefined) return undefined;
   const expected = nextDrillAt(drill, [last], last.at, quiet);
   return expected !== undefined && expected < at && !drillDue(drill, runs, at, quiet) ? expected : undefined;
+}
+
+/**
+ * One drill that another copy starts, in the watch of this copy. A copy that stops for the full window of a start reports
+ * nothing in that time. Thus each other copy watches the starts of that copy, and it tells of a start that did not come.
+ */
+export interface DrillWatch {
+  readonly drill: DrillConfig;
+  /** The quiet window of the person of the drill. */
+  readonly quiet?: QuietWindow;
+  /**
+   * The copy that starts the drill: an id of the list `copies` of the drill. Without it, the copy of rank 0 starts the
+   * drill, and each other copy can be that copy.
+   */
+  readonly copy?: string;
+}
+
+/**
+ * The time after the end of the window of a start before the watch tells of a miss: 15 minutes. In this time, the
+ * exchange brings a late start of the other copy. A read of the exchange comes each few seconds.
+ */
+export const DRILL_WATCH_GRACE: Duration = 15 * 60_000;
+
+/** A start of a drill that the watch did not see (`watchedDrillMiss`). */
+export interface DrillWatchMiss {
+  /** The start that the watch did not see. */
+  readonly due: Instant;
+  /** The end of the window of that start. */
+  readonly end: Instant;
+  /**
+   * The reason of the miss.
+   *
+   * - `unseen`: no read gives a start at `due` or later. The copy did not answer after the end of the window, or it did not start the drill.
+   * - `no-read`: the copy answers after the end of the window, but its answers give no starts of drills. A copy of an older build gives none.
+   */
+  readonly why: "unseen" | "no-read";
+  /** The last start of the drill in the reads. */
+  readonly last?: Instant;
+  /** The time of the last read that passed. */
+  readonly read?: Instant;
+}
+
+// The state of one watch: the start that it waits for, the end of the window of that start, and the reads of the copies.
+interface WatchState {
+  readonly due: Instant;
+  readonly end: Instant;
+  readonly last?: Instant;
+  readonly scope: readonly CopyWatch[];
+}
+
+// The due start of a watch is the next start after the last start in the reads. With no start in the reads, the count
+// starts at the start of the watch. An open line keeps its start until a read gives a start at that time or later.
+function watchState(watch: DrillWatch, copies: readonly CopyWatch[], held: Instant | undefined): WatchState | undefined {
+  const { drill, quiet } = watch;
+  const scope = copies.filter((entry) => watch.copy === undefined || entry.copy === watch.copy);
+  if (scope.length === 0) return undefined;
+  let last: Instant | undefined;
+  for (const entry of scope) {
+    const start = entry.drills?.[drill.id];
+    if (start !== undefined && Number.isFinite(start) && (last === undefined || start > last)) last = start;
+  }
+  const since = Math.min(...scope.map((entry) => entry.since));
+  const due =
+    held !== undefined && (last === undefined || last < held)
+      ? held
+      : last === undefined
+        ? nextDrillAt(drill, [], since, quiet)
+        : nextDrillAt(drill, [{ drill: drill.id, at: last }], last, quiet);
+  if (due === undefined || (last !== undefined && last >= due)) return undefined;
+  // A late start in the window of the due start is not a miss. A window with no end gives the due start as its end.
+  const end = nextBoundary(due, drill.window)?.at ?? due;
+  return { due, end, ...(last === undefined ? {} : { last }), scope };
+}
+
+/**
+ * This function gives the time when the watch tells of a miss: the end of the window of the due start, plus `grace`. It
+ * gives `undefined` when the watch waits for no start. A timer can wait for the time.
+ */
+export function watchedDrillReportAt(watch: DrillWatch, copies: readonly CopyWatch[], held?: Instant, grace: Duration = DRILL_WATCH_GRACE): Instant | undefined {
+  const state = watchState(watch, copies, held);
+  return state === undefined ? undefined : state.end + grace;
+}
+
+/**
+ * This function gives the start of a drill of another copy that this copy did not see at the time `at`, or `undefined`.
+ * The function reads no clock.
+ *
+ * - The watch reads the copies of `copies` that can start the drill. Each read that passed gives the last start of each
+ *   drill of its copy.
+ * - The due start is the next start after the last start in the reads (`nextDrillAt`). With no start in the reads, the
+ *   count starts at the start of the watch.
+ * - The start `held` of an open line stays the due start until a read gives a start at that time or later. Thus a
+ *   restart of this copy does not end the line.
+ * - The miss is a fact at the end of the window of the due start, plus `grace`. A start at the due time or later ends it.
+ * - A copy that answers with no starts of drills gives the reason `no-read`, not a pass. Thus a watch that cannot read tells it.
+ */
+export function watchedDrillMiss(watch: DrillWatch, copies: readonly CopyWatch[], at: Instant, held?: Instant, grace: Duration = DRILL_WATCH_GRACE): DrillWatchMiss | undefined {
+  const state = watchState(watch, copies, held);
+  if (state === undefined || at < state.end + grace) return undefined;
+  const { due, end, last, scope } = state;
+  const answered = scope.filter((entry) => entry.read !== undefined && entry.read.at >= end);
+  const why = answered.length > 0 && answered.every((entry) => entry.drills === undefined) ? "no-read" : "unseen";
+  const reads = scope.flatMap((entry) => (entry.read === undefined ? [] : [entry.read.at]));
+  const read = reads.length === 0 ? undefined : Math.max(...reads);
+  return { due, end, why, ...(last === undefined ? {} : { last }), ...(read === undefined ? {} : { read }) };
 }
 
 /**

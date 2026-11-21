@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { random, seedsFrom } from "@mark1russell7/rigor-generators";
 import { describe, expect, it } from "vitest";
 import {
+  addMissedStart,
   addStartTime,
   BOOTSTRAP_WINDOW_MS,
   hostFileText,
@@ -11,6 +12,7 @@ import {
   parseStartTimes,
   readyWindow,
   readyWindowText,
+  READY_GROWTH_FACTOR,
   START_TIMES_FORMAT,
   START_TIMES_KEPT,
   type StartTime,
@@ -55,17 +57,48 @@ describe("the file of the start times", () => {
   });
 });
 
+describe("the missed starts", () => {
+  const good = [44_000, 40_000, 52_000, 41_000, 47_000].map((ms, index) => start(ms, index));
+  const missed = (ms: number, index: number): StartTime => ({ ...start(ms, index), missed: true });
+
+  it("keeps a missed start in the file, and refuses a missed flag that is not true", () => {
+    const text = addMissedStart(fileOf(good), "2026-11-18T22:00:00.000Z", 64_000);
+    expect(parseStartTimes(text).at(-1)).toEqual({ at: "2026-11-18T22:00:00.000Z", ms: 64_000, missed: true });
+    const wrong = JSON.stringify({ format: START_TIMES_FORMAT, starts: [{ ...start(1000), missed: false }] });
+    expect(parseStartTimes(wrong)).toEqual([]);
+  });
+
+  it("makes the window longer than the last missed window, and does not count a missed start as a measured start", () => {
+    // The measured window is 64 s. Two starts missed it, the second in a window of 128 s.
+    const window = readyWindow([...good, missed(64_000, 5), missed(128_000, 6)], FLOOR);
+    expect(window).toEqual({ ms: 128_000 * READY_GROWTH_FACTOR, starts: MEASURED_STARTS, measured: true, missed: 2 });
+    expect(readyWindow([missed(BOOTSTRAP_WINDOW_MS, 0)], FLOOR)).toEqual({ ms: BOOTSTRAP_WINDOW_MS * READY_GROWTH_FACTOR, starts: 0, measured: false, missed: 1 });
+    expect(readyWindow([...good, missed(400_000, 5)], FLOOR).ms).toBe(WINDOW_CAP_MS);
+  });
+
+  it("forgets the missed starts before a good start, as the supervisor does at a ready start", () => {
+    const window = readyWindow([missed(64_000, 0), missed(128_000, 1), ...good.map((each, index) => start(each.ms, index + 2))], FLOOR);
+    expect(window).toEqual({ ms: 64_000, starts: MEASURED_STARTS, measured: true, missed: 0 });
+  });
+
+  it("tells the missed starts in the line of the window", () => {
+    expect(readyWindowText({ ms: 256_000, starts: 5, measured: true, missed: 2 })).toBe(
+      "The ready window of the runtime is 256 s, from 5 measured starts. 2 starts after the last good start were not ready in their window.",
+    );
+  });
+});
+
 describe("readyWindow", () => {
   it("gives the bootstrap window before the host has its measured starts", () => {
     const few = [start(40_000), start(41_000, 1)];
-    expect(readyWindow([], FLOOR)).toEqual({ ms: BOOTSTRAP_WINDOW_MS, starts: 0, measured: false });
-    expect(readyWindow(few, FLOOR)).toEqual({ ms: BOOTSTRAP_WINDOW_MS, starts: 2, measured: false });
+    expect(readyWindow([], FLOOR)).toEqual({ ms: BOOTSTRAP_WINDOW_MS, starts: 0, measured: false, missed: 0 });
+    expect(readyWindow(few, FLOOR)).toEqual({ ms: BOOTSTRAP_WINDOW_MS, starts: 2, measured: false, missed: 0 });
     expect(BOOTSTRAP_WINDOW_MS).toBeGreaterThan(3 * FLOOR);
   });
 
   it("gives the worst start plus the spread of the starts", () => {
     const starts = [44_000, 40_000, 52_000, 41_000, 47_000].map((ms, index) => start(ms, index));
-    expect(readyWindow(starts, FLOOR)).toEqual({ ms: 64_000, starts: MEASURED_STARTS, measured: true });
+    expect(readyWindow(starts, FLOOR)).toEqual({ ms: 64_000, starts: MEASURED_STARTS, measured: true, missed: 0 });
   });
 
   it("keeps the floor for a fast host, and the cap for a very slow host", () => {
@@ -91,8 +124,8 @@ describe("readyWindow", () => {
   });
 
   it("tells the window in one line", () => {
-    expect(readyWindowText({ ms: 64_000, starts: 5, measured: true })).toBe("The ready window of the runtime is 64 s, from 5 measured starts.");
-    expect(readyWindowText({ ms: BOOTSTRAP_WINDOW_MS, starts: 2, measured: false })).toBe(
+    expect(readyWindowText({ ms: 64_000, starts: 5, measured: true, missed: 0 })).toBe("The ready window of the runtime is 64 s, from 5 measured starts.");
+    expect(readyWindowText({ ms: BOOTSTRAP_WINDOW_MS, starts: 2, measured: false, missed: 0 })).toBe(
       `The ready window of the runtime is ${String(BOOTSTRAP_WINDOW_MS / 1000)} s. The host has 2 of the ${String(MEASURED_STARTS)} measured starts that the window needs.`,
     );
   });

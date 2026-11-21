@@ -8,6 +8,7 @@
  */
 
 import { categoryOf, kindLabel, Problems, reportId, type Instant, type MapResult, type Observation, type Report, type Severity, type SourceId } from "@mark1russell7/alerts";
+import { isRecord, textOf, type Fields } from "@mark1russell7/optional/read";
 import { errorMessage } from "@mark1russell7/text";
 
 /** The id of this source. */
@@ -61,10 +62,6 @@ export const HEAD_FIELDS = ["title", "catalogVersion", "dateReleased", "count"] 
 
 /** The length of one day, in milliseconds. */
 const DAY_MS = 86_400_000;
-
-type Fields = Readonly<Record<string, unknown>>;
-
-const isFields = (value: unknown): value is Fields => typeof value === "object" && value !== null && !Array.isArray(value);
 
 /** This function tells if a value is a CVE id: `CVE-`, a year of 4 digits, `-` and 4 or more digits. */
 export function isCveId(value: unknown): value is string {
@@ -126,9 +123,9 @@ function mapOrThrow(observation: Observation): MapResult {
   } catch {
     return { reports: [], problems: [{ path: "", message: "the body is not JSON", fatal: true }] };
   }
-  if (isFields(fields) && isHead(fields)) return { reports: [], problems: [] };
+  if (isRecord(fields) && isHead(fields)) return { reports: [], problems: [] };
   // The fetch gives the whole answer as one observation when the answer is not the catalog.
-  if (!isFields(fields) || !Object.hasOwn(fields, "cveID")) {
+  if (!isRecord(fields) || !Object.hasOwn(fields, "cveID")) {
     return { reports: [], problems: [{ path: "", message: "the observation is not one entry of the catalog of CISA: the format changed", fatal: true }] };
   }
   const problems = new Problems();
@@ -138,12 +135,6 @@ function mapOrThrow(observation: Observation): MapResult {
   if (dueEnd(fields["dueDate"]) === undefined) problems.add("dueDate", `the value ${JSON.stringify(fields["dueDate"])} is not a date: the map makes no report`, "fatal");
   if (!isKevEntry(fields)) return { reports: [], problems: problems.list };
   return { reports: [reportOf(observation, fields)], problems: problems.list };
-}
-
-/** This function gives the text of a field, or `undefined` for an empty or absent text. */
-function textOf(fields: Fields, field: string): string | undefined {
-  const value = fields[field];
-  return typeof value === "string" && value.trim() !== "" ? value.trim() : undefined;
 }
 
 /** This function gives the report of one valid entry. */

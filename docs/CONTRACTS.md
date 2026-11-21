@@ -51,8 +51,10 @@ Two copies can get one report id with two contents, for example from two version
 The groups of reports are a function of the merge state alone, with no clock. Two reports of one status are in one incident when:
 
 1. one report references the other (the CAP references), or
-2. they share a correlation key (an NWS VTEC event, a USGS event id), or
+2. they share a correlation key (an NWS VTEC event, a USGS event id, one CAP message), or
 3. the link rule of their kinds matches: the same family of kind, two onsets near in time and two points near on the ground (below).
+
+The key of a CAP message (`capMessageKey`) is a hash of its sender, its identifier and its sent time. Thus two sources that carry one message give one key, also with no VTEC. The hash keeps the sender out of the key, because a sender can be the address of a person.
 
 The links are transitive: when A links to B and B links to C, the three reports are in one incident. A link rule gives the blocks of a report, for example its family of kind and its day. The merge tests only two reports that share a block. So the cost grows with the size of the blocks, not with the square of the count of reports.
 
@@ -442,6 +444,7 @@ A drill report has no area. Its subject is `{ system: "alerts.drill", id: <drill
 | `drill/<copy>/<id>/failed` | `system.drill.failed` | The verdict of the last run is `failed` | `notice` at most |
 | `drill/<copy>/<id>/no-start` | `system.drill.failed` | The drill has no next start | `notice` at most |
 | `drill/<copy>/<id>/missed` | `system.drill.failed` | The window of the next start after the last run ended with no run | `notice` at most |
+| `drill-watch/<copy>/<id>` | `system.drill.failed` | No read of another copy gave the start of its drill in the window (`watchedDrillMiss`) | `notice` at most |
 
 - `DrillSnapshot` gives the copy, the drill and its last run. A drill that is due has a run that starts at the time of the snapshot.
 - The facts of the run line are the copy, the drill and the start. An acknowledgment in the time cancels the line.
@@ -450,6 +453,9 @@ A drill report has no area. Its subject is `{ system: "alerts.drill", id: <drill
 - A snapshot with `noStart` opens the line `no-start`, with the reason `no-start`. A next start ends it.
 - A snapshot with `missed` opens the line `missed`, with the reason `missed` and the missed start as its onset. The next run ends it.
 - `missedDrillAt(drill, runs, at, quiet)` gives the missed start. A late start in the same window is not a miss, and before the first run nothing is missed.
+- `drillWatches` gives the drills of the other copies in the watch of this copy. A miss opens the line `drill-watch`, with the reason `unseen` or `no-read`.
+- The facts of that line are the copy, the drill, the due start and the reason. A new read gives no update. The next start of the other copy ends the line.
+- A watch of the drill with no list of copies has an empty copy part in its name. A snapshot with no watches keeps each open line of a watch.
 
 An exhaustion report has no area. Its subjects are the person (`alerts.person`, `PERSON_SUBJECT`) and the incident (`alerts.incident`, `INCIDENT_SUBJECT`). Only the copy that reports the shared facts makes these lines.
 
@@ -1562,6 +1568,19 @@ The system fold gives the drill lines (the section of the system reports). The m
 - A drill whose last window ended with no run gets `missed`. A copy that stops for the full window sends this failure at its next pass.
 - A stopped copy cannot send. The outage call tells of a stopped copy, and `missed` tells later that the drill did not test the path.
 - The event `drill` stays in its copy, because each copy has its own drill lines.
+
+A copy that stops for the full window of a start tells nothing in that time. Thus each other copy watches the starts of that copy:
+
+- The answer of the exchange (`alerts.log.entries`) gives the last start of each drill of the copy. The exchange worker keeps them on the watch of that copy (`CopyWatch.drills`).
+- An answer with no starts, or with starts that are not valid, still passes. The health payload does not show the starts.
+- `watchedDrills` of the runtime gives the watches. A drill with a list of copies gives a watch of each other copy of the list.
+- A drill with no list starts in the copy of rank 0. Each copy of another rank watches it, and the watch reads each peer.
+- `watchedDrillMiss` of the core gives the due start: the next start after the last start in the reads. With no start in the reads, it counts from the start of the watch.
+- The miss is a fact at the end of the window of the due start, plus `DRILL_WATCH_GRACE` (15 minutes). A start at the due time or later ends it.
+- A copy that answers after the end of the window with no starts gives the reason `no-read`, not a pass. A copy of an older build gives no starts.
+- The open line keeps its due start in its facts. Thus a restart of this copy does not end the line or move the start.
+- The time of the miss is a timer of the view (`drillWatchAt`).
+- When the stopped copy comes back, it also reports its own `missed` line. System reports are not shared, thus the person gets two notices of one miss.
 
 The next steps are these:
 

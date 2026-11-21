@@ -10,14 +10,14 @@
  *   `secrets.env` and no `copy.json`. Thus the runtime is the only copy, with no exchange and no heartbeat.
  * - The start takes the lock of the home folder. Thus a measure stops when a live runtime holds the folder.
  *
- * Give a scratch copy of a home folder, because the passes append events to its log. The start is ready at the end of
- * its first pass, as a live start is.
+ * Give a scratch copy of a home folder, because the passes append events to its log. A measured start has two points,
+ * as a live start has. At `opened`, the probe `/readiness` of a live start passes. At the end of the first pass, the start is good.
  */
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { PUSHOVER_QUOTA, PUSHOVER_RESERVE_NOTICES, type PushoverChannelOptions } from "@mark1russell7/alerts-channel-pushover";
 import { openShapeCache, SHAPES_FILE } from "@mark1russell7/alerts-shapes-nws";
-import { realClock, wallClock } from "@mark1russell7/algebra/clock";
+import { realClock, wallClock, type WallClock } from "@mark1russell7/algebra/clock";
 import { nodeHostPorts } from "@mark1russell7/service/host";
 import { SqliteHostStateStore } from "polite-crawler";
 import { quotaGate, type Transport } from "polite-crawler/api";
@@ -46,13 +46,27 @@ export interface MeasuredOptions {
   readonly keys?: Readonly<Record<string, string>>;
   /** This function gets each line that a live start writes to its output. Default: no output. */
   readonly report?: (line: string) => void;
+  /**
+   * The wall clock of the start. Each part of the runtime reads its instant, as with the option `wall` of `openInstance`.
+   * Default: the wall clock of the platform. For a seeded log, give `wallClock({ start })` with the time of its last event.
+   */
+  readonly wall?: WallClock;
 }
 
 /** A runtime of a measured start. */
 export interface MeasuredRuntime {
   /** The instance of the start. A measure reads its state and its runtime here. */
   readonly instance: Instance;
-  /** The first pass. A live start is ready at the end of this pass. */
+  /**
+   * The value of `performance.now()` at the end of `openInstance`, in milliseconds from the start of the process. After this
+   * point, a live start does only small steps, and then its probe `/readiness` passes. The ready window of the supervisor
+   * counts from the start of the process to that probe. Thus this value is the measure of a start against the window.
+   */
+  readonly opened: number;
+  /**
+   * The first pass. At the end of this pass, a live start is good: it writes its start time and its last good set.
+   * The file `host/start-times.json` holds the time to this point, not the time to `opened`.
+   */
   readonly first: Pass;
   /** This function does one more pass, as the loop of a live runtime does after the start. */
   pass(): Promise<Pass>;
@@ -83,7 +97,7 @@ export async function openMeasuredRuntime(home: string, options: MeasuredOptions
       .join("");
     const checked = checkStart({ ...read, secrets: { text: secretsText }, copy: { code: "ENOENT" } }, instanceCheck);
     if (checked.tag === "err") throw new Error(`The private files of the measure do not pass the check:\n- ${checked.error.join("\n- ")}`);
-    const wall = wallClock();
+    const wall = options.wall ?? wallClock();
     const quotas = new SqliteHostStateStore(join(home, "quotas.sqlite"));
     const { log, recovered } = openCheckedRuntimeLog(join(home, "runtime.sqlite"), { now: () => wall.now() });
     if (recovered !== undefined) report(`The log file was broken. The new log kept ${String(recovered.added)} events and lost ${String(recovered.lost)}.`);
@@ -111,11 +125,14 @@ export async function openMeasuredRuntime(home: string, options: MeasuredOptions
       startGood: () => ready,
       onError: (error, failures) => report(`A pass failed (${String(failures)} in sequence): ${error instanceof Error ? error.name : typeof error}.`),
     });
+    // A live start reads the log and folds its state in openInstance. Its probe /readiness passes soon after this point.
+    const opened = performance.now();
     const first = await instance.runtime.pass();
     ready = true;
     let closed = false;
     return {
       instance,
+      opened,
       first,
       pass: () => instance.runtime.pass(),
       async close() {

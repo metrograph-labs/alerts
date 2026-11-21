@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CONFIG_FORMAT, type AlertConfig, type ChannelId, type EscalationPolicy, type PersonId, type PlaceId } from "@mark1russell7/alerts";
+import { wallClock } from "@mark1russell7/algebra/clock";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HomeHeld } from "./home-lock.ts";
 import { openRuntimeLog } from "./log.ts";
@@ -59,9 +60,15 @@ afterEach(async () => {
   rmSync(home, { recursive: true, force: true });
 });
 
-describe("openMeasuredRuntime", () => {
+// Each test does a full start of the runtime. On a loaded computer a start takes more than the default limit of 5 s.
+describe("openMeasuredRuntime", { timeout: 30_000 }, () => {
   it("resolves after the first pass, and no fetch or send leaves the process", async () => {
+    const before = performance.now();
     const measured = await open();
+    const after = performance.now();
+    // The open of the instance comes before the first pass, and both are in this start.
+    expect(measured.opened).toBeGreaterThan(before);
+    expect(measured.opened).toBeLessThan(after);
     expect(measured.first.fetched.length).toBeGreaterThan(0);
     expect(measured.instance.runtime.skipped).toBe(0);
     // A pass after the start also starts the work of the stores. It has no network either.
@@ -81,6 +88,16 @@ describe("openMeasuredRuntime", () => {
     // The second start rebuilds its state from the events of the first.
     const again = await open();
     expect(again.instance.runtime.skipped).toBe(0);
+  });
+
+  it("reads the instant of the wall clock of the caller", async () => {
+    // A seeded log ends at a fixed instant. The measure starts its clock there.
+    const start = Date.UTC(2020, 0, 1);
+    const measured = await openMeasuredRuntime(home, { wall: wallClock({ start }) });
+    opened.push(measured);
+    const time = measured.instance.runtime.state().time;
+    expect(time).toBeGreaterThanOrEqual(start);
+    expect(time).toBeLessThan(start + MINUTE);
   });
 
   it("refuses private files that do not pass the check, and frees the lock", async () => {

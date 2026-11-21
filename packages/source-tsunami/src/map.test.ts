@@ -64,7 +64,7 @@ describe("mapObservation", () => {
     expect(reports.map((report) => report.id)).toEqual([0, 1, 2].map((index) => reportId({ source: NTWC.id, key: "PAAQ-2-t06p1k", sent, part: `info[${String(index)}]` })));
     expect(reports.map((report) => report.kind.significance)).toEqual(["warning", "advisory", "watch"]);
     expect(reports.map((report) => report.severity)).toEqual(["extreme", "moderate", "moderate"]);
-    expect(reports.map((report) => report.correlation.map((key) => key.id))).toEqual([["PAAQ.TS.W.0016.2025"], ["PAAQ.TS.Y.0016.2025"], ["PAAQ.TS.A.0016.2025"]]);
+    expect(reports.map((report) => report.correlation.filter((key) => key.system === "vtec").map((key) => key.id))).toEqual([["PAAQ.TS.W.0016.2025"], ["PAAQ.TS.Y.0016.2025"], ["PAAQ.TS.A.0016.2025"]]);
     expect(reports.map((report) => codesOf(report).length)).toEqual([3, 2, 75]);
     expect(reports.every((report) => report.references.length === 1 && knownKind(report.kind.code))).toBe(true);
     // The areas are not keyed, so the circle at the epicenter does not decide for the zones.

@@ -11,6 +11,7 @@ import {
   configuredExpectations,
   DEFAULT_LINK_POLICY,
   expectationProblems,
+  foreignIncidents,
   healthPayload,
   historyPayload,
   interestsPayload,
@@ -35,6 +36,7 @@ import {
   type CopySettings,
   type Duration,
   type Expectation,
+  type ExpectationConfig,
   type HealthPayload,
   type HistoryPayload,
   type InterestsPayload,
@@ -75,7 +77,7 @@ import { createEmscSource, EMSC_DESCRIPTOR } from "@mark1russell7/alerts-source-
 import { createIpawsSource, IPAWS_DESCRIPTOR, WEA_EXPECTATION } from "@mark1russell7/alerts-source-ipaws";
 import { createShapeStore, type ShapeCache, type ShapeStore } from "@mark1russell7/alerts-shapes-nws";
 import { createNwsSource, NWS_DESCRIPTOR } from "@mark1russell7/alerts-source-nws-api";
-import { createNwwsSource, SOURCE_ID as NWWS_SOURCE, type NwwsAccount, type OpenSession } from "@mark1russell7/alerts-source-nwws";
+import { COPY_EXPECTATION, createNwwsSource, SOURCE_ID as NWWS_SOURCE, type NwwsAccount, type OpenSession } from "@mark1russell7/alerts-source-nwws";
 import { createGfzSource, GFZ_DESCRIPTOR } from "@mark1russell7/alerts-source-gfz";
 import { createCatalogFetch, createGtfsSource, type GtfsFeed, type GtfsFetchOptions } from "@mark1russell7/alerts-source-gtfs-alerts";
 import { createEnergyChartsSource, ENERGY_CHARTS_DESCRIPTOR } from "@mark1russell7/alerts-source-energy-charts";
@@ -99,7 +101,7 @@ import { replyWatch, type ReplyWatch } from "./replies.ts";
 import { parseSecrets, requireKey, SECRETS_FILE, type FileText, type InstanceCheck } from "./config.ts";
 import { CLOCK_SKEW_LIMIT, COPY_FILE, COPY_TOKEN_KEY, EXCHANGE_EVERY, EXCHANGE_LIMIT } from "./copy.ts";
 import { overdueLimit, type DeliveryOptions } from "./delivery.ts";
-import { copyDrills } from "./drills.ts";
+import { copyDrills, watchedDrills } from "./drills.ts";
 import type { RuntimeLog } from "./log.ts";
 import { createLoop, loopTimes, shortestFetchLimit, type LoopTimes, type RuntimeLoop } from "./loop.ts";
 import { outageDeploy, outageDeployWorker, outageSetup, type OutageDeployWorker } from "./outage.ts";
@@ -418,8 +420,20 @@ export const INSTANCE_SOURCES: readonly SourceDescriptor[] = [
   KEV_DESCRIPTOR,
 ];
 
-/** The expectations of the instance. The field `expectations` of the configuration sets their `since`. */
-export const INSTANCE_EXPECTATIONS: readonly Expectation[] = [WEA_EXPECTATION];
+/**
+ * The expectations of the instance. The field `expectations` of the configuration sets their `since`. An instance uses
+ * only the expectations of its sources: a copy with no account of NWWS-OI has no check of NWWS-OI.
+ */
+export const INSTANCE_EXPECTATIONS: readonly Expectation[] = [WEA_EXPECTATION, COPY_EXPECTATION];
+
+/**
+ * This function gives the expectations of an instance with the sources `sources`. They are the expectations of
+ * `INSTANCE_EXPECTATIONS` whose two sources are in the list, with the `since` of the settings.
+ */
+export function instanceExpectations(settings: readonly ExpectationConfig[] | undefined, sources: readonly SourceDescriptor[]): Expectation[] {
+  const ids = new Set(sources.map((source) => source.id));
+  return configuredExpectations(INSTANCE_EXPECTATIONS, settings).filter((expectation) => ids.has(expectation.from) && ids.has(expectation.to));
+}
 
 /**
  * The politeness policy of the sources. After 5 failures in a row, a host stops for the longest step of the backoff, not for
@@ -973,6 +987,8 @@ export function openInstance(options: InstanceOptions): Instance {
     channels,
     labels: placeLabels(placed),
     ...(config.assess === undefined ? {} : { assess: config.assess }),
+    // The sources of this copy: a report of only other sources came from another copy, maybe of a newer build (AL-76).
+    sources: new Set(descriptors.map((descriptor) => descriptor.id)),
     ...(options.priors === undefined ? {} : { priors: options.priors }),
     ...DELIVERY_TIMES,
     rank: copy.rank,
@@ -995,7 +1011,7 @@ export function openInstance(options: InstanceOptions): Instance {
     view: {
       places,
       kinds,
-      expectations: configuredExpectations(INSTANCE_EXPECTATIONS, config.expectations),
+      expectations: instanceExpectations(config.expectations, descriptors),
       delay: DELAY_LIMITS,
       ...(config.link === undefined ? {} : { link: config.link }),
       ...(config.channelDown === undefined ? {} : { channelDown: config.channelDown }),
@@ -1006,6 +1022,8 @@ export function openInstance(options: InstanceOptions): Instance {
     delivery,
     // The drills of the live paths that this copy starts (AL-43). Each person keeps the quiet window of the configuration.
     drills: copyDrills(config.drills ?? [], recipients, copy.id, copy.rank),
+    // The drills of the other copies, in the watch of this copy. A copy that stops for a full window tells nothing.
+    drillWatches: watchedDrills(config.drills ?? [], recipients, copy.id, copy.rank),
     // The loop exists before the first pass, and only a pass starts a wake.
     wake: () => loop.wake(),
     // Each stage of a quota is a line of system reports, and so is each stage of a balance.
@@ -1052,6 +1070,7 @@ export function openInstance(options: InstanceOptions): Instance {
       places: placed.places,
       ...(delivery.assess === undefined ? {} : { policy: delivery.assess }),
       ...(options.priors === undefined ? {} : { priors: options.priors }),
+      foreign: foreignIncidents(runtime.state().merge.reports, delivery.sources),
       shape: shapes.lookup,
       basemap: shapes.basemap(),
       // The breadth of the indicator signals of the last pass. A runtime with no store of the readings has none.
@@ -1084,6 +1103,7 @@ export function openInstance(options: InstanceOptions): Instance {
       people,
       places: placed.places,
       ...(delivery.assess === undefined ? {} : { policy: delivery.assess }),
+      sources: delivery.sources,
       shape: shapes.lookup,
       link,
     });
@@ -1102,7 +1122,7 @@ export function openInstance(options: InstanceOptions): Instance {
   const copies: InstanceCopies | undefined =
     options.exchange === undefined
       ? undefined
-      : { source: { runtime, clock: wall, configHash: options.exchange.configHash }, ...(worker === undefined || rounds === undefined ? {} : { worker, loop: rounds }) };
+      : { source: { runtime, clock: wall, configHash: options.exchange.configHash, drills: () => runtime.state().drills }, ...(worker === undefined || rounds === undefined ? {} : { worker, loop: rounds }) };
   const outage = outageWorker(options, loop.times.passLimit);
   return {
     runtime,

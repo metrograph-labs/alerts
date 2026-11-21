@@ -11,6 +11,7 @@ import {
   carriages,
   CLOCK_STEP_WINDOW,
   copyUnreadAt,
+  drillWatchAt,
   sharedHandoverAt,
   sourceClearAt,
   LOG_RECOVERY_WINDOW,
@@ -32,6 +33,7 @@ import {
   type ChannelSnapshot,
   type CopyWatch,
   type DrillSnapshot,
+  type DrillWatch,
   type Exhaustion,
   type HeldPerson,
   type ProviderBalance,
@@ -121,6 +123,8 @@ export interface SystemParts {
   readonly folds?: LatenessFolds;
   /** The drills of this copy (`drillStep`). With no drills, each open line of a drill stays open. */
   readonly drills?: readonly DrillSnapshot[];
+  /** The drills of other copies in the watch of this copy (`watchedDrills`). With no list, each open line of a watch stays open. */
+  readonly drillWatches?: readonly DrillWatch[];
   /**
    * The exhausted escalations of the last delivery step (`DeliveryStep.exhausted`, AL-21). With no list, each open line
    * of an exhaustion stays open. Thus a restart does not cancel an alert before its first delivery step.
@@ -151,6 +155,7 @@ export interface SystemParts {
  * - The quotas are the counts of the channels at `at`. With no quotas, each open line of a quota stays open.
  * - The balances are the watches of the provider accounts. The time when a balance reaches `unread` is a timer too.
  * - The copies are the watches of the other copies. The time when a copy reaches `unread` is a timer too.
+ * - The drill watches read the starts of the drills of the other copies. The time of a miss of a start is a timer too.
  * - The latest step of the wall clock in its window is a line. The end of the window is a timer too.
  * - The latest recovery of the log in its window is a line. The end of the window is a timer too.
  * - The stores are the fills of their families. The end of the window of a family with no entry is a timer too.
@@ -158,19 +163,19 @@ export interface SystemParts {
  * - The folds are the folds of the last view (`latenessStep`). With no folds, each fold starts again. The view is the same.
  */
 export function systemView(state: RuntimeState, config: ViewConfig, at: Instant, parts: SystemParts = {}): SystemView {
-  const { quotas, balances, copies, copy, folds, drills, exhausted, held, channels, observing, stores } = parts;
+  const { quotas, balances, copies, copy, folds, drills, drillWatches, exhausted, held, channels, observing, stores } = parts;
   const steps = config.sources.map((source) => advanceHealth(state.health[source.id] ?? startHealth(source.id, state.start ?? at), at, source, config.health));
   const health = steps.map((step) => step.health);
   const found = incidents(state.merge, at, { link: linkRule(config.link ?? DEFAULT_LINK_POLICY) });
   const checks = carriages(state.merge, found, config.expectations);
   const { lateness: late, folds: next } = latenessStep(checks, config.expectations, at, ruleOf(config.delay), folds);
   const covered = coverage({ sources: config.sources, health, late: lateSources(late), places: config.places, kinds: config.kinds, containing: containingCodes }, config.coverage);
-  const step = systemReports(state.lines, { sources: config.sources, health, coverage: covered, threats: threats(found, config.places), lateness: late, ...(quotas === undefined ? {} : { quotas }), ...(balances === undefined ? {} : { balances }), ...(copies === undefined ? {} : { copies }), ...(copy === undefined ? {} : { copy }), ...(drills === undefined ? {} : { drills }), ...(exhausted === undefined ? {} : { exhausted }), ...(held === undefined ? {} : { held }), ...(channels === undefined ? {} : { channels }), ...(observing === undefined ? {} : { observing }), ...(stores === undefined ? {} : { stores }), ...(config.channelDown === undefined ? {} : { channelDown: config.channelDown }), ...(config.sourceClear === undefined ? {} : { sourceClear: config.sourceClear }), steps: state.steps, recoveries: state.recoveries }, at);
+  const step = systemReports(state.lines, { sources: config.sources, health, coverage: covered, threats: threats(found, config.places), lateness: late, ...(quotas === undefined ? {} : { quotas }), ...(balances === undefined ? {} : { balances }), ...(copies === undefined ? {} : { copies }), ...(copy === undefined ? {} : { copy }), ...(drills === undefined ? {} : { drills }), ...(drillWatches === undefined ? {} : { drillWatches }), ...(exhausted === undefined ? {} : { exhausted }), ...(held === undefined ? {} : { held }), ...(channels === undefined ? {} : { channels }), ...(observing === undefined ? {} : { observing }), ...(stores === undefined ? {} : { stores }), ...(config.channelDown === undefined ? {} : { channelDown: config.channelDown }), ...(config.sourceClear === undefined ? {} : { sourceClear: config.sourceClear }), steps: state.steps, recoveries: state.recoveries }, at);
   // An incident that expires changes the threats, thus its end is a timer too.
   const ends = found.flatMap((incident) => (incident.live && incident.expires !== undefined && incident.expires > at ? [incident.expires] : []));
   // The handover of the facts of a shared account is a timer too, because this copy then reports a low balance.
   const handover = sharedHandoverAt(copy, copies);
-  const unread = [...(balances ?? []).map(balanceUnreadAt), ...(copies ?? []).map(copyUnreadAt), ...(stores ?? []).filter((fill) => fill.entries === 0).map(storeEmptyAt), ...(held ?? []).map((entry) => entry.until), ...(handover === undefined ? [] : [handover])].filter((time) => time > at);
+  const unread = [...(balances ?? []).map(balanceUnreadAt), ...(copies ?? []).map(copyUnreadAt), ...(stores ?? []).filter((fill) => fill.entries === 0).map(storeEmptyAt), ...(held ?? []).map((entry) => entry.until), ...(drillWatches ?? []).flatMap((watch) => drillWatchAt(step.lines, watch, copies ?? []) ?? []), ...(handover === undefined ? [] : [handover])].filter((time) => time > at);
   const stepped = recentStep(state.steps, at);
   const recovered = recentRecovery(state.recoveries, at);
   // The end of the clear time of each source that is up with an open line is a timer too (AL-75).

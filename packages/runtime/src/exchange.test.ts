@@ -746,6 +746,34 @@ describe("two runtimes", () => {
       expect(ready).toBe(true);
     });
 
+    it("carries the last starts of the drills of the other copy into its watch (AL-43)", async () => {
+      const clock = fakeWallClock(T0);
+      const a = open("a", [], clock);
+      const b = open("b", [], clock);
+      let starts: Readonly<Record<string, number>> | undefined = { "push-weekly": T0 - MINUTE };
+      const call: ExchangeCall = async (_peer, input) => wire(serveEntries({ runtime: b.runtime, clock, configHash: HASH, ...(starts === undefined ? {} : { drills: () => starts ?? {} }) }, input));
+      const worker = workerOf(a.runtime, call, clock);
+      expect((await worker.round()).changed).toBe(true);
+      expect(worker.watches()[0]).toMatchObject({ read: { at: T0 }, drills: { "push-weekly": T0 - MINUTE } });
+      // A new start changes the round, and the same starts do not.
+      starts = { "push-weekly": T0 };
+      expect((await worker.round()).changed).toBe(true);
+      expect(worker.watches()[0]!.drills).toEqual({ "push-weekly": T0 });
+      expect((await worker.round()).changed).toBe(false);
+      // An answer of an older build gives no starts. The read still passes.
+      starts = undefined;
+      expect((await worker.round()).changed).toBe(true);
+      expect(worker.watches()[0]).not.toHaveProperty("drills");
+      expect(worker.watches()[0]!.read).toMatchObject({ at: T0, sameConfig: true });
+      // Starts that are not valid give none, and the read still passes.
+      for (const drills of [{ "push-weekly": "soon" }, { "": T0 }, [T0], { "push-weekly": null }]) {
+        const bad = workerOf(a.runtime, async (_peer, input) => ({ ...(wire(serveEntries({ runtime: b.runtime, clock, configHash: HASH }, input)) as object), drills }), clock);
+        expect((await bad.round()).problems).toEqual([]);
+        expect(bad.watches()[0]).not.toHaveProperty("drills");
+        expect(bad.watches()[0]!.read).toMatchObject({ at: T0 });
+      }
+    });
+
     it("checks the input of the procedure and the options of the worker", () => {
       const clock = fakeWallClock(T0);
       const b = open("b", [], clock);

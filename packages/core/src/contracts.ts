@@ -21,6 +21,8 @@ export type Id<Name extends string> = string & { readonly [brand]: Name };
 
 /** The id of a source adapter, for example `nws-api`. */
 export type SourceId = Id<"SourceId">;
+/** The source of each report of the core. No adapter has this id. Each copy makes its own system reports. */
+export const SYSTEM_SOURCE = "system" as SourceId;
 /** The id of a delivery channel, for example `pushover`. */
 export type ChannelId = Id<"ChannelId">;
 /** The id of one raw message from a source: the SHA-256 of its content, in hex. `observationId` makes it. */
@@ -922,6 +924,11 @@ export interface CopyWatch {
   readonly since: Instant;
   /** The last read that passed. */
   readonly read?: CopyRead;
+  /**
+   * The last start of each drill of the other copy, by the id of the drill, on the clock of that copy (AL-43). The last
+   * read that passed gives them. A copy of an older build gives none.
+   */
+  readonly drills?: Readonly<Record<string, Instant>>;
 }
 
 /** The watch of the balance of one provider account, at one time. */
@@ -1471,6 +1478,11 @@ export type AssessReason =
       readonly level: AssessedLevel;
       /** This value is true when the urgency `past` counted as `immediate` in the window `pastWithin` of the table. */
       readonly recentPast?: true;
+      /**
+       * This value is true when the table is the quiet table of the sources of other copies (AL-76). The kind has no
+       * class, and this copy runs no source of the incident.
+       */
+      readonly foreign?: true;
     }
   /**
    * A rule of the person lowered the level at this place. The index is the position of the rule.

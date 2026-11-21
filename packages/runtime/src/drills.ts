@@ -3,7 +3,7 @@
  * of each due drill. It also gives the acknowledgment of each run and the next time when a drill changes. The functions
  * read no clock.
  */
-import { DRILL_KIND, drillDue, drillInCopy, missedDrillAt, nextDrillAt, type DrillConfig, type DrillRun, type DrillSnapshot, type Instant, type QuietWindow, type Recipient } from "@mark1russell7/alerts";
+import { DRILL_KIND, drillDue, drillInCopy, missedDrillAt, nextDrillAt, type DrillConfig, type DrillRun, type DrillSnapshot, type DrillWatch, type Instant, type QuietWindow, type Recipient } from "@mark1russell7/alerts";
 import { envelope, frameTag, type DrillEvent } from "./events.ts";
 import type { RuntimeState } from "./state.ts";
 
@@ -22,6 +22,22 @@ export function copyDrills(drills: readonly DrillConfig[], recipients: readonly 
     if (!drillInCopy(drill, copy, rank)) return [];
     const quiet = recipients.find((recipient) => recipient.watch.person === drill.person)?.watch.quiet;
     return [quiet === undefined ? { drill } : { drill, quiet }];
+  });
+}
+
+/**
+ * This function gives the drills of other copies that the copy `copy` of the rank `rank` watches (`watchedDrillMiss`).
+ * Each drill has the quiet window of its person, as in `copyDrills`.
+ *
+ * - A drill with a list of copies gives one watch for each copy of the list, other than `copy`.
+ * - A drill with no list starts in the copy of rank 0. Each copy of another rank watches it, with no copy in the watch.
+ * - The watch reads only the copies that are peers of this copy. It has no read of another copy.
+ */
+export function watchedDrills(drills: readonly DrillConfig[], recipients: readonly Recipient[], copy: string, rank: number): DrillWatch[] {
+  return drills.flatMap((drill) => {
+    const quiet = recipients.find((recipient) => recipient.watch.person === drill.person)?.watch.quiet;
+    const watched = drill.copies === undefined ? (rank === 0 ? [] : [undefined]) : drill.copies.filter((other) => other !== copy);
+    return watched.map((other): DrillWatch => ({ drill, ...(quiet === undefined ? {} : { quiet }), ...(other === undefined ? {} : { copy: other }) }));
   });
 }
 

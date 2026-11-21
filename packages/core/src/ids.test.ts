@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PersonId, ReportId, SourceId } from "./contracts.ts";
-import { ID_SCHEME, messageKey, observationId, reportId } from "./ids.ts";
+import { CAP_MESSAGE_SYSTEM, capMessageKey, ID_SCHEME, messageKey, observationId, reportId } from "./ids.ts";
 
 const source = "nws-api" as SourceId;
 const hex = /^[0-9a-f]{64}$/;
@@ -119,5 +119,36 @@ describe("messageKey", () => {
   it("keeps the kinds of id apart", () => {
     const asReport = reportId({ source: message.incident as unknown as SourceId, key: message.level, sent: 0 });
     expect(asReport).not.toBe(messageKey({ ...message, person: "0" as PersonId }));
+  });
+});
+
+describe("capMessageKey", () => {
+  const cap = { sender: "w-nws.webmaster@noaa.gov", identifier: "urn:oid:2.49.0.1.840.0.example", sent: 1763157600000 };
+
+  it("gives the golden hash of the sender, the identifier and the sent time, and no text of the sender", () => {
+    // node:crypto calculated this value from the canonical JSON of the hash input.
+    const key = capMessageKey(cap);
+    expect(key).toEqual({ system: CAP_MESSAGE_SYSTEM, id: "62ad37a2980f5fc1c68298ede998970924657fd0ccea63b2a50dfe0a1f075e84" });
+    expect(key?.id).not.toContain("noaa");
+  });
+
+  it("gives one key to the copies of one message, and another key to each other message or part", () => {
+    expect(capMessageKey({ ...cap, sender: ` ${cap.sender} `, identifier: `${cap.identifier}
+` })).toEqual(capMessageKey(cap));
+    const keys = [
+      capMessageKey(cap)?.id,
+      capMessageKey({ ...cap, sender: "other@example.org" })?.id,
+      capMessageKey({ ...cap, identifier: `${cap.identifier}.IPAWS` })?.id,
+      capMessageKey({ ...cap, sent: cap.sent + 1 })?.id,
+      capMessageKey({ ...cap, part: "info[1]" })?.id,
+      capMessageKey({ ...cap, part: "info[2]" })?.id,
+    ];
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(capMessageKey({ ...cap, part: undefined })).toEqual(capMessageKey(cap));
+  });
+
+  it("gives no key with an empty sender or identifier", () => {
+    expect(capMessageKey({ ...cap, sender: " " })).toBeUndefined();
+    expect(capMessageKey({ ...cap, identifier: "" })).toBeUndefined();
   });
 });

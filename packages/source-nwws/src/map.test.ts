@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import type { Observation } from "@mark1russell7/alerts";
+import { capMessageKey, type Observation } from "@mark1russell7/alerts";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { createProductBuffer } from "./buffer.ts";
@@ -41,7 +41,10 @@ describe("mapObservation", () => {
     const [marine] = mapObservation(observations()["CAPMTR"]!).reports;
     expect(marine).toMatchObject({
       key: "urn:oid:2.49.0.1.840.0.c31dd22fec111b7c33a334fbba5e7fa1b201caae.001.1",
-      correlation: [{ system: "vtec", id: "KMTR.MA.W.0016.2026" }],
+      correlation: [
+        { system: "vtec", id: "KMTR.MA.W.0016.2026" },
+        capMessageKey({ sender: "w-nws.webmaster@noaa.gov", identifier: "urn:oid:2.49.0.1.840.0.c31dd22fec111b7c33a334fbba5e7fa1b201caae.001.1", sent: Date.parse("2026-11-16T12:06:00-08:00") }),
+      ],
       op: "alert",
       status: "actual",
       kind: { code: "met.marine.special", significance: "warning" },

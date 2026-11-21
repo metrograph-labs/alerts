@@ -66,6 +66,11 @@ export interface DeliveryOptions {
   readonly channels: readonly ChannelProcedures[];
   /** The policy of the assessment. The default is the policy of the core. */
   readonly assess?: AssessPolicy;
+  /**
+   * The ids of the sources that this copy runs, also a source whose fetch fails at this time (AL-76). A kind with no class in an
+   * incident of only other sources gets the quiet table of the core. Without the set, each source is a source of this copy.
+   */
+  readonly sources?: ReadonlySet<string>;
   /** The priors of the shadow score. With them, the start of each escalation in the log keeps the score. */
   readonly priors?: ScorePriors;
   /** The time between two polls of one receipt. */
@@ -405,6 +410,7 @@ export function createDispatcher(options: DeliveryOptions, context: DeliveryCont
           recipients: options.recipients,
           places: context.places,
           assess: options.assess,
+          sources: options.sources,
           starts: state.starts,
           ends: state.escalationEnds,
           cancelled: cancelledKeys(state),
@@ -702,6 +708,7 @@ export function createDispatcher(options: DeliveryOptions, context: DeliveryCont
         recipients: options.recipients,
         places: context.places,
         assess: options.assess,
+        sources: options.sources,
         channels: descriptors,
         rank: options.rank,
         rankDelay: options.rankDelay,

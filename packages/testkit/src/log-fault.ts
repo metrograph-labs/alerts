@@ -405,10 +405,11 @@ async function driveLife(life: Life, trace: LifeTrace): Promise<void> {
  */
 function lockingLog(log: RuntimeLog, holder: DatabaseSync, plan: LockPlan, state: { from?: number }, since: () => number): RuntimeLog {
   return {
-    read: () => log.read(),
+    read: (types) => log.read(types),
     has: (id) => log.has(id),
     entries: (options) => log.entries(options),
     count: () => log.count(),
+    counts: () => log.counts(),
     head: () => log.head(),
     close: () => log.close(),
     appendAll(events, accept) {

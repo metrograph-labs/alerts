@@ -223,11 +223,14 @@ describe("the IEM copy and the NWS API copy of one event, in the core", () => {
   it("stay live when each IEM row of the event ends, because the rows and the NWS API copy of one product have the same sent time", () => {
     const [api] = mapNwsApi(nwsObservation).reports;
     expect(api).toBeDefined();
+    // The NWS API copy also has the key of its CAP message. An IEM row has only the VTEC key.
+    const vtec = api?.correlation.filter((key) => key.system === "vtec");
+    expect(vtec).toHaveLength(1);
     const rows = observationsOf(LIST_0108)
       .map(mapOne)
-      .filter((report) => report.correlation.some((key) => key.id === api?.correlation[0]?.id));
+      .filter((report) => report.correlation.some((key) => key.id === vtec?.[0]?.id));
     expect(rows.map((row) => row.areas.find((area) => area.type === "code" && area.system === "ugc"))).toContainEqual({ type: "code", system: "ugc", code: "TXC137" });
-    for (const row of rows) expect([row.origin, row.sent, row.correlation]).toEqual([api?.origin, api?.sent, api?.correlation]);
+    for (const row of rows) expect([row.origin, row.sent, row.correlation]).toEqual([api?.origin, api?.sent, vtec]);
     // The rows together name each code of the message, so only the tie keeps the message a head.
     const codes = (reports: readonly Report[]): string[] => [...new Set(reports.flatMap((report) => report.areas.flatMap((area) => (area.type === "code" ? [`${area.system}:${area.code}`] : []))))].sort();
     expect(codes(rows)).toEqual(codes(api === undefined ? [] : [api]));

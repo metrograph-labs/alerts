@@ -13,7 +13,7 @@ import {
 import type { Acknowledgment, ChannelId, Delivery, EndMark, ObservationId, PersonId, Report, ReportId, SourceId } from "./contracts.ts";
 import type { HealthTrack } from "./health.ts";
 import { normalize } from "./merge.ts";
-import { SYSTEM_SOURCE } from "./system-reports.ts";
+import { SYSTEM_SOURCE } from "./contracts.ts";
 
 const SEEDS = seedsFrom(process.env["SEED"], [1, 2, 3, 4, 5, 6, 7, 8]);
 const T0 = Date.UTC(2026, 10, 15, 12);

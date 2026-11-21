@@ -5,9 +5,10 @@ import { fakeWallClock } from "@mark1russell7/algebra/clock";
 import { reportId, type Observation, type ObservationId, type PlaceId, type Report, type SourceId, type SourceProcedures, type WatchedPlace } from "@mark1russell7/alerts";
 import { checkIntegrity, openDatabase } from "@mark1russell7/sqlite";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { envelope, type RuntimeEvent } from "./events.ts";
+import { envelope, FOLD_TYPES, unknownEvents, type RuntimeEvent } from "./events.ts";
 import { openCheckedRuntimeLog, openRuntimeLog, type RuntimeLog } from "./log.ts";
 import { openRuntime } from "./runtime.ts";
+import { rebuild } from "./state.ts";
 
 const T0 = Date.UTC(2026, 10, 16, 12);
 const MINUTE = 60_000;
@@ -254,6 +255,34 @@ describe("a log of a later build", () => {
     const clock = fakeWallClock(T0);
     await runtimeOn(log, clock, "run-1").pass();
     expect(runtimeOn(log, clock, "run-2").skipped).toBe(0);
+    log.close();
+  });
+
+  it("counts the events of each type, also of a type that this build does not know", async () => {
+    const log = openRuntimeLog(":memory:");
+    const clock = fakeWallClock(T0);
+    await runtimeOn(log, clock, "run-1").pass();
+    const later = { ...envelope("started", "later:1", T0 + MINUTE), type: "later-type" } as unknown as RuntimeEvent;
+    log.appendAll([later], () => {});
+    const counts = log.counts();
+    expect(counts.get("observation")).toBe(1);
+    expect(counts.get("later-type")).toBe(1);
+    expect([...counts.values()].reduce((sum, count) => sum + count, 0)).toBe(log.count());
+    expect(unknownEvents(counts)).toBe(1);
+    log.close();
+  });
+
+  it("gives the same state from the types of the fold as from each type, with no observation", async () => {
+    const log = openRuntimeLog(":memory:");
+    const clock = fakeWallClock(T0);
+    const runtime = runtimeOn(log, clock, "run-1");
+    await runtime.pass();
+    await clock.advance(MINUTE);
+    await runtime.pass();
+    expect([...log.read()].some((event) => event.type === "observation")).toBe(true);
+    expect([...log.read(FOLD_TYPES)].some((event) => event.type === "observation")).toBe(false);
+    expect(rebuild(log.read(FOLD_TYPES), runtime.config)).toEqual(rebuild(log.read(), runtime.config));
+    expect(runtime.state()).toEqual(rebuild(log.read(FOLD_TYPES), runtime.config));
     log.close();
   });
 });

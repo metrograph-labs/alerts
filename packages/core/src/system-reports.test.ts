@@ -4,7 +4,8 @@ import { assess, PERSON_SUBJECT } from "./assess.ts";
 import { CONFIG_FORMAT } from "./config.ts";
 import { messageOf } from "./delivery.ts";
 import type { ChannelId, ChannelQuota, CopyRead, CopyWatch, Coverage, HealthState, Incident, Observation, PersonId, PersonWatch, PlaceId, ProviderBalance, Report, ReportId, SourceDescriptor, SourceHealth, SourceId, WatchedPlace } from "./contracts.ts";
-import type { DrillConfig, DrillRun } from "./drill.ts";
+import { SYSTEM_SOURCE } from "./contracts.ts";
+import { DRILL_WATCH_GRACE, type DrillConfig, type DrillRun, type DrillWatch } from "./drill.ts";
 import type { Lateness } from "./lateness.ts";
 import type { ObserveCondition } from "./observe.ts";
 import { incidents, normalize } from "./merge.ts";
@@ -22,6 +23,7 @@ import {
   DRILL_SUBJECT,
   copyStages,
   copyUnreadAt,
+  drillWatchAt,
   gapGrade,
   HELD_SHOWN,
   heldText,
@@ -43,7 +45,6 @@ import {
   STORE_SUBJECT,
   storeEmptyAt,
   stepSizeText,
-  SYSTEM_SOURCE,
   systemReports,
   threats,
   type LogRecovery,
@@ -1129,6 +1130,66 @@ describe("the drill reports", () => {
     const failure = failed.reports.filter((report) => report.op === "alert");
     expect(levels(failure, WATCHER, START + 30 * MINUTE)).toEqual(["notice"]);
     expect(addSystemReports(started.lines, failed.reports, failed.observations)).toEqual(failed.lines);
+  });
+
+  describe("the watch of a drill of another copy", () => {
+    const HOUR = 60 * MINUTE;
+    const watch: DrillWatch = { drill: { ...DRILL, copies: ["cloud"] }, copy: "cloud" };
+    const next = START + 7 * DAY;
+    // The window of each Saturday ends at 17:00 in Chicago, 6 hours after its start.
+    const end = next + 6 * HOUR;
+    const read = (at: number): CopyRead => ({ at, skew: 0, sameConfig: true });
+    const cloud = (extra: Partial<CopyWatch> = {}): CopyWatch => ({ copy: "cloud", skewLimit: MINUTE, maxAge: 5 * MINUTE, since: START - DAY, ...extra });
+    const watched = (copy: CopyWatch) => ({ copies: [copy], copy: "home", drillWatches: [watch] });
+    const own = (reports: readonly Report[]) => reports.filter((report) => report.key.startsWith("drill-watch/"));
+    const seen = cloud({ read: read(START + HOUR), drills: { [DRILL.id]: START } });
+
+    it("tells of a start that the other copy missed, keeps it over a restart, and ends it at the next start", () => {
+      expect(own(systemReports(NO_SYSTEM_LINES, snapshot(watched(seen)), end + DRILL_WATCH_GRACE - 1).reports)).toEqual([]);
+      const missed = systemReports(NO_SYSTEM_LINES, snapshot(watched(seen)), end + DRILL_WATCH_GRACE);
+      expect(codes(own(missed.reports))).toEqual([["alert", "system.drill.failed", "drill-watch/cloud/push-weekly"]]);
+      expect(own(missed.reports)[0]).toMatchObject({ severity: "moderate", urgency: "expected", onset: end, areas: [] });
+      expect(own(missed.reports)[0]!.headline).toBe("No start of the drill push-weekly came from the copy cloud.");
+      expect(own(missed.reports)[0]!.parameters).toEqual({ drill: ["push-weekly"], copy: ["cloud"], why: ["unseen"] });
+      expect(own(missed.reports)[0]!.description).toContain(`The last read of the copy cloud that passed was at ${new Date(START + HOUR).toISOString()}.`);
+      expect(levels(own(missed.reports), WATCHER, end + DRILL_WATCH_GRACE)).toEqual(["notice"]);
+      expect(addSystemReports(NO_SYSTEM_LINES, missed.reports, missed.observations)).toEqual(missed.lines);
+      // A new read with the same facts gives no update. After a restart, the watch starts again, and the open line keeps its start.
+      expect(own(systemReports(missed.lines, snapshot(watched(cloud({ read: read(end + DAY), drills: { [DRILL.id]: START } }))), end + DAY).reports)).toEqual([]);
+      expect(own(systemReports(missed.lines, snapshot(watched(cloud({ since: end + DAY }))), end + DAY + HOUR).reports)).toEqual([]);
+      // The next start of the other copy ends the line.
+      const back = cloud({ read: read(next + 7 * DAY + HOUR), drills: { [DRILL.id]: next + 7 * DAY } });
+      expect(codes(own(systemReports(missed.lines, snapshot(watched(back)), next + 7 * DAY + HOUR).reports))).toEqual([["cancel", "system.drill.failed", "drill-watch/cloud/push-weekly"]]);
+    });
+
+    it("tells that it cannot read when the other copy answers with no starts of drills", () => {
+      const old = systemReports(NO_SYSTEM_LINES, snapshot(watched(cloud({ read: read(START + 7 * HOUR) }))), START + 7 * HOUR);
+      expect(codes(own(old.reports))).toEqual([["alert", "system.drill.failed", "drill-watch/cloud/push-weekly"]]);
+      expect(own(old.reports)[0]).toMatchObject({ severity: "minor", onset: START + 6 * HOUR });
+      expect(own(old.reports)[0]!.headline).toBe("This copy cannot tell if the drill push-weekly started.");
+      expect(own(old.reports)[0]!.parameters).toEqual({ drill: ["push-weekly"], copy: ["cloud"], why: ["no-read"] });
+      // A read with the starts changes the reason, thus the line gets an update.
+      const unseen = systemReports(old.lines, snapshot(watched(cloud({ read: read(START + 8 * HOUR), drills: {} }))), START + 8 * HOUR);
+      expect(codes(own(unseen.reports))).toEqual([["update", "system.drill.failed", "drill-watch/cloud/push-weekly"]]);
+    });
+
+    it("keeps the lines with no watches in the snapshot, and ends them for a watch that is gone", () => {
+      const missed = systemReports(NO_SYSTEM_LINES, snapshot(watched(seen)), end + DRILL_WATCH_GRACE);
+      expect(own(systemReports(missed.lines, snapshot(), end + DAY).reports)).toEqual([]);
+      expect(codes(own(systemReports(missed.lines, snapshot({ copies: [seen], copy: "home", drillWatches: [] }), end + DAY).reports))).toEqual([["cancel", "system.drill.failed", "drill-watch/cloud/push-weekly"]]);
+      // The lines of the drills of this copy keep their own guard.
+      const run = drills({ at: end + DRILL_WATCH_GRACE });
+      const both = systemReports(missed.lines, snapshot({ ...watched(seen), ...run }), end + DRILL_WATCH_GRACE);
+      expect(Object.keys(both.lines.open).filter((line) => line.startsWith("drill")).sort()).toEqual(["drill-watch/cloud/push-weekly", "drill/home/push-weekly"]);
+      expect(systemReports(both.lines, snapshot(run), end + DRILL_WATCH_GRACE + MINUTE).lines.open).toHaveProperty(["drill-watch/cloud/push-weekly"]);
+    });
+
+    it("gives the time of the miss for a timer, with the start of the open line", () => {
+      expect(drillWatchAt(NO_SYSTEM_LINES, watch, [seen])).toBe(end + DRILL_WATCH_GRACE);
+      const missed = systemReports(NO_SYSTEM_LINES, snapshot(watched(seen)), end + DRILL_WATCH_GRACE);
+      expect(drillWatchAt(missed.lines, watch, [cloud({ since: end + DAY })])).toBe(end + DRILL_WATCH_GRACE);
+      expect(drillWatchAt(NO_SYSTEM_LINES, watch, [])).toBeUndefined();
+    });
   });
 });
 

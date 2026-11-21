@@ -21,11 +21,13 @@ import type {
   Urgency,
   WatchedPlace,
 } from "./contracts.ts";
-import { ASSESSED_LEVELS } from "./contracts.ts";
+import { ASSESSED_LEVELS, SYSTEM_SOURCE } from "./contracts.ts";
 import {
   CONTEXT_KINDS,
   DEFAULT_ASSESS_POLICY,
   EARTHQUAKE_PAST_WITHIN,
+  FOREIGN_TABLE,
+  foreignIncidents,
   LIFE_SAFETY_KINDS,
   admits,
   assess,
@@ -220,6 +222,64 @@ describe("the transit alerts (AL-73)", () => {
         }
       }
     }
+  });
+});
+
+describe("the reports of another copy (AL-76)", () => {
+  // A kind with no class: the table of the other kinds gives it `urgent` at most.
+  const river = (fields: Draft = {}) => incident({ kind: "met.flood.river", severity: "severe", urgency: "expected", ...fields });
+
+  it("gives a kind with no class the digest at most, at each severity and urgency", () => {
+    expect(assess(river(), person(), places).level).toBe("urgent");
+    for (const severity of [...SEVERITIES, "unknown"] as const) {
+      for (const urgency of [...URGENCIES, "unknown"] as const) {
+        const found = assess(river({ severity, urgency }), person(), places, DEFAULT_ASSESS_POLICY, undefined, true);
+        const expected = severity === "minor" || urgency === "past" ? "none" : "digest";
+        expect(found.level, [severity, urgency].join(" ")).toBe(expected);
+      }
+    }
+  });
+
+  it("tells the quiet table in the reason, with no source id", () => {
+    const found = tableLevel(DEFAULT_ASSESS_POLICY, river(), undefined, true);
+    expect(found).toEqual({ bySeverity: "digest", byUrgency: "digest", level: "digest", foreign: true });
+    expect(tableLevel(DEFAULT_ASSESS_POLICY, river())).toEqual({ bySeverity: "urgent", byUrgency: "urgent", level: "urgent" });
+    const assessed = assess(river(), person(), places, DEFAULT_ASSESS_POLICY, undefined, true);
+    expect(assessed.reasons.find((reason) => reason.kind === "table")).toMatchObject({ kind: "table", foreign: true, level: "digest" });
+    expect(assessmentSchema.safeParse(assessed).success).toBe(true);
+    expect(FOREIGN_TABLE.severity.extreme).toBe("digest");
+  });
+
+  it("keeps the table of the class of a kind", () => {
+    expect(assess(incident(), person(), places, DEFAULT_ASSESS_POLICY, undefined, true).level).toBe("life-safety");
+    const transit = incident({ kind: "transport.transit.service-alert", severity: "minor", urgency: "immediate" });
+    expect(tableLevel(DEFAULT_ASSESS_POLICY, transit, undefined, true).foreign).toBeUndefined();
+  });
+
+  it("tells an incident whose each report comes from a source of another copy", () => {
+    const a = "a".repeat(64) as ReportId;
+    const b = "b".repeat(64) as ReportId;
+    const both = { anchor: a, reports: [a, b] };
+    const reports = [{ id: a, source: "source-2" }, { id: b, source: "source-3" }] as const;
+    expect(foreignIncidents(reports, new Set(["source-1"]))(both)).toBe(true);
+    expect(foreignIncidents(reports, new Set(["source-1", "source-3"]))(both)).toBe(false);
+    // A report with no known source counts as a report of this copy.
+    expect(foreignIncidents(reports.slice(0, 1), new Set(["source-1"]))(both)).toBe(false);
+    expect(foreignIncidents(reports, undefined)(both)).toBe(false);
+  });
+
+  it("counts a system report as a report of this copy", () => {
+    const a = "a".repeat(64) as ReportId;
+    const b = "b".repeat(64) as ReportId;
+    // Each copy makes its own system reports, and no descriptor has the id of the system source.
+    const sources = new Set(["source-1"]);
+    expect(sources.has(SYSTEM_SOURCE)).toBe(false);
+    const system = [{ id: a, source: SYSTEM_SOURCE }] as const;
+    expect(foreignIncidents(system, sources)({ anchor: a, reports: [a] })).toBe(false);
+    // A system report and a report of another copy in one incident: the system report keeps it own.
+    const mixed = [...system, { id: b, source: "source-2" }] as const;
+    expect(foreignIncidents(mixed, sources)({ anchor: a, reports: [a, b] })).toBe(false);
+    expect(foreignIncidents(mixed, sources)({ anchor: b, reports: [b] })).toBe(true);
   });
 });
 
