@@ -9,7 +9,7 @@
 
 import { observationId, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch } from "@mark1russell7/alerts";
 import { createRequester } from "@mark1russell7/alerts-fetch";
-import { isRecord, timeOf, type Fields } from "@mark1russell7/optional/read";
+import { isRecord, readHttpTime, timeOf, type Fields } from "@mark1russell7/optional/read";
 import type { Condition, Pace, Transport } from "polite-crawler/api";
 
 import { GCP_DASHBOARD, INCIDENTS_PATH, type GoogleDashboard } from "./feed.ts";
@@ -162,8 +162,8 @@ export function createGcpFetch(options: GcpFetchOptions): (input: GcpFetchInput,
       last = undefined;
       return { ok: false, failure: { kind: "network", message: `truncated or malformed body: ${url}` } };
     }
-    const modified = Date.parse(answer.reply.headers["last-modified"] ?? "");
-    last = { url, body: answer.reply.body, contentType: answer.reply.headers["content-type"] ?? "application/json", ...(Number.isFinite(modified) ? { asOf: modified } : {}) };
+    const modified = readHttpTime(answer.reply.headers["last-modified"]);
+    last = { url, body: answer.reply.body, contentType: answer.reply.headers["content-type"] ?? "application/json", ...(modified === undefined ? {} : { asOf: modified }) };
     return outcomeOf(url, answer.reply.status, last, latency);
   };
 }

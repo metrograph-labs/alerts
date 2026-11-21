@@ -8,6 +8,7 @@
 
 import { observationId, type FetchFailure, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch } from "@mark1russell7/alerts";
 import { createRequester, type Requested } from "@mark1russell7/alerts-fetch";
+import { isRecord } from "@mark1russell7/optional/read";
 import { redactSecrets } from "@mark1russell7/text/redact";
 import type { Pace, Reply, Transport } from "polite-crawler/api";
 
@@ -55,10 +56,6 @@ export interface BomSwsFetchInput {
   readonly watch: Watch;
 }
 
-type Fields = Readonly<Record<string, unknown>>;
-
-const isFields = (value: unknown): value is Fields => typeof value === "object" && value !== null && !Array.isArray(value);
-
 /** This function gives the body of the POST of a method. The K index asks for the Australian region. */
 export function requestBody(method: Method, apiKey: string): string {
   return JSON.stringify(method === METHODS.kIndex ? { api_key: apiKey, options: { location: REGION } } : { api_key: apiKey });
@@ -78,9 +75,9 @@ export function errorsOf(body: string): ApiErrorItem[] {
   } catch {
     return [];
   }
-  const errors = isFields(parsed) && Array.isArray(parsed["errors"]) ? (parsed["errors"] as unknown[]) : [];
+  const errors = isRecord(parsed) && Array.isArray(parsed["errors"]) ? (parsed["errors"] as unknown[]) : [];
   return errors.flatMap((error) => {
-    if (!isFields(error) || typeof error["message"] !== "string") return [];
+    if (!isRecord(error) || typeof error["message"] !== "string") return [];
     const code = typeof error["code"] === "number" ? error["code"] : Number.parseInt(String(error["code"]), 10);
     return [Number.isInteger(code) ? { code, message: error["message"] } : { message: error["message"] }];
   });
@@ -130,10 +127,10 @@ export function readAnswer(method: Method, reply: Reply, url: string, fetched: I
   } catch {
     return undefined;
   }
-  const data = isFields(parsed) ? parsed["data"] : undefined;
+  const data = isRecord(parsed) ? parsed["data"] : undefined;
   if (!Array.isArray(data)) return { observations: [observation(redactSecrets(reply.body, secrets))], complete: false };
   const bodies = new Set(data.map((item: unknown) => JSON.stringify({ method, item } satisfies Record<keyof ItemBody, unknown>)));
-  const complete = data.every((item: unknown) => isFields(item) && isValidItem(method, item));
+  const complete = data.every((item: unknown) => isRecord(item) && isValidItem(method, item));
   return { observations: [...bodies].map(observation), complete };
 }
 

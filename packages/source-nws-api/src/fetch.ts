@@ -6,6 +6,7 @@
 import { observationId, type Cursor, type FetchFailure, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch } from "@mark1russell7/alerts";
 import { createRequester, problemDetail } from "@mark1russell7/alerts-fetch";
 import { isUgcCode, WEA_EVENT_CODES } from "@mark1russell7/alerts-format-nws";
+import { isRecord } from "@mark1russell7/optional/read";
 import type { Condition, Pace, Reply, Transport } from "polite-crawler/api";
 
 import { SOURCE_ID } from "./map.ts";
@@ -150,8 +151,7 @@ export function readAnswer(reply: Reply, url: string, fetched: Instant, latency:
   } catch {
     return undefined;
   }
-  const features =
-    typeof parsed === "object" && parsed !== null && "features" in parsed && Array.isArray(parsed.features) ? (parsed.features as unknown[]) : undefined;
+  const features = isRecord(parsed) && Array.isArray(parsed["features"]) ? (parsed["features"] as unknown[]) : undefined;
   if (features === undefined) return { observations: [observation(reply.body)], complete: false };
   return { observations: features.map((feature) => observation(JSON.stringify(feature))), complete: true };
 }

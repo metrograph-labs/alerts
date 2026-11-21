@@ -6,6 +6,7 @@
 
 import type { CanaryResult, Observation } from "@mark1russell7/alerts";
 import { isKeepalive, keepaliveCheck } from "@mark1russell7/alerts-format-nws";
+import { isRecord, timeOf } from "@mark1russell7/optional/read";
 
 export { KEEPALIVE_MAX_AGE_MS } from "@mark1russell7/alerts-format-nws";
 
@@ -17,16 +18,12 @@ export function keepaliveSent(observation: Observation): number | undefined {
   } catch {
     return undefined;
   }
-  if (typeof feature !== "object" || feature === null || !("properties" in feature)) return undefined;
-  const properties = feature.properties;
-  if (typeof properties !== "object" || properties === null) return undefined;
-  const record = properties as Record<string, unknown>;
-  const parameters = typeof record["parameters"] === "object" && record["parameters"] !== null ? (record["parameters"] as Record<string, unknown>) : {};
+  if (!isRecord(feature) || !isRecord(feature["properties"])) return undefined;
+  const record = feature["properties"];
+  const parameters = isRecord(record["parameters"]) ? record["parameters"] : {};
   const awips = Array.isArray(parameters["AWIPSidentifier"]) ? parameters["AWIPSidentifier"] : [];
   const id = typeof record["id"] === "string" ? record["id"] : undefined;
-  if (!isKeepalive(id, awips.filter((one) => typeof one === "string")) || typeof record["sent"] !== "string") return undefined;
-  const sent = Date.parse(record["sent"]);
-  return Number.isNaN(sent) ? undefined : sent;
+  return isKeepalive(id, awips.filter((one) => typeof one === "string")) ? timeOf(record, "sent") : undefined;
 }
 
 /**

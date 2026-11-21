@@ -4,6 +4,7 @@
  */
 
 import type { CanaryResult, Observation } from "@mark1russell7/alerts";
+import { isRecord, timeOf } from "@mark1russell7/optional/read";
 
 /** The largest age of the time of a feed at its fetch: one hour. */
 export const FEED_MAX_AGE_MS: number = 60 * 60_000;
@@ -12,11 +13,7 @@ export const FEED_MAX_AGE_MS: number = 60 * 60_000;
 function censusAt(observation: Observation): number | undefined {
   try {
     const fields: unknown = JSON.parse(observation.body);
-    if (typeof fields !== "object" || fields === null) return undefined;
-    const record = fields as Record<string, unknown>;
-    if (record["type"] !== "census" || typeof record["at"] !== "string") return undefined;
-    const at = Date.parse(record["at"]);
-    return Number.isFinite(at) ? at : undefined;
+    return isRecord(fields) && fields["type"] === "census" ? timeOf(fields, "at") : undefined;
   } catch {
     return undefined;
   }

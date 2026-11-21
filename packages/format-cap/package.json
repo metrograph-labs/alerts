@@ -14,7 +14,7 @@
   "dependencies": {
     "@mark1russell7/alerts": "workspace:*",
     "@mark1russell7/alerts-format-nws": "workspace:*",
-    "@mark1russell7/optional": "^1.3.0",
+    "@mark1russell7/optional": "^1.5.0",
     "@nodable/entities": "^3.1.0",
     "fast-xml-parser": "^5.12.1"
   },

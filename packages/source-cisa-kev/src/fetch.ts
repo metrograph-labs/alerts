@@ -10,7 +10,7 @@
 
 import { observationId, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch } from "@mark1russell7/alerts";
 import { createRequester } from "@mark1russell7/alerts-fetch";
-import { isRecord, type Fields } from "@mark1russell7/optional/read";
+import { isRecord, timeOf, type Fields } from "@mark1russell7/optional/read";
 import type { Condition, Pace, Reply, Transport } from "polite-crawler/api";
 
 import { dueEnd, ENTRY_FIELDS, HEAD_FIELDS, isKevEntry, SOURCE_ID } from "./map.ts";
@@ -99,9 +99,9 @@ export function readCatalog(body: string, fetched: Instant): Catalog | undefined
       if (until > fetched) listed.push({ body: entryBody(entry), until });
     } else listed.push({ body: isRecord(entry) ? entryBody(entry) : JSON.stringify(entry) });
   }
-  const released = typeof parsed["dateReleased"] === "string" ? Date.parse(parsed["dateReleased"]) : Number.NaN;
-  const complete = valid === entries.length && parsed["count"] === entries.length && Number.isFinite(released);
-  return { head: bodyOf(parsed, HEAD_FIELDS), listed, complete, ...(Number.isFinite(released) ? { asOf: released } : {}) };
+  const released = timeOf(parsed, "dateReleased");
+  const complete = valid === entries.length && parsed["count"] === entries.length && released !== undefined;
+  return { head: bodyOf(parsed, HEAD_FIELDS), listed, complete, ...(released === undefined ? {} : { asOf: released }) };
 }
 
 /** This function gives the bodies of a catalog that are in the list at the time `now`, with no body twice. */
@@ -174,9 +174,7 @@ export function createKevFetch(options: KevFetchOptions): (input: KevFetchInput,
 export function releasedOf(head: string): Instant | undefined {
   try {
     const fields: unknown = JSON.parse(head);
-    if (!isRecord(fields) || typeof fields["dateReleased"] !== "string") return undefined;
-    const time = Date.parse(fields["dateReleased"]);
-    return Number.isFinite(time) ? time : undefined;
+    return isRecord(fields) ? timeOf(fields, "dateReleased") : undefined;
   } catch {
     return undefined;
   }

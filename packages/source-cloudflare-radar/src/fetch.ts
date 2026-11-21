@@ -8,7 +8,7 @@
 
 import { observationId, type FetchFailure, type FetchOutcome, type FetchSignal, type Instant, type Observation, type SourceId, type Watch } from "@mark1russell7/alerts";
 import { createRequester, type Requested } from "@mark1russell7/alerts-fetch";
-import { isRecord, type Fields } from "@mark1russell7/optional/read";
+import { isRecord, readHttpTime, timeOf, type Fields } from "@mark1russell7/optional/read";
 import type { Pace, Transport } from "polite-crawler/api";
 
 import { ANOMALIES_PATH, ANOMALIES_SOURCE, OUTAGES_PATH, OUTAGES_SOURCE, PAGE_LIMIT, RADAR_BASE } from "./feed.ts";
@@ -114,13 +114,12 @@ export function failureOfRequest(requested: Extract<Requested, { ok: false }>): 
 
 /**
  * This function tells if a record is live at the time `now`: its end is `null` or absent, or its end is after `now`. An
- * end that is not a time keeps the record, and the map tells of the change.
+ * end that is not an ISO 8601 time keeps the record, and the map tells of the change. The map reads the end with the same
+ * function `timeOf`.
  */
 export function isLive(record: Fields, now: Instant): boolean {
-  const end = record["endDate"];
-  if (end === null || end === undefined) return true;
-  const time = typeof end === "string" ? Date.parse(end) : Number.NaN;
-  return Number.isFinite(time) ? time > now : true;
+  const time = timeOf(record, "endDate");
+  return time === undefined || time > now;
 }
 
 /** This function tells if a body is JSON. */
@@ -222,7 +221,7 @@ export function createRadarFetch(options: RadarFetchOptions): (input: RadarFetch
       body,
       transport,
     }));
-    const modified = Date.parse(answer.reply.headers["last-modified"] ?? "");
-    return { ok: true, observations, complete: read.complete, ...(read.complete && Number.isFinite(modified) ? { asOf: modified } : {}) };
+    const modified = readHttpTime(answer.reply.headers["last-modified"]);
+    return { ok: true, observations, complete: read.complete, ...(read.complete && modified !== undefined ? { asOf: modified } : {}) };
   };
 }

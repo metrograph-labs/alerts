@@ -18,6 +18,7 @@
  */
 
 import { categoryOf, kindLabel, Problems, reportId, type Area, type Instant, type MapResult, type Observation, type Reading, type Report, type Severity, type Subject } from "@mark1russell7/alerts";
+import { isRecord, timeOf, type Fields } from "@mark1russell7/optional/read";
 import { errorMessage } from "@mark1russell7/text";
 
 import { boxArea, intervalOf, sourceIdOf, type GtfsFeed } from "./feed.ts";
@@ -251,11 +252,6 @@ export function subjectsOf(feed: Pick<GtfsFeed, "id" | "title">, selectors: read
   ];
 }
 
-type Fields = Readonly<Record<string, unknown>>;
-
-// This reader is a copy of the reader of each source package. The copy ends when the readers of JSON fields have one home.
-const isFields = (value: unknown): value is Fields => typeof value === "object" && value !== null && !Array.isArray(value);
-
 /** This function maps one observation of a feed. It does not throw. A body that it does not understand gives a fatal problem. */
 export function mapObservation(feed: GtfsFeed, observation: Observation): MapResult {
   try {
@@ -273,18 +269,18 @@ function mapOrThrow(feed: GtfsFeed, observation: Observation): MapResult {
   } catch {
     return { reports: [], problems: [{ path: "", message: "the body is not JSON", fatal: true }] };
   }
-  if (isFields(body) && body["type"] === "census") return mapCensus(feed, observation, body);
-  if (isFields(body) && body["type"] === "alert") return mapAlert(feed, observation, body);
+  if (isRecord(body) && body["type"] === "census") return mapCensus(feed, observation, body);
+  if (isRecord(body) && body["type"] === "alert") return mapAlert(feed, observation, body);
   return { reports: [], problems: [{ path: "", message: "the observation is not a census or an alert of a GTFS Realtime feed: the format changed", fatal: true }] };
 }
 
 /** This function gives the two readings of a census. */
 function mapCensus(feed: GtfsFeed, observation: Observation, body: Fields): MapResult {
-  const at = typeof body["at"] === "string" ? Date.parse(body["at"]) : Number.NaN;
+  const at = timeOf(body, "at");
   const active = body["active"];
   const noService = body["noService"];
   const isCount = (value: unknown): value is number => typeof value === "number" && Number.isInteger(value) && value >= 0;
-  if (!Number.isFinite(at) || !isCount(active) || !isCount(noService)) {
+  if (at === undefined || !isCount(active) || !isCount(noService)) {
     return { reports: [], problems: [{ path: "", message: "the census has no time or no counts", fatal: true }], readings: [] };
   }
   const area: Reading["area"] = boxArea(feed.box);
@@ -306,7 +302,7 @@ function mapAlert(feed: GtfsFeed, observation: Observation, body: Fields): MapRe
   const problems = new Problems();
   const key = typeof body["entity"] === "string" && body["entity"].trim() !== "" ? body["entity"].trim() : undefined;
   if (key === undefined) problems.add("entity", "the entity of the alert has no id: the map makes no report", "fatal");
-  const alert = isFields(body["alert"]) ? (body["alert"] as Alert) : undefined;
+  const alert = isRecord(body["alert"]) ? (body["alert"] as Alert) : undefined;
   if (alert === undefined) problems.add("alert", "the observation has no alert: the map makes no report", "fatal");
   const header = textIn(alert?.headerText);
   const description = textIn(alert?.descriptionText);
