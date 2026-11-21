@@ -82,6 +82,7 @@
   "health.drug-shortage",
   "health.drug-supply-threat",
   "health.hospital-capacity",
+  "health.medical-emergency",
   "health.outbreak",
   "health.outbreak.foodborne",
   "health.travel-notice",

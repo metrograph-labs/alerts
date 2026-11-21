@@ -1059,6 +1059,23 @@
     "round": 1
   },
   {
+    "id": "health.medical-emergency",
+    "subjectKinds": [
+      "place",
+      "entity"
+    ],
+    "examples": [
+      "A person at home falls and cannot get up",
+      "A heart attack or a stroke at home"
+    ],
+    "references": [
+      "FEMA Lifelines: Health and Medical > Medical Care",
+      "CAP 1.2: Health"
+    ],
+    "gap": "A medical emergency of one person has no public feed. The person or the household reports it. A fall alarm or a medical alarm device is a possible source.",
+    "round": 16
+  },
+  {
     "id": "health.outbreak",
     "subjectKinds": [
       "place",
