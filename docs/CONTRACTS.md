@@ -1435,6 +1435,34 @@ The runtime appends the events of step 4 at each boot, from `listRecoveries` of 
 
 A WAL, SHM or journal file with no database file also goes into a quarantine folder. Its event has the fault `orphan-journal`. A quarantine folder with no record gives the fault `no-read`.
 
+### The snapshot of the start (AL-105)
+
+The log keeps each event, thus the fold of the whole log grows with the age of the log. The snapshot of the start keeps the state and the entry index at one position of the log. The next start reads the snapshot, and it folds only the events after that position.
+
+- The snapshot is in its own file `snapshot.sqlite`, next to the log. The store is `foldSnapshot` of `@mark1russell7/sqlite`.
+- After the good start, a pass writes the snapshot at most once in each 30 minutes of the wall clock (`START_SNAPSHOT_EVERY`). The write is one transaction. A failed write keeps the old snapshot.
+- The mark of the snapshot is the position and the id of the last event of the log.
+- Each part of the state is one row: one row for each report, each delivery and each end mark. The views `merge` and `escalationEnds` get no row, because the read joins the two sides again.
+
+The start reads the snapshot only when its key and its mark agree with the log. The key has these parts:
+
+1. `FOLD_VERSION`. A change of the fold raises it. A test pins the hash of the snapshot of seeded logs for each version. Thus the test fails until the change raises the version.
+2. The id of the first event of the log, and the count of its `recovered` events. A new log and a salvage give a new key.
+3. The hash of the context of the fold: the sources, the health options, the retention with its defaults, the link policy and the expectations.
+
+The store also checks that the log has the event of the mark at the position of the mark. In each other case, the start folds the whole log:
+
+- The file has no snapshot, or a snapshot of another key or of another log.
+- The read of the snapshot throws. Then the output has the name of the error.
+- The file is broken. Then it goes into the quarantine folder `snapshot.sqlite.broken-<time>`, and the store starts empty.
+- The file does not open. Then the runtime starts with no store.
+
+The snapshot is a copy of a fold of the log. Thus the loss of the file loses no event. After a salvage of the log, the entry clears the snapshot.
+
+The output of each start has one line for the read. The line gives the position of the snapshot and the count of the events that the start folded. It has counts and positions only.
+
+The property test of the cadence also checks the snapshot. It writes the rows of the live state at each position of a random log. Then it starts from the rows at the last position, at the position before it and at the half of the log. Each start gives the state, the size of the entry index and the times of entry of the whole log.
+
 ### The host on one computer
 
 The module `host.ts` gives the host of the live instance as data. A boot task starts a supervisor, and the supervisor starts the runtime:
