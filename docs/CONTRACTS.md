@@ -886,6 +886,19 @@ The claims of the pairs:
 - A claim is data with its evidence, and it can be wrong. A later check compares each claim with the joint outages of the health log.
 - Each source of a pair with a claim stays in each layer. The claim changes only the count of distinct paths or origins.
 
+## The lifelines and the needs
+
+The module `lifelines.ts` of the core holds the FEMA Community Lifelines and the needs of a person under them (AL-106).
+
+- `LIFELINES` holds the codes of the 8 lifelines, in the order of FEMA. `LIFELINE_LABELS` holds their names, as FEMA writes them.
+- The source is the Community Lifelines Implementation Toolkit, version 2.1 (2023). Version 2.1 added Water Systems as the 8th lifeline.
+- A need is a thing that a person uses each day. It has a code, a lifeline, a level, a unit and an amount for each person each day.
+- The levels of a need are `life`, `health` and `comfort`. `NEED_ALERT_LEVELS` gives the level of an alert when a need of each level is at risk.
+- The unit of a need is in the grammar of `@mark1russell7/quantity`, for example `L`, `kcal` or `{dose}`.
+- `NEEDS` holds only the needs with a default amount from an official source. Each one has the title, the URL and the date of its source.
+- The module names no person, no household and no place. The people and their amounts are input data.
+- `lifelines.lock.json` holds the codes of the lifelines and of the needs, and a test holds the lock.
+
 ## The route and the delivery step
 
 The core function `route` gives the escalations at a time. Each escalation is one incident, one level and one person.

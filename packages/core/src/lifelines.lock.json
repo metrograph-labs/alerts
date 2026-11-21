@@ -1,0 +1,4 @@
+{
+  "lifelines": ["safety", "food-hydration-shelter", "health", "energy", "communications", "transportation", "hazmat", "water"],
+  "needs": ["food.energy", "hydration.drink"]
+}
