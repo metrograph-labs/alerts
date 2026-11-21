@@ -214,7 +214,10 @@ export interface SeedStoreResult {
   readonly events: number;
   /** The time of the first event. */
   readonly start: Instant;
-  /** The time of the state after the last event. An import does not change it. A measure of the start sets its clock to this time. */
+  /**
+   * The time of the state after the last event. An import does not change it. A measure of the start starts its wall clock
+   * at this time, with `wallClock({ start: end })`. With the clock of the system, the first pass retires the old incidents.
+   */
   readonly end: Instant;
   /** The count and the JSON bytes of the events of each type. */
   readonly types: Readonly<Record<string, TypeCount>>;
