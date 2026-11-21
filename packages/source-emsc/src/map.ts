@@ -14,6 +14,7 @@
 
 import { categoryOf, MAGNITUDE_PARAMETER, Problems, reportId, type Area, type Certainty, type Instant, type MapResult, type Observation, type Report, type SourceId } from "@mark1russell7/alerts";
 import { bandDiscs, FELT_INTENSITY, intensityAt, lawAt, type BandDisc } from "@mark1russell7/alerts-quake";
+import { isRecord, type Fields } from "@mark1russell7/optional/read";
 import { errorMessage } from "@mark1russell7/text";
 
 /** The id of this source. */
@@ -100,10 +101,6 @@ export function eventTime(value: unknown): Instant | undefined {
 export function originOf(author: string | undefined): string {
   return author !== undefined && ANSS_AUTHORS.has(author.toUpperCase()) ? ANSS_ORIGIN : EMSC_ORIGIN;
 }
-
-type Fields = Readonly<Record<string, unknown>>;
-
-const isFields = (value: unknown): value is Fields => typeof value === "object" && value !== null && !Array.isArray(value);
 
 /** This function reads a text field. A different value is a fatal problem. */
 function textField(fields: Fields, field: string, pattern: RegExp, what: string, problems: Problems): string | undefined {
@@ -224,7 +221,7 @@ function mapOrThrow(observation: Observation): MapResult {
     return { reports: [], problems: [{ path: "", message: "the body is not JSON", fatal: true }] };
   }
   // The fetch gives the whole answer as one observation when the answer is not a feature collection.
-  if (!isFields(fields) || !EVENT_FIELDS.some((field) => field in fields)) {
+  if (!isRecord(fields) || !EVENT_FIELDS.some((field) => field in fields)) {
     return { reports: [], problems: [{ path: "", message: "the observation is not an event of the EMSC answer: the format changed", fatal: true }] };
   }
   const problems = new Problems();

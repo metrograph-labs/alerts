@@ -15,6 +15,7 @@
 
 import { categoryOf, Problems, reportId, type Area, type Certainty, type MapResult, type Observation, type Report, type SourceId } from "@mark1russell7/alerts";
 import { bandDiscs, FELT_INTENSITY, intensityAt, lawAt, type BandDisc } from "@mark1russell7/alerts-quake";
+import { isRecord, type Fields } from "@mark1russell7/optional/read";
 import { errorMessage } from "@mark1russell7/text";
 
 /** The id of this source. */
@@ -43,10 +44,6 @@ export const REPORT_LIFE_MS = 86_400_000;
 
 /** The certainty of each status of a solution. A solution that a person reviewed is `observed`. */
 const CERTAINTY: Readonly<Record<string, Certainty>> = { reviewed: "observed", automatic: "likely" };
-
-type Fields = Readonly<Record<string, unknown>>;
-
-const isFields = (value: unknown): value is Fields => typeof value === "object" && value !== null && !Array.isArray(value);
 
 /** This function reads a text field. A different value is a fatal problem. */
 function textField(fields: Fields, field: string, pattern: RegExp, what: string, problems: Problems): string | undefined {
@@ -175,7 +172,7 @@ function mapOrThrow(observation: Observation): MapResult {
     return { reports: [], problems: [{ path: "", message: "the body is not JSON", fatal: true }] };
   }
   // The fetch gives the whole answer as one observation when the answer is not the feed
-  if (!isFields(fields) || !EVENT_FIELDS.some((field) => field in fields)) {
+  if (!isRecord(fields) || !EVENT_FIELDS.some((field) => field in fields)) {
     return { reports: [], problems: [{ path: "", message: "the observation is not an event of the USGS feed: the format changed", fatal: true }] };
   }
   const problems = new Problems();

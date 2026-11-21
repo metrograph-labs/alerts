@@ -9,6 +9,7 @@
 
 import { observationId, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch } from "@mark1russell7/alerts";
 import { createRequester } from "@mark1russell7/alerts-fetch";
+import { isRecord, readTime, timeOf, type Fields } from "@mark1russell7/optional/read";
 import type { Pace, Reply, Transport } from "polite-crawler/api";
 
 import { ENERGY_CHARTS_LICENSE, FREQUENCY_REGION, FREQUENCY_UNIT, minuteBody, MINUTE_MS, SECONDS, SOURCE_ID } from "./map.ts";
@@ -49,10 +50,6 @@ export interface EnergyChartsFetchInput {
   readonly watch: Watch;
 }
 
-type Fields = Readonly<Record<string, unknown>>;
-
-const isFields = (value: unknown): value is Fields => typeof value === "object" && value !== null && !Array.isArray(value);
-
 /** This function gives the path of the query at the time `now`: the `WINDOW_MINUTES` whole minutes before the current minute, and the current minute. */
 export function queryPath(now: Instant): string {
   const start = (Math.floor(now / MINUTE_MS) - WINDOW_MINUTES) * (MINUTE_MS / 1000);
@@ -68,15 +65,14 @@ export interface Read {
 
 /** This function gives the time of a row: a whole second. Each other value gives `undefined`. */
 function secondOf(value: unknown): Instant | undefined {
-  if (typeof value !== "string") return undefined;
-  const time = Date.parse(value);
-  return Number.isFinite(time) && time % 1000 === 0 ? time : undefined;
+  const time = readTime(value);
+  return time !== undefined && time % 1000 === 0 ? time : undefined;
 }
 
 /** This function gives the value of a row: a number or `null`. Each other value gives `undefined`. */
 function valueOf(row: Fields): number | null | undefined {
   const values = row["values"];
-  if (!isFields(values)) return undefined;
+  if (!isRecord(values)) return undefined;
   const value = values["frequency"];
   return value === null || typeof value === "number" ? value : undefined;
 }
@@ -106,26 +102,25 @@ export function readAnswer(reply: Reply, url: string, series: string, fetched: I
   } catch {
     return undefined;
   }
-  const timeOf = (field: string): number => (isFields(parsed) && typeof parsed[field] === "string" ? Date.parse(parsed[field]) : Number.NaN);
-  const from = timeOf("available_from");
-  const until = timeOf("available_until");
+  const from = isRecord(parsed) ? timeOf(parsed, "available_from") : undefined;
+  const until = isRecord(parsed) ? timeOf(parsed, "available_until") : undefined;
   if (
-    !isFields(parsed) ||
+    !isRecord(parsed) ||
     parsed["endpoint"] !== "frequency" ||
     parsed["unit"] !== FREQUENCY_UNIT ||
     parsed["timezone"] !== "UTC" ||
     parsed["license"] !== ENERGY_CHARTS_LICENSE ||
     !Array.isArray(parsed["data"]) ||
-    !Number.isFinite(from) ||
-    !Number.isFinite(until)
+    from === undefined ||
+    until === undefined
   ) {
     return { observations: [observation(reply.body)], complete: false };
   }
   const minutes = new Map<Instant, (number | null)[]>();
   const invalid = new Set<string>();
   for (const row of parsed["data"] as unknown[]) {
-    const time = isFields(row) ? secondOf(row["timestamp"]) : undefined;
-    const value = isFields(row) ? valueOf(row) : undefined;
+    const time = isRecord(row) ? secondOf(row["timestamp"]) : undefined;
+    const value = isRecord(row) ? valueOf(row) : undefined;
     if (time === undefined || value === undefined) {
       invalid.add(JSON.stringify(row));
       continue;

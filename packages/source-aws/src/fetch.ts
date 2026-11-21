@@ -10,6 +10,7 @@
 import { observationId, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch } from "@mark1russell7/alerts";
 import { createRequester } from "@mark1russell7/alerts-fetch";
 import { readFeed, type FeedEntry } from "@mark1russell7/alerts-format-cap";
+import { readHttpTime } from "@mark1russell7/optional/read";
 import type { Condition, Pace, Transport } from "polite-crawler/api";
 
 import { AWS_BASE, AWS_SOURCE, FEED_PATH, guidOf } from "./feed.ts";
@@ -56,8 +57,7 @@ interface Item {
 
 /** This function gives the time of an item: its `pubDate`, else the time in its `guid`. */
 function timeOf(entry: FeedEntry, seconds: number): Instant {
-  const time = entry.updated === undefined ? Number.NaN : Date.parse(entry.updated);
-  return Number.isFinite(time) ? time : seconds * 1000;
+  return readHttpTime(entry.updated) ?? seconds * 1000;
 }
 
 /** This function gives the body of one event: the newest update in full, and the time and the title of each earlier update. */
@@ -155,8 +155,8 @@ export function createAwsFetch(options: AwsFetchOptions): (input: AwsFetchInput,
     }
     const events = eventBodies(read.entries);
     const lossy = read.problems.some((problem) => problem.lossy === true);
-    const modified = Date.parse(answer.reply.headers["last-modified"] ?? "");
-    last = { url, events: lossy ? { ...events, complete: false } : events, ...(Number.isFinite(modified) ? { asOf: modified } : {}) };
+    const modified = readHttpTime(answer.reply.headers["last-modified"]);
+    last = { url, events: lossy ? { ...events, complete: false } : events, ...(modified === undefined ? {} : { asOf: modified }) };
     return outcomeOf(url, answer.reply.status, last, latency);
   };
 }
