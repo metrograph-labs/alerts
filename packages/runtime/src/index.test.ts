@@ -105,7 +105,7 @@ describe("the declaration of the service", () => {
     it(`passes describe() and lint() with the profile ${name}`, () => {
       // describe() throws when the declaration lacks a policy, the startup budget, the phases or the effect of a second signal
       const description = declare({ port: 0, probePort: 0, profile, loop: loopOf(), log: { close: () => undefined } }).describe();
-      expect(description.dependencies.map((dependency) => dependency.name)).toEqual(["home", "log", "shapes", "transit", "quotas", "readings", "sources"]);
+      expect(description.dependencies.map((dependency) => dependency.name)).toEqual(["home", "log", "shapes", "transit", "quotas", "readings", "start-snapshot", "sources"]);
       expect(description.transports.map((transport) => [transport.kind, transport.name])).toEqual([
         ["server", "http"],
         ["worker", "passes"],
