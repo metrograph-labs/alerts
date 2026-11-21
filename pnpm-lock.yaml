@@ -1659,6 +1659,12 @@ importers:
       '@mark1russell7/alerts-runtime':
         specifier: workspace:*
         version: link:../runtime
+      '@mark1russell7/alerts-shapes-nws':
+        specifier: workspace:*
+        version: link:../shapes-nws
+      '@mark1russell7/alerts-source-gtfs-alerts':
+        specifier: workspace:*
+        version: link:../source-gtfs-alerts
       '@mark1russell7/alerts-source-iem':
         specifier: workspace:*
         version: link:../source-iem
@@ -1698,6 +1704,9 @@ importers:
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
+      '@procedures/json':
+        specifier: ^0.68.0
+        version: 0.68.0
       '@procedures/notify':
         specifier: ^0.68.0
         version: 0.68.0(@mark1russell7/rigor-testkit@0.1.20(@mark1russell7/rigor-chaos@0.3.3)(@mark1russell7/rigor-generators@0.1.19)(@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7))(@opentelemetry/api@1.10.0)(fast-check@4.10.2)(ltx@3.1.2))

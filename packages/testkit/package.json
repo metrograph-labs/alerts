@@ -18,6 +18,8 @@
     "@mark1russell7/alerts-channel-twilio": "workspace:*",
     "@mark1russell7/alerts-format-cap": "workspace:*",
     "@mark1russell7/alerts-runtime": "workspace:*",
+    "@mark1russell7/alerts-shapes-nws": "workspace:*",
+    "@mark1russell7/alerts-source-gtfs-alerts": "workspace:*",
     "@mark1russell7/alerts-source-iem": "workspace:*",
     "@mark1russell7/alerts-source-ipaws": "workspace:*",
     "@mark1russell7/alerts-source-nws-api": "workspace:*",
@@ -31,6 +33,7 @@
     "@mark1russell7/service": "^0.11.6",
     "@mark1russell7/sqlite": "^0.4.0",
     "@mark1russell7/text": "^0.0.17",
+    "@procedures/json": "^0.68.0",
     "@procedures/notify": "^0.68.0",
     "ltx": "^3.1.2",
     "polite-crawler": "^0.7.10"
