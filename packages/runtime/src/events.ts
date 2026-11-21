@@ -351,6 +351,21 @@ export const EVENT_TYPES: readonly RuntimeEvent["type"][] = [
 ];
 
 /**
+ * The types of the events that the fold of the state reads (AL-102). The fold changes nothing for an observation, because
+ * the fetch event of the observation follows it with the same time. Thus the start reads no observation, and it parses
+ * none. Observations are the largest part of a log.
+ */
+export const FOLD_TYPES: readonly RuntimeEvent["type"][] = EVENT_TYPES.filter((type) => type !== "observation");
+
+/** This function gives the count of the events of the types that this build does not know, from the counts of each type. */
+export function unknownEvents(counts: ReadonlyMap<string, number>): number {
+  const known = new Set<string>(EVENT_TYPES);
+  let unknown = 0;
+  for (const [type, count] of counts) if (!known.has(type)) unknown += count;
+  return unknown;
+}
+
+/**
  * This function gives the frame tag of an id with a time of the runtime. The tag is empty before the first step of
  * the wall clock, and `~<count of steps>` after it. Thus a time that comes again after a step back gives a new id.
  */

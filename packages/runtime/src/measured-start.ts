@@ -17,7 +17,7 @@ import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { PUSHOVER_QUOTA, PUSHOVER_RESERVE_NOTICES, type PushoverChannelOptions } from "@mark1russell7/alerts-channel-pushover";
 import { openShapeCache, SHAPES_FILE } from "@mark1russell7/alerts-shapes-nws";
-import { realClock, wallClock } from "@mark1russell7/algebra/clock";
+import { realClock, wallClock, type WallClock } from "@mark1russell7/algebra/clock";
 import { nodeHostPorts } from "@mark1russell7/service/host";
 import { SqliteHostStateStore } from "polite-crawler";
 import { quotaGate, type Transport } from "polite-crawler/api";
@@ -46,6 +46,11 @@ export interface MeasuredOptions {
   readonly keys?: Readonly<Record<string, string>>;
   /** This function gets each line that a live start writes to its output. Default: no output. */
   readonly report?: (line: string) => void;
+  /**
+   * The wall clock of the start. Each part of the runtime reads its instant, as with the option `wall` of `openInstance`.
+   * Default: the wall clock of the platform. For a seeded log, give `wallClock({ start })` with the time of its last event.
+   */
+  readonly wall?: WallClock;
 }
 
 /** A runtime of a measured start. */
@@ -83,7 +88,7 @@ export async function openMeasuredRuntime(home: string, options: MeasuredOptions
       .join("");
     const checked = checkStart({ ...read, secrets: { text: secretsText }, copy: { code: "ENOENT" } }, instanceCheck);
     if (checked.tag === "err") throw new Error(`The private files of the measure do not pass the check:\n- ${checked.error.join("\n- ")}`);
-    const wall = wallClock();
+    const wall = options.wall ?? wallClock();
     const quotas = new SqliteHostStateStore(join(home, "quotas.sqlite"));
     const { log, recovered } = openCheckedRuntimeLog(join(home, "runtime.sqlite"), { now: () => wall.now() });
     if (recovered !== undefined) report(`The log file was broken. The new log kept ${String(recovered.added)} events and lost ${String(recovered.lost)}.`);
