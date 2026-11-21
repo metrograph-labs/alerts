@@ -28,8 +28,9 @@ const CONTEXT: FoldContext = { sources: [], retention: RETENTION };
 const SAMPLES = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22];
 // The first sample after the plateau.
 const PLATEAU_FROM = 16;
-// The limit of the bytes of the state after the plateau.
-const PLATEAU_BYTES = 0;
+// The limit of the bytes of the state after the plateau: the most bytes of the seed after 16 hours (2,998,369 in CI on
+// 2026-11-21) plus 10 percent. The seed fixes the log and the fold, thus each run gives the same bytes.
+const PLATEAU_BYTES = 3_300_000;
 // The limit of the growth of the state after the plateau.
 const PLATEAU_GROWTH = 1.1;
 

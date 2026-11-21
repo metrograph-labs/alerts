@@ -408,7 +408,7 @@ describe("the incidents that are not quiet (AL-109)", () => {
     expect(keeps([hold])).toBe(true);
     const suppression: RuntimeEvent = {
       ...envelope("suppressed", "suppressed:1", T0 + 2 * SECOND),
-      suppression: { key: "s1", incident: W1, level: "life-safety", person: PERSON, channel: PUSHOVER, step: 0, episode: 0, at: T0 + 2 * SECOND, reason: "same-level" },
+      suppression: { key: "s1", incident: W1, level: "life-safety", person: PERSON, channel: PUSHOVER, step: 0, episode: 0, at: T0 + 2 * SECOND, reason: "same-level", over: "life-safety" },
     };
     expect(keeps([suppression])).toBe(true);
   });

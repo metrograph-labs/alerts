@@ -94,8 +94,11 @@ const STEP = fc.record({
   n: fc.integer({ min: 0, max: 7 }),
 });
 
+// The value of the parameters of one step.
+type StepValue = typeof STEP extends fc.Arbitrary<infer T> ? T : never;
+
 // The event of a step, at the time of the log after the step.
-function eventOf({ choice, key, other, n }: fc.RecordValue<typeof STEP>, log: Log): RuntimeEvent {
+function eventOf({ choice, key, other, n }: StepValue, log: Log): RuntimeEvent {
   const at = log.time;
   const index = (log.count += 1);
   const id = idOf(key);
@@ -133,7 +136,7 @@ function eventOf({ choice, key, other, n }: fc.RecordValue<typeof STEP>, log: Lo
     case 12:
       return {
         ...envelope("suppressed", `suppressed:${index}`, at),
-        suppression: { key: `s${index}`, incident: id, level: "life-safety", person: PERSON, channel: PUSHOVER, step: 0, episode: 0, at, reason: "same-level" },
+        suppression: { key: `s${index}`, incident: id, level: "life-safety", person: PERSON, channel: PUSHOVER, step: 0, episode: 0, at, reason: "same-level", over: "life-safety" },
       };
     case 13:
       return { ...envelope("exchange", `exchange:${index}`, at), peer: "b", log: "log-b", next: index };
