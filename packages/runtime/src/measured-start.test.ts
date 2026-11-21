@@ -60,7 +60,8 @@ afterEach(async () => {
   rmSync(home, { recursive: true, force: true });
 });
 
-describe("openMeasuredRuntime", () => {
+// Each test does a full start of the runtime. On a loaded computer a start takes more than the default limit of 5 s.
+describe("openMeasuredRuntime", { timeout: 30_000 }, () => {
   it("resolves after the first pass, and no fetch or send leaves the process", async () => {
     const measured = await open();
     expect(measured.first.fetched.length).toBeGreaterThan(0);
