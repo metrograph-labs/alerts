@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { Acknowledgment, ChannelId, Delivery, EndMark, Incident, MergeState, ObservationId, PersonId, Report, ReportId, SourceId } from "./contracts.ts";
 import { reportId } from "./ids.ts";
 import { acknowledgedLevel, add, EMPTY_STATE, incidents, join, normalize, sentLevel, type IncidentOptions } from "./merge.ts";
-import { pruneTombstones, retire, retirements, RETENTION_HORIZON, TOMBSTONE_LIFE } from "./retention.ts";
+import { pruneTombstones, QUIET_HORIZON, retire, retirements, RETENTION_HORIZON, TOMBSTONE_LIFE, type QuietRule } from "./retention.ts";
 
 const SEEDS = seedsFrom(process.env["SEED"], [1, 2, 3, 4, 5, 6, 7, 8]);
 const HOUR = 3_600_000;
@@ -94,6 +94,61 @@ describe("retirements", () => {
     expect(incidents(state, T0 + 3 * HOUR)[0]!.live).toBe(false);
     expect(retiredAt(state, T0 + 10 * DAY + RETENTION_HORIZON - 1)).toEqual([]);
     expect(retiredAt(state, T0 + 10 * DAY + RETENTION_HORIZON)).toHaveLength(2);
+  });
+});
+
+describe("the quiet rule (AL-109)", () => {
+  const alert = report({ key: "k1" });
+  // The warning expires one hour after it was sent. That is its last change.
+  const ended = T0 + HOUR;
+  const quiet: QuietRule = { horizon: QUIET_HORIZON };
+  const quietAt = (state: MergeState, at: number, rule: QuietRule = quiet): ReportId[] => retirements(state, incidents(state, at), at, RETENTION_HORIZON, rule);
+
+  it("retires a quiet incident at the quiet horizon after its last change, and not before", () => {
+    const state = normalize({ reports: [alert] });
+    expect(QUIET_HORIZON).toBe(6 * HOUR);
+    expect(quietAt(state, ended + QUIET_HORIZON - 1)).toEqual([]);
+    expect(quietAt(state, ended + QUIET_HORIZON)).toEqual([alert.id]);
+  });
+
+  it("keeps an incident with a delivery or an acknowledgment for the full horizon, also an old one", () => {
+    for (const parts of [{ reports: [alert], deliveries: [delivery(alert, T0)] }, { reports: [alert], acks: [ack(alert, T0)] }]) {
+      const state = normalize(parts);
+      expect(quietAt(state, ended + RETENTION_HORIZON - 1)).toEqual([]);
+      expect(quietAt(state, ended + RETENTION_HORIZON)).toEqual([alert.id]);
+    }
+  });
+
+  it("keeps the whole incident for the full horizon when a person knows one report of it", () => {
+    const update = report({ key: "k2", op: "update", references: ["k1"], sent: T0 + 10 * 60_000, expires: ended });
+    const state = normalize({ reports: [alert, update], deliveries: [delivery(update, T0 + 10 * 60_000)] });
+    expect(incidents(state, ended)).toHaveLength(1);
+    expect(quietAt(state, ended + QUIET_HORIZON)).toEqual([]);
+    expect(quietAt(state, ended + RETENTION_HORIZON)).toEqual([alert.id, update.id].sort());
+  });
+
+  it("keeps an incident that the rule keeps for the full horizon", () => {
+    const state = normalize({ reports: [alert] });
+    const keeps = { horizon: QUIET_HORIZON, keeps: (incident: Incident) => incident.reports.includes(alert.id) };
+    expect(quietAt(state, ended + QUIET_HORIZON, keeps)).toEqual([]);
+    expect(quietAt(state, ended + RETENTION_HORIZON, keeps)).toEqual([alert.id]);
+  });
+
+  it("gives the full horizon with no rule, and the horizon to a quiet horizon that is longer", () => {
+    const state = normalize({ reports: [alert] });
+    expect(retirements(state, incidents(state, ended + QUIET_HORIZON), ended + QUIET_HORIZON)).toEqual([]);
+    expect(retirements(state, incidents(state, ended + DAY - 1), ended + DAY - 1, DAY, { horizon: 30 * DAY })).toEqual([]);
+    expect(retirements(state, incidents(state, ended + DAY), ended + DAY, DAY, { horizon: 30 * DAY })).toEqual([alert.id]);
+  });
+
+  it("keeps a live incident and an incident with an expiry in the future", () => {
+    const { expires: _expires, ...open } = report({ key: "k3" });
+    expect(quietAt(normalize({ reports: [open] }), T0 + 30 * DAY)).toEqual([]);
+    const later = report({ key: "k4", expires: T0 + 2 * DAY });
+    const state = normalize({ reports: [later], ends: [{ report: later.id, at: T0 + HOUR, ended: true }] });
+    expect(incidents(state, T0 + DAY)[0]!.live).toBe(false);
+    expect(quietAt(state, T0 + DAY)).toEqual([]);
+    expect(quietAt(state, T0 + 2 * DAY + QUIET_HORIZON)).toEqual([later.id]);
   });
 });
 
@@ -200,9 +255,18 @@ describe("the gate of the retention", () => {
       const state = randomState(r);
       const at = T0 + r.int(5, 40) * 12 * HOUR;
       const horizon = r.pick([DAY, 3 * DAY, RETENTION_HORIZON]);
+      // A quiet rule only adds retirements, and only of incidents that no person knows and that the rule does not keep.
+      const rule: QuietRule = { horizon: r.pick([HOUR, QUIET_HORIZON, 2 * DAY]), keeps: (incident) => incident.reports.length > 1 };
       for (const options of [{}, LINK]) {
         const found = incidents(state, at, options);
-        const gone = new Set(retirements(state, found, at, horizon));
+        const long = new Set(retirements(state, found, at, horizon));
+        const gone = new Set(retirements(state, found, at, horizon, rule));
+        for (const id of long) expect(gone.has(id)).toBe(true);
+        const told = new Set([...state.deliveries.map((one) => one.incident), ...state.acks.map((one) => one.incident)]);
+        for (const incident of found.filter((entry) => entry.reports.some((id) => gone.has(id) && !long.has(id)))) {
+          expect(incident.reports.some((id) => told.has(id))).toBe(false);
+          expect(rule.keeps?.(incident)).toBe(false);
+        }
         const after = retire(state, [...gone], at + TOMBSTONE_LIFE);
         const kept: Incident[] = found.filter((incident) => !incident.reports.some((id) => gone.has(id)));
         retiredCount += found.length - kept.length;

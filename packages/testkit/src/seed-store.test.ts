@@ -8,8 +8,10 @@ import { LIVE_TYPES, seedStore, type SeedStoreResult } from "./seed-store.ts";
 
 // A small log: approximately 1 hour of the live mix.
 const SIZE = 2_000_000;
-// A short retention, so that a small log has retirements.
+// A short retention, so that a small log has retirements. The quiet horizon is the horizon.
 const RETENTION = { horizon: 5 * 60_000, life: 30 * 60_000, every: 5 * 60_000 };
+// The context of the fold of the seeded copy.
+const CONTEXT = { sources: [], retention: RETENTION };
 // The types of the source path, which the store writes.
 const SOURCE_TYPES = ["observation", "fetch", "import", "ended", "exchange"] as const;
 
@@ -55,15 +57,16 @@ describe("seedStore", () => {
   });
 
   it("writes a log that the fold of the runtime reads", () => {
-    const state = rebuild(events, { sources: [] });
+    const state = rebuild(events, CONTEXT);
     expect(state.time).toBe(first.end);
     expect(state.merge.reports.length).toBeGreaterThan(0);
     expect(state.imported.merge.reports.length).toBeGreaterThan(0);
     expect(state.merge.retired.length).toBeGreaterThan(0);
   });
 
-  it("has each type of the source path, and retirements", () => {
-    for (const type of [...SOURCE_TYPES, "started", "retired"]) expect(first.types[type]?.count ?? 0, type).toBeGreaterThan(0);
+  it("has each type of the source path, and no retired event, because the fold retires (AL-109)", () => {
+    for (const type of [...SOURCE_TYPES, "started"]) expect(first.types[type]?.count ?? 0, type).toBeGreaterThan(0);
+    expect(first.types["retired"]).toBeUndefined();
   });
 
   it("has the byte mix of the live log, within a factor of 1.5 for each large type", () => {
