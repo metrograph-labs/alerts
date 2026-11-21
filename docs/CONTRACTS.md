@@ -1564,7 +1564,9 @@ The runtime operates the deploy in the worker `outage` of its service (`outage.t
 - The setup of Twilio reads the key `TWILIO_TEXT_FROM` for the outage call and the text channel. A value that is not in E.164 form stops the start.
 - With the key, the list has the text `OUTAGE_TEXT_MESSAGE`, and the deploy gives the number to the Functions. Without the key, the outage call sends no text.
 - Only a person whose number is on the opt-in list gets the text. The list then has `text` for the person, and the cap counts one text for the person.
-- The worker deploys after the startup. A change of the private files restarts the runtime, so a new list deploys at once.
+- The worker deploys at the steady time of each start: 10 minutes after the good start (`steadyWait`, AL-112). Before that time, it deploys nothing and loads no bundle. Thus esbuild does not compete with the start.
+- A start that does not get steady deploys nothing. Then the Functions that Twilio has stay as they are, and the outside check calls them.
+- A change of the private files restarts the runtime. Thus a change of the list or of its keys goes live at the steady time of the next start.
 - Once in each day, the worker deploys again. Thus a change on the side of Twilio heals in a day.
 - A failed deploy goes again after a backoff: one minute, then double, up to one hour. The pass limit bounds one deploy, so the drain of the service holds it.
 - `GET /status` gives the state of the last deploy: `pending`, `current` or `failed`, with its stage and its count of failures. The state holds no private value.

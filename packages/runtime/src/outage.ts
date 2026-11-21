@@ -3,7 +3,10 @@
  * Functions on the server of Twilio current.
  *
  * - The outside check calls the entry of the Functions when the instance is down. Thus the Functions must be current before an outage.
- * - The worker deploys at each start. A change of the private files restarts the runtime, so a new list deploys at once.
+ * - The worker deploys at the steady time of each start: `steadyWait` after the start is good (AL-112). Before that time it deploys
+ *   nothing and loads no bundle, thus esbuild does not compete with the start. A start that does not get steady deploys nothing,
+ *   and the Functions that Twilio has stay as they are.
+ * - A change of the private files restarts the runtime. Thus a new list deploys at the steady time of the next start.
  * - Once in each day, the worker deploys again. A deploy with no change reads three lists. Thus a change on the side of Twilio heals in a day.
  * - A failed deploy goes again after a backoff. The worker runs beside the passes, so a slow build of Twilio holds no alert.
  */
@@ -125,6 +128,11 @@ export interface OutageDeployOptions {
   /** The time between two deploys that pass. The default is one day. */
   readonly every?: Duration;
   /**
+   * The wait from the good start of the copy (`steady()`) to its first deploy. The default is 10 minutes. A copy that stops in
+   * this wait deploys nothing.
+   */
+  readonly steadyWait?: Duration;
+  /**
    * The wait after the first failed deploy. The wait doubles after each failure in sequence, up to `retryCap`.
    * A jitter of up to one `retryBase` adds to each wait. The default is one minute.
    */
@@ -145,13 +153,21 @@ export interface OutageDeployWorker {
   readonly worker: WorkerLoop;
   /** This method gives the state of the last deploy. */
   state(): OutageDeployState;
+  /**
+   * This method tells the worker that the start of the copy is good. The first deploy comes `steadyWait` after the first call.
+   * Before the first call, the worker deploys nothing. A second call changes nothing.
+   */
+  steady(): void;
 }
 
 const ms = (value: number) => ({ value, unit: "ms" });
 
 /**
- * This function makes the worker of the deploy of the outage call. The first deploy comes after the
- * startup of the service. A failed deploy throws in the worker, so the worker waits its backoff.
+ * This function makes the worker of the deploy of the outage call. The first deploy comes `steadyWait` after the call of
+ * `steady()`. A failed deploy throws in the worker, so the worker waits its backoff.
+ *
+ * The service starts each iteration of a worker after its startup, before the start is good. Thus an iteration before the
+ * steady time ends with no deploy, and the wake at the steady time starts the first deploy.
  *
  * @throws Error when a time is not a whole count of milliseconds above 0.
  */
@@ -159,11 +175,15 @@ export function outageDeployWorker(options: OutageDeployOptions): OutageDeployWo
   const every = options.every ?? DAY;
   const retryBase = options.retryBase ?? MINUTE;
   const retryCap = options.retryCap ?? HOUR;
-  for (const [name, value] of Object.entries({ limit: options.limit, every, retryBase, retryCap })) {
+  const steadyWait = options.steadyWait ?? 10 * MINUTE;
+  for (const [name, value] of Object.entries({ limit: options.limit, every, steadyWait, retryBase, retryCap })) {
     if (!(Number.isInteger(value) && value > 0)) throw new Error(`The time ${name} of the deploy of the outage call is not a whole count of milliseconds above 0.`);
   }
   if (retryCap < retryBase) throw new Error("The longest wait of the deploy of the outage call is shorter than its first wait.");
   let state: OutageDeployState = { state: "pending" };
+  // The time of the first deploy on the monotonic clock, from the first call of steady(). Before it, an iteration does not deploy.
+  let steadyAt: number | undefined;
+  let cancelWake: (() => void) | undefined;
   // The worker loop counts the failures in sequence before each iteration. This deploy is one more.
   const fail = (stage: string, message: string, before: number): never => {
     state = { state: "failed", at: options.wall.now(), stage, failures: before + 1 };
@@ -185,6 +205,8 @@ export function outageDeployWorker(options: OutageDeployOptions): OutageDeployWo
       ...(options.onError === undefined ? {} : { onError: options.onError }),
       setup: () => undefined,
       iteration: async ({ signal, failures }) => {
+        // No deploy before the steady time: the deploy loads the bundles and esbuild (AL-112). The wake of steady() ends the sleep.
+        if (steadyAt === undefined || options.clock.now() < steadyAt) return undefined;
         let result: TwilioServerlessDeployResult;
         try {
           result = await options.deploy(signal);
@@ -197,10 +219,21 @@ export function outageDeployWorker(options: OutageDeployOptions): OutageDeployWo
         if (result.changed) options.log?.("The deploy of the outage call changed the Functions. The new build is live.");
         return undefined;
       },
-      teardown: () => undefined,
+      teardown: () => {
+        cancelWake?.();
+        cancelWake = undefined;
+      },
     },
   );
-  return { worker, state: () => state };
+  const steady = (): void => {
+    if (steadyAt !== undefined) return;
+    steadyAt = options.clock.now() + steadyWait;
+    cancelWake = options.clock.after(steadyWait, () => {
+      cancelWake = undefined;
+      worker.wake();
+    });
+  };
+  return { worker, state: () => state, steady };
 }
 
 /** The effects of the deploy of the instance. */
