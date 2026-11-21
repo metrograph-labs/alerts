@@ -1471,6 +1471,11 @@ export type AssessReason =
       readonly level: AssessedLevel;
       /** This value is true when the urgency `past` counted as `immediate` in the window `pastWithin` of the table. */
       readonly recentPast?: true;
+      /**
+       * This value is true when the table is the quiet table of the sources of other copies (AL-76). The kind has no
+       * class, and this copy runs no source of the incident.
+       */
+      readonly foreign?: true;
     }
   /**
    * A rule of the person lowered the level at this place. The index is the position of the rule.

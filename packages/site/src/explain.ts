@@ -105,7 +105,13 @@ export function reasonText(reason: AssessReason, incident: Pick<Incident, "sever
     case "subject":
       return `The person watches the subject ${reason.subject.system}${reason.subject.id === undefined ? "" : ` ${reason.subject.id}`}.`;
     case "table": {
-      const table = reason.class === undefined ? "the table of the other kinds" : `the table "${reason.class}"`;
+      // A kind with no class from the sources of another copy only gets the quiet table (AL-76).
+      const table =
+        reason.class !== undefined
+          ? `the table "${reason.class}"`
+          : reason.foreign === true
+            ? "the quiet table of the reports that only another copy fetched (this copy does not run their sources, and the kind has no class)"
+            : "the table of the other kinds";
       return `In ${table}, the severity "${incident.severity}" gives ${reason.bySeverity}, and the urgency "${incident.urgency}" gives ${reason.byUrgency}. The level is the lower of the two: ${reason.level}.`;
     }
     case "place-table":

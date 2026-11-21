@@ -19,7 +19,7 @@ import type {
   WatchedPlace,
 } from "./contracts.ts";
 import { LEVELS } from "./contracts.ts";
-import { acknowledgmentOf, addressProblems, messageOf, policyFor, policyName, recipientProblems, route, RULED_STATUSES, ruleSteps, type ChannelRule, type EscalationEnd, type EscalationStart, type Recipient, type Route, type RouteInput } from "./delivery.ts";
+import { acknowledgmentOf, addressProblems, exhaustions, messageOf, policyFor, policyName, recipientProblems, route, RULED_STATUSES, ruleSteps, type ChannelRule, type EscalationEnd, type EscalationStart, type Recipient, type Route, type RouteInput } from "./delivery.ts";
 import { RANK_DELAY_LIMIT, rankDelayProblems } from "./escalation.ts";
 import { messageKey } from "./ids.ts";
 import { matchSubjects } from "./assess.ts";
@@ -372,6 +372,93 @@ describe("route: the rank delay of each level", () => {
     const [, second] = copies({ rankDelays: undefined });
     expect(sends(second!)).toEqual([[]]);
     expect(second![0]!.plan.wakeAt).toBe(T0 + DELAY);
+  });
+});
+
+describe("route: copies of two builds (AL-76)", () => {
+  // The copy of the burst of 2026-11-18 ran an older build. Its deliveries of a level that the own assessment of this
+  // copy does not give reach this copy through the exchange. This copy has no start of that level.
+  const shared = delivery("life-safety", 0, T0);
+  const imported = (routes: readonly Route[]) => routes.map((entry) => entry.imported === true);
+
+  it("opens no send at a level that only a delivery of another copy gives, above the own assessment", () => {
+    // The own assessment of the watch is `urgent`. The other copy sent step 0 at `life-safety`.
+    const routes = route(input({ incidents: [incident(WATCH)], merge: { deliveries: [shared] }, now: T0 + 6 * MINUTE }));
+    expect(summary(routes).map(({ level, fresh, sends }) => ({ level, fresh, sends }))).toEqual([{ level: "life-safety", fresh: false, sends: [] }]);
+    expect(imported(routes)).toEqual([true]);
+    // The shared level holds the top: the lower own level starts nothing. The poll of the receipt stays.
+    expect(routes[0]!.polls).toEqual([shared]);
+  });
+
+  it("takes no level from another copy for a kind that the own policy keeps in the digest", () => {
+    // The shape of the burst: a transit alert, which the own build gives the digest at most, and an urgent delivery of the other copy.
+    const transit = incident({ kind: { code: "transport.transit", label: "Transit" }, severity: "moderate", urgency: "immediate" });
+    const urgent = delivery("urgent", 0, T0);
+    const routes = route(input({ incidents: [transit], merge: { deliveries: [urgent] }, now: T0 + MINUTE }));
+    expect(summary(routes).map(({ level, fresh, sends }) => ({ level, fresh, sends }))).toEqual([{ level: "urgent", fresh: false, sends: [] }]);
+    expect(imported(routes)).toEqual([true]);
+    expect(exhaustions(routes.map((entry) => ({ ...entry, plan: { ...entry.plan, state: "exhausted" as const, exhaustedAt: T0 } })), CHANNELS, [])).toEqual([]);
+  });
+
+  it("follows a delivery of another copy at a level that the own assessment gives", () => {
+    const routes = route(input({ merge: { deliveries: [shared] }, now: T0 + 6 * MINUTE }));
+    expect(summary(routes).map(({ level, fresh, sends }) => ({ level, fresh, sends }))).toEqual([{ level: "life-safety", fresh: true, sends: [1] }]);
+    expect(imported(routes)).toEqual([false]);
+  });
+
+  it("continues its own level when the assessment goes down: a start of this copy is its own decision", () => {
+    const routes = route(input({ incidents: [incident(WATCH)], starts: [start("life-safety", T0)], merge: { deliveries: [shared] }, now: T0 + 6 * MINUTE }));
+    expect(summary(routes).map(({ level, sends }) => ({ level, sends }))).toEqual([{ level: "life-safety", sends: [1] }]);
+    expect(imported(routes)).toEqual([false]);
+  });
+
+  it("sends when a later own assessment is above the shared level", () => {
+    const urgent = delivery("urgent", 0, T0);
+    const routes = route(input({ merge: { deliveries: [urgent] }, now: T0 + MINUTE }));
+    const top = routes.find((entry) => entry.policy.level === "life-safety");
+    expect(top?.plan.sends.map((send) => send.step)).toEqual([0]);
+    expect(imported(routes)).toEqual([false, false]);
+  });
+
+  it("still ends the shared level at the end of the incident, and when the live incident no longer reaches the person", () => {
+    const over = incident({ live: false, expires: T0 + MINUTE });
+    const ended = route(input({ incidents: [over], merge: { deliveries: [shared] }, now: T0 + 3 * MINUTE }));
+    expect(summary(ended)).toEqual([{ level: "life-safety", state: "ended", fresh: true, sends: [], cancels: [shared.key] }]);
+    // Harvey County, Kansas: the incident moved away from the place of the person. The route ends the episode at `now`.
+    const away = incident({ areas: [{ type: "code", system: "ugc", code: "KSC079" }] });
+    const gone = route(input({ incidents: [away], merge: { deliveries: [shared] }, now: T0 + 3 * MINUTE }));
+    expect(summary(gone)).toEqual([{ level: "life-safety", state: "ended", fresh: false, sends: [], cancels: [shared.key] }]);
+    expect(gone[0]!.freshEnd).toBe(true);
+    expect(imported(gone)).toEqual([true]);
+  });
+
+  // A river flood has no class: the table of the other kinds gives it `urgent` at most.
+  const flood = incident({ kind: { code: "met.flood.river", label: "River flood" }, severity: "severe", urgency: "expected" });
+  const fromOther = [report(anchor, { source: "source-2" as Report["source"] }), report(merged, { source: "source-2" as Report["source"] })];
+  const levelsOf = (extra: Partial<RouteInput> & { readonly merge?: Partial<MergeState> }) => route(input(extra)).map((entry) => entry.policy.level);
+
+  it("gives the quiet table to a kind with no class when each report comes from a source of another copy", () => {
+    expect(levelsOf({ incidents: [flood], merge: { reports: fromOther } })).toEqual(["urgent"]);
+    expect(levelsOf({ incidents: [flood], merge: { reports: fromOther }, sources: new Set(["nws-api"]) })).toEqual([]);
+    expect(levelsOf({ incidents: [flood], merge: { reports: fromOther }, sources: new Set(["nws-api", "source-2"]) })).toEqual(["urgent"]);
+  });
+
+  it("states the one worse case: the other copy shares a report of its own source and stops before its send", () => {
+    // This copy runs no source of the flood, and the other copy sent nothing. Thus no escalation starts here, and the digest tells the flood.
+    expect(route(input({ incidents: [flood], merge: { reports: fromOther, deliveries: [] }, sources: new Set(["nws-api"]), now: T0 + 60 * MINUTE }))).toEqual([]);
+  });
+
+  it("keeps the table of the other kinds when one report of the incident comes from a source of this copy", () => {
+    const mixed = [report(anchor), report(merged, { source: "source-2" as Report["source"] })];
+    expect(levelsOf({ incidents: [flood], merge: { reports: mixed }, sources: new Set(["nws-api"]) })).toEqual(["urgent"]);
+    // A report with no known source counts as a report of this copy.
+    expect(levelsOf({ incidents: [flood], merge: { reports: [] }, sources: new Set(["nws-api"]) })).toEqual(["urgent"]);
+  });
+
+  it("keeps the table of the class of a kind from a source of another copy", () => {
+    const tornado = [report(anchor, { source: "source-2" as Report["source"] }), report(merged, { source: "source-2" as Report["source"] })];
+    const routes = route(input({ merge: { reports: tornado }, sources: new Set(["nws-api"]) }));
+    expect(summary(routes)).toEqual([{ level: "life-safety", state: "sent", fresh: true, sends: [0], cancels: [] }]);
   });
 });
 

@@ -110,6 +110,16 @@ const CONTEXT_TABLE: LevelTable = {
   urgency: { immediate: "digest", expected: "digest", future: "digest", past: "none", unknown: "digest" },
 };
 
+/**
+ * The table of a kind with no class in an incident whose sources this copy does not run (AL-76). Such an incident came
+ * from another copy, and that copy can run a newer build with a class for the kind. Thus the incident reaches the
+ * digest at most. A minor severity or the urgency `past` gives `none`.
+ */
+export const FOREIGN_TABLE: LevelTable = {
+  severity: { extreme: "digest", severe: "digest", moderate: "digest", minor: "none", unknown: "digest" },
+  urgency: { immediate: "digest", expected: "digest", future: "digest", past: "none", unknown: "digest" },
+};
+
 /** The table of the other kinds. These kinds reach `urgent` at most. */
 const OTHER_TABLE: LevelTable = {
   severity: { extreme: "urgent", severe: "urgent", moderate: "notice", minor: "digest", unknown: "digest" },
@@ -291,6 +301,8 @@ export interface TableResult {
   readonly level: AssessedLevel;
   /** This value is true when the urgency `past` counted as `immediate` in the window `pastWithin` of the table. */
   readonly recentPast?: true;
+  /** This value is true when the table is `FOREIGN_TABLE`: the kind has no class, and only other copies run the sources of the incident. */
+  readonly foreign?: true;
 }
 
 /** This function gives the first class of the policy with a prefix of a kind, or `undefined`. */
@@ -309,21 +321,50 @@ export function admits(policy: AssessPolicy, incident: Pick<Incident, "status" |
 /**
  * This function gives the level of the table for an incident or a line: the lower of its two lookups. In the
  * window `pastWithin` of the table after the onset, the urgency `past` counts as `immediate`. The time `at`
- * gives the age. With no time or no onset, the age is unknown, and `past` counts as `immediate`.
+ * gives the age. With no time or no onset, the age is unknown, and `past` counts as `immediate`. With `foreign`, a kind
+ * with no class gets `FOREIGN_TABLE`.
  */
 export function tableLevel(
   policy: AssessPolicy,
   incident: Pick<Incident | IncidentLine, "kind" | "severity" | "urgency" | "onset">,
   at?: Instant,
+  foreign = false,
 ): TableResult {
   const found = classOf(policy, incident.kind.code);
-  const table = found ?? policy.otherwise;
+  // A kind with no class in an incident of the sources of other copies gets the quiet table (AL-76).
+  const other = found === undefined && foreign;
+  const table = found ?? (other ? FOREIGN_TABLE : policy.otherwise);
   const span = table.pastWithin;
   const recent = incident.urgency === "past" && span !== undefined && (at === undefined || incident.onset === undefined || at - incident.onset <= span);
   const bySeverity = table.severity[incident.severity];
   const byUrgency = table.urgency[recent ? "immediate" : incident.urgency];
   const level = lowerLevel(bySeverity, byUrgency);
-  return { ...(found === undefined ? {} : { class: found.id }), bySeverity, byUrgency, level, ...(recent ? { recentPast: true as const } : {}) };
+  return {
+    ...(found === undefined ? {} : { class: found.id }),
+    bySeverity,
+    byUrgency,
+    level,
+    ...(recent ? { recentPast: true as const } : {}),
+    ...(other ? { foreign: true as const } : {}),
+  };
+}
+
+/**
+ * This function gives the test of an incident of the sources of other copies (AL-76). The test is true when each report
+ * of the incident comes from a source that is not in `sources`. Such an incident came from another copy only. A report
+ * with no known source counts as a report of this copy. Without `sources`, the test is always false.
+ */
+export function foreignIncidents(
+  reports: readonly { readonly id: string; readonly source: string }[],
+  sources: ReadonlySet<string> | undefined,
+): (incident: Pick<Incident, "anchor" | "reports">) => boolean {
+  if (sources === undefined) return () => false;
+  const sourceOf = new Map<string, string>(reports.map((report) => [report.id, report.source]));
+  return (incident) =>
+    [incident.anchor, ...incident.reports].every((report) => {
+      const source = sourceOf.get(report);
+      return source !== undefined && !sources.has(source);
+    });
 }
 
 /**
@@ -497,6 +538,9 @@ export function reachedAssessment(assessment: Assessment): Assessment {
  * entry counts only when it reaches the person alone. A place under the rule of the life-safety warnings always
  * counts. An entry that is not a watched place gives the level of the table, up to `entryMax` of the policy.
  * When the relevance fails, the places decide as with no graph, and the reason `relevance-fault` tells the fault.
+ *
+ * The value `foreign` tells that this copy runs no source of the incident (`foreignIncidents`). A kind with no class
+ * then gets `FOREIGN_TABLE`, not the table `otherwise` (AL-76).
  */
 export function assess(
   incident: Incident,
@@ -504,6 +548,7 @@ export function assess(
   places: readonly WatchedPlace[],
   policy: AssessPolicy = DEFAULT_ASSESS_POLICY,
   at?: Instant,
+  foreign = false,
 ): Assessment {
   // A private incident reaches only the persons of its addresses (AL-92, `audience.ts`).
   if (!inAudience(incident, person.person)) {
@@ -539,7 +584,7 @@ export function assess(
     reasons.push({ kind: "status", status: incident.status });
     return result("none");
   }
-  const table = tableLevel(policy, incident, at);
+  const table = tableLevel(policy, incident, at, foreign);
   const tables = new Map<PlaceId, PlaceTable>();
   // The level of the table at one place: the highest table of the lines that hold the place.
   const placeTable = (id: PlaceId): PlaceTable => {
@@ -550,7 +595,7 @@ export function assess(
     const found: PlaceTable =
       holding.length === 0
         ? { level: table.level, reports: [] }
-        : { level: holding.map((line) => tableLevel(policy, line, at).level).reduce(higherLevel), reports: holding.map((line) => line.report) };
+        : { level: holding.map((line) => tableLevel(policy, line, at, foreign).level).reduce(higherLevel), reports: holding.map((line) => line.report) };
     tables.set(id, found);
     return found;
   };

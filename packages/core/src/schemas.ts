@@ -1357,6 +1357,7 @@ export const assessReasonSchema: z.ZodType<AssessReason, AssessReason> = schemaO
         byUrgency: assessedLevelSchema,
         level: assessedLevelSchema,
         recentPast: z.literal(true).exactOptional(),
+        foreign: z.literal(true).exactOptional(),
       }),
       z.strictObject({ kind: z.literal("rule"), place: placeIdSchema.exactOptional(), index: count(), max: assessedLevelSchema }),
       z.strictObject({ kind: z.literal("shadow"), score: shadowScoreSchema }),

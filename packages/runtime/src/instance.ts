@@ -11,6 +11,7 @@ import {
   configuredExpectations,
   DEFAULT_LINK_POLICY,
   expectationProblems,
+  foreignIncidents,
   healthPayload,
   historyPayload,
   interestsPayload,
@@ -973,6 +974,8 @@ export function openInstance(options: InstanceOptions): Instance {
     channels,
     labels: placeLabels(placed),
     ...(config.assess === undefined ? {} : { assess: config.assess }),
+    // The sources of this copy: a report of only other sources came from another copy, maybe of a newer build (AL-76).
+    sources: new Set(descriptors.map((descriptor) => descriptor.id)),
     ...(options.priors === undefined ? {} : { priors: options.priors }),
     ...DELIVERY_TIMES,
     rank: copy.rank,
@@ -1052,6 +1055,7 @@ export function openInstance(options: InstanceOptions): Instance {
       places: placed.places,
       ...(delivery.assess === undefined ? {} : { policy: delivery.assess }),
       ...(options.priors === undefined ? {} : { priors: options.priors }),
+      foreign: foreignIncidents(runtime.state().merge.reports, delivery.sources),
       shape: shapes.lookup,
       basemap: shapes.basemap(),
       // The breadth of the indicator signals of the last pass. A runtime with no store of the readings has none.
@@ -1084,6 +1088,7 @@ export function openInstance(options: InstanceOptions): Instance {
       people,
       places: placed.places,
       ...(delivery.assess === undefined ? {} : { policy: delivery.assess }),
+      sources: delivery.sources,
       shape: shapes.lookup,
       link,
     });
