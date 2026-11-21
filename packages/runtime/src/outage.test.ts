@@ -1,7 +1,10 @@
+import { readdirSync, readFileSync } from "node:fs";
 import { fakeClock, type FakeClock, type WallClock } from "@mark1russell7/algebra/clock";
 import { CONFIG_FORMAT, parseConfig, type AlertConfig, type ChannelId, type EscalationPolicy, type PersonId, type PlaceId, type SecretLookup, type SpendConfig } from "@mark1russell7/alerts";
 import { OUTAGE_TEXT_MESSAGE, type TwilioFetch, type TwilioServerlessDeployResult } from "@mark1russell7/alerts-channel-twilio";
+import { seedsFrom } from "@mark1russell7/rigor-generators";
 import { detachedLifecycle } from "@mark1russell7/service/testing";
+import fc from "fast-check";
 import { afterEach, describe, expect, it } from "vitest";
 import { INSTANCE_CHANNELS } from "./instance.ts";
 import { OUTAGE_TOKEN_KEY, outageDeploy, outageDeployWorker, outageMonthCapOf, outageSetup, type OutageDeployOptions, type OutageDeployWorker, type OutageKeys } from "./outage.ts";
@@ -136,13 +139,18 @@ const DONE: TwilioServerlessDeployResult = { ok: true, changed: true, serviceSid
 const SAME: TwilioServerlessDeployResult = { ...DONE, changed: false };
 const failed = (stage: "build" | "upload"): TwilioServerlessDeployResult => ({ ok: false, stage, errors: [`The ${stage} failed.`] });
 
-const TIMES = { limit: 20 * SECOND, every: 5 * MINUTE, retryBase: 10 * SECOND, retryCap: 40 * SECOND };
+const TIMES = { limit: 20 * SECOND, every: 5 * MINUTE, steadyWait: 30 * SECOND, retryBase: 10 * SECOND, retryCap: 40 * SECOND };
+const SEEDS = seedsFrom(process.env["SEED"], [1, 2, 3, 4]);
 const running: OutageDeployWorker[] = [];
 
-/** This function starts a worker whose deploys give the steps in order, then `SAME`. */
-async function start(steps: readonly Step[], more: Partial<OutageDeployOptions> = {}) {
-  const clock = fakeClock(T0);
-  // The fake clock starts at T0. Thus its time is also the instant of the test, and the two clocks move together.
+/**
+ * This function starts a worker whose deploys give the steps in order, then `SAME`. The fake clock starts one steady wait
+ * before T0. With `steady`, the start is good at once, thus the first deploy comes at T0.
+ */
+async function start(steps: readonly Step[], more: Partial<OutageDeployOptions> = {}, steady = true) {
+  const steadyWait = more.steadyWait ?? TIMES.steadyWait;
+  const clock = fakeClock(T0 - steadyWait);
+  // The time of the fake clock is also the instant of the test, and the two clocks move together.
   const wall: WallClock = { time: "wall", now: () => clock.now(), after: (ms, run) => clock.after(ms, run) };
   const script = [...steps];
   const starts: number[] = [];
@@ -169,6 +177,10 @@ async function start(steps: readonly Step[], more: Partial<OutageDeployOptions> 
   await outage.worker.start(new AbortController().signal, detachedLifecycle(clock));
   await clock.advance(0);
   await settle();
+  if (steady) {
+    outage.steady();
+    await walk(clock, steadyWait);
+  }
   return { clock, outage, starts, lines, errors };
 }
 
@@ -218,10 +230,52 @@ describe("outageDeployWorker", () => {
     expect(outage.state()).toMatchObject({ state: "current", changed: false });
   });
 
+  it("deploys nothing before the start is good, thus a start that does not get steady leaves the Functions of Twilio as they are (AL-112)", async () => {
+    const { clock, outage, starts } = await start([DONE], {}, false);
+    await walk(clock, 4 * TIMES.every);
+    expect(starts).toEqual([]);
+    expect(outage.state()).toEqual({ state: "pending" });
+  });
+
+  it("deploys first one steady wait after the good start, and a second call of steady() moves nothing (AL-112)", async () => {
+    const { clock, outage, starts } = await start([DONE], {}, false);
+    const good = 7 * SECOND;
+    await walk(clock, good);
+    outage.steady();
+    await walk(clock, TIMES.steadyWait - SECOND);
+    outage.steady();
+    expect(starts).toEqual([]);
+    await walk(clock, SECOND);
+    // The clock started one steady wait before T0. Thus the deploy at the good start plus the wait is at T0 + good.
+    expect(starts).toEqual([good]);
+    await walk(clock, TIMES.every);
+    expect(starts).toEqual([good, good + TIMES.every]);
+  });
+
+  it.each(SEEDS)("never deploys before the good start plus its steady wait, at each time of the good start (seed %i)", async (seed) => {
+    await fc.assert(
+      fc.asyncProperty(fc.integer({ min: 0, max: 120 }), fc.integer({ min: 1, max: 90 }), async (goodSeconds, waitSeconds) => {
+        const steadyWait = waitSeconds * SECOND;
+        const { clock, outage, starts } = await start([DONE], { steadyWait }, false);
+        await walk(clock, goodSeconds * SECOND);
+        outage.steady();
+        await walk(clock, steadyWait - SECOND);
+        expect(starts).toEqual([]);
+        await walk(clock, SECOND);
+        expect(starts).toEqual([goodSeconds * SECOND]);
+        running.splice(running.indexOf(outage), 1);
+        outage.worker.stopIntake();
+        await outage.worker.close();
+      }),
+      { numRuns: 10, seed },
+    );
+  });
+
   it("refuses a time that is not a whole count of milliseconds above 0, and a cap below the first wait", () => {
     const options = { ...TIMES, clock: fakeClock(T0), wall: { time: "wall", now: () => T0, after: () => () => undefined } as unknown as WallClock, deploy: async () => SAME };
     expect(() => outageDeployWorker({ ...options, limit: 0 })).toThrow("The time limit");
     expect(() => outageDeployWorker({ ...options, every: 1.5 })).toThrow("The time every");
+    expect(() => outageDeployWorker({ ...options, steadyWait: 0 })).toThrow("The time steadyWait");
     expect(() => outageDeployWorker({ ...options, retryCap: 5 * SECOND })).toThrow("shorter than its first wait");
   });
 });
@@ -241,4 +295,50 @@ describe("outageDeploy", () => {
     expect(result).toMatchObject({ ok: false, stage: "service" });
     expect(urls).toEqual(["https://serverless.twilio.com/v1/Services/alerts-outage"]);
   }, 30_000);
+});
+
+// The packages of the workspace, by name. Each package has its entry in `src/index.ts`.
+const PACKAGES = new URL("../../", import.meta.url);
+const ENTRIES = new Map(
+  readdirSync(PACKAGES, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .flatMap((entry) => {
+      try {
+        const name = (JSON.parse(readFileSync(new URL(`${entry.name}/package.json`, PACKAGES), "utf8")) as { name: string }).name;
+        return [[name, new URL(`${entry.name}/src/index.ts`, PACKAGES).href] as const];
+      } catch {
+        return [];
+      }
+    }),
+);
+// A static import or export of a module. Type imports go away at the load, so they do not count. A dynamic import() does not match.
+const STATIC_IMPORT = /^[ \t]*(?:import|export)\s+(?!type\s)(?:[^;'"]*?\s+from\s+)?["']([^"']+)["']/gmu;
+
+/** This function gives the modules of the workspace that a load of the entry loads, and the outside packages that they import. */
+function staticGraph(entry: URL): { readonly files: ReadonlySet<string>; readonly outside: ReadonlySet<string> } {
+  const files = new Set<string>();
+  const outside = new Set<string>();
+  const queue = [entry.href];
+  for (let href = queue.pop(); href !== undefined; href = queue.pop()) {
+    if (files.has(href)) continue;
+    files.add(href);
+    for (const [, specifier = ""] of readFileSync(new URL(href), "utf8").matchAll(STATIC_IMPORT)) {
+      if (specifier.startsWith(".")) queue.push(new URL(specifier, href).href);
+      else if (ENTRIES.has(specifier)) queue.push(ENTRIES.get(specifier) ?? "");
+      else if ([...ENTRIES.keys()].some((name) => specifier.startsWith(`${name}/`))) throw new Error(`The walk does not read the subpath ${specifier}.`);
+      else if (!specifier.startsWith("node:")) outside.add(specifier.split("/").slice(0, specifier.startsWith("@") ? 2 : 1).join("/"));
+    }
+  }
+  return { files, outside };
+}
+
+describe("the load of the bundles (AL-112)", () => {
+  it("loads esbuild and the module of the bundles only in the call of a deploy, never in the static load of the entry", () => {
+    const graph = staticGraph(new URL("./main.ts", import.meta.url));
+    // The walk reaches the deploy, thus a static import of the bundles from it is in the walk.
+    expect([...graph.files].some((file) => file.endsWith("/channel-twilio/src/deploy.ts"))).toBe(true);
+    expect([...graph.files].filter((file) => file.endsWith("/channel-twilio/src/bundle.ts"))).toEqual([]);
+    expect([...graph.outside]).not.toContain("esbuild");
+    expect(graph.outside.size).toBeGreaterThan(3);
+  });
 });

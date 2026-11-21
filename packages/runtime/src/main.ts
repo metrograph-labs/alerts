@@ -231,6 +231,8 @@ async function runtime(): Promise<ServiceBuilder> {
     reload?.onPass();
     if (marked || service.lifecycle?.state !== "running") return;
     marked = true;
+    // The deploy of the outage call waits for the good start and its steady wait (AL-112).
+    instance.outage?.steady();
     // The time from the start of the process to this pass is one measured start of the host. The supervisor sets its ready window from these times.
     const started = { at: new Date(wall.now()).toISOString(), ms: Math.round(process.uptime() * 1000) };
     void loaded.ready().then((notes) => {
@@ -314,7 +316,7 @@ async function runtime(): Promise<ServiceBuilder> {
     },
     // A new copy of the catalog changes the transit feeds of the places. The same restart applies.
     onTransitFeeds: () => restart("A new copy of the transit catalog changes the transit feeds of the places.", "The transit feeds changed."),
-    // The worker of the outage call deploys its Functions at the start and once in each day. A failed deploy goes again after a backoff.
+    // The worker of the outage call deploys its Functions 10 minutes after the good start, then once in each day. A failed deploy goes again after a backoff.
     onOutageLog: (line) => console.log(line),
     onOutageError: (error, failures) => console.error(`A deploy of the outage call failed (${failures} in sequence): ${redactSecrets(errorMessage(error), values)}`),
   });
