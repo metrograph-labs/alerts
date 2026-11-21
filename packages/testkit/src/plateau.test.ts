@@ -38,7 +38,7 @@ const PLATEAU_GROWTH = 1.1;
 const partsOf = (state: RuntimeState): Record<string, number> =>
   Object.fromEntries(Object.entries(state).map(([key, value]) => [key, JSON.stringify(value ?? null).length]));
 
-describe.runIf(process.env.CI !== undefined)("the state of a seeded log at its plateau (AL-109)", () => {
+describe.runIf(process.env["CI"] !== undefined)("the state of a seeded log at its plateau (AL-109)", () => {
   let dir: string;
   let seeded: SeedStoreResult;
 
