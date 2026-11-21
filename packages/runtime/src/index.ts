@@ -28,6 +28,7 @@ export * from "./measured-start.ts";
 export * from "./outage.ts";
 export * from "./peers.ts";
 export * from "./replies.ts";
+export { RETIRE_EVERY, retention, retiredEvent, type RetentionOptions } from "./retention.ts";
 export * from "./runtime.ts";
 export * from "./schedule.ts";
 export * from "./snapshot.ts";

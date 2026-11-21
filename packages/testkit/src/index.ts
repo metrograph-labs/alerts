@@ -449,3 +449,4 @@ export {
   type BurstSettings,
   type BurstVerdict,
 } from "./send-burst.ts";
+export { LIVE_MIX, LIVE_TYPES, SEED_PEER, seedStore, type LogMix, type SeedShape, type SeedStoreOptions, type SeedStoreResult, type SourceMix, type TypeCount } from "./seed-store.ts";
