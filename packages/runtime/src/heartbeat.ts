@@ -4,6 +4,9 @@
  * computer stopped, or its network is down. While a channel refuses the sends, the heartbeat pings
  * `/fail`, because then the system cannot tell the person itself.
  *
+ * A check that the copies share gets only the success pings (`successOnly`). Thus it goes down only when
+ * the success pings of all the copies stop: no copy can tell the person.
+ *
  * The ping URL and the key of the management API are secrets. No ping body and no error text holds
  * them. A ping body holds no place and no person.
  */
@@ -223,6 +226,12 @@ export interface HeartbeatOptions {
    * channel. A line holds no place, no person and no secret.
    */
   readonly notes?: (at: Instant) => readonly string[];
+  /**
+   * The hook sends only the success pings when this field is `true`. A pass with a fail then sends no ping. A check that
+   * the copies share uses it (AL-100). A fail of one copy then does not make the check go down while another copy sends
+   * success. The default is `false`.
+   */
+  readonly successOnly?: boolean;
   /** The heartbeat gives each failed ping to this function. Its text holds no URL. */
   readonly onError: (message: string) => void;
 }
@@ -276,7 +285,8 @@ export function heartbeat(options: HeartbeatOptions): (pass: PassSummary) => voi
     }
     const step = heartbeatStep(state, pass, every, flight);
     state = step.state;
-    if (step.ping === undefined) return;
+    // The state keeps the fail, thus the next pass with success pings at once: the kind changed.
+    if (step.ping === undefined || (options.successOnly === true && step.ping.kind === "fail")) return;
     flight = true;
     const controller = new AbortController();
     const cancel = options.clock.after(limit, () => controller.abort());

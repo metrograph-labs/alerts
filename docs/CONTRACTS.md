@@ -775,8 +775,10 @@ The mirror does these steps before each read of the reload hook (`config-sync.ts
 ### The checks of the copies
 
 - Each copy pings its own first check, with the URL of `pingKey`. Thus the owner gets a message when one copy stops.
-- The copies share the loud check, and each copy pings it. Thus the outage call comes only when no copy pings it in its grace.
-- A fail ping of one copy still makes the loud check go down. A fail comes from a channel that refuses, or from an overdue send of the joined ledger. Thus it tells of the whole system.
+- The copies share the loud check, and each copy sends it only the success pings. Thus the outage call comes only when no copy pings it in its grace: no copy can tell the person.
+- A fail of one copy goes only to its own first check. A fail comes from a channel that refuses, or from an overdue send of the joined ledger. While another copy sends success, the loud check stays up. Thus a fault of one copy makes no call (AL-100).
+- One outage gives one call. The loud check goes down one time, and Healthchecks.io calls one time for each down. The first success of a copy ends the outage.
+- A fail of the only copy also stops its success pings. Thus the loud check calls after its period and grace, not at once. The first check tells the owner at once.
 
 ### The quotas and the caps
 
@@ -1409,7 +1411,8 @@ The runtime cannot tell the person that it stopped. A check of Healthchecks.io t
 - The hook starts the ping and ends at once. One ping is in flight at a time, for 10 seconds or less. A failed ping goes to the log, and its text holds no ping URL. The next pass pings again.
 - The key `HEALTHCHECKS_PING_URL` of `secrets.env` gives the ping URL, with `https`. The profile `daemon` does not start without it.
 - The optional key `HEALTHCHECKS_LOUD_PING_URL` gives a second check: the loud check. Its integration makes a phone call to the person, and it shares no channel with the instance.
-- The heartbeat sends each ping to the two checks, with one hook for each check. A slow ping to one check does not hold the other. Without the key, nothing changes.
+- The heartbeat has one hook for each check. A slow ping to one check does not hold the other. Without the key, nothing changes.
+- The first check gets each ping. The loud check gets only the success pings (the option `successOnly` of the hook). After a fail, the first success pings the loud check at once.
 - The loud check has a longer grace than the first check. Thus a short stop, for example a reboot, does not make a phone call.
 - `install.ts status` also reads the loud check, when `secrets.env` has its key.
 - `heartbeatGap` gives the longest time between two success pings. It adds the period of the pings, two pass limits, the longest wait of the loop and the ping limit. Each failed pass adds a pass limit and a wait. The check lets one failed pass go.

@@ -1454,16 +1454,16 @@ describe("the keys of the status check", () => {
     expect(checksKeys({ text: `${CHECKS_KEY}=${KEY}\n${PING_URL_KEY}=${URL_OF_CHECK}\n${LOUD_PING_URL_KEY}=\n` })).toEqual({ tag: "ok", value: { key: KEY, url: URL_OF_CHECK } });
   });
 
-  it("gives the checks of the heartbeat: the check, then the loud check, and none for a missing or empty key", () => {
+  it("gives the checks of the heartbeat: the check with each ping, then the loud check with only the success pings, and none for a missing or empty key", () => {
     const loud = `${URL_OF_CHECK}-loud`;
     const lookup = (values: Record<string, string>) => (key: string) => values[key];
     expect(pingTargets(lookup({ [LOUD_PING_URL_KEY]: loud, [PING_URL_KEY]: URL_OF_CHECK }))).toEqual([
-      { key: PING_URL_KEY, url: URL_OF_CHECK },
-      { key: LOUD_PING_URL_KEY, url: loud },
+      { key: PING_URL_KEY, url: URL_OF_CHECK, successOnly: false },
+      { key: LOUD_PING_URL_KEY, url: loud, successOnly: true },
     ]);
-    expect(pingTargets(lookup({ [PING_URL_KEY]: URL_OF_CHECK }))).toEqual([{ key: PING_URL_KEY, url: URL_OF_CHECK }]);
-    expect(pingTargets(lookup({ [PING_URL_KEY]: URL_OF_CHECK, [LOUD_PING_URL_KEY]: "" }))).toEqual([{ key: PING_URL_KEY, url: URL_OF_CHECK }]);
-    expect(pingTargets(lookup({ [LOUD_PING_URL_KEY]: loud }))).toEqual([{ key: LOUD_PING_URL_KEY, url: loud }]);
+    expect(pingTargets(lookup({ [PING_URL_KEY]: URL_OF_CHECK }))).toEqual([{ key: PING_URL_KEY, url: URL_OF_CHECK, successOnly: false }]);
+    expect(pingTargets(lookup({ [PING_URL_KEY]: URL_OF_CHECK, [LOUD_PING_URL_KEY]: "" }))).toEqual([{ key: PING_URL_KEY, url: URL_OF_CHECK, successOnly: false }]);
+    expect(pingTargets(lookup({ [LOUD_PING_URL_KEY]: loud }))).toEqual([{ key: LOUD_PING_URL_KEY, url: loud, successOnly: true }]);
     expect(pingTargets(lookup({}))).toEqual([]);
   });
 
@@ -1614,15 +1614,15 @@ describe("the copies of the system", () => {
     expect(server.calls).toHaveLength(1);
   });
 
-  it("pings the first check of the copy and the shared loud check", () => {
+  it("pings the first check of the copy with each ping, and the shared loud check with only the success pings (AL-100)", () => {
     const loud = `${URL_OF_CHECK}-loud`;
     const own = `${URL_OF_CHECK}-cloud`;
     const secrets = lookup({ [PING_URL_KEY]: URL_OF_CHECK, [CLOUD_KEY]: own, [LOUD_PING_URL_KEY]: loud });
     expect(pingKeyOf(ONLY_COPY)).toBe(PING_URL_KEY);
     expect(pingKeyOf(CLOUD)).toBe(CLOUD_KEY);
     expect(pingTargets(secrets, CLOUD)).toEqual([
-      { key: CLOUD_KEY, url: own },
-      { key: LOUD_PING_URL_KEY, url: loud },
+      { key: CLOUD_KEY, url: own, successOnly: false },
+      { key: LOUD_PING_URL_KEY, url: loud, successOnly: true },
     ]);
     expect(pingTargets(secrets)).toEqual(pingTargets(secrets, ONLY_COPY));
     expect(checksKeys({ text: `${CHECKS_KEY}=${"k".repeat(32)}

@@ -77,7 +77,7 @@ function pings(answer: () => Promise<number> = async () => 200) {
   return { calls, fetch };
 }
 
-function open(answer?: () => Promise<number>, onError: (message: string) => void = () => undefined, held?: (at: number) => HeartbeatState["held"]) {
+function open(answer?: () => Promise<number>, onError: (message: string) => void = () => undefined, held?: (at: number) => HeartbeatState["held"], successOnly?: boolean) {
   const clock = fakeWallClock(T0);
   const server = pings(answer);
   const errors: string[] = [];
@@ -87,6 +87,7 @@ function open(answer?: () => Promise<number>, onError: (message: string) => void
     clock,
     userAgent: AGENT,
     ...(held === undefined ? {} : { held }),
+    ...(successOnly === undefined ? {} : { successOnly }),
     onError: (message) => {
       errors.push(message);
       onError(message);
@@ -457,6 +458,40 @@ describe("the hook of the heartbeat", () => {
     hook(refused(T0));
     await settle();
     expect(server.calls.map((call) => [call.url, call.body])).toEqual([[`${URL_OF_CHECK}/fail`, "The channel pushover gave the kind auth to a send."]]);
+  });
+
+  it("sends only the success pings to a shared check: a fail sends nothing, and the next success pings at once (AL-100)", async () => {
+    const { server, hook } = open(undefined, undefined, undefined, true);
+    hook(healthy(T0));
+    await settle();
+    // The fail starts, and it holds past the period of the pings. A hook with each ping sends /fail two times here.
+    hook(refused(T0 + SECOND, "auth", T0 + 70 * SECOND));
+    await settle();
+    hook(refused(T0 + 61 * SECOND, "auth", T0 + 70 * SECOND));
+    await settle();
+    // A send on the channel ends the fail. The kind changes, thus the success ping goes at once.
+    hook(sent(T0 + 62 * SECOND));
+    await settle();
+    expect(server.calls.map((call) => [call.url, call.body])).toEqual([
+      [URL_OF_CHECK, "nws-api: healthy
+ipaws: failing"],
+      [URL_OF_CHECK, "nws-api: healthy
+ipaws: failing"],
+    ]);
+  });
+
+  it("gives the shared check no fail of one copy while another copy works: only the success pings of the working copy (AL-100)", async () => {
+    const server = pings();
+    const copy = () => heartbeat({ url: URL_OF_CHECK, fetch: server.fetch, clock: fakeWallClock(T0), userAgent: AGENT, successOnly: true, onError: () => undefined });
+    const home = copy();
+    const cloud = copy();
+    for (let minute = 0; minute < 3; minute++) {
+      const at = T0 + minute * 60 * SECOND;
+      home(refused(at, "auth", at + 90 * SECOND));
+      cloud(healthy(at));
+      await settle();
+    }
+    expect(server.calls.map((call) => call.url)).toEqual([URL_OF_CHECK, URL_OF_CHECK, URL_OF_CHECK]);
   });
 
   it("starts from the refused channels of the log at its first pass, and reads them one time", async () => {

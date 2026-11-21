@@ -120,7 +120,8 @@ export const PING_URL_KEY = "HEALTHCHECKS_PING_URL";
 /**
  * The name of the optional key of `secrets.env` that holds the address of a second check: the loud
  * check. Its integration makes a phone call to the person, and it shares no channel with the instance. The
- * heartbeat sends each ping to the two checks. Without the key, nothing changes.
+ * heartbeat sends each ping to the first check of the copy, and only the success pings to the loud check (AL-100).
+ * Thus the loud check goes down only when no copy can tell the person. Without the key, nothing changes.
  */
 export const LOUD_PING_URL_KEY = "HEALTHCHECKS_LOUD_PING_URL";
 
@@ -130,21 +131,28 @@ export const LOUD_PING_URL_KEY = "HEALTHCHECKS_LOUD_PING_URL";
  */
 export const pingKeyOf = (copy: CopySettings): string => copy.pingKey ?? PING_URL_KEY;
 
-/** One check of the outside heartbeat: the key of `secrets.env` and its address. */
+/** One check of the outside heartbeat: the key of `secrets.env`, its address, and the pings that it gets. */
 export interface PingTarget {
   /** The key of the first check of the copy, or `LOUD_PING_URL_KEY`. */
   readonly key: string;
   readonly url: string;
+  /** The value `true` gives only the success pings to the check: the option `successOnly` of the heartbeat. The loud check has it. */
+  readonly successOnly: boolean;
 }
 
 /**
  * This function gives the checks of the outside heartbeat from the secrets: the first check of the copy, then the loud
- * check. The copies share the loud check. A key with an empty value gives no check.
+ * check. A key with an empty value gives no check.
+ *
+ * - The first check of the copy gets each ping. Thus a fail of the copy goes at once to the owner.
+ * - The copies share the loud check, thus it gets only the success pings. It goes down only when the success pings of all
+ *   the copies stop for its grace: no copy can tell the person. Thus a fail of one copy makes no call while another copy
+ *   works, and one outage gives one call.
  */
 export function pingTargets(secret: (key: string) => string | undefined, copy: CopySettings = ONLY_COPY): readonly PingTarget[] {
   return [pingKeyOf(copy), LOUD_PING_URL_KEY].flatMap((key): PingTarget[] => {
     const url = secret(key) ?? "";
-    return url === "" ? [] : [{ key, url }];
+    return url === "" ? [] : [{ key, url, successOnly: key === LOUD_PING_URL_KEY }];
   });
 }
 
