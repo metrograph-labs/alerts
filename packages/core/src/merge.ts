@@ -55,12 +55,17 @@ export function normalize(parts: MergeParts): MergeState {
     if (held === undefined || tombstone.until > held.until) tombstones.set(tombstone.report, { report: tombstone.report, until: tombstone.until });
   }
   const kept = (report: ReportId): boolean => !tombstones.has(report);
-  const reports = new Map<ReportId, { readonly report: Report; readonly text: string }>();
+  // The text of a report is made only when two contents of one id meet. Most ids have one content, thus no text.
+  const reports = new Map<ReportId, { readonly report: Report; readonly text?: string }>();
   for (const report of parts.reports ?? []) {
     if (!kept(report.id)) continue;
-    const text = canonical(report);
     const held = reports.get(report.id);
-    if (held === undefined || text < held.text) reports.set(report.id, { report, text });
+    if (held === undefined) reports.set(report.id, { report });
+    else if (held.report !== report) {
+      const heldText = held.text ?? reportText(held.report);
+      const text = reportText(report);
+      reports.set(report.id, text < heldText ? { report, text } : { report: held.report, text: heldText });
+    }
   }
   return normal({
     reports: [...reports.entries()].sort(([a], [b]) => compareCodeUnits(a, b)).map(([, held]) => held.report),
@@ -115,7 +120,7 @@ export function add(state: MergeState, parts: MergeParts): MergeState {
   }
   const kept = (report: ReportId): boolean => indexIn(state.retired, report, tombstoneKey) < 0;
   // For two contents of one id, the content with the smaller canonical JSON. A tie keeps the content that the state has.
-  const smaller = (held: Report, report: Report): Report => (canonical(report) < canonical(held) ? report : held);
+  const smaller = (held: Report, report: Report): Report => (held === report || reportText(report) >= reportText(held) ? held : report);
   const first = <T>(held: T): T => held;
   const reports = insertSorted(state.reports, (parts.reports ?? []).filter((report) => kept(report.id)), reportKey, smaller);
   const deliveries = insertSorted(state.deliveries, (parts.deliveries ?? []).filter((delivery) => kept(delivery.incident)), canonical, first);
@@ -556,7 +561,15 @@ function highest(parts: readonly { readonly level: Level }[]): Level | undefined
   return index < 0 ? undefined : LEVELS[index];
 }
 
-// The canonical JSON of each object, kept for the life of the object.
+/**
+ * The canonical JSON of a report, made at each call. The merge compares two contents of one id with it. The text of
+ * a report is as large as the report, thus no cache keeps it. A cache kept a second copy of each live report (AL-102).
+ */
+function reportText(report: Report): string {
+  return canonicalJson(report, { form: "json" });
+}
+
+// The canonical JSON of each small object (a delivery, an acknowledgment, an end mark, a line), kept for the life of the object.
 const texts = new WeakMap<object, string>();
 function canonical(value: object): string {
   let text = texts.get(value);
