@@ -677,8 +677,8 @@ importers:
         specifier: ^0.10.0
         version: 0.10.0(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
       '@mark1russell7/sqlite':
-        specifier: ^0.3.8
-        version: 0.3.12
+        specifier: ^0.4.0
+        version: 0.4.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -738,8 +738,8 @@ importers:
         specifier: ^1.3.0
         version: 1.4.0
       '@mark1russell7/sqlite':
-        specifier: ^0.3.8
-        version: 0.3.12
+        specifier: ^0.4.0
+        version: 0.4.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -1693,8 +1693,8 @@ importers:
         specifier: ^0.10.0
         version: 0.10.0(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
       '@mark1russell7/sqlite':
-        specifier: ^0.3.8
-        version: 0.3.12
+        specifier: ^0.4.0
+        version: 0.4.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -2161,6 +2161,10 @@ packages:
 
   '@mark1russell7/sqlite@0.3.12':
     resolution: {integrity: sha512-LANgtuaGCvL1VGbU61F51sgd3ytmqrgMN3pSihPs5EdD1xq93te7rPllmyPV9mH7QetUabHlcVVUZsf+Ju98cA==}
+    engines: {node: '>=22.13'}
+
+  '@mark1russell7/sqlite@0.4.0':
+    resolution: {integrity: sha512-htHK+Ui+UqL/52bszg3zFuWoC8RCUceocoBrpWqU2OXp3TdKY3x8VQ8Tu6GiIQ3iOJNpqZ8B1wj1t6ELj8aUgQ==}
     engines: {node: '>=22.13'}
 
   '@mark1russell7/ste-lint@0.4.0':
@@ -3753,6 +3757,8 @@ snapshots:
       '@mark1russell7/rigor-statistics': 0.2.8
 
   '@mark1russell7/sqlite@0.3.12': {}
+
+  '@mark1russell7/sqlite@0.4.0': {}
 
   '@mark1russell7/ste-lint@0.4.0':
     dependencies:

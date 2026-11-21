@@ -150,10 +150,11 @@ function crashing(inner: RuntimeLog, at: number): RuntimeLog {
   let accepted = 0;
   let gone = false;
   return {
-    read: () => inner.read(),
+    read: (types) => inner.read(types),
     has: (id) => inner.has(id),
     entries: (options) => inner.entries(options),
     count: () => inner.count(),
+    counts: () => inner.counts(),
     head: () => inner.head(),
     close: () => inner.close(),
     appendAll(events, accept) {

@@ -12,7 +12,7 @@ import { channelWatch, lastFetchSuccess } from "./channel-watch.ts";
 import { createDispatcher, type DeliveryOptions, type DeliveryStep } from "./delivery.ts";
 import { drillStarts, drillStep, type CopyDrill } from "./drills.ts";
 import { entryIndex } from "./entries.ts";
-import { envelope, EVENT_TYPES, type RuntimeEvent } from "./events.ts";
+import { envelope, EVENT_TYPES, FOLD_TYPES, unknownEvents, type RuntimeEvent } from "./events.ts";
 import { importPage, sharePage, type ExchangePage, type ReceivedPage } from "./exchange.ts";
 import { fetchStep } from "./fetch.ts";
 import { limited } from "./limit.ts";
@@ -233,18 +233,16 @@ export function openRuntime(options: RuntimeOptions): Runtime {
   const repeated = ids.find((id, at) => ids.indexOf(id) !== at);
   if (repeated !== undefined) throw new Error(`Two sources have the id ${repeated}.`);
 
-  let read = 0;
-  // The index of the times of entry is a fold of the same events as the state.
+  // The index of the times of entry is a fold of the same events as the state. The start reads only the types of the fold
+  // (AL-102): an observation changes neither. The counts of each type give the events of the types that this build does
+  // not know, with no parse.
   const entries = entryIndex();
   let state = rebuild(
-    counted(log.read(), (event) => {
-      read += 1;
-      entries.add(event);
-    }),
+    counted(log.read(FOLD_TYPES), (event) => entries.add(event)),
     config,
   );
   entries.prune(state.merge);
-  const skipped = log.count() - read;
+  const skipped = unknownEvents(log.counts());
 
   // The fold runs on a draft before each write. The state changes only when the transaction commits.
   const append = (events: readonly RuntimeEvent[]): readonly string[] => {
