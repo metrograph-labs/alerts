@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { copyMeasure, type Observation, type ObservationId, type Report, type SourceId } from "@mark1russell7/alerts";
+import { CAP_MESSAGE_SYSTEM, copyMeasure, type Observation, type ObservationId, type Report, type SourceId } from "@mark1russell7/alerts";
 import { nwsEvent } from "@mark1russell7/alerts-format-nws";
 import { mapObservation as mapApi, SOURCE_ID as API } from "@mark1russell7/alerts-source-nws-api";
 import { describe, expect, it } from "vitest";
@@ -37,6 +37,16 @@ function message(name: string, apiAt: number, streamAt: number): { readonly api:
 const NEW = message("kewx-ff-w-0108-new", 10 * MINUTE, 9 * MINUTE);
 const EXT = message("kewx-ff-w-0108-ext", 40 * MINUTE, 39 * MINUTE);
 
+/**
+ * A real special weather statement of the office TJSJ, with no VTEC. The NWS API gave its GeoJSON and its CAP text. The CAP
+ * text is the NWWS-OI copy. Only the key of the CAP message joins the two copies.
+ */
+const STATEMENT = {
+  api: [...mapApi(observe(API, pair("tjsj-sps-20261121.nws-api.json"), 10 * MINUTE, "application/geo+json")).reports],
+  stream: [...mapObservation(observe(SOURCE_ID, pair("tjsj-sps-20261121.cap.xml"), 9 * MINUTE, "application/xml")).reports],
+};
+const withoutKeys = (reports: readonly Report[]): Report[] => reports.map((report) => ({ ...report, correlation: [] }));
+
 describe("COPY_EXPECTATION: NWWS-OI carries the messages of the NWS API", () => {
   it("goes from the NWS API source to this source, for each actual report", () => {
     expect(COPY_EXPECTATION).toEqual({ id: "nws-api.nwws", from: API, to: SOURCE_ID, when: { statuses: ["actual"] } });
@@ -49,6 +59,18 @@ describe("COPY_EXPECTATION: NWWS-OI carries the messages of the NWS API", () => 
       ["FFW", "same", -MINUTE],
       ["FFW", "same", -MINUTE],
     ]);
+  });
+
+  it("finds the copy of a message with no VTEC by the key of the CAP message", () => {
+    expect(STATEMENT.api).toHaveLength(1);
+    expect(STATEMENT.stream).toHaveLength(1);
+    expect(STATEMENT.api[0]?.correlation.map((key) => key.system)).toEqual([CAP_MESSAGE_SYSTEM]);
+    expect(STATEMENT.stream[0]?.correlation).toEqual(STATEMENT.api[0]?.correlation);
+    const result = copyMeasure([...STATEMENT.api, ...STATEMENT.stream], COPY_EXPECTATION, { eventOf: nwsEvent });
+    expect(result.counts).toEqual({ messages: 1, same: 1, shifted: 0, lost: 0, apart: 0, none: 0, censored: 0 });
+    // With no key of the message, the copy is in a different incident, as in the live log before this key.
+    const bare = copyMeasure([...withoutKeys(STATEMENT.api), ...withoutKeys(STATEMENT.stream)], COPY_EXPECTATION, { eventOf: nwsEvent });
+    expect(bare.counts).toEqual({ messages: 1, same: 0, shifted: 0, lost: 0, apart: 1, none: 0, censored: 0 });
   });
 
   it("counts the extension as lost when the stream lost its copy", () => {

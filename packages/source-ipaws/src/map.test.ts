@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { carriages, incidents, normalize, reportId, unknownKinds, type Observation, type ObservationId, type Report, type SourceId } from "@mark1russell7/alerts";
+import { capMessageKey, carriages, incidents, normalize, reportId, unknownKinds, type Observation, type ObservationId, type Report, type SourceId } from "@mark1russell7/alerts";
 import { EVENT_CODES, NAME_ALIASES, NWS_API_SOURCE, parseVtec, PHENOMENA, vtecKey } from "@mark1russell7/alerts-format-nws";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
@@ -80,7 +80,7 @@ describe("the map of the IPAWS copies of the KEWX flash flood warning", () => {
       [EXT_IPAWS, EXT_API],
     ] as const) {
       const { report } = mapOne(ipaws);
-      expect(report.correlation.map((key) => key.id)).toEqual([apiKeyOf(api)]);
+      expect(report.correlation.filter((key) => key.system === "vtec").map((key) => key.id)).toEqual([apiKeyOf(api)]);
     }
   });
 
@@ -171,7 +171,8 @@ describe("the map of other messages", () => {
     const { report } = mapOne(authority("<geocode><valueName>SAME</valueName><value>020173</value></geocode>"));
     expect(report.origin).toBe(ORIGINS.authority);
     expect(report.status).toBe("test");
-    expect(report.correlation).toEqual([]);
+    // A message with no VTEC has only the key of its CAP message.
+    expect(report.correlation).toEqual([capMessageKey({ sender: "alerts@example.org", identifier: "TEST-1", sent: Date.parse("2026-11-15T00:00:00Z") })]);
     expect(codesOf(report)).toEqual(["same:020173"]);
     expect(IPAWS_DESCRIPTOR.origins).toEqual([ORIGINS.nws, ORIGINS.authority]);
   });
