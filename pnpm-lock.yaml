@@ -183,7 +183,7 @@ importers:
         version: 0.3.2(@swc/core@1.16.22)(dependency-cruiser@18.7.2)
       '@mark1russell7/conventions':
         specifier: ^0.49.0
-        version: 0.49.0
+        version: 0.49.3
       '@mark1russell7/cue':
         specifier: ^2.0.0
         version: 2.1.4
@@ -375,13 +375,13 @@ importers:
         version: 0.11.2(zod@4.6.7)
       '@mark1russell7/geo':
         specifier: ^0.5.3
-        version: 0.5.3
+        version: 0.5.4
       '@mark1russell7/interval':
         specifier: ^0.1.0
         version: 0.1.0
       '@mark1russell7/optional':
         specifier: ^1.2.0
-        version: 1.4.0
+        version: 1.5.0
       '@mark1russell7/quantity':
         specifier: ^0.4.3
         version: 0.4.3(zod@4.6.7)
@@ -455,7 +455,7 @@ importers:
         version: link:../format-nws
       '@mark1russell7/optional':
         specifier: ^1.3.0
-        version: 1.4.0
+        version: 1.5.0
       '@nodable/entities':
         specifier: ^3.1.0
         version: 3.1.0
@@ -548,7 +548,7 @@ importers:
         version: link:../format-nws
       '@mark1russell7/optional':
         specifier: ^1.3.0
-        version: 1.4.0
+        version: 1.5.0
       '@mark1russell7/rigor-statistics':
         specifier: ^0.2.8
         version: 0.2.8
@@ -663,7 +663,7 @@ importers:
         version: 0.0.4
       '@mark1russell7/optional':
         specifier: ^1.3.0
-        version: 1.4.0
+        version: 1.5.0
       '@mark1russell7/quantity':
         specifier: ^0.4.3
         version: 0.4.3(zod@4.6.7)
@@ -678,7 +678,7 @@ importers:
         version: 0.11.6(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
       '@mark1russell7/sqlite':
         specifier: ^0.4.0
-        version: 0.4.0
+        version: 0.4.1
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -739,13 +739,13 @@ importers:
         version: link:../source-nws-api
       '@mark1russell7/geo':
         specifier: ^0.5.3
-        version: 0.5.3
+        version: 0.5.4
       '@mark1russell7/optional':
         specifier: ^1.3.0
-        version: 1.4.0
+        version: 1.5.0
       '@mark1russell7/sqlite':
         specifier: ^0.4.0
-        version: 0.4.0
+        version: 0.4.1
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -785,10 +785,10 @@ importers:
         version: 2.1.4
       '@mark1russell7/geo':
         specifier: ^0.5.2
-        version: 0.5.3
+        version: 0.5.4
       '@mark1russell7/optional':
         specifier: ^1.3.0
-        version: 1.4.0
+        version: 1.5.0
       '@mark1russell7/site-pages':
         specifier: ^0.8.0
         version: 0.8.1
@@ -797,7 +797,7 @@ importers:
         version: 0.0.17
       '@mark1russell7/visuals':
         specifier: ^0.3.1
-        version: 0.3.11(three@0.187.0)
+        version: 0.3.12(three@0.187.0)
       '@types/d3-geo':
         specifier: ^3.1.1
         version: 3.1.1
@@ -839,7 +839,7 @@ importers:
         version: link:../format-cap
       '@mark1russell7/optional':
         specifier: ^1.4.0
-        version: 1.4.0
+        version: 1.5.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -879,7 +879,7 @@ importers:
         version: link:../format-cap
       '@mark1russell7/optional':
         specifier: ^1.4.0
-        version: 1.4.0
+        version: 1.5.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -987,7 +987,7 @@ importers:
         version: link:../fetch
       '@mark1russell7/optional':
         specifier: ^1.4.0
-        version: 1.4.0
+        version: 1.5.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -1033,7 +1033,7 @@ importers:
         version: link:../source-gcp
       '@mark1russell7/optional':
         specifier: ^1.4.0
-        version: 1.4.0
+        version: 1.5.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -1184,7 +1184,7 @@ importers:
         version: link:../fetch
       '@mark1russell7/optional':
         specifier: ^1.4.0
-        version: 1.4.0
+        version: 1.5.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -1402,7 +1402,7 @@ importers:
         version: link:../format-nws
       '@mark1russell7/optional':
         specifier: ^1.3.0
-        version: 1.4.0
+        version: 1.5.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -1494,7 +1494,7 @@ importers:
         version: link:../format-cap
       '@mark1russell7/optional':
         specifier: ^1.4.0
-        version: 1.4.0
+        version: 1.5.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -1645,7 +1645,7 @@ importers:
         version: link:../core
       '@mark1russell7/geo':
         specifier: ^0.5.3
-        version: 0.5.3
+        version: 0.5.4
     devDependencies:
       '@mark1russell7/cue':
         specifier: ^2.0.0
@@ -1706,7 +1706,7 @@ importers:
         version: 0.9.9(zod@4.6.7)
       '@mark1russell7/optional':
         specifier: ^1.3.0
-        version: 1.4.0
+        version: 1.5.0
       '@mark1russell7/rigor-chaos':
         specifier: ^0.3.3
         version: 0.3.3
@@ -1724,7 +1724,7 @@ importers:
         version: 0.11.6(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
       '@mark1russell7/sqlite':
         specifier: ^0.4.0
-        version: 0.4.0
+        version: 0.4.1
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -2015,8 +2015,8 @@ packages:
     resolution: {integrity: sha512-6JXrfvg2vMGITbc11C3POvDwbbCU7PMkFWSYdYjshJj5o0LSAMnpPsVSQySfA5G4mdYeAdJ/VfN5Yc3foJkdCQ==}
     engines: {node: '>=22.12'}
 
-  '@mark1russell7/conventions@0.49.0':
-    resolution: {integrity: sha512-nSuJfGKy8ATorRwPbSa7jywQeRFI+9DzDqE3Pd0N/kXIRXTFjzuRcAajcGyTyjjP3wm8eyVL3ItHG3yZt/v/eA==}
+  '@mark1russell7/conventions@0.49.3':
+    resolution: {integrity: sha512-jUATwa6VDq38uQMl5dskeXthQKnmCgmWSDx1rNcgcdrpUfeYDb8qDTDUQ47zhROotxUo8dwyG78rFeCIW/DiEQ==}
     engines: {node: '>=22'}
     hasBin: true
 
@@ -2033,8 +2033,8 @@ packages:
     resolution: {integrity: sha512-Pb978ZnvlAxzcdWtRtqTGb7mZFCvlNrdKnpZqhxQ7gafzeNGf1JqYFuB4RWiLbJzRuFUWjEoAVG5f2TndCIlSg==}
     engines: {node: '>=22'}
 
-  '@mark1russell7/geo@0.5.3':
-    resolution: {integrity: sha512-3NUmhjBQXQadIxbjnfIOMGaRaKroTLtY94CMJxLTFXlItXbAU94cTFsnAPt8bBJoJbHfmf9xbmaNcnRn3MfLsw==}
+  '@mark1russell7/geo@0.5.4':
+    resolution: {integrity: sha512-HHlt/0QqP5yOswCNOmPxDnduEN//I6KUJpcC0z3RG/Xi1Q6v/+4d1CkzWUWtV8glKP5R6MvJfGpVfc98m+6XXQ==}
     engines: {node: '>=22.12'}
 
   '@mark1russell7/interval@0.1.0':
@@ -2045,8 +2045,8 @@ packages:
     resolution: {integrity: sha512-/al3v3Q/DH9QvSVZdAqxjKIcoC53FfhCR6T6p819lUIMFglNswy8AaXEo3EZ7rz0xBwBj5C4X0bPLWitrcOsLg==}
     engines: {node: '>=22.12'}
 
-  '@mark1russell7/optional@1.4.0':
-    resolution: {integrity: sha512-GkLNYn4iJL/ydaWh3Z8UeYaMo7UHY0kuKdqfdp2G/U6jkE0fm6KceQqhcqVPSSO0m5yRWkUUUDhAWqg2Qs5eOw==}
+  '@mark1russell7/optional@1.5.0':
+    resolution: {integrity: sha512-QpVjyHD/1JYriLVVJr4P6QpDJJN9q2BiM6CFu0q1hnyEEaH5RlrIMQSsrsKKzyED29VnT08xmliR65WbTkNTFw==}
     engines: {node: '>=22.12'}
 
   '@mark1russell7/predicates@0.1.5':
@@ -2206,8 +2206,8 @@ packages:
     resolution: {integrity: sha512-LANgtuaGCvL1VGbU61F51sgd3ytmqrgMN3pSihPs5EdD1xq93te7rPllmyPV9mH7QetUabHlcVVUZsf+Ju98cA==}
     engines: {node: '>=22.13'}
 
-  '@mark1russell7/sqlite@0.4.0':
-    resolution: {integrity: sha512-htHK+Ui+UqL/52bszg3zFuWoC8RCUceocoBrpWqU2OXp3TdKY3x8VQ8Tu6GiIQ3iOJNpqZ8B1wj1t6ELj8aUgQ==}
+  '@mark1russell7/sqlite@0.4.1':
+    resolution: {integrity: sha512-+80XkXJvko5XQC/V0tP+gL2k9K9d6K9sOiiyDQzh9Oa5+cENgy71RcSfNy1IMR5ddzhUCc7h1RCpbleuQujjrA==}
     engines: {node: '>=22.13'}
 
   '@mark1russell7/ste-lint@0.4.0':
@@ -2236,8 +2236,8 @@ packages:
     resolution: {integrity: sha512-uKmmt2icpkn2k9Wn/y1fRZvBml80dgwRLRhI72e6SkGVSF3UWCiuPZdYTJA2WEstRolq0viSLRJjXb/o8NF8JQ==}
     engines: {node: '>=22.12'}
 
-  '@mark1russell7/visuals@0.3.11':
-    resolution: {integrity: sha512-Vx95QT4EZ8cnNqdAJSdvCBZPw/lbk7I2JvJiTBQFUQcfnFOEXLSrT8Aku+sQqw5eiOhVH3JyYBgcPVgZIm7jSg==}
+  '@mark1russell7/visuals@0.3.12':
+    resolution: {integrity: sha512-E7yCLff5KP1qXC0zFuxv5mWTc5fg6U0nBG8GRPBowKgKHFmJEQnzpHmfL861nQuI8yfPilSVF9wLnMgVWacuqg==}
     engines: {node: '>=22'}
     peerDependencies:
       three: '>=0.187.0'
@@ -3657,7 +3657,7 @@ snapshots:
 
   '@mark1russell7/api-report@0.5.17':
     dependencies:
-      '@mark1russell7/conventions': 0.49.0
+      '@mark1russell7/conventions': 0.49.3
 
   '@mark1russell7/boundaries@0.3.2(@swc/core@1.16.22)(dependency-cruiser@18.7.2)':
     optionalDependencies:
@@ -3674,7 +3674,7 @@ snapshots:
   '@mark1russell7/collections@0.10.2(zod@4.6.7)':
     dependencies:
       '@mark1russell7/algebra': 0.8.10(zod@4.6.7)
-      '@mark1russell7/optional': 1.4.0
+      '@mark1russell7/optional': 1.5.0
       '@mark1russell7/rigor-statistics': 0.1.29
     transitivePeerDependencies:
       - zod
@@ -3682,12 +3682,12 @@ snapshots:
   '@mark1russell7/collections@0.11.2(zod@4.6.7)':
     dependencies:
       '@mark1russell7/algebra': 0.8.10(zod@4.6.7)
-      '@mark1russell7/optional': 1.4.0
+      '@mark1russell7/optional': 1.5.0
       '@mark1russell7/rigor-statistics': 0.2.8
     transitivePeerDependencies:
       - zod
 
-  '@mark1russell7/conventions@0.49.0':
+  '@mark1russell7/conventions@0.49.3':
     dependencies:
       '@mark1russell7/text': 0.0.17
       yaml: 2.9.1
@@ -3698,9 +3698,9 @@ snapshots:
 
   '@mark1russell7/files@0.0.4': {}
 
-  '@mark1russell7/geo@0.5.3':
+  '@mark1russell7/geo@0.5.4':
     dependencies:
-      '@mark1russell7/optional': 1.4.0
+      '@mark1russell7/optional': 1.5.0
       '@mark1russell7/predicates': 0.1.5
 
   '@mark1russell7/interval@0.1.0': {}
@@ -3715,7 +3715,7 @@ snapshots:
     transitivePeerDependencies:
       - zod
 
-  '@mark1russell7/optional@1.4.0': {}
+  '@mark1russell7/optional@1.5.0': {}
 
   '@mark1russell7/predicates@0.1.5': {}
 
@@ -3810,7 +3810,7 @@ snapshots:
 
   '@mark1russell7/sqlite@0.3.12': {}
 
-  '@mark1russell7/sqlite@0.4.0': {}
+  '@mark1russell7/sqlite@0.4.1': {}
 
   '@mark1russell7/ste-lint@0.4.0':
     dependencies:
@@ -3837,9 +3837,9 @@ snapshots:
     transitivePeerDependencies:
       - zod
 
-  '@mark1russell7/visuals@0.3.11(three@0.187.0)':
+  '@mark1russell7/visuals@0.3.12(three@0.187.0)':
     dependencies:
-      '@mark1russell7/geo': 0.5.3
+      '@mark1russell7/geo': 0.5.4
       '@mark1russell7/layout-contract': 0.10.6
     optionalDependencies:
       three: 0.187.0
