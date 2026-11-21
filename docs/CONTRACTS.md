@@ -453,11 +453,22 @@ A copy report has no area. Its subject is `{ system: "alerts.copy", id: <copy id
 | `skew` | The clocks of the two copies differed by more than `skewLimit` at the last read |
 | `config` | The other copy had a different hash of the configuration at the last read |
 | `unread` | No read passed for the maximum age or longer (`copyUnreadAt`) |
+| `unsteady` | The copy is not steady for `COPY_STEADY_LIMIT` (20 minutes) or longer (`copyUnsteadyAt`) |
 
 - The facts of a line are the copy and the stage. A new difference or a new age gives no update.
 - `skew` and `config` come from the last read that passed, also when the read is old. A read that passes ends `unread`.
 - A snapshot with no copies keeps each open line of a copy.
-- The time of `unread` is a timer of the pass.
+- The times of `unread` and `unsteady` are timers of the pass.
+
+A copy that starts again and again is not steady (AL-108). It answers the exchange in each try, and it stops after each try.
+
+- The answer of the exchange tells if the copy is steady (`steady`). The passes of a steady start span `LOUD_STEADY` (5 minutes) or more, as for the first success to the loud check.
+- The watch keeps the first read that tells that the copy is not steady (`CopyWatch.unsteadySince`). A failed read keeps it, and a steady read ends it.
+- The limit is longer than a normal start: the longest ready window (10 minutes) and the steady wait, plus 5 minutes.
+- An open line `unread` of a copy that is not steady stays open at a read that passes. Thus the line opens one time, not at each stop of the copy.
+- An open line `unsteady` stays open over a restart of this copy, until the first steady read.
+- A copy of an older build tells nothing. Its watch has no `unsteadySince`, and a read that passes ends `unread` as before.
+- On 2026-11-21, a copy made 125 starts. The line `unread` of the other copy opened at each stop and ended at each start, and no line told of the loop.
 
 A drill report has no area. Its subject is `{ system: "alerts.drill", id: <drill id> }` (`DRILL_SUBJECT`). Each copy has its own lines, thus the name of a line holds the copy id.
 

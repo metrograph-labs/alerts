@@ -136,6 +136,12 @@ export const LOUD_PING_URL_KEY = "HEALTHCHECKS_LOUD_PING_URL";
 export const LOUD_STEADY: Duration = 5 * 60_000;
 
 /**
+ * This function tells if a start is steady: its passes span `LOUD_STEADY` or more (AL-108). It is the rule of the first
+ * success ping to the loud check. The answer of the exchange tells it to each other copy.
+ */
+export const steadyPasses = (first: Pass | undefined, last: Pass | undefined): boolean => first !== undefined && last !== undefined && last.at - first.at >= LOUD_STEADY;
+
+/**
  * This function gives the key of `secrets.env` with the address of the first check of a copy. Each copy has its own
  * first check, thus a stop of one copy makes its own alert. The default key is `PING_URL_KEY`.
  */
@@ -1001,6 +1007,8 @@ export function openInstance(options: InstanceOptions): Instance {
 
   // The last pass of the runtime, from the loop or from a direct call of `pass`. The map reads it.
   let latest: Pass | undefined;
+  // The first pass of this start. The answer of the exchange tells that the copy is steady after `LOUD_STEADY` of passes (AL-108).
+  let first: Pass | undefined;
   // The start of this instance. Each family of a store gets its first entry in its window after this time (AL-86).
   const startedAt = wall.now();
   const runtime: Runtime = openRuntime({
@@ -1044,6 +1052,7 @@ export function openInstance(options: InstanceOptions): Instance {
     // makes the start good starts neither of them.
     onPass: async (pass) => {
       latest = pass;
+      first ??= pass;
       if (options.startGood?.() ?? true) {
         shapes.afterPass(pass.view.incidents, refreshUntil(runtime.config.sources, (descriptor) => nextFetch(runtime.state(), descriptor)));
         transit?.afterPass();
@@ -1122,7 +1131,7 @@ export function openInstance(options: InstanceOptions): Instance {
   const copies: InstanceCopies | undefined =
     options.exchange === undefined
       ? undefined
-      : { source: { runtime, clock: wall, configHash: options.exchange.configHash, drills: () => runtime.state().drills }, ...(worker === undefined || rounds === undefined ? {} : { worker, loop: rounds }) };
+      : { source: { runtime, clock: wall, configHash: options.exchange.configHash, drills: () => runtime.state().drills, steady: () => steadyPasses(first, latest) }, ...(worker === undefined || rounds === undefined ? {} : { worker, loop: rounds }) };
   const outage = outageWorker(options, loop.times.passLimit);
   return {
     runtime,

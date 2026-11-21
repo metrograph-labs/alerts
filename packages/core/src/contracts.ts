@@ -899,8 +899,9 @@ export interface BalanceRead {
  * - `skew`: the clock of the other copy differs from the clock of this copy by more than the limit.
  * - `config`: the other copy has a different hash of the configuration. Then the copies can route an alert in two ways.
  * - `unread`: no read of the log of the other copy passed for the maximum age. Then the two copies can both send.
+ * - `unsteady`: the other copy did not get steady for `COPY_STEADY_LIMIT` (AL-108). It starts again and again, and it sends nothing.
  */
-export type CopyStage = "skew" | "config" | "unread";
+export type CopyStage = "skew" | "config" | "unread" | "unsteady";
 
 /** One read of the log of another copy that passed. */
 export interface CopyRead {
@@ -929,6 +930,11 @@ export interface CopyWatch {
    * read that passed gives them. A copy of an older build gives none.
    */
   readonly drills?: Readonly<Record<string, Instant>>;
+  /**
+   * The first read that passed and told that the other copy is not steady, after its last steady read (AL-108). A steady
+   * read ends it. A failed read keeps it. A copy of an older build tells nothing, thus its watch has none.
+   */
+  readonly unsteadySince?: Instant;
 }
 
 /** The watch of the balance of one provider account, at one time. */

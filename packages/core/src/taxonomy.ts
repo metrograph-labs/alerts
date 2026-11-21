@@ -80,6 +80,7 @@ const COPY_ENTRIES: Readonly<Record<CopyStage, KindEntry>> = {
   skew: entry("Clock difference of a copy", "The clock of another copy of the alert system differs from the clock of this copy by more than the limit."),
   config: entry("Configuration difference of a copy", "Another copy of the alert system has a different configuration, so the copies can route an alert in two ways."),
   unread: entry("Copy not read", "No read of the log of another copy of the alert system passed for the maximum age, so the two copies can both send."),
+  unsteady: entry("Copy not steady", "Another copy of the alert system starts again and again and does not get steady, so it sends no alert."),
 };
 
 // The health kinds of the core: one for each health state, and `late` for the lateness against another source.

@@ -83,8 +83,18 @@ export const QUOTA_STAGES: readonly QuotaStage[] = ["low", "reserve", "spent"];
 /** The stages of a balance. `empty` holds `low`. `unread` comes from the time of the last read. */
 export const BALANCE_STAGES: readonly BalanceStage[] = ["low", "empty", "unread"];
 
-/** The stages of another copy. `skew` and `config` come from the last read that passed. `unread` comes from its time. */
-export const COPY_STAGES: readonly CopyStage[] = ["skew", "config", "unread"];
+/**
+ * The stages of another copy. `skew` and `config` come from the last read that passed. `unread` comes from its time.
+ * `unsteady` comes from the time of the first read that told that the copy is not steady.
+ */
+export const COPY_STAGES: readonly CopyStage[] = ["skew", "config", "unread", "unsteady"];
+
+/**
+ * The longest time that another copy is not steady with no stage `unsteady` (AL-108). The limit is longer than a normal
+ * start. The longest ready window is 10 minutes, and a copy is steady 5 minutes after its first pass. The limit adds 5
+ * minutes to the sum of the two.
+ */
+export const COPY_STEADY_LIMIT: Duration = 20 * 60_000;
 
 /** The health states that start a line of health reports. */
 export const DOWN_STATES: readonly HealthState[] = ["failing", "silent", "changed"];
@@ -400,6 +410,7 @@ export function balanceFloorsBelow(balance: ProviderBalance): number[] {
  *
  * - `skew` and `config` come from the last read that passed, also when the read is old.
  * - `unread` starts at `copyUnreadAt`. A read that passes ends it.
+ * - `unsteady` starts at `copyUnsteadyAt`. A steady read ends it.
  */
 export function copyStages(watch: CopyWatch, at: Instant): CopyStage[] {
   const read = watch.read;
@@ -407,6 +418,7 @@ export function copyStages(watch: CopyWatch, at: Instant): CopyStage[] {
     skew: read !== undefined && Math.abs(read.skew) > watch.skewLimit,
     config: read !== undefined && !read.sameConfig,
     unread: at >= copyUnreadAt(watch),
+    unsteady: watch.unsteadySince !== undefined && at >= watch.unsteadySince + COPY_STEADY_LIMIT,
   };
   return COPY_STAGES.filter((stage) => reached[stage]);
 }
@@ -414,6 +426,11 @@ export function copyStages(watch: CopyWatch, at: Instant): CopyStage[] {
 /** This function gives the time when a copy reaches `unread`: the maximum age after the last read, or after the start with no read. */
 export function copyUnreadAt(watch: CopyWatch): Instant {
   return (watch.read?.at ?? watch.since) + watch.maxAge;
+}
+
+/** This function gives the time when a copy reaches `unsteady`, or `undefined` when the copy is steady or tells nothing. */
+export function copyUnsteadyAt(watch: CopyWatch): Instant | undefined {
+  return watch.unsteadySince === undefined ? undefined : watch.unsteadySince + COPY_STEADY_LIMIT;
 }
 
 /** The time with no read of another copy after which this copy also reports the facts of a shared account (AL-62). It is longer than a restart. */
@@ -531,6 +548,15 @@ export function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: 
   }
   for (const watch of snapshot.copies ?? []) {
     for (const stage of copyStages(watch, at)) conditions.set(copyName(watch.copy, stage), copyCondition(watch, stage, at));
+    // A copy that starts again and again answers in each try, and it stops after each try. Thus an open line of the copy
+    // ends only at a steady read (AL-108). On 2026-11-21, a copy made 125 starts, and its line unread opened at each stop.
+    // An open line unsteady also stays open over a restart of this copy, until the first steady read.
+    const steadyRead = watch.read !== undefined && watch.unsteadySince === undefined;
+    for (const stage of ["unread", "unsteady"] as const) {
+      const name = copyName(watch.copy, stage);
+      const held = stage === "unread" ? watch.unsteadySince !== undefined : !steadyRead;
+      if (held && !conditions.has(name) && lines.open[name] !== undefined) conditions.set(name, copyCondition(watch, stage, at));
+    }
   }
   const step = recentStep(snapshot.steps ?? [], at);
   if (step !== undefined) conditions.set(CLOCK_LINE, clockCondition(step));
@@ -1230,6 +1256,11 @@ function copyCondition(watch: CopyWatch, stage: CopyStage, at: Instant): Conditi
       headline: `No read of the copy ${copy} passed since ${last}.`,
       description: "This copy cannot see the sends of the other copy. Thus the two copies can both send each alert.",
       instruction: "Examine the other computer and the network between the copies.",
+    },
+    unsteady: {
+      headline: `The copy ${copy} is not steady since ${new Date(watch.unsteadySince ?? watch.since).toISOString()}.`,
+      description: "The other copy starts again and again, and it stops before it is steady. It sends no alert. Thus this copy is the only copy that sends.",
+      instruction: "Examine the memory and the start log of the other computer.",
     },
   };
   const code = `${COPY_KIND}.${stage}`;

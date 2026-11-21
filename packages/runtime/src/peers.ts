@@ -37,6 +37,11 @@ export interface EntriesOutput {
    * copy of an older build gives none.
    */
   readonly drills?: Readonly<Record<string, Instant>>;
+  /**
+   * This value tells if the copy is steady: the passes of its start span `LOUD_STEADY` or more (AL-108). The watch of each
+   * other copy reads it. A copy of an older build gives none.
+   */
+  readonly steady?: boolean;
 }
 
 /** The output of the procedure `alerts.log.entries` after its checks on the side of the reader. */
@@ -46,6 +51,8 @@ export interface ReceivedEntries {
   readonly configHash: string;
   /** The starts of the drills of the answer. An answer with no starts, or with starts that are not valid, gives none. */
   readonly drills?: Readonly<Record<string, Instant>>;
+  /** This value tells if the copy is steady. An answer with no value, or with a value that is not a boolean, gives none. */
+  readonly steady?: boolean;
 }
 
 /** The parts of a runtime that serve the procedure `alerts.log.entries`. */
@@ -57,6 +64,8 @@ export interface EntriesSource {
   readonly configHash: string;
   /** This function gives the last start of each drill of the runtime. Without it, the answer gives no starts. */
   readonly drills?: () => Readonly<Record<string, Instant>>;
+  /** This function tells if the runtime is steady. Without it, the answer tells nothing. */
+  readonly steady?: () => boolean;
 }
 
 /** The longest hash of a configuration that a reader accepts. */
@@ -72,13 +81,19 @@ export function serveEntries(source: EntriesSource, input: EntriesInput): Entrie
   if (!(Number.isSafeInteger(after) && after >= 0)) throw new Error("The position after is not a whole number of 0 or more.");
   if (limit !== undefined && !(Number.isSafeInteger(limit) && limit >= 1 && limit <= EXCHANGE_PAGE)) throw new Error(`The limit is not a whole number from 1 to ${EXCHANGE_PAGE}.`);
   const page = source.runtime.share(after, limit);
-  return { page, time: source.clock.now(), configHash: source.configHash, ...(source.drills === undefined ? {} : { drills: source.drills() }) };
+  return {
+    page,
+    time: source.clock.now(),
+    configHash: source.configHash,
+    ...(source.drills === undefined ? {} : { drills: source.drills() }),
+    ...(source.steady === undefined ? {} : { steady: source.steady() }),
+  };
 }
 
 /** This function checks the output of the procedure `alerts.log.entries` on the side of the reader. A problem holds no value. */
 export function parseEntries(value: unknown): Result<ReceivedEntries, readonly string[]> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return err(["The answer is not an object."]);
-  const { page, time, configHash, drills } = value as Readonly<Record<string, unknown>>;
+  const { page, time, configHash, drills, steady } = value as Readonly<Record<string, unknown>>;
   const problems: string[] = [];
   if (!(typeof time === "number" && Number.isFinite(time))) problems.push("The time of the answer is not a finite number.");
   if (!(typeof configHash === "string" && configHash.length > 0 && configHash.length <= HASH_LENGTH)) problems.push(`The hash of the configuration is not a text of 1 to ${HASH_LENGTH} characters.`);
@@ -86,7 +101,8 @@ export function parseEntries(value: unknown): Result<ReceivedEntries, readonly s
   if (parsed.tag === "err") problems.push(...parsed.error);
   if (problems.length > 0 || parsed.tag === "err") return err(problems);
   const starts = drillStarts(drills);
-  return ok({ page: parsed.value, time: time as Instant, configHash: configHash as string, ...(starts === undefined ? {} : { drills: starts }) });
+  // A steady value that is not a boolean gives none, and the read still passes, as with the starts of the drills.
+  return ok({ page: parsed.value, time: time as Instant, configHash: configHash as string, ...(starts === undefined ? {} : { drills: starts }), ...(typeof steady === "boolean" ? { steady } : {}) });
 }
 
 // The longest id of a drill, as the schema of the configuration has it.
@@ -188,6 +204,8 @@ export function exchangeWorker(options: ExchangeWorkerOptions): ExchangeWorker {
   const reads = new Map<string, CopyRead>();
   // The starts of the drills of the last read that passed, by the id of the copy. They are on the clock of that copy.
   const starts = new Map<string, Readonly<Record<string, Instant>>>();
+  // The first read that passed and told that the copy is not steady, after its last steady read, by the id of the copy (AL-108).
+  const unsteady = new Map<string, Instant>();
   const failures = new Map<string, string>();
   // Each shift moves the times into a new frame. A read with a shift during its call has times of two frames.
   let frames = 0;
@@ -203,7 +221,8 @@ export function exchangeWorker(options: ExchangeWorkerOptions): ExchangeWorker {
     peers.map((peer) => {
       const read = reads.get(peer.id);
       const drills = starts.get(peer.id);
-      return { copy: peer.id, skewLimit, maxAge, since, ...(read === undefined ? {} : { read }), ...(drills === undefined ? {} : { drills }) };
+      const unsteadySince = unsteady.get(peer.id);
+      return { copy: peer.id, skewLimit, maxAge, since, ...(read === undefined ? {} : { read }), ...(drills === undefined ? {} : { drills }), ...(unsteadySince === undefined ? {} : { unsteadySince }) };
     });
   // A new start of a drill of a copy changes the watch of the drills, thus it is a change of the round.
   const stagesAt = (at: Instant): string => JSON.stringify(watches().map((watch) => [copyStages(watch, at), watch.drills ?? null]));
@@ -278,6 +297,9 @@ export function exchangeWorker(options: ExchangeWorkerOptions): ExchangeWorker {
         reads.set(peer.id, { at, skew: entries.time - at, sameConfig: entries.configHash === configHash });
         if (entries.drills === undefined) starts.delete(peer.id);
         else starts.set(peer.id, entries.drills);
+        // A copy of an older build tells nothing. Thus only an answer that tells `false` keeps the copy unsteady.
+        if (entries.steady !== false) unsteady.delete(peer.id);
+        else if (!unsteady.has(peer.id)) unsteady.set(peer.id, at);
       }
       if (take.next >= entries.page.head || take.next === after) return result(false);
     }
@@ -309,6 +331,7 @@ export function exchangeWorker(options: ExchangeWorkerOptions): ExchangeWorker {
       // The skew is the time of the other copy minus `at`. Thus a move of `at` moves the skew back by the same size.
       since += size;
       for (const [copy, read] of reads) reads.set(copy, { ...read, at: read.at + size, skew: read.skew - size });
+      for (const [copy, at] of unsteady) unsteady.set(copy, at + size);
       frames += 1;
     },
     ready() {

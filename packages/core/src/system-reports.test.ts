@@ -19,10 +19,12 @@ import {
   DEFAULT_SOURCE_CLEAR,
   CLOCK_STEP_WINDOW,
   CLOCK_SUBJECT,
+  COPY_STEADY_LIMIT,
   COPY_SUBJECT,
   DRILL_SUBJECT,
   copyStages,
   copyUnreadAt,
+  copyUnsteadyAt,
   drillWatchAt,
   gapGrade,
   HELD_SHOWN,
@@ -656,7 +658,67 @@ describe("the copy reports", () => {
     expect(copyStages(watch(), START + MINUTE - 1)).toEqual([]);
     expect(copyStages(watch(), START + MINUTE)).toEqual(["unread"]);
     expect(copyUnreadAt(watch({ at: START + 5_000 }))).toBe(START + 5_000 + MINUTE);
-    expect(unknownKinds(["system.copy", "system.copy.skew", "system.copy.config", "system.copy.unread"])).toEqual([]);
+    expect(unknownKinds(["system.copy", "system.copy.skew", "system.copy.config", "system.copy.unread", "system.copy.unsteady"])).toEqual([]);
+  });
+
+  it("reaches unsteady at the steady limit after the first read that told that the copy is not steady", () => {
+    const unsteady = watch({ at: START + 20 * MINUTE }, { unsteadySince: START });
+    expect(copyStages(unsteady, START + COPY_STEADY_LIMIT - 1)).toEqual([]);
+    expect(copyStages(unsteady, START + COPY_STEADY_LIMIT)).toEqual(["unsteady"]);
+    expect(copyUnsteadyAt(unsteady)).toBe(START + COPY_STEADY_LIMIT);
+    // A copy that is steady, or that tells nothing, has no time of the stage.
+    expect(copyUnsteadyAt(watch({}))).toBeUndefined();
+    expect(copyStages(watch({ at: START + 30 * MINUTE }), START + 30 * MINUTE)).toEqual([]);
+    // The limit is longer than the longest ready window and the steady wait together.
+    expect(COPY_STEADY_LIMIT).toBeGreaterThan(10 * MINUTE + 5 * MINUTE);
+  });
+
+  it("holds one unread line and one unsteady line for a copy that starts again and again, and ends them at a steady read", () => {
+    // The copy of the loop answers for 3 minutes of each try. Then it stops for 2 minutes, and it starts again.
+    let lines = NO_SYSTEM_LINES;
+    const alerts: (readonly [string, string])[] = [];
+    let last: number | undefined;
+    for (let at = START; at <= START + 60 * MINUTE; at += 30_000) {
+      const inTry = (at - START) % (5 * MINUTE) < 3 * MINUTE;
+      if (inTry) last = at;
+      const step = systemReports(lines, snapshot({ copies: [watch(last === undefined ? undefined : { at: last }, { unsteadySince: START })] }), at);
+      alerts.push(...step.reports.map((report) => [report.op, report.kind.code] as const));
+      lines = step.lines;
+    }
+    // Without the hold, the line unread opens at each stop: 12 times in the hour.
+    expect(alerts).toEqual([
+      ["alert", "system.copy.unread"],
+      ["alert", "system.copy.unsteady"],
+    ]);
+    expect(Object.keys(lines.open).sort()).toEqual(["copy/cloud/unread", "copy/cloud/unsteady"]);
+    const unsteady = systemReports(NO_SYSTEM_LINES, snapshot({ copies: [watch({ at: START + 20 * MINUTE }, { unsteadySince: START })] }), START + 20 * MINUTE);
+    expect(unsteady.reports).toMatchObject([
+      { op: "alert", kind: { code: "system.copy.unsteady", label: "Copy not steady" }, headline: `The copy cloud is not steady since ${new Date(START).toISOString()}.` },
+    ]);
+    // A steady read ends the two lines.
+    const steady = systemReports(lines, snapshot({ copies: [watch({ at: START + 61 * MINUTE })] }), START + 61 * MINUTE);
+    expect(codes(steady.reports)).toEqual([
+      ["cancel", "system.copy.unread"],
+      ["cancel", "system.copy.unsteady"],
+    ]);
+    expect(steady.lines.open).toEqual({});
+  });
+
+  it("keeps an open unsteady line over a restart of this copy until the first steady read", () => {
+    const open = systemReports(NO_SYSTEM_LINES, snapshot({ copies: [watch({ at: START + 20 * MINUTE }, { unsteadySince: START })] }), START + 20 * MINUTE).lines;
+    // After a restart, the watch starts again. With no read, or with a read that is not steady, the line stays open.
+    const restart = START + 30 * MINUTE;
+    expect(systemReports(open, snapshot({ copies: [watch(undefined, { since: restart })] }), restart).reports).toEqual([]);
+    expect(systemReports(open, snapshot({ copies: [watch({ at: restart + 5_000 }, { since: restart, unsteadySince: restart + 5_000 })] }), restart + 5_000).reports).toEqual([]);
+    // A read of a copy that tells that it is steady ends the line.
+    expect(codes(systemReports(open, snapshot({ copies: [watch({ at: restart + 10_000 }, { since: restart })] }), restart + 10_000).reports)).toEqual([["cancel", "system.copy.unsteady"]]);
+  });
+
+  it("ends the unread line at a read that passes when the copy is steady or tells nothing", () => {
+    const unread = systemReports(NO_SYSTEM_LINES, snapshot({ copies: [watch()] }), START + MINUTE);
+    // A read of a copy that is not steady keeps the line, and a read of a copy of an older build ends it as before.
+    expect(systemReports(unread.lines, snapshot({ copies: [watch({ at: START + MINUTE }, { unsteadySince: START + MINUTE })] }), START + MINUTE).reports).toEqual([]);
+    expect(codes(systemReports(unread.lines, snapshot({ copies: [watch({ at: START + MINUTE })] }), START + MINUTE).reports)).toEqual([["cancel", "system.copy.unread"]]);
   });
 
   it("gives one alert for each stage, no update for a new difference, and a cancel at a good read", () => {
