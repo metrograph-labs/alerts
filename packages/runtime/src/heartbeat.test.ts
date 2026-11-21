@@ -474,10 +474,8 @@ describe("the hook of the heartbeat", () => {
     hook(sent(T0 + 62 * SECOND));
     await settle();
     expect(server.calls.map((call) => [call.url, call.body])).toEqual([
-      [URL_OF_CHECK, "nws-api: healthy
-ipaws: failing"],
-      [URL_OF_CHECK, "nws-api: healthy
-ipaws: failing"],
+      [URL_OF_CHECK, "nws-api: healthy\nipaws: failing"],
+      [URL_OF_CHECK, "nws-api: healthy\nipaws: failing"],
     ]);
   });
 
