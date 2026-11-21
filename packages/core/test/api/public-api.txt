@@ -1,0 +1,5196 @@
+# The public API of @mark1russell7/alerts
+#
+# The names of each entry of the exports field, and the declaration of each name, without comments
+# and private members. The command `api-report check` compares this file with the built .d.ts files.
+# To accept a change of the API, start the build, then `api-report update`, and review the diff.
+
+## . (build/index.d.ts): names
+
+ASSESSED_LEVELS: build/index.d.ts#ASSESSED_LEVELS
+Acknowledgment: build/index.d.ts#Acknowledgment
+Address: build/index.d.ts#Address
+AddressField: build/index.d.ts#AddressField
+AddressValue: build/index.d.ts#AddressValue
+AlertArea: build/index.d.ts#AlertArea
+AlertConfig: build/index.d.ts#AlertConfig
+Area: build/index.d.ts#Area
+AreaBlock: build/index.d.ts#AreaBlock
+AssessPolicy: build/index.d.ts#AssessPolicy
+AssessReason: build/index.d.ts#AssessReason
+AssessedLevel: build/index.d.ts#AssessedLevel
+Assessment: build/index.d.ts#Assessment
+Audience: build/index.d.ts#Audience
+BALANCE_KIND: build/index.d.ts#BALANCE_KIND
+BALANCE_STAGES: build/index.d.ts#BALANCE_STAGES
+BalanceHealth: build/index.d.ts#BalanceHealth
+BalanceRead: build/index.d.ts#BalanceRead
+BalanceStage: build/index.d.ts#BalanceStage
+BaselinePolicy: build/index.d.ts#BaselinePolicy
+Breadth: build/index.d.ts#Breadth
+CAP_MESSAGE_SYSTEM: build/index.d.ts#CAP_MESSAGE_SYSTEM
+CATEGORIES: build/index.d.ts#CATEGORIES
+CATEGORY_LABELS: build/index.d.ts#CATEGORY_LABELS
+CELL_RESOURCES: build/index.d.ts#CELL_RESOURCES
+CHAIN_MACHINE: build/index.d.ts#CHAIN_MACHINE
+CHANNEL_KIND: build/index.d.ts#CHANNEL_KIND
+CHANNEL_SUBJECT: build/index.d.ts#CHANNEL_SUBJECT
+CLOCK_KIND: build/index.d.ts#CLOCK_KIND
+CLOCK_STEP_ABOVE: build/index.d.ts#CLOCK_STEP_ABOVE
+CLOCK_STEP_WINDOW: build/index.d.ts#CLOCK_STEP_WINDOW
+CLOCK_SUBJECT: build/index.d.ts#CLOCK_SUBJECT
+CONFIG_FORMAT: build/index.d.ts#CONFIG_FORMAT
+CONFIG_HASH_SCHEME: build/index.d.ts#CONFIG_HASH_SCHEME
+CONFIG_PART_FORMAT: build/index.d.ts#CONFIG_PART_FORMAT
+CONTEXT_KINDS: build/index.d.ts#CONTEXT_KINDS
+COPY_FORMAT: build/index.d.ts#COPY_FORMAT
+COPY_ID: build/index.d.ts#COPY_ID
+COPY_KIND: build/index.d.ts#COPY_KIND
+COPY_STAGES: build/index.d.ts#COPY_STAGES
+COPY_STEADY_LIMIT: build/index.d.ts#COPY_STEADY_LIMIT
+COPY_SUBJECT: build/index.d.ts#COPY_SUBJECT
+COUNTED_CALLS: build/index.d.ts#COUNTED_CALLS
+COUNTED_FAILURES: build/index.d.ts#COUNTED_FAILURES
+COVERAGE_KIND: build/index.d.ts#COVERAGE_KIND
+CanaryResult: build/index.d.ts#CanaryResult
+CancelTarget: build/index.d.ts#CancelTarget
+CapMessageKeyInput: build/index.d.ts#CapMessageKeyInput
+Carriage: build/index.d.ts#Carriage
+Category: build/index.d.ts#Category
+CellResource: build/index.d.ts#CellResource
+Certainty: build/index.d.ts#Certainty
+ChainRun: build/index.d.ts#ChainRun
+ChainState: build/index.d.ts#ChainState
+ChannelCallFailure: build/index.d.ts#ChannelCallFailure
+ChannelDescriptor: build/index.d.ts#ChannelDescriptor
+ChannelDownConfig: build/index.d.ts#ChannelDownConfig
+ChannelDownPolicy: build/index.d.ts#ChannelDownPolicy
+ChannelFailureKind: build/index.d.ts#ChannelFailureKind
+ChannelHealth: build/index.d.ts#ChannelHealth
+ChannelId: build/index.d.ts#ChannelId
+ChannelProcedures: build/index.d.ts#ChannelProcedures
+ChannelQuota: build/index.d.ts#ChannelQuota
+ChannelRule: build/index.d.ts#ChannelRule
+ChannelRun: build/index.d.ts#ChannelRun
+ChannelRunStep: build/index.d.ts#ChannelRunStep
+ChannelSnapshot: build/index.d.ts#ChannelSnapshot
+CheckOutcome: build/index.d.ts#CheckOutcome
+CitedNeed: build/index.d.ts#CitedNeed
+ClockStep: build/index.d.ts#ClockStep
+ComposedInterests: build/index.d.ts#ComposedInterests
+ConfigPart: build/index.d.ts#ConfigPart
+ContactConfig: build/index.d.ts#ContactConfig
+ContactLookup: build/index.d.ts#ContactLookup
+ContactServices: build/index.d.ts#ContactServices
+CopyHealth: build/index.d.ts#CopyHealth
+CopyListen: build/index.d.ts#CopyListen
+CopyMeasureOptions: build/index.d.ts#CopyMeasureOptions
+CopyPeer: build/index.d.ts#CopyPeer
+CopyRead: build/index.d.ts#CopyRead
+CopySettings: build/index.d.ts#CopySettings
+CopyStage: build/index.d.ts#CopyStage
+CopyTime: build/index.d.ts#CopyTime
+CopyWatch: build/index.d.ts#CopyWatch
+CorrelationKey: build/index.d.ts#CorrelationKey
+Coverage: build/index.d.ts#Coverage
+CoverageInput: build/index.d.ts#CoverageInput
+CoverageNeed: build/index.d.ts#CoverageNeed
+CoveragePolicy: build/index.d.ts#CoveragePolicy
+Cursor: build/index.d.ts#Cursor
+DEFAULT_ASSESS_POLICY: build/index.d.ts#DEFAULT_ASSESS_POLICY
+DEFAULT_BASELINE: build/index.d.ts#DEFAULT_BASELINE
+DEFAULT_CHANNEL_DOWN: build/index.d.ts#DEFAULT_CHANNEL_DOWN
+DEFAULT_COVERAGE_POLICY: build/index.d.ts#DEFAULT_COVERAGE_POLICY
+DEFAULT_ENTRY_MAX: build/index.d.ts#DEFAULT_ENTRY_MAX
+DEFAULT_FAIL_AFTER: build/index.d.ts#DEFAULT_FAIL_AFTER
+DEFAULT_LINK_POLICY: build/index.d.ts#DEFAULT_LINK_POLICY
+DEFAULT_RELEVANCE_POLICY: build/index.d.ts#DEFAULT_RELEVANCE_POLICY
+DEFAULT_SEND_LIMITS: build/index.d.ts#DEFAULT_SEND_LIMITS
+DEFAULT_SOURCE_CLEAR: build/index.d.ts#DEFAULT_SOURCE_CLEAR
+DEFAULT_STALE_INTERVALS: build/index.d.ts#DEFAULT_STALE_INTERVALS
+DEFAULT_TELL_DAILY_CAP: build/index.d.ts#DEFAULT_TELL_DAILY_CAP
+DEFAULT_THROTTLE: build/index.d.ts#DEFAULT_THROTTLE
+DIMENSIONS: build/index.d.ts#DIMENSIONS
+DIMENSION_IDS: build/index.d.ts#DIMENSION_IDS
+DOWN_STATES: build/index.d.ts#DOWN_STATES
+DRILL_KIND: build/index.d.ts#DRILL_KIND
+DRILL_PROBES: build/index.d.ts#DRILL_PROBES
+DRILL_SUBJECT: build/index.d.ts#DRILL_SUBJECT
+DRILL_WATCH_GRACE: build/index.d.ts#DRILL_WATCH_GRACE
+DailyTime: build/index.d.ts#DailyTime
+DecideState: build/index.d.ts#DecideState
+DecideStep: build/index.d.ts#DecideStep
+Decision: build/index.d.ts#Decision
+DelayLimitOptions: build/index.d.ts#DelayLimitOptions
+Delivery: build/index.d.ts#Delivery
+DeliveryState: build/index.d.ts#DeliveryState
+DeliveryStatus: build/index.d.ts#DeliveryStatus
+DigestEntry: build/index.d.ts#DigestEntry
+DigestInput: build/index.d.ts#DigestInput
+DigestKeyInput: build/index.d.ts#DigestKeyInput
+DigestPlan: build/index.d.ts#DigestPlan
+DigestSend: build/index.d.ts#DigestSend
+DimensionCount: build/index.d.ts#DimensionCount
+DimensionId: build/index.d.ts#DimensionId
+DrillConfig: build/index.d.ts#DrillConfig
+DrillPath: build/index.d.ts#DrillPath
+DrillRun: build/index.d.ts#DrillRun
+DrillSnapshot: build/index.d.ts#DrillSnapshot
+DrillVerdict: build/index.d.ts#DrillVerdict
+DrillWatch: build/index.d.ts#DrillWatch
+DrillWatchMiss: build/index.d.ts#DrillWatchMiss
+Duration: build/index.d.ts#Duration
+EARTHQUAKE_KINDS: build/index.d.ts#EARTHQUAKE_KINDS
+EARTHQUAKE_PAST_WITHIN: build/index.d.ts#EARTHQUAKE_PAST_WITHIN
+EMPTY_STATE: build/index.d.ts#EMPTY_STATE
+ESCALATION_EVENTS: build/index.d.ts#ESCALATION_EVENTS
+ESCALATION_KIND: build/index.d.ts#ESCALATION_KIND
+ESCALATION_MACHINE: build/index.d.ts#ESCALATION_MACHINE
+EdgeKind: build/index.d.ts#EdgeKind
+EdgeOrigin: build/index.d.ts#EdgeOrigin
+EndMark: build/index.d.ts#EndMark
+EndReason: build/index.d.ts#EndReason
+EntryTimes: build/index.d.ts#EntryTimes
+EscalationEnd: build/index.d.ts#EscalationEnd
+EscalationHold: build/index.d.ts#EscalationHold
+EscalationInput: build/index.d.ts#EscalationInput
+EscalationPlan: build/index.d.ts#EscalationPlan
+EscalationPolicy: build/index.d.ts#EscalationPolicy
+EscalationSend: build/index.d.ts#EscalationSend
+EscalationStart: build/index.d.ts#EscalationStart
+EscalationState: build/index.d.ts#EscalationState
+EscalationStep: build/index.d.ts#EscalationStep
+Estimate: build/index.d.ts#Estimate
+Exhaustion: build/index.d.ts#Exhaustion
+Expectation: build/index.d.ts#Expectation
+ExpectationConfig: build/index.d.ts#ExpectationConfig
+ExpectedHarm: build/index.d.ts#ExpectedHarm
+FLOAT_REACH: build/index.d.ts#FLOAT_REACH
+FOREIGN_TABLE: build/index.d.ts#FOREIGN_TABLE
+FetchFailure: build/index.d.ts#FetchFailure
+FetchOutcome: build/index.d.ts#FetchOutcome
+FetchRecord: build/index.d.ts#FetchRecord
+FetchSignal: build/index.d.ts#FetchSignal
+FixedCost: build/index.d.ts#FixedCost
+HEALTH_EVENTS: build/index.d.ts#HEALTH_EVENTS
+HEALTH_FORMAT: build/index.d.ts#HEALTH_FORMAT
+HEALTH_KIND: build/index.d.ts#HEALTH_KIND
+HEALTH_MACHINE: build/index.d.ts#HEALTH_MACHINE
+HELD_SHOWN: build/index.d.ts#HELD_SHOWN
+HISTORY_FORMAT: build/index.d.ts#HISTORY_FORMAT
+HealthOptions: build/index.d.ts#HealthOptions
+HealthPayload: build/index.d.ts#HealthPayload
+HealthPayloadInput: build/index.d.ts#HealthPayloadInput
+HealthState: build/index.d.ts#HealthState
+HealthStep: build/index.d.ts#HealthStep
+HealthTrack: build/index.d.ts#HealthTrack
+HeldAlert: build/index.d.ts#HeldAlert
+HeldPerson: build/index.d.ts#HeldPerson
+Histories: build/index.d.ts#Histories
+HistoryChange: build/index.d.ts#HistoryChange
+HistoryIncident: build/index.d.ts#HistoryIncident
+HistoryInput: build/index.d.ts#HistoryInput
+HistoryPayload: build/index.d.ts#HistoryPayload
+HistoryPlace: build/index.d.ts#HistoryPlace
+HistoryRegion: build/index.d.ts#HistoryRegion
+ID_SCHEME: build/index.d.ts#ID_SCHEME
+INCIDENT_SUBJECT: build/index.d.ts#INCIDENT_SUBJECT
+INDICATOR_AREA_KINDS: build/index.d.ts#INDICATOR_AREA_KINDS
+INTERESTS_FORMAT: build/index.d.ts#INTERESTS_FORMAT
+Id: build/index.d.ts#Id
+Incident: build/index.d.ts#Incident
+IncidentLine: build/index.d.ts#IncidentLine
+IncidentOptions: build/index.d.ts#IncidentOptions
+IndicatorArea: build/index.d.ts#IndicatorArea
+IndicatorAreaKind: build/index.d.ts#IndicatorAreaKind
+IndicatorBreadth: build/index.d.ts#IndicatorBreadth
+Instant: build/index.d.ts#Instant
+InterestDefaultsConfig: build/index.d.ts#InterestDefaultsConfig
+InterestEdge: build/index.d.ts#InterestEdge
+InterestGraph: build/index.d.ts#InterestGraph
+InterestRow: build/index.d.ts#InterestRow
+InterestsPayload: build/index.d.ts#InterestsPayload
+InterestsPerson: build/index.d.ts#InterestsPerson
+KIND_ALIASES: build/index.d.ts#KIND_ALIASES
+Kind: build/index.d.ts#Kind
+KindClass: build/index.d.ts#KindClass
+KindEntry: build/index.d.ts#KindEntry
+KindPrior: build/index.d.ts#KindPrior
+LEVELS: build/index.d.ts#LEVELS
+LIFELINES: build/index.d.ts#LIFELINES
+LIFELINES_SOURCE: build/index.d.ts#LIFELINES_SOURCE
+LIFELINES_TOOLKIT: build/index.d.ts#LIFELINES_TOOLKIT
+LIFELINE_LABELS: build/index.d.ts#LIFELINE_LABELS
+LIFE_SAFETY_KINDS: build/index.d.ts#LIFE_SAFETY_KINDS
+LIMITED_LEVELS: build/index.d.ts#LIMITED_LEVELS
+LIMIT_KIND: build/index.d.ts#LIMIT_KIND
+LOG_KIND: build/index.d.ts#LOG_KIND
+LOG_RECOVERY_WINDOW: build/index.d.ts#LOG_RECOVERY_WINDOW
+LOG_SUBJECT: build/index.d.ts#LOG_SUBJECT
+Lateness: build/index.d.ts#Lateness
+LatenessFolds: build/index.d.ts#LatenessFolds
+LatenessLimit: build/index.d.ts#LatenessLimit
+LatenessState: build/index.d.ts#LatenessState
+LatenessStep: build/index.d.ts#LatenessStep
+Level: build/index.d.ts#Level
+LevelRule: build/index.d.ts#LevelRule
+LevelTable: build/index.d.ts#LevelTable
+Lifeline: build/index.d.ts#Lifeline
+LimitInput: build/index.d.ts#LimitInput
+LimitResult: build/index.d.ts#LimitResult
+LimitRule: build/index.d.ts#LimitRule
+LimitedLevel: build/index.d.ts#LimitedLevel
+LinkFamily: build/index.d.ts#LinkFamily
+LinkPolicy: build/index.d.ts#LinkPolicy
+LinkRule: build/index.d.ts#LinkRule
+LoadedConfig: build/index.d.ts#LoadedConfig
+LocateOutcome: build/index.d.ts#LocateOutcome
+LogRecovery: build/index.d.ts#LogRecovery
+MAGNITUDE_PARAMETER: build/index.d.ts#MAGNITUDE_PARAMETER
+MAP_FORMAT: build/index.d.ts#MAP_FORMAT
+MAP_VIEW: build/index.d.ts#MAP_VIEW
+MAX_PLACE_CODES: build/index.d.ts#MAX_PLACE_CODES
+MEASURE_ID: build/index.d.ts#MEASURE_ID
+MOVES: build/index.d.ts#MOVES
+MandatoryRule: build/index.d.ts#MandatoryRule
+MapIncident: build/index.d.ts#MapIncident
+MapInput: build/index.d.ts#MapInput
+MapPayload: build/index.d.ts#MapPayload
+MapPayloadInput: build/index.d.ts#MapPayloadInput
+MapPlace: build/index.d.ts#MapPlace
+MapPlaceInput: build/index.d.ts#MapPlaceInput
+MapProblem: build/index.d.ts#MapProblem
+MapRegion: build/index.d.ts#MapRegion
+MapResult: build/index.d.ts#MapResult
+MapShape: build/index.d.ts#MapShape
+MapView: build/index.d.ts#MapView
+MeasureDeclaration: build/index.d.ts#MeasureDeclaration
+MergeParts: build/index.d.ts#MergeParts
+MergeState: build/index.d.ts#MergeState
+Message: build/index.d.ts#Message
+MessageKeyInput: build/index.d.ts#MessageKeyInput
+MissRecord: build/index.d.ts#MissRecord
+Move: build/index.d.ts#Move
+Mute: build/index.d.ts#Mute
+MuteEffect: build/index.d.ts#MuteEffect
+NEEDS: build/index.d.ts#NEEDS
+NEED_ALERT_LEVELS: build/index.d.ts#NEED_ALERT_LEVELS
+NEED_LEVELS: build/index.d.ts#NEED_LEVELS
+NO_HISTORIES: build/index.d.ts#NO_HISTORIES
+NO_LABELS: build/index.d.ts#NO_LABELS
+NO_SYSTEM_LINES: build/index.d.ts#NO_SYSTEM_LINES
+NamedPart: build/index.d.ts#NamedPart
+NearRegion: build/index.d.ts#NearRegion
+Need: build/index.d.ts#Need
+NeedCode: build/index.d.ts#NeedCode
+NeedLevel: build/index.d.ts#NeedLevel
+NeedSource: build/index.d.ts#NeedSource
+NoReadCause: build/index.d.ts#NoReadCause
+NodeKey: build/index.d.ts#NodeKey
+OBSERVE_DIGEST_PER_DAY: build/index.d.ts#OBSERVE_DIGEST_PER_DAY
+OBSERVE_WINDOW: build/index.d.ts#OBSERVE_WINDOW
+ONLY_COPY: build/index.d.ts#ONLY_COPY
+OPT_IN_WAYS: build/index.d.ts#OPT_IN_WAYS
+OPT_IN_WORDS: build/index.d.ts#OPT_IN_WORDS
+ORIGIN_RANK: build/index.d.ts#ORIGIN_RANK
+OWN_BASELINES: build/index.d.ts#OWN_BASELINES
+OWN_ENTRY_TIMES: build/index.d.ts#OWN_ENTRY_TIMES
+Observation: build/index.d.ts#Observation
+ObservationId: build/index.d.ts#ObservationId
+ObservationIdInput: build/index.d.ts#ObservationIdInput
+ObserveCondition: build/index.d.ts#ObserveCondition
+ObserveCut: build/index.d.ts#ObserveCut
+ObserveCutInput: build/index.d.ts#ObserveCutInput
+ObserveVerdict: build/index.d.ts#ObserveVerdict
+ObserveVerdictInput: build/index.d.ts#ObserveVerdictInput
+ObservedPerson: build/index.d.ts#ObservedPerson
+Operation: build/index.d.ts#Operation
+OptInChange: build/index.d.ts#OptInChange
+OptInConfig: build/index.d.ts#OptInConfig
+OptInRecord: build/index.d.ts#OptInRecord
+OptInWay: build/index.d.ts#OptInWay
+Outage: build/index.d.ts#Outage
+OutageConfig: build/index.d.ts#OutageConfig
+OutagePersonConfig: build/index.d.ts#OutagePersonConfig
+OutageReach: build/index.d.ts#OutageReach
+OwnBaseline: build/index.d.ts#OwnBaseline
+PART_NAME: build/index.d.ts#PART_NAME
+PATH_SYSTEMS: build/index.d.ts#PATH_SYSTEMS
+PERSON_SUBJECT: build/index.d.ts#PERSON_SUBJECT
+PRIORS_FORMAT: build/index.d.ts#PRIORS_FORMAT
+ParsedConfig: build/index.d.ts#ParsedConfig
+PartText: build/index.d.ts#PartText
+PassedFetch: build/index.d.ts#PassedFetch
+PersonConfig: build/index.d.ts#PersonConfig
+PersonId: build/index.d.ts#PersonId
+PersonInterests: build/index.d.ts#PersonInterests
+PersonWatch: build/index.d.ts#PersonWatch
+PlaceBreadth: build/index.d.ts#PlaceBreadth
+PlaceConfig: build/index.d.ts#PlaceConfig
+PlaceId: build/index.d.ts#PlaceId
+PlaceMatch: build/index.d.ts#PlaceMatch
+Position: build/index.d.ts#Position
+ProbeOutcome: build/index.d.ts#ProbeOutcome
+ProblemEffect: build/index.d.ts#ProblemEffect
+ProblemSink: build/index.d.ts#ProblemSink
+Problems: build/index.d.ts#Problems
+ProviderBalance: build/index.d.ts#ProviderBalance
+QUIET_HORIZON: build/index.d.ts#QUIET_HORIZON
+QUOTA_KIND: build/index.d.ts#QUOTA_KIND
+QUOTA_STAGES: build/index.d.ts#QUOTA_STAGES
+QuietRule: build/index.d.ts#QuietRule
+QuietWindow: build/index.d.ts#QuietWindow
+QuotaHealth: build/index.d.ts#QuotaHealth
+QuotaStage: build/index.d.ts#QuotaStage
+RANK_DELAY_LIMIT: build/index.d.ts#RANK_DELAY_LIMIT
+RETENTION_HORIZON: build/index.d.ts#RETENTION_HORIZON
+RULED_STATUSES: build/index.d.ts#RULED_STATUSES
+RankDelays: build/index.d.ts#RankDelays
+ReachArithmetic: build/index.d.ts#ReachArithmetic
+ReachEnd: build/index.d.ts#ReachEnd
+ReadHealth: build/index.d.ts#ReadHealth
+Reading: build/index.d.ts#Reading
+Receipt: build/index.d.ts#Receipt
+Recipient: build/index.d.ts#Recipient
+RegionCode: build/index.d.ts#RegionCode
+Relevance: build/index.d.ts#Relevance
+RelevanceInput: build/index.d.ts#RelevanceInput
+RelevanceOptions: build/index.d.ts#RelevanceOptions
+RelevancePath: build/index.d.ts#RelevancePath
+RelevancePolicy: build/index.d.ts#RelevancePolicy
+Report: build/index.d.ts#Report
+ReportFilter: build/index.d.ts#ReportFilter
+ReportId: build/index.d.ts#ReportId
+ReportIdInput: build/index.d.ts#ReportIdInput
+ResolvedOptIn: build/index.d.ts#ResolvedOptIn
+ResponseType: build/index.d.ts#ResponseType
+Route: build/index.d.ts#Route
+RouteInput: build/index.d.ts#RouteInput
+RuledPolicy: build/index.d.ts#RuledPolicy
+SEND_LIMIT_MAX_WINDOW: build/index.d.ts#SEND_LIMIT_MAX_WINDOW
+SEND_LIMIT_MIN_WINDOW: build/index.d.ts#SEND_LIMIT_MIN_WINDOW
+SERIES_VERSION: build/index.d.ts#SERIES_VERSION
+SEVERITY_ORDER: build/index.d.ts#SEVERITY_ORDER
+SHARED_HANDOVER: build/index.d.ts#SHARED_HANDOVER
+SOURCE_SUBJECT: build/index.d.ts#SOURCE_SUBJECT
+STORE_FILL_WINDOW: build/index.d.ts#STORE_FILL_WINDOW
+STORE_KIND: build/index.d.ts#STORE_KIND
+STORE_SUBJECT: build/index.d.ts#STORE_SUBJECT
+SUBJECT_SYSTEMS: build/index.d.ts#SUBJECT_SYSTEMS
+SYSTEM_SOURCE: build/index.d.ts#SYSTEM_SOURCE
+SchemaDrift: build/index.d.ts#SchemaDrift
+ScoreFactor: build/index.d.ts#ScoreFactor
+ScoreGap: build/index.d.ts#ScoreGap
+ScorePriors: build/index.d.ts#ScorePriors
+ScoreSource: build/index.d.ts#ScoreSource
+ScoredIncident: build/index.d.ts#ScoredIncident
+Season: build/index.d.ts#Season
+SecretLookup: build/index.d.ts#SecretLookup
+SecretRef: build/index.d.ts#SecretRef
+SendInput: build/index.d.ts#SendInput
+SendLimitConfig: build/index.d.ts#SendLimitConfig
+SendLimits: build/index.d.ts#SendLimits
+SendOutcome: build/index.d.ts#SendOutcome
+SentCheck: build/index.d.ts#SentCheck
+SentClass: build/index.d.ts#SentClass
+SentCounts: build/index.d.ts#SentCounts
+SentGap: build/index.d.ts#SentGap
+SentMeasure: build/index.d.ts#SentMeasure
+SeriesRead: build/index.d.ts#SeriesRead
+SeriesSignal: build/index.d.ts#SeriesSignal
+Severity: build/index.d.ts#Severity
+ShadowDifference: build/index.d.ts#ShadowDifference
+ShadowScore: build/index.d.ts#ShadowScore
+ShapeLookup: build/index.d.ts#ShapeLookup
+Significance: build/index.d.ts#Significance
+SourceClearConfig: build/index.d.ts#SourceClearConfig
+SourceClearPolicy: build/index.d.ts#SourceClearPolicy
+SourceDescriptor: build/index.d.ts#SourceDescriptor
+SourceHealth: build/index.d.ts#SourceHealth
+SourceHealthView: build/index.d.ts#SourceHealthView
+SourceId: build/index.d.ts#SourceId
+SourceProcedures: build/index.d.ts#SourceProcedures
+SpendConfig: build/index.d.ts#SpendConfig
+Status: build/index.d.ts#Status
+StoreFill: build/index.d.ts#StoreFill
+Subject: build/index.d.ts#Subject
+SubjectEntry: build/index.d.ts#SubjectEntry
+SubjectKey: build/index.d.ts#SubjectKey
+SubjectKind: build/index.d.ts#SubjectKind
+SubjectSystem: build/index.d.ts#SubjectSystem
+SubjectWatch: build/index.d.ts#SubjectWatch
+Suppression: build/index.d.ts#Suppression
+SuppressionReason: build/index.d.ts#SuppressionReason
+SystemLine: build/index.d.ts#SystemLine
+SystemLines: build/index.d.ts#SystemLines
+SystemSnapshot: build/index.d.ts#SystemSnapshot
+SystemStep: build/index.d.ts#SystemStep
+TAXONOMY: build/index.d.ts#TAXONOMY
+TELL_CLASSES: build/index.d.ts#TELL_CLASSES
+TELL_KIND: build/index.d.ts#TELL_KIND
+THREAT_STAGES: build/index.d.ts#THREAT_STAGES
+THROTTLE_KEYS: build/index.d.ts#THROTTLE_KEYS
+THROTTLE_MAX_WINDOW: build/index.d.ts#THROTTLE_MAX_WINDOW
+THROTTLE_MIN_WINDOW: build/index.d.ts#THROTTLE_MIN_WINDOW
+THROTTLE_STREAMS: build/index.d.ts#THROTTLE_STREAMS
+TOMBSTONE_LIFE: build/index.d.ts#TOMBSTONE_LIFE
+TRY_ENDS: build/index.d.ts#TRY_ENDS
+TableResult: build/index.d.ts#TableResult
+TellClass: build/index.d.ts#TellClass
+TellConfig: build/index.d.ts#TellConfig
+TellSite: build/index.d.ts#TellSite
+Threat: build/index.d.ts#Threat
+Throttle: build/index.d.ts#Throttle
+ThrottleConfig: build/index.d.ts#ThrottleConfig
+ThrottleInput: build/index.d.ts#ThrottleInput
+ThrottleItem: build/index.d.ts#ThrottleItem
+ThrottleKey: build/index.d.ts#ThrottleKey
+ThrottleResult: build/index.d.ts#ThrottleResult
+ThrottleStreams: build/index.d.ts#ThrottleStreams
+TimedEnd: build/index.d.ts#TimedEnd
+Tombstone: build/index.d.ts#Tombstone
+Transport: build/index.d.ts#Transport
+TryChain: build/index.d.ts#TryChain
+TryEnd: build/index.d.ts#TryEnd
+TryRecord: build/index.d.ts#TryRecord
+UNKNOWN_KIND: build/index.d.ts#UNKNOWN_KIND
+UNKNOWN_WEIGHT: build/index.d.ts#UNKNOWN_WEIGHT
+US_GALLON_L: build/index.d.ts#US_GALLON_L
+UnderPrior: build/index.d.ts#UnderPrior
+Urgency: build/index.d.ts#Urgency
+WHY_FULL_COVERAGE: build/index.d.ts#WHY_FULL_COVERAGE
+WHY_LIMITS: build/index.d.ts#WHY_LIMITS
+WORK_DEFAULTS: build/index.d.ts#WORK_DEFAULTS
+WORK_DEFAULTS_DATE: build/index.d.ts#WORK_DEFAULTS_DATE
+Watch: build/index.d.ts#Watch
+WatchedPlace: build/index.d.ts#WatchedPlace
+WhyLabels: build/index.d.ts#WhyLabels
+WhyLimit: build/index.d.ts#WhyLimit
+WhyRecord: build/index.d.ts#WhyRecord
+WorkDefaults: build/index.d.ts#WorkDefaults
+ZoneRegions: build/index.d.ts#ZoneRegions
+acknowledgedLevel: build/index.d.ts#acknowledgedLevel
+acknowledgmentOf: build/index.d.ts#acknowledgmentOf
+acknowledgmentSchema: build/index.d.ts#acknowledgmentSchema
+add: build/index.d.ts#add
+addHistory: build/index.d.ts#addHistory
+addSystemReports: build/index.d.ts#addSystemReports
+addressFieldSchema: build/index.d.ts#addressFieldSchema
+addressProblems: build/index.d.ts#addressProblems
+addressSchema: build/index.d.ts#addressSchema
+addressValueSchema: build/index.d.ts#addressValueSchema
+admits: build/index.d.ts#admits
+advanceHealth: build/index.d.ts#advanceHealth
+alertAreaSchema: build/index.d.ts#alertAreaSchema
+alertConfigSchema: build/index.d.ts#alertConfigSchema
+areaMeetsPlace: build/index.d.ts#areaMeetsPlace
+areaSchema: build/index.d.ts#areaSchema
+areasWithoutBlocks: build/index.d.ts#areasWithoutBlocks
+asksForAck: build/index.d.ts#asksForAck
+assess: build/index.d.ts#assess
+assessPolicySchema: build/index.d.ts#assessPolicySchema
+assessReasonSchema: build/index.d.ts#assessReasonSchema
+assessWithShadow: build/index.d.ts#assessWithShadow
+assessedLevelSchema: build/index.d.ts#assessedLevelSchema
+assessmentSchema: build/index.d.ts#assessmentSchema
+assessmentWhy: build/index.d.ts#assessmentWhy
+audienceKey: build/index.d.ts#audienceKey
+audienceOf: build/index.d.ts#audienceOf
+balanceFloors: build/index.d.ts#balanceFloors
+balanceFloorsBelow: build/index.d.ts#balanceFloorsBelow
+balanceHealthSchema: build/index.d.ts#balanceHealthSchema
+balanceReadSchema: build/index.d.ts#balanceReadSchema
+balanceStageSchema: build/index.d.ts#balanceStageSchema
+balanceStages: build/index.d.ts#balanceStages
+balanceUnreadAt: build/index.d.ts#balanceUnreadAt
+basemapToleranceKm: build/index.d.ts#basemapToleranceKm
+breadthOf: build/index.d.ts#breadthOf
+canReach: build/index.d.ts#canReach
+canaryResultSchema: build/index.d.ts#canaryResultSchema
+canonicalKind: build/index.d.ts#canonicalKind
+capMessageKey: build/index.d.ts#capMessageKey
+carriages: build/index.d.ts#carriages
+categoryOf: build/index.d.ts#categoryOf
+categorySchema: build/index.d.ts#categorySchema
+cellResourceSchema: build/index.d.ts#cellResourceSchema
+certaintySchema: build/index.d.ts#certaintySchema
+chainNext: build/index.d.ts#chainNext
+chainRun: build/index.d.ts#chainRun
+channelDescriptorSchema: build/index.d.ts#channelDescriptorSchema
+channelDownConfigSchema: build/index.d.ts#channelDownConfigSchema
+channelDownPolicy: build/index.d.ts#channelDownPolicy
+channelDownRules: build/index.d.ts#channelDownRules
+channelFailureKindSchema: build/index.d.ts#channelFailureKindSchema
+channelHealthSchema: build/index.d.ts#channelHealthSchema
+channelIdSchema: build/index.d.ts#channelIdSchema
+channelQuotaSchema: build/index.d.ts#channelQuotaSchema
+channelRunSchema: build/index.d.ts#channelRunSchema
+channelRuns: build/index.d.ts#channelRuns
+checkWith: build/index.d.ts#checkWith
+classOf: build/index.d.ts#classOf
+compareMapIncidents: build/index.d.ts#compareMapIncidents
+compareRegionCodes: build/index.d.ts#compareRegionCodes
+composeInterests: build/index.d.ts#composeInterests
+configHash: build/index.d.ts#configHash
+configPartSchema: build/index.d.ts#configPartSchema
+configuredExpectations: build/index.d.ts#configuredExpectations
+contactChannels: build/index.d.ts#contactChannels
+contactConfigSchema: build/index.d.ts#contactConfigSchema
+contextSource: build/index.d.ts#contextSource
+copyHealthSchema: build/index.d.ts#copyHealthSchema
+copyIdSchema: build/index.d.ts#copyIdSchema
+copyListenSchema: build/index.d.ts#copyListenSchema
+copyMeasure: build/index.d.ts#copyMeasure
+copyPeerSchema: build/index.d.ts#copyPeerSchema
+copyProblems: build/index.d.ts#copyProblems
+copyReadSchema: build/index.d.ts#copyReadSchema
+copySettingsSchema: build/index.d.ts#copySettingsSchema
+copyStageSchema: build/index.d.ts#copyStageSchema
+copyStages: build/index.d.ts#copyStages
+copyUnreadAt: build/index.d.ts#copyUnreadAt
+copyUnsteadyAt: build/index.d.ts#copyUnsteadyAt
+correlationKeySchema: build/index.d.ts#correlationKeySchema
+coverage: build/index.d.ts#coverage
+coverageSchema: build/index.d.ts#coverageSchema
+coverageShort: build/index.d.ts#coverageShort
+cursorSchema: build/index.d.ts#cursorSchema
+dailyInstant: build/index.d.ts#dailyInstant
+dailyTimeProblems: build/index.d.ts#dailyTimeProblems
+decide: build/index.d.ts#decide
+decideStep: build/index.d.ts#decideStep
+defaultEdgeId: build/index.d.ts#defaultEdgeId
+delayLimit: build/index.d.ts#delayLimit
+deliveryLayer: build/index.d.ts#deliveryLayer
+deliverySchema: build/index.d.ts#deliverySchema
+deliveryStateSchema: build/index.d.ts#deliveryStateSchema
+deliveryStatusSchema: build/index.d.ts#deliveryStatusSchema
+digestDeliveries: build/index.d.ts#digestDeliveries
+digestEntryKey: build/index.d.ts#digestEntryKey
+digestKey: build/index.d.ts#digestKey
+digestMessageOf: build/index.d.ts#digestMessageOf
+digestTimeOf: build/index.d.ts#digestTimeOf
+dimensionIdSchema: build/index.d.ts#dimensionIdSchema
+distinctShapes: build/index.d.ts#distinctShapes
+downChannels: build/index.d.ts#downChannels
+drillConfigSchema: build/index.d.ts#drillConfigSchema
+drillDue: build/index.d.ts#drillDue
+drillInCopy: build/index.d.ts#drillInCopy
+drillPathSchema: build/index.d.ts#drillPathSchema
+drillProblems: build/index.d.ts#drillProblems
+drillRules: build/index.d.ts#drillRules
+drillVerdict: build/index.d.ts#drillVerdict
+drillWatchAt: build/index.d.ts#drillWatchAt
+drillWindowSchema: build/index.d.ts#drillWindowSchema
+durationSchema: build/index.d.ts#durationSchema
+durationText: build/index.d.ts#durationText
+edgeKindSchema: build/index.d.ts#edgeKindSchema
+edgeOriginSchema: build/index.d.ts#edgeOriginSchema
+endMarkSchema: build/index.d.ts#endMarkSchema
+endedReports: build/index.d.ts#endedReports
+escalate: build/index.d.ts#escalate
+escalationEndSchema: build/index.d.ts#escalationEndSchema
+escalationPolicySchema: build/index.d.ts#escalationPolicySchema
+escalationProblems: build/index.d.ts#escalationProblems
+escalationStepSchema: build/index.d.ts#escalationStepSchema
+estimateSchema: build/index.d.ts#estimateSchema
+exhaustions: build/index.d.ts#exhaustions
+expectationConfigSchema: build/index.d.ts#expectationConfigSchema
+expectationProblems: build/index.d.ts#expectationProblems
+expectedHarmSchema: build/index.d.ts#expectedHarmSchema
+expectedOf: build/index.d.ts#expectedOf
+failureDomains: build/index.d.ts#failureDomains
+fetchFailureSchema: build/index.d.ts#fetchFailureSchema
+fetchOutcomeSchema: build/index.d.ts#fetchOutcomeSchema
+fetchRecordSchema: build/index.d.ts#fetchRecordSchema
+fitsWhy: build/index.d.ts#fitsWhy
+foreignIncidents: build/index.d.ts#foreignIncidents
+gapGrade: build/index.d.ts#gapGrade
+graphLabels: build/index.d.ts#graphLabels
+hasKind: build/index.d.ts#hasKind
+health: build/index.d.ts#health
+healthPayload: build/index.d.ts#healthPayload
+healthPayloadSchema: build/index.d.ts#healthPayloadSchema
+healthStateSchema: build/index.d.ts#healthStateSchema
+heldPersons: build/index.d.ts#heldPersons
+heldText: build/index.d.ts#heldText
+higherLevel: build/index.d.ts#higherLevel
+historyChangeAt: build/index.d.ts#historyChangeAt
+historyChangeSchema: build/index.d.ts#historyChangeSchema
+historyIncidentSchema: build/index.d.ts#historyIncidentSchema
+historyPayload: build/index.d.ts#historyPayload
+historyPayloadSchema: build/index.d.ts#historyPayloadSchema
+historyPlaceSchema: build/index.d.ts#historyPlaceSchema
+historyRegionSchema: build/index.d.ts#historyRegionSchema
+historyTimes: build/index.d.ts#historyTimes
+historyView: build/index.d.ts#historyView
+holdKey: build/index.d.ts#holdKey
+inAudience: build/index.d.ts#inAudience
+inQuietWindow: build/index.d.ts#inQuietWindow
+incidentLineSchema: build/index.d.ts#incidentLineSchema
+incidentSchema: build/index.d.ts#incidentSchema
+incidentTitle: build/index.d.ts#incidentTitle
+incidents: build/index.d.ts#incidents
+indicatorAreaKindSchema: build/index.d.ts#indicatorAreaKindSchema
+indicatorAreaSchema: build/index.d.ts#indicatorAreaSchema
+indicatorBreadth: build/index.d.ts#indicatorBreadth
+instantSchema: build/index.d.ts#instantSchema
+interestDefaultsConfigSchema: build/index.d.ts#interestDefaultsConfigSchema
+interestEdgeSchema: build/index.d.ts#interestEdgeSchema
+interestGraphSchema: build/index.d.ts#interestGraphSchema
+interestRowSchema: build/index.d.ts#interestRowSchema
+interestsPayload: build/index.d.ts#interestsPayload
+interestsPayloadSchema: build/index.d.ts#interestsPayloadSchema
+interestsPersonSchema: build/index.d.ts#interestsPersonSchema
+isContactUrl: build/index.d.ts#isContactUrl
+isDimensionId: build/index.d.ts#isDimensionId
+isLifeline: build/index.d.ts#isLifeline
+isLimitedLevel: build/index.d.ts#isLimitedLevel
+isNeedCode: build/index.d.ts#isNeedCode
+isPrivate: build/index.d.ts#isPrivate
+isShape: build/index.d.ts#isShape
+isSignal: build/index.d.ts#isSignal
+join: build/index.d.ts#join
+joinRuns: build/index.d.ts#joinRuns
+kindClassSchema: build/index.d.ts#kindClassSchema
+kindCodeSchema: build/index.d.ts#kindCodeSchema
+kindLabel: build/index.d.ts#kindLabel
+kindOfNode: build/index.d.ts#kindOfNode
+kindPriorSchema: build/index.d.ts#kindPriorSchema
+kindSchema: build/index.d.ts#kindSchema
+knownKind: build/index.d.ts#knownKind
+lastRun: build/index.d.ts#lastRun
+lateSources: build/index.d.ts#lateSources
+lateness: build/index.d.ts#lateness
+latenessLimitSchema: build/index.d.ts#latenessLimitSchema
+latenessSchema: build/index.d.ts#latenessSchema
+latenessStateSchema: build/index.d.ts#latenessStateSchema
+latenessStep: build/index.d.ts#latenessStep
+latestIn: build/index.d.ts#latestIn
+levelRuleSchema: build/index.d.ts#levelRuleSchema
+levelSchema: build/index.d.ts#levelSchema
+levelTableSchema: build/index.d.ts#levelTableSchema
+limitRoutes: build/index.d.ts#limitRoutes
+limitRule: build/index.d.ts#limitRule
+limitShare: build/index.d.ts#limitShare
+linesAt: build/index.d.ts#linesAt
+linkFamilySchema: build/index.d.ts#linkFamilySchema
+linkPolicySchema: build/index.d.ts#linkPolicySchema
+linkRule: build/index.d.ts#linkRule
+loadConfig: build/index.d.ts#loadConfig
+localPlaces: build/index.d.ts#localPlaces
+locateOutcomeSchema: build/index.d.ts#locateOutcomeSchema
+lowerLevel: build/index.d.ts#lowerLevel
+mapPayload: build/index.d.ts#mapPayload
+mapProblemSchema: build/index.d.ts#mapProblemSchema
+mapResultSchema: build/index.d.ts#mapResultSchema
+mapShapeSchema: build/index.d.ts#mapShapeSchema
+mapView: build/index.d.ts#mapView
+matchPlaces: build/index.d.ts#matchPlaces
+matchSubjects: build/index.d.ts#matchSubjects
+measureDeclarationSchema: build/index.d.ts#measureDeclarationSchema
+measureOf: build/index.d.ts#measureOf
+mergeParts: build/index.d.ts#mergeParts
+messageKey: build/index.d.ts#messageKey
+messageOf: build/index.d.ts#messageOf
+messageSchema: build/index.d.ts#messageSchema
+missLimit: build/index.d.ts#missLimit
+missRecord: build/index.d.ts#missRecord
+missedDrillAt: build/index.d.ts#missedDrillAt
+mostInWindow: build/index.d.ts#mostInWindow
+moveSchema: build/index.d.ts#moveSchema
+muteEffectSchema: build/index.d.ts#muteEffectSchema
+muteOf: build/index.d.ts#muteOf
+muteSchema: build/index.d.ts#muteSchema
+nextDrillAt: build/index.d.ts#nextDrillAt
+nodeCovers: build/index.d.ts#nodeCovers
+nodeKeySchema: build/index.d.ts#nodeKeySchema
+nodesOverlap: build/index.d.ts#nodesOverlap
+normalize: build/index.d.ts#normalize
+observationId: build/index.d.ts#observationId
+observationIdSchema: build/index.d.ts#observationIdSchema
+observationSchema: build/index.d.ts#observationSchema
+observeConditions: build/index.d.ts#observeConditions
+observeCut: build/index.d.ts#observeCut
+observeFetch: build/index.d.ts#observeFetch
+observeVerdict: build/index.d.ts#observeVerdict
+operationSchema: build/index.d.ts#operationSchema
+optInConfigSchema: build/index.d.ts#optInConfigSchema
+optInFields: build/index.d.ts#optInFields
+optInProblems: build/index.d.ts#optInProblems
+optInTime: build/index.d.ts#optInTime
+optedIn: build/index.d.ts#optedIn
+outageAudit: build/index.d.ts#outageAudit
+outageConfigSchema: build/index.d.ts#outageConfigSchema
+outagePersonConfigSchema: build/index.d.ts#outagePersonConfigSchema
+ownBaselineSchema: build/index.d.ts#ownBaselineSchema
+parentKind: build/index.d.ts#parentKind
+parseConfig: build/index.d.ts#parseConfig
+parseCopySettings: build/index.d.ts#parseCopySettings
+partLabel: build/index.d.ts#partLabel
+personConfigSchema: build/index.d.ts#personConfigSchema
+personIdSchema: build/index.d.ts#personIdSchema
+personInterests: build/index.d.ts#personInterests
+personWatchSchema: build/index.d.ts#personWatchSchema
+placeCodesWithContaining: build/index.d.ts#placeCodesWithContaining
+placeConfigSchema: build/index.d.ts#placeConfigSchema
+placeIdSchema: build/index.d.ts#placeIdSchema
+placeLabels: build/index.d.ts#placeLabels
+placeNode: build/index.d.ts#placeNode
+placeOfNode: build/index.d.ts#placeOfNode
+placeWhy: build/index.d.ts#placeWhy
+placesLayer: build/index.d.ts#placesLayer
+plainLabel: build/index.d.ts#plainLabel
+planDigests: build/index.d.ts#planDigests
+policyFor: build/index.d.ts#policyFor
+policyName: build/index.d.ts#policyName
+positionSchema: build/index.d.ts#positionSchema
+probabilitySchema: build/index.d.ts#probabilitySchema
+providerBalanceSchema: build/index.d.ts#providerBalanceSchema
+pruneTombstones: build/index.d.ts#pruneTombstones
+quietWindowProblems: build/index.d.ts#quietWindowProblems
+quietWindowSchema: build/index.d.ts#quietWindowSchema
+quotaHealthSchema: build/index.d.ts#quotaHealthSchema
+quotaStageSchema: build/index.d.ts#quotaStageSchema
+quotaStages: build/index.d.ts#quotaStages
+rankDelayOf: build/index.d.ts#rankDelayOf
+rankDelayProblems: build/index.d.ts#rankDelayProblems
+rankDelaysSchema: build/index.d.ts#rankDelaysSchema
+rankFloorProblems: build/index.d.ts#rankFloorProblems
+rankFloors: build/index.d.ts#rankFloors
+reachOf: build/index.d.ts#reachOf
+reachedAssessment: build/index.d.ts#reachedAssessment
+readHealthSchema: build/index.d.ts#readHealthSchema
+readSeries: build/index.d.ts#readSeries
+readingProblems: build/index.d.ts#readingProblems
+readingSchema: build/index.d.ts#readingSchema
+receiptSchema: build/index.d.ts#receiptSchema
+recentRecovery: build/index.d.ts#recentRecovery
+recentStep: build/index.d.ts#recentStep
+recipientProblems: build/index.d.ts#recipientProblems
+regionCodeKey: build/index.d.ts#regionCodeKey
+regionCodeSchema: build/index.d.ts#regionCodeSchema
+regionContains: build/index.d.ts#regionContains
+regionCovers: build/index.d.ts#regionCovers
+regionDistanceKm: build/index.d.ts#regionDistanceKm
+regionRank: build/index.d.ts#regionRank
+regionsNear: build/index.d.ts#regionsNear
+relevance: build/index.d.ts#relevance
+relevancePathSchema: build/index.d.ts#relevancePathSchema
+relevancePolicySchema: build/index.d.ts#relevancePolicySchema
+relevanceSchema: build/index.d.ts#relevanceSchema
+reportId: build/index.d.ts#reportId
+reportIdSchema: build/index.d.ts#reportIdSchema
+reportPasses: build/index.d.ts#reportPasses
+reportSchema: build/index.d.ts#reportSchema
+reportsShared: build/index.d.ts#reportsShared
+requiredFor: build/index.d.ts#requiredFor
+resolveOptIn: build/index.d.ts#resolveOptIn
+responseTypeSchema: build/index.d.ts#responseTypeSchema
+retire: build/index.d.ts#retire
+retirements: build/index.d.ts#retirements
+route: build/index.d.ts#route
+ruleSteps: build/index.d.ts#ruleSteps
+runOpens: build/index.d.ts#runOpens
+schemaOf: build/index.d.ts#schemaOf
+scoreFactorSchema: build/index.d.ts#scoreFactorSchema
+scorePriorsSchema: build/index.d.ts#scorePriorsSchema
+secretRefSchema: build/index.d.ts#secretRefSchema
+sendCapUsd: build/index.d.ts#sendCapUsd
+sendLimitConfigSchema: build/index.d.ts#sendLimitConfigSchema
+sendLimitProblems: build/index.d.ts#sendLimitProblems
+sendLimitsOf: build/index.d.ts#sendLimitsOf
+sendOutcomeSchema: build/index.d.ts#sendOutcomeSchema
+sentFails: build/index.d.ts#sentFails
+sentLevel: build/index.d.ts#sentLevel
+seriesKey: build/index.d.ts#seriesKey
+servicesLayer: build/index.d.ts#servicesLayer
+severitySchema: build/index.d.ts#severitySchema
+shadowDifferences: build/index.d.ts#shadowDifferences
+shadowScore: build/index.d.ts#shadowScore
+shadowScoreSchema: build/index.d.ts#shadowScoreSchema
+shapeDistanceKm: build/index.d.ts#shapeDistanceKm
+sharedHandoverAt: build/index.d.ts#sharedHandoverAt
+shiftDelivery: build/index.d.ts#shiftDelivery
+shiftEndMark: build/index.d.ts#shiftEndMark
+shiftEscalationEnd: build/index.d.ts#shiftEscalationEnd
+shiftEscalationStart: build/index.d.ts#shiftEscalationStart
+shiftHealth: build/index.d.ts#shiftHealth
+shiftMerge: build/index.d.ts#shiftMerge
+shiftReport: build/index.d.ts#shiftReport
+significanceSchema: build/index.d.ts#significanceSchema
+simplifyBasemap: build/index.d.ts#simplifyBasemap
+sourceClearAt: build/index.d.ts#sourceClearAt
+sourceClearConfigSchema: build/index.d.ts#sourceClearConfigSchema
+sourceClearPolicy: build/index.d.ts#sourceClearPolicy
+sourceClearTime: build/index.d.ts#sourceClearTime
+sourceCovers: build/index.d.ts#sourceCovers
+sourceDescriptorSchema: build/index.d.ts#sourceDescriptorSchema
+sourceHealthSchema: build/index.d.ts#sourceHealthSchema
+sourceHealthView: build/index.d.ts#sourceHealthView
+sourceHealthViewSchema: build/index.d.ts#sourceHealthViewSchema
+sourceIdSchema: build/index.d.ts#sourceIdSchema
+sourcePlaces: build/index.d.ts#sourcePlaces
+spendConfigSchema: build/index.d.ts#spendConfigSchema
+staleTime: build/index.d.ts#staleTime
+startHealth: build/index.d.ts#startHealth
+statusSchema: build/index.d.ts#statusSchema
+stepSizeText: build/index.d.ts#stepSizeText
+storeEmptyAt: build/index.d.ts#storeEmptyAt
+subjectEntrySchema: build/index.d.ts#subjectEntrySchema
+subjectKindSchema: build/index.d.ts#subjectKindSchema
+subjectNode: build/index.d.ts#subjectNode
+subjectSchema: build/index.d.ts#subjectSchema
+subjectWatchSchema: build/index.d.ts#subjectWatchSchema
+systemReports: build/index.d.ts#systemReports
+tableLevel: build/index.d.ts#tableLevel
+tellConfigSchema: build/index.d.ts#tellConfigSchema
+tellSiteSchema: build/index.d.ts#tellSiteSchema
+threats: build/index.d.ts#threats
+throttleConfigSchema: build/index.d.ts#throttleConfigSchema
+throttleOf: build/index.d.ts#throttleOf
+throttleProblems: build/index.d.ts#throttleProblems
+throttleRoutes: build/index.d.ts#throttleRoutes
+throttleStreamOf: build/index.d.ts#throttleStreamOf
+topicEntry: build/index.d.ts#topicEntry
+transportSchema: build/index.d.ts#transportSchema
+tryChainSchema: build/index.d.ts#tryChainSchema
+underPriorSchema: build/index.d.ts#underPriorSchema
+unknownKinds: build/index.d.ts#unknownKinds
+urgencySchema: build/index.d.ts#urgencySchema
+watchSchema: build/index.d.ts#watchSchema
+watchedDrillMiss: build/index.d.ts#watchedDrillMiss
+watchedDrillReportAt: build/index.d.ts#watchedDrillReportAt
+watchedPlaceSchema: build/index.d.ts#watchedPlaceSchema
+whyLimitSchema: build/index.d.ts#whyLimitSchema
+whyLine: build/index.d.ts#whyLine
+whyRecordSchema: build/index.d.ts#whyRecordSchema
+workLayer: build/index.d.ts#workLayer
+
+## Declarations
+
+### build/index.d.ts#ASSESSED_LEVELS
+export declare const ASSESSED_LEVELS: readonly AssessedLevel[];
+
+### build/index.d.ts#Acknowledgment
+export interface Acknowledgment {
+  readonly incident: ReportId;
+  readonly level: Level;
+  readonly person: PersonId;
+  readonly at: Instant;
+  readonly via: ChannelId | "ui";
+}
+
+### build/index.d.ts#Address
+export type Address = Readonly<Record<string, string>>;
+
+### build/index.d.ts#AddressField
+export interface AddressField {
+  readonly name: string;
+  readonly required: boolean;
+  readonly pattern: string;
+  readonly form: string;
+  readonly optIn?: boolean;
+}
+
+### build/index.d.ts#AddressValue
+export type AddressValue = string | SecretRef;
+
+### build/index.d.ts#AlertArea
+export type AlertArea = "county" | "zone";
+
+### build/index.d.ts#AlertConfig
+export interface AlertConfig {
+  readonly format: typeof CONFIG_FORMAT;
+  readonly places: readonly PlaceConfig[];
+  readonly people: readonly PersonConfig[];
+  readonly contacts: readonly ContactConfig[];
+  readonly policies: readonly EscalationPolicy[];
+  readonly contact?: string;
+  readonly expectations?: readonly ExpectationConfig[];
+  readonly spend?: readonly SpendConfig[];
+  readonly link?: LinkPolicy;
+  readonly outage?: OutageConfig;
+  readonly rankDelay?: RankDelays;
+  readonly rankFloor?: Duration;
+  readonly assess?: AssessPolicy;
+  readonly drills?: readonly DrillConfig[];
+  readonly optIn?: readonly OptInConfig[];
+  readonly channelDown?: ChannelDownConfig;
+  readonly sourceClear?: SourceClearConfig;
+  readonly sendLimit?: SendLimitConfig;
+  readonly throttle?: ThrottleConfig;
+  readonly tell?: TellConfig;
+}
+
+### build/index.d.ts#Area
+export type Area = ({
+  readonly type: "polygon";
+  readonly rings: readonly (readonly Position[])[];
+} & AreaBlock) | ({
+  readonly type: "circle";
+  readonly center: Position;
+  readonly radiusKm: number;
+} & AreaBlock) | ({
+  readonly type: "code";
+} & RegionCode & AreaBlock) | {
+  readonly type: "place";
+  readonly place: PlaceId;
+};
+
+### build/index.d.ts#AreaBlock
+export interface AreaBlock {
+  readonly block?: string;
+}
+
+### build/index.d.ts#AssessPolicy
+export interface AssessPolicy {
+  readonly statuses: readonly Status[];
+  readonly classes: readonly KindClass[];
+  readonly otherwise: LevelTable;
+  readonly relevance?: RelevancePolicy;
+}
+
+### build/index.d.ts#AssessReason
+export type AssessReason = {
+  readonly kind: "ended";
+} | {
+  readonly kind: "status";
+  readonly status: Status;
+} | {
+  readonly kind: "no-place";
+} | {
+  readonly kind: "no-subject";
+} | {
+  readonly kind: "not-addressed";
+} | {
+  readonly kind: "addressed";
+} | {
+  readonly kind: "no-codes";
+} | {
+  readonly kind: "unknown-place";
+  readonly place: PlaceId;
+} | {
+  readonly kind: "place";
+  readonly place: PlaceId;
+  readonly codes: readonly RegionCode[];
+  readonly distanceKm?: number;
+  readonly shapeRefused?: true;
+  readonly zoneFallback?: true;
+} | {
+  readonly kind: "subject";
+  readonly subject: SubjectWatch;
+} | {
+  readonly kind: "place-table";
+  readonly place: PlaceId;
+  readonly reports: readonly ReportId[];
+  readonly level: AssessedLevel;
+} | {
+  readonly kind: "table";
+  readonly class?: string;
+  readonly bySeverity: AssessedLevel;
+  readonly byUrgency: AssessedLevel;
+  readonly level: AssessedLevel;
+  readonly recentPast?: true;
+  readonly foreign?: true;
+} | {
+  readonly kind: "rule";
+  readonly place?: PlaceId;
+  readonly index: number;
+  readonly max: AssessedLevel;
+} | {
+  readonly kind: "shadow";
+  readonly score: ShadowScore;
+} | {
+  readonly kind: "reach";
+  readonly reach: Estimate;
+  readonly reached: readonly NodeKey[];
+  readonly mandatory: readonly PlaceId[];
+  readonly entryLevel?: AssessedLevel;
+  readonly why?: WhyRecord;
+} | {
+  readonly kind: "relevance-fault";
+  readonly message: string;
+};
+
+### build/index.d.ts#AssessedLevel
+export type AssessedLevel = Level | "none";
+
+### build/index.d.ts#Assessment
+export interface Assessment {
+  readonly incident: ReportId;
+  readonly person: PersonId;
+  readonly level: AssessedLevel;
+  readonly places: readonly PlaceId[];
+  readonly reasons: readonly AssessReason[];
+  readonly muted?: {
+    readonly mute: string;
+    readonly effect: MuteEffect;
+  };
+}
+
+### build/index.d.ts#Audience
+export interface Audience {
+  readonly addresses?: readonly PersonId[] | undefined;
+}
+
+### build/index.d.ts#BALANCE_KIND
+export declare const BALANCE_KIND = "system.balance";
+
+### build/index.d.ts#BALANCE_STAGES
+export declare const BALANCE_STAGES: readonly BalanceStage[];
+
+### build/index.d.ts#BalanceHealth
+export interface BalanceHealth {
+  readonly balance: ProviderBalance;
+  readonly stages: readonly BalanceStage[];
+}
+
+### build/index.d.ts#BalanceRead
+export interface BalanceRead {
+  readonly balance: number;
+  readonly currency: string;
+  readonly at: Instant;
+}
+
+### build/index.d.ts#BalanceStage
+export type BalanceStage = "low" | "empty" | "unread";
+
+### build/index.d.ts#BaselinePolicy
+export interface BaselinePolicy {
+  readonly window: Duration;
+  readonly season: Season;
+  readonly slack: Duration;
+  readonly samples: number;
+  readonly cut: number;
+  readonly staleCadences: number;
+  readonly staleAfter: Duration;
+}
+
+### build/index.d.ts#Breadth
+export interface Breadth {
+  readonly signals: readonly DimensionId[];
+  readonly read: readonly DimensionId[];
+  readonly dimensions: readonly DimensionCount[];
+}
+
+### build/index.d.ts#CAP_MESSAGE_SYSTEM
+export declare const CAP_MESSAGE_SYSTEM = "cap";
+
+### build/index.d.ts#CATEGORIES
+export declare const CATEGORIES: readonly Category[];
+
+### build/index.d.ts#CATEGORY_LABELS
+export declare const CATEGORY_LABELS: Readonly<Record<Category, string>>;
+
+### build/index.d.ts#CELL_RESOURCES
+export declare const CELL_RESOURCES: readonly CellResource[];
+
+### build/index.d.ts#CHAIN_MACHINE
+export declare const CHAIN_MACHINE: Machine;
+
+### build/index.d.ts#CHANNEL_KIND
+export declare const CHANNEL_KIND = "system.channel";
+
+### build/index.d.ts#CHANNEL_SUBJECT
+export declare const CHANNEL_SUBJECT = "alerts.channel";
+
+### build/index.d.ts#CLOCK_KIND
+export declare const CLOCK_KIND = "system.clock";
+
+### build/index.d.ts#CLOCK_STEP_ABOVE
+export declare const CLOCK_STEP_ABOVE: Duration;
+
+### build/index.d.ts#CLOCK_STEP_WINDOW
+export declare const CLOCK_STEP_WINDOW: Duration;
+
+### build/index.d.ts#CLOCK_SUBJECT
+export declare const CLOCK_SUBJECT = "alerts.clock";
+
+### build/index.d.ts#CONFIG_FORMAT
+export declare const CONFIG_FORMAT = "alerts-config/1";
+
+### build/index.d.ts#CONFIG_HASH_SCHEME
+export declare const CONFIG_HASH_SCHEME = "alerts-config-hash/1";
+
+### build/index.d.ts#CONFIG_PART_FORMAT
+export declare const CONFIG_PART_FORMAT = "alerts-config-part/1";
+
+### build/index.d.ts#CONTEXT_KINDS
+export declare const CONTEXT_KINDS: readonly string[];
+
+### build/index.d.ts#COPY_FORMAT
+export declare const COPY_FORMAT = "alerts-copy/1";
+
+### build/index.d.ts#COPY_ID
+export declare const COPY_ID: RegExp;
+
+### build/index.d.ts#COPY_KIND
+export declare const COPY_KIND = "system.copy";
+
+### build/index.d.ts#COPY_STAGES
+export declare const COPY_STAGES: readonly CopyStage[];
+
+### build/index.d.ts#COPY_STEADY_LIMIT
+export declare const COPY_STEADY_LIMIT: Duration;
+
+### build/index.d.ts#COPY_SUBJECT
+export declare const COPY_SUBJECT = "alerts.copy";
+
+### build/index.d.ts#COUNTED_CALLS
+export declare const COUNTED_CALLS: readonly string[];
+
+### build/index.d.ts#COUNTED_FAILURES
+export declare const COUNTED_FAILURES: readonly ChannelFailureKind[];
+
+### build/index.d.ts#COVERAGE_KIND
+export declare const COVERAGE_KIND = "system.coverage";
+
+### build/index.d.ts#CanaryResult
+export interface CanaryResult {
+  readonly pass: boolean;
+  readonly reason: string;
+}
+
+### build/index.d.ts#CancelTarget
+export type CancelTarget = {
+  readonly receipt: Receipt;
+} | {
+  readonly copy: string;
+};
+
+### build/index.d.ts#CapMessageKeyInput
+export interface CapMessageKeyInput {
+  readonly sender: string;
+  readonly identifier: string;
+  readonly sent: Instant;
+  readonly part?: string | undefined;
+}
+
+### build/index.d.ts#Carriage
+export interface Carriage {
+  readonly expectation: string;
+  readonly report: ReportId;
+  readonly started: Instant;
+  readonly arrived?: Instant;
+}
+
+### build/index.d.ts#Category
+export type Category = "geo" | "met" | "safety" | "security" | "rescue" | "fire" | "health" | "env" | "transport" | "infra" | "cbrne" | "other" | "cyber" | "market" | "civic" | "system";
+
+### build/index.d.ts#CellResource
+export type CellResource = "internet" | "dns" | "power" | "receiver";
+
+### build/index.d.ts#Certainty
+export type Certainty = "observed" | "likely" | "possible" | "unlikely" | "unknown";
+
+### build/index.d.ts#ChainRun
+export interface ChainRun {
+  readonly state: ChainState;
+  readonly tries: number;
+  readonly transitions: readonly Transition[];
+  readonly extra: number;
+}
+
+### build/index.d.ts#ChainState
+export type ChainState = {
+  readonly kind: "trying";
+  readonly step: number;
+  readonly channel: ChannelId;
+} | {
+  readonly kind: "acked";
+  readonly step: number;
+} | {
+  readonly kind: "exhausted";
+};
+
+### build/index.d.ts#ChannelCallFailure
+export interface ChannelCallFailure {
+  readonly channel: ChannelId;
+  readonly call: string;
+  readonly kind: string;
+}
+
+### build/index.d.ts#ChannelDescriptor
+export interface ChannelDescriptor {
+  readonly id: ChannelId;
+  readonly title: string;
+  readonly dependsOn: readonly string[];
+  readonly services?: readonly NodeKey[];
+  readonly api?: readonly NodeKey[];
+  readonly uses: readonly CellResource[];
+  readonly breaksThrough: boolean;
+  readonly repeats: boolean;
+  readonly ack: "none" | "poll" | "callback";
+  readonly maxTitle: number;
+  readonly maxBody: number;
+  readonly costUsd?: number;
+  readonly maxInFlight?: number;
+  readonly exclusive?: boolean;
+  readonly why?: WhyLimit;
+  readonly address?: readonly AddressField[];
+  readonly ackLevels?: readonly Level[];
+}
+
+### build/index.d.ts#ChannelDownConfig
+export interface ChannelDownConfig {
+  readonly failures?: number;
+  readonly span?: Duration;
+}
+
+### build/index.d.ts#ChannelDownPolicy
+export interface ChannelDownPolicy {
+  readonly failures: number;
+  readonly span: Duration;
+}
+
+### build/index.d.ts#ChannelFailureKind
+export type ChannelFailureKind = Extract<SendOutcome, {
+  readonly ok: false;
+}>["kind"];
+
+### build/index.d.ts#ChannelHealth
+export interface ChannelHealth extends ChannelSnapshot {
+  readonly down: boolean;
+}
+
+### build/index.d.ts#ChannelId
+export type ChannelId = Id<"ChannelId">;
+
+### build/index.d.ts#ChannelProcedures
+export interface ChannelProcedures {
+  describe(): ChannelDescriptor;
+  send(input: SendInput): Promise<SendOutcome>;
+  status(input: {
+    readonly receipt: Receipt;
+  }): Promise<DeliveryStatus>;
+  cancel(input: CancelTarget): Promise<void>;
+  probe?(): Promise<ProbeOutcome>;
+  services?(input: {
+    readonly address: Address;
+  }): readonly NodeKey[];
+}
+
+### build/index.d.ts#ChannelQuota
+export interface ChannelQuota {
+  readonly channel: ChannelId;
+  readonly limit: number;
+  readonly reserve: number;
+  readonly used: number;
+  readonly resetAt?: Instant;
+  readonly blockedUntil?: Instant;
+  readonly unit?: string;
+}
+
+### build/index.d.ts#ChannelRule
+export interface ChannelRule {
+  readonly kinds: readonly string[];
+  readonly about?: SubjectWatch;
+  readonly keep: "only" | "except";
+  readonly channels: readonly ChannelId[];
+}
+
+### build/index.d.ts#ChannelRun
+export interface ChannelRun {
+  readonly channel: ChannelId;
+  readonly failures: number;
+  readonly first: Instant;
+  readonly last: Instant;
+  readonly kind: ChannelFailureKind;
+  readonly reached: boolean;
+}
+
+### build/index.d.ts#ChannelRunStep
+export interface ChannelRunStep {
+  readonly at: Instant;
+  readonly failures: readonly ChannelCallFailure[];
+  readonly good: readonly ChannelId[];
+  readonly lastSuccess?: Instant;
+}
+
+### build/index.d.ts#ChannelSnapshot
+export interface ChannelSnapshot {
+  readonly copy: string;
+  readonly channel: ChannelId;
+  readonly title: string;
+  readonly api?: readonly NodeKey[];
+  readonly run?: ChannelRun;
+  readonly good?: Instant;
+}
+
+### build/index.d.ts#CheckOutcome
+export type CheckOutcome = "met" | "missed" | "open" | "measured" | "waiting";
+
+### build/index.d.ts#CitedNeed
+export interface CitedNeed extends Need {
+  readonly source: NeedSource;
+  readonly note?: string;
+}
+
+### build/index.d.ts#ClockStep
+export interface ClockStep {
+  readonly at: Instant;
+  readonly size: Duration;
+}
+
+### build/index.d.ts#ComposedInterests
+export interface ComposedInterests {
+  readonly graph: InterestGraph;
+  readonly rows: readonly InterestRow[];
+}
+
+### build/index.d.ts#ConfigPart
+export interface ConfigPart {
+  readonly format: typeof CONFIG_PART_FORMAT;
+  readonly places?: readonly PlaceConfig[];
+  readonly people?: readonly PersonConfig[];
+  readonly contacts?: readonly ContactConfig[];
+}
+
+### build/index.d.ts#ContactConfig
+export interface ContactConfig {
+  readonly person: PersonId;
+  readonly channel: ChannelId;
+  readonly address: Readonly<Record<string, AddressValue>>;
+}
+
+### build/index.d.ts#ContactLookup
+export interface ContactLookup {
+  readonly secret: SecretLookup;
+  readonly services: ContactServices;
+}
+
+### build/index.d.ts#ContactServices
+export type ContactServices = (channel: ChannelId, address: Address) => readonly NodeKey[];
+
+### build/index.d.ts#CopyHealth
+export interface CopyHealth {
+  readonly copy: string;
+  readonly stages: readonly CopyStage[];
+  readonly read?: CopyRead;
+}
+
+### build/index.d.ts#CopyListen
+export interface CopyListen {
+  readonly host: string;
+  readonly port: number;
+}
+
+### build/index.d.ts#CopyMeasureOptions
+export interface CopyMeasureOptions {
+  readonly censorAfter?: Instant;
+  readonly copyKey?: (key: string) => string;
+  readonly eventOf?: (report: Report) => string;
+  readonly link?: LinkRule;
+}
+
+### build/index.d.ts#CopyPeer
+export interface CopyPeer {
+  readonly id: string;
+  readonly url: string;
+}
+
+### build/index.d.ts#CopyRead
+export interface CopyRead {
+  readonly at: Instant;
+  readonly skew: Duration;
+  readonly sameConfig: boolean;
+}
+
+### build/index.d.ts#CopySettings
+export interface CopySettings {
+  readonly format: typeof COPY_FORMAT;
+  readonly id: string;
+  readonly rank: number;
+  readonly listen?: CopyListen;
+  readonly peers?: readonly CopyPeer[];
+  readonly pingKey?: string;
+  readonly accounts?: Readonly<Record<string, number>>;
+  readonly configFrom?: string;
+}
+
+### build/index.d.ts#CopyStage
+export type CopyStage = "skew" | "config" | "unread" | "unsteady";
+
+### build/index.d.ts#CopyTime
+export interface CopyTime {
+  readonly key: string;
+  readonly sent: Instant;
+}
+
+### build/index.d.ts#CopyWatch
+export interface CopyWatch {
+  readonly copy: string;
+  readonly skewLimit: Duration;
+  readonly maxAge: Duration;
+  readonly since: Instant;
+  readonly read?: CopyRead;
+  readonly drills?: Readonly<Record<string, Instant>>;
+  readonly unsteadySince?: Instant;
+}
+
+### build/index.d.ts#CorrelationKey
+export interface CorrelationKey {
+  readonly system: string;
+  readonly id: string;
+}
+
+### build/index.d.ts#Coverage
+export interface Coverage {
+  readonly place: PlaceId;
+  readonly kind: string;
+  readonly sources: readonly SourceId[];
+  readonly independent: number;
+  readonly proven: boolean;
+  readonly faults: readonly string[];
+  readonly commonResources: readonly CellResource[];
+  readonly required: number;
+}
+
+### build/index.d.ts#CoverageInput
+export interface CoverageInput {
+  readonly sources: readonly SourceDescriptor[];
+  readonly health: readonly SourceHealth[];
+  readonly late?: readonly SourceId[];
+  readonly places: readonly WatchedPlace[];
+  readonly kinds: readonly string[];
+  readonly containing?: (code: RegionCode) => readonly RegionCode[];
+}
+
+### build/index.d.ts#CoverageNeed
+export interface CoverageNeed {
+  readonly kinds: readonly string[];
+  readonly required: number;
+}
+
+### build/index.d.ts#CoveragePolicy
+export interface CoveragePolicy {
+  readonly up: readonly HealthState[];
+  readonly needs: readonly CoverageNeed[];
+  readonly otherwise: number;
+  readonly maxSteps?: number;
+}
+
+### build/index.d.ts#Cursor
+export type Cursor = Readonly<Record<string, string>>;
+
+### build/index.d.ts#DEFAULT_ASSESS_POLICY
+export declare const DEFAULT_ASSESS_POLICY: AssessPolicy;
+
+### build/index.d.ts#DEFAULT_BASELINE
+export declare const DEFAULT_BASELINE: BaselinePolicy;
+
+### build/index.d.ts#DEFAULT_CHANNEL_DOWN
+export declare const DEFAULT_CHANNEL_DOWN: ChannelDownPolicy;
+
+### build/index.d.ts#DEFAULT_COVERAGE_POLICY
+export declare const DEFAULT_COVERAGE_POLICY: CoveragePolicy;
+
+### build/index.d.ts#DEFAULT_ENTRY_MAX
+export declare const DEFAULT_ENTRY_MAX: AssessedLevel;
+
+### build/index.d.ts#DEFAULT_FAIL_AFTER
+export declare const DEFAULT_FAIL_AFTER = 2;
+
+### build/index.d.ts#DEFAULT_LINK_POLICY
+export declare const DEFAULT_LINK_POLICY: LinkPolicy;
+
+### build/index.d.ts#DEFAULT_RELEVANCE_POLICY
+export declare const DEFAULT_RELEVANCE_POLICY: RelevancePolicy;
+
+### build/index.d.ts#DEFAULT_SEND_LIMITS
+export declare const DEFAULT_SEND_LIMITS: SendLimits;
+
+### build/index.d.ts#DEFAULT_SOURCE_CLEAR
+export declare const DEFAULT_SOURCE_CLEAR: SourceClearPolicy;
+
+### build/index.d.ts#DEFAULT_STALE_INTERVALS
+export declare const DEFAULT_STALE_INTERVALS = 3;
+
+### build/index.d.ts#DEFAULT_TELL_DAILY_CAP
+export declare const DEFAULT_TELL_DAILY_CAP = 20;
+
+### build/index.d.ts#DEFAULT_THROTTLE
+export declare const DEFAULT_THROTTLE: Throttle;
+
+### build/index.d.ts#DIMENSIONS
+export declare const DIMENSIONS: readonly [{
+  readonly id: "road-traffic";
+  readonly title: "Road traffic flow";
+}, {
+  readonly id: "road-events";
+  readonly title: "Road closures, incidents and work zones";
+}, {
+  readonly id: "rail";
+  readonly title: "Rail punctuality and cancellations";
+}, {
+  readonly id: "public-transit";
+  readonly title: "Bus, tram and metro service";
+}, {
+  readonly id: "micromobility";
+  readonly title: "Bike and scooter share";
+}, {
+  readonly id: "aviation-delays";
+  readonly title: "Airport delays and ground stops";
+}, {
+  readonly id: "air-traffic";
+  readonly title: "Aircraft in the air";
+}, {
+  readonly id: "air-passengers";
+  readonly title: "Air passengers and flights";
+}, {
+  readonly id: "gnss-interference";
+  readonly title: "GNSS interference";
+}, {
+  readonly id: "maritime-traffic";
+  readonly title: "Vessel traffic";
+}, {
+  readonly id: "port-activity";
+  readonly title: "Port calls and chokepoint transits";
+}, {
+  readonly id: "internet-connectivity";
+  readonly title: "Internet connectivity";
+}, {
+  readonly id: "internet-routing";
+  readonly title: "Internet routing and latency";
+}, {
+  readonly id: "online-service-status";
+  readonly title: "Online service status";
+}, {
+  readonly id: "power-demand";
+  readonly title: "Electric load";
+}, {
+  readonly id: "grid-frequency";
+  readonly title: "Grid frequency";
+}, {
+  readonly id: "power-supply";
+  readonly title: "Power generation and prices";
+}, {
+  readonly id: "fuel-prices";
+  readonly title: "Fuel prices and stock";
+}, {
+  readonly id: "radiation";
+  readonly title: "Ambient radiation";
+}, {
+  readonly id: "river-levels";
+  readonly title: "River levels and flow";
+}, {
+  readonly id: "sea-level";
+  readonly title: "Sea level";
+}, {
+  readonly id: "public-health";
+  readonly title: "Public health signals";
+}, {
+  readonly id: "outbreak-reports";
+  readonly title: "Official outbreak reports";
+}, {
+  readonly id: "online-attention";
+  readonly title: "Online attention";
+}, {
+  readonly id: "news-volume";
+  readonly title: "News volume";
+}, {
+  readonly id: "social-volume";
+  readonly title: "Social media volume";
+}, {
+  readonly id: "active-fires";
+  readonly title: "Active fires";
+}, {
+  readonly id: "night-lights";
+  readonly title: "Night lights";
+}, {
+  readonly id: "air-quality";
+  readonly title: "Air quality";
+}, {
+  readonly id: "felt-reports";
+  readonly title: "Felt reports";
+}, {
+  readonly id: "food-prices";
+  readonly title: "Food prices";
+}, {
+  readonly id: "ev-charging";
+  readonly title: "Electric vehicle charging";
+}, {
+  readonly id: "emergency-calls";
+  readonly title: "Emergency and service calls";
+}, {
+  readonly id: "border-crossings";
+  readonly title: "Border crossings";
+}, {
+  readonly id: "financial-markets";
+  readonly title: "Financial markets";
+}, {
+  readonly id: "disaster-mapping";
+  readonly title: "Satellite disaster mapping";
+}];
+
+### build/index.d.ts#DIMENSION_IDS
+export declare const DIMENSION_IDS: readonly DimensionId[];
+
+### build/index.d.ts#DOWN_STATES
+export declare const DOWN_STATES: readonly HealthState[];
+
+### build/index.d.ts#DRILL_KIND
+export declare const DRILL_KIND = "system.drill";
+
+### build/index.d.ts#DRILL_PROBES
+export declare const DRILL_PROBES: readonly Instant[];
+
+### build/index.d.ts#DRILL_SUBJECT
+export declare const DRILL_SUBJECT = "alerts.drill";
+
+### build/index.d.ts#DRILL_WATCH_GRACE
+export declare const DRILL_WATCH_GRACE: Duration;
+
+### build/index.d.ts#DailyTime
+export interface DailyTime {
+  readonly zone: string;
+  readonly time: string;
+}
+
+### build/index.d.ts#DecideState
+export interface DecideState {
+  readonly expectation: string;
+  readonly at: Instant;
+  readonly limitOf: (sample: readonly Duration[]) => Duration | undefined;
+  readonly record: readonly Decision[];
+  readonly sample: readonly Duration[];
+  readonly limit: Duration | undefined;
+}
+
+### build/index.d.ts#DecideStep
+export interface DecideStep {
+  readonly record: readonly Decision[];
+  readonly state: DecideState;
+}
+
+### build/index.d.ts#Decision
+export interface Decision {
+  readonly check: Carriage;
+  readonly limit?: Duration;
+  readonly outcome: CheckOutcome;
+  readonly decided?: Instant;
+  readonly sample?: Duration;
+}
+
+### build/index.d.ts#DelayLimitOptions
+export interface DelayLimitOptions {
+  readonly quantile: number;
+  readonly level: number;
+}
+
+### build/index.d.ts#Delivery
+export interface Delivery {
+  readonly key: string;
+  readonly incident: ReportId;
+  readonly level: Level;
+  readonly person: PersonId;
+  readonly channel: ChannelId;
+  readonly step: number;
+  readonly at: Instant;
+  readonly receipt?: Receipt;
+}
+
+### build/index.d.ts#DeliveryState
+export type DeliveryState = "accepted" | "delivered" | "acknowledged" | "expired" | "failed";
+
+### build/index.d.ts#DeliveryStatus
+export interface DeliveryStatus {
+  readonly state: DeliveryState;
+  readonly at: Instant;
+  readonly by?: string;
+  readonly reason?: string;
+}
+
+### build/index.d.ts#DigestEntry
+export interface DigestEntry {
+  readonly incident: Incident;
+  readonly level: Level;
+}
+
+### build/index.d.ts#DigestInput
+export interface DigestInput {
+  readonly state: MergeState;
+  readonly incidents: readonly Incident[];
+  readonly recipients: readonly Recipient[];
+  readonly places: readonly WatchedPlace[];
+  readonly assess?: AssessPolicy | undefined;
+  readonly sources?: ReadonlySet<string> | undefined;
+  readonly channels: readonly ChannelDescriptor[];
+  readonly rank?: number | undefined;
+  readonly rankDelay?: Duration | undefined;
+  readonly rankDelays?: RankDelays | undefined;
+  readonly rankFloor?: Duration | undefined;
+  readonly holds?: readonly EscalationHold[] | undefined;
+  readonly now: Instant;
+}
+
+### build/index.d.ts#DigestKeyInput
+export interface DigestKeyInput {
+  readonly person: PersonId;
+  readonly at: Instant;
+  readonly step: number;
+}
+
+### build/index.d.ts#DigestPlan
+export interface DigestPlan {
+  readonly sends: readonly DigestSend[];
+  readonly wakeAt?: Instant;
+}
+
+### build/index.d.ts#DigestSend
+export interface DigestSend {
+  readonly person: PersonId;
+  readonly channel: ChannelId;
+  readonly step: number;
+  readonly at: Instant;
+  readonly due: Instant;
+  readonly key: string;
+  readonly quiet: boolean;
+  readonly entries: readonly DigestEntry[];
+}
+
+### build/index.d.ts#DimensionCount
+export interface DimensionCount {
+  readonly dimension: DimensionId;
+  readonly read: number;
+  readonly signals: number;
+  readonly noRead: number;
+}
+
+### build/index.d.ts#DimensionId
+export type DimensionId = (typeof DIMENSIONS)[number]["id"];
+
+### build/index.d.ts#DrillConfig
+export interface DrillConfig {
+  readonly id: string;
+  readonly person: PersonId;
+  readonly path: DrillPath;
+  readonly every: Duration;
+  readonly window: TimeWindow;
+  readonly ackWithin: Duration;
+  readonly copies?: readonly string[];
+}
+
+### build/index.d.ts#DrillPath
+export interface DrillPath {
+  readonly kind: "channel";
+  readonly channel: ChannelId;
+}
+
+### build/index.d.ts#DrillRun
+export interface DrillRun {
+  readonly drill: string;
+  readonly at: Instant;
+  readonly acked?: Instant;
+}
+
+### build/index.d.ts#DrillSnapshot
+export interface DrillSnapshot {
+  readonly copy: string;
+  readonly drill: DrillConfig;
+  readonly run?: DrillRun;
+  readonly noStart?: boolean;
+  readonly missed?: Instant;
+}
+
+### build/index.d.ts#DrillVerdict
+export type DrillVerdict = {
+  readonly state: "pending";
+  readonly until: Instant;
+} | {
+  readonly state: "passed";
+  readonly after: Duration;
+} | {
+  readonly state: "failed";
+  readonly why: "no-ack" | "late-ack";
+};
+
+### build/index.d.ts#DrillWatch
+export interface DrillWatch {
+  readonly drill: DrillConfig;
+  readonly quiet?: QuietWindow;
+  readonly copy?: string;
+}
+
+### build/index.d.ts#DrillWatchMiss
+export interface DrillWatchMiss {
+  readonly due: Instant;
+  readonly end: Instant;
+  readonly why: "unseen" | "no-read";
+  readonly last?: Instant;
+  readonly read?: Instant;
+}
+
+### build/index.d.ts#Duration
+export type Duration = number;
+
+### build/index.d.ts#EARTHQUAKE_KINDS
+export declare const EARTHQUAKE_KINDS: readonly string[];
+
+### build/index.d.ts#EARTHQUAKE_PAST_WITHIN
+export declare const EARTHQUAKE_PAST_WITHIN = 36e5;
+
+### build/index.d.ts#EMPTY_STATE
+export declare const EMPTY_STATE: MergeState;
+
+### build/index.d.ts#ESCALATION_EVENTS
+export declare const ESCALATION_EVENTS: {
+  readonly step: "timer.step";
+  readonly exhaust: "timer.exhaust";
+  readonly ack: "app.ack";
+  readonly end: "app.end";
+};
+
+### build/index.d.ts#ESCALATION_KIND
+export declare const ESCALATION_KIND = "system.escalation";
+
+### build/index.d.ts#ESCALATION_MACHINE
+export declare const ESCALATION_MACHINE: Machine;
+
+### build/index.d.ts#EdgeKind
+export type EdgeKind = "physical" | "cyber" | "geographic" | "logical" | "interest";
+
+### build/index.d.ts#EdgeOrigin
+export type EdgeOrigin = "base" | "places" | "services" | "delivery" | "work" | "data" | "measured" | "person";
+
+### build/index.d.ts#EndMark
+export interface EndMark {
+  readonly report: ReportId;
+  readonly at: Instant;
+  readonly ended: boolean;
+  readonly asOf?: Instant;
+}
+
+### build/index.d.ts#EndReason
+export type EndReason = "ended" | "muted";
+
+### build/index.d.ts#EntryTimes
+export interface EntryTimes {
+  report(report: Report): Instant;
+  mark(mark: EndMark): Instant;
+}
+
+### build/index.d.ts#EscalationEnd
+export interface EscalationEnd {
+  readonly incident: ReportId;
+  readonly person: PersonId;
+  readonly at: Instant;
+  readonly reason?: EndReason;
+}
+
+### build/index.d.ts#EscalationHold
+export interface EscalationHold {
+  readonly incident: ReportId;
+  readonly level: Level;
+  readonly person: PersonId;
+  readonly episode: number;
+  readonly at: Instant;
+}
+
+### build/index.d.ts#EscalationInput
+export interface EscalationInput {
+  readonly policy: EscalationPolicy;
+  readonly person: PersonId;
+  readonly incident: Pick<Incident, "anchor" | "reports">;
+  readonly since: Instant;
+  readonly endsAt?: Instant | undefined;
+  readonly deliveries: readonly Delivery[];
+  readonly acknowledgments: readonly Acknowledgment[];
+  readonly cancelled?: ReadonlySet<string> | undefined;
+  readonly rank?: number | undefined;
+  readonly rankDelay?: Duration | undefined;
+  readonly floors?: ReadonlyMap<ChannelId, Duration> | undefined;
+  readonly quiet?: QuietWindow | undefined;
+  readonly episode?: number | undefined;
+  readonly silent?: boolean | undefined;
+  readonly now: Instant;
+}
+
+### build/index.d.ts#EscalationPlan
+export interface EscalationPlan {
+  readonly state: EscalationState;
+  readonly start: Instant;
+  readonly due: readonly number[];
+  readonly sends: readonly EscalationSend[];
+  readonly cancels: readonly Delivery[];
+  readonly wakeAt?: Instant;
+  readonly acknowledgment?: Acknowledgment;
+  readonly exhaustedAt?: Instant;
+  readonly transitions: readonly Transition[];
+}
+
+### build/index.d.ts#EscalationPolicy
+export interface EscalationPolicy {
+  readonly level: Level;
+  readonly daily?: DailyTime;
+  readonly about?: SubjectWatch;
+  readonly steps: readonly EscalationStep[];
+  readonly exhaustedAfter: Duration;
+}
+
+### build/index.d.ts#EscalationSend
+export interface EscalationSend extends MessageKeyInput {
+  readonly channel: ChannelId;
+  readonly due: Instant;
+  readonly wait: Duration;
+  readonly quiet: boolean;
+}
+
+### build/index.d.ts#EscalationStart
+export interface EscalationStart {
+  readonly incident: ReportId;
+  readonly level: Level;
+  readonly person: PersonId;
+  readonly at: Instant;
+  readonly silent?: true;
+}
+
+### build/index.d.ts#EscalationState
+export type EscalationState = "idle" | "sent" | "last" | "exhausted" | "acknowledged" | "ended";
+
+### build/index.d.ts#EscalationStep
+export interface EscalationStep {
+  readonly channel: ChannelId;
+  readonly at: Duration;
+}
+
+### build/index.d.ts#Estimate
+export interface Estimate {
+  readonly value: number;
+  readonly low: number;
+  readonly high: number;
+}
+
+### build/index.d.ts#Exhaustion
+export interface Exhaustion {
+  readonly incident: ReportId;
+  readonly person: PersonId;
+  readonly level: Level;
+  readonly episode: number;
+  readonly at: Instant;
+  readonly kind: Incident["kind"];
+  readonly title: string;
+}
+
+### build/index.d.ts#Expectation
+export interface Expectation {
+  readonly id: string;
+  readonly from: SourceId;
+  readonly to: SourceId;
+  readonly when: ReportFilter;
+  readonly since?: Instant;
+}
+
+### build/index.d.ts#ExpectationConfig
+export interface ExpectationConfig {
+  readonly id: string;
+  readonly since: Instant;
+}
+
+### build/index.d.ts#ExpectedHarm
+export interface ExpectedHarm {
+  readonly deaths: Estimate;
+  readonly injuries: Estimate;
+}
+
+### build/index.d.ts#FLOAT_REACH
+export declare const FLOAT_REACH: ReachArithmetic<number>;
+
+### build/index.d.ts#FOREIGN_TABLE
+export declare const FOREIGN_TABLE: LevelTable;
+
+### build/index.d.ts#FetchFailure
+export type FetchFailure = {
+  readonly kind: "network" | "timeout" | "server";
+  readonly message: string;
+  readonly retryAfter?: Duration;
+} | {
+  readonly kind: "rate-limited";
+  readonly message: string;
+  readonly retryAfter?: Duration;
+} | {
+  readonly kind: "auth" | "refused";
+  readonly message: string;
+};
+
+### build/index.d.ts#FetchOutcome
+export type FetchOutcome = {
+  readonly ok: true;
+  readonly observations: readonly Observation[];
+  readonly cursor?: Cursor;
+  readonly complete: boolean;
+  readonly asOf?: Instant;
+} | {
+  readonly ok: false;
+  readonly failure: FetchFailure;
+};
+
+### build/index.d.ts#FetchRecord
+export interface FetchRecord {
+  readonly source: SourceId;
+  readonly at: Instant;
+  readonly took: Duration;
+  readonly failure?: FetchFailure;
+  readonly fresh: number;
+  readonly fatal: number;
+  readonly lossy?: number;
+  readonly canary?: CanaryResult;
+}
+
+### build/index.d.ts#FetchSignal
+export interface FetchSignal {
+  readonly aborted: boolean;
+  readonly reason?: unknown;
+  addEventListener(type: "abort", listener: () => void, options?: {
+    readonly once?: boolean;
+  }): void;
+  removeEventListener(type: "abort", listener: () => void): void;
+}
+
+### build/index.d.ts#FixedCost
+export interface FixedCost {
+  readonly what: string;
+  readonly usd: number;
+}
+
+### build/index.d.ts#HEALTH_EVENTS
+export declare const HEALTH_EVENTS: {
+  readonly passed: "app.fetch-passed";
+  readonly slow: "app.fetch-slow";
+  readonly changed: "app.fetch-changed";
+  readonly failed: "app.fetch-failed";
+  readonly canaryPassed: "app.canary-passed";
+  readonly canaryFailed: "app.canary-failed";
+  readonly quiet: "timer.quiet";
+  readonly stale: "timer.stale";
+};
+
+### build/index.d.ts#HEALTH_FORMAT
+export declare const HEALTH_FORMAT = "alerts-health/4";
+
+### build/index.d.ts#HEALTH_KIND
+export declare const HEALTH_KIND = "system.health";
+
+### build/index.d.ts#HEALTH_MACHINE
+export declare const HEALTH_MACHINE: Machine;
+
+### build/index.d.ts#HELD_SHOWN
+export declare const HELD_SHOWN = 3;
+
+### build/index.d.ts#HISTORY_FORMAT
+export declare const HISTORY_FORMAT = "alerts-history/1";
+
+### build/index.d.ts#HealthOptions
+export interface HealthOptions {
+  readonly failAfter?: number;
+  readonly staleAfter?: Duration;
+}
+
+### build/index.d.ts#HealthPayload
+export interface HealthPayload {
+  readonly format: typeof HEALTH_FORMAT;
+  readonly at: Instant | null;
+  readonly now: Instant;
+  readonly sources: readonly SourceHealthView[];
+  readonly lateness: readonly Lateness[];
+  readonly coverage: readonly Coverage[];
+  readonly copies: readonly CopyHealth[];
+  readonly quotas: readonly QuotaHealth[];
+  readonly balances: readonly BalanceHealth[];
+  readonly reads: readonly ReadHealth[];
+  readonly channels: readonly ChannelHealth[];
+}
+
+### build/index.d.ts#HealthPayloadInput
+export interface HealthPayloadInput {
+  readonly at: Instant | null;
+  readonly now: Instant;
+  readonly sources: readonly SourceHealth[];
+  readonly lateness: readonly Lateness[];
+  readonly coverage: readonly Coverage[];
+  readonly copies: readonly CopyWatch[];
+  readonly quotas: readonly ChannelQuota[];
+  readonly balances: readonly ProviderBalance[];
+  readonly reads: readonly ReadHealth[];
+  readonly channels?: readonly ChannelSnapshot[];
+  readonly channelDown?: ChannelDownPolicy;
+}
+
+### build/index.d.ts#HealthState
+export type HealthState = "unknown" | "healthy" | "slow" | "failing" | "silent" | "changed";
+
+### build/index.d.ts#HealthStep
+export interface HealthStep {
+  readonly track: HealthTrack;
+  readonly health: SourceHealth;
+  readonly transitions: readonly Transition[];
+  readonly wakeAt?: Instant;
+}
+
+### build/index.d.ts#HealthTrack
+export interface HealthTrack {
+  readonly source: SourceId;
+  readonly state: HealthState;
+  readonly since: Instant;
+  readonly time: Instant;
+  readonly failures: number;
+  readonly staleFrom: Instant;
+  readonly quietFrom?: Instant;
+  readonly passed?: PassedFetch;
+  readonly lastFailure?: {
+    readonly at: Instant;
+    readonly failure: FetchFailure;
+  };
+  readonly canary?: CanaryResult;
+}
+
+### build/index.d.ts#HeldAlert
+export interface HeldAlert {
+  readonly incident: ReportId;
+  readonly level: Level;
+  readonly headline: string;
+}
+
+### build/index.d.ts#HeldPerson
+export interface HeldPerson {
+  readonly person: PersonId;
+  readonly first: Instant;
+  readonly last: Instant;
+  readonly until: Instant;
+  readonly count: number;
+  readonly alerts: readonly HeldAlert[];
+}
+
+### build/index.d.ts#Histories
+export interface Histories {
+  readonly at: Instant | null;
+  readonly since: Instant | null;
+  readonly incidents: readonly HistoryIncident[];
+  readonly regions: readonly HistoryRegion[];
+}
+
+### build/index.d.ts#HistoryChange
+export interface HistoryChange {
+  readonly at: Instant;
+  readonly reports: readonly ReportId[];
+  readonly level: AssessedLevel;
+  readonly severity: Severity;
+  readonly live: boolean;
+  readonly onset?: Instant;
+  readonly expires?: Instant;
+  readonly codes: readonly RegionCode[];
+  readonly shapes: readonly MapShape[];
+  readonly unshaped: readonly RegionCode[];
+  readonly places: readonly HistoryPlace[];
+}
+
+### build/index.d.ts#HistoryIncident
+export interface HistoryIncident {
+  readonly anchor: ReportId;
+  readonly reports: readonly ReportId[];
+  readonly status: Status;
+  readonly kind: Kind;
+  readonly changes: readonly HistoryChange[];
+}
+
+### build/index.d.ts#HistoryInput
+export interface HistoryInput {
+  readonly at: Instant | null;
+  readonly since?: Instant | null;
+  readonly merge: MergeState;
+  readonly entered?: EntryTimes;
+  readonly people: readonly PersonWatch[];
+  readonly places: readonly MapPlaceInput[];
+  readonly policy?: AssessPolicy;
+  readonly sources?: ReadonlySet<string> | undefined;
+  readonly shape: ShapeLookup;
+  readonly link?: LinkRule;
+}
+
+### build/index.d.ts#HistoryPayload
+export interface HistoryPayload {
+  readonly format: typeof HISTORY_FORMAT;
+  readonly at: Instant | null;
+  readonly since: Instant | null;
+  readonly next: Instant | null;
+  readonly incidents: readonly HistoryIncident[];
+  readonly regions: readonly HistoryRegion[];
+}
+
+### build/index.d.ts#HistoryPlace
+export interface HistoryPlace {
+  readonly id: PlaceId;
+  readonly level: AssessedLevel;
+}
+
+### build/index.d.ts#HistoryRegion
+export interface HistoryRegion {
+  readonly code: RegionCode;
+  readonly shapes: readonly MapShape[];
+}
+
+### build/index.d.ts#ID_SCHEME
+export declare const ID_SCHEME = "alerts-id/1";
+
+### build/index.d.ts#INCIDENT_SUBJECT
+export declare const INCIDENT_SUBJECT = "alerts.incident";
+
+### build/index.d.ts#INDICATOR_AREA_KINDS
+export declare const INDICATOR_AREA_KINDS: readonly IndicatorAreaKind[];
+
+### build/index.d.ts#INTERESTS_FORMAT
+export declare const INTERESTS_FORMAT = "alerts-interests/1";
+
+### build/index.d.ts#Id
+export type Id<Name extends string> = string & {
+  readonly [brand]: Name;
+};
+
+### build/index.d.ts#Incident
+export interface Incident {
+  readonly anchor: ReportId;
+  readonly reports: readonly ReportId[];
+  readonly status: Status;
+  readonly kind: Kind;
+  readonly severity: Severity;
+  readonly urgency: Urgency;
+  readonly certainty: Certainty;
+  readonly onset?: Instant;
+  readonly expires?: Instant;
+  readonly areas: readonly Area[];
+  readonly about: readonly Subject[];
+  readonly addresses?: readonly PersonId[];
+  readonly live: boolean;
+  readonly corroboration: number;
+  readonly lines?: readonly IncidentLine[];
+}
+
+### build/index.d.ts#IncidentLine
+export interface IncidentLine {
+  readonly report: ReportId;
+  readonly kind: Kind;
+  readonly severity: Severity;
+  readonly urgency: Urgency;
+  readonly certainty: Certainty;
+  readonly onset?: Instant;
+  readonly areas: readonly Area[];
+}
+
+### build/index.d.ts#IncidentOptions
+export interface IncidentOptions {
+  readonly link?: LinkRule;
+}
+
+### build/index.d.ts#IndicatorArea
+export type IndicatorArea = ({
+  readonly type: "code";
+} & RegionCode) | {
+  readonly type: "point";
+  readonly at: Position;
+} | {
+  readonly type: "line";
+  readonly path: readonly Position[];
+} | {
+  readonly type: "polygon";
+  readonly rings: readonly (readonly Position[])[];
+} | {
+  readonly type: "zone";
+  readonly system: string;
+  readonly code: string;
+} | {
+  readonly type: "world";
+};
+
+### build/index.d.ts#IndicatorAreaKind
+export type IndicatorAreaKind = "code" | "point" | "line" | "polygon" | "zone" | "world";
+
+### build/index.d.ts#IndicatorBreadth
+export interface IndicatorBreadth {
+  readonly world: Breadth;
+  readonly places: readonly PlaceBreadth[];
+  readonly unplaced: readonly string[];
+}
+
+### build/index.d.ts#Instant
+export type Instant = number;
+
+### build/index.d.ts#InterestDefaultsConfig
+export interface InterestDefaultsConfig {
+  readonly works?: readonly string[];
+  readonly services?: readonly NodeKey[];
+  readonly delivery?: boolean;
+}
+
+### build/index.d.ts#InterestEdge
+export interface InterestEdge {
+  readonly id: string;
+  readonly from: NodeKey;
+  readonly to: NodeKey;
+  readonly kind: EdgeKind;
+  readonly weight: Estimate;
+  readonly origin: EdgeOrigin;
+  readonly source?: string;
+  readonly date?: string;
+  readonly on: boolean;
+}
+
+### build/index.d.ts#InterestGraph
+export interface InterestGraph {
+  readonly format: "alerts-interest/1";
+  readonly person: PersonId;
+  readonly edges: readonly InterestEdge[];
+  readonly mutes: readonly Mute[];
+  readonly labels?: Readonly<Record<NodeKey, string>>;
+}
+
+### build/index.d.ts#InterestRow
+export interface InterestRow {
+  readonly edge: InterestEdge;
+  readonly replacedBy?: string;
+}
+
+### build/index.d.ts#InterestsPayload
+export interface InterestsPayload {
+  readonly format: typeof INTERESTS_FORMAT;
+  readonly people: readonly InterestsPerson[];
+}
+
+### build/index.d.ts#InterestsPerson
+export interface InterestsPerson {
+  readonly person: PersonId;
+  readonly label?: string;
+  readonly routing: "graph" | "places";
+  readonly rows: readonly InterestRow[];
+  readonly mutes: readonly Mute[];
+  readonly labels: Readonly<Record<string, string>>;
+  readonly problem?: string;
+}
+
+### build/index.d.ts#KIND_ALIASES
+export declare const KIND_ALIASES: Readonly<Record<string, string>>;
+
+### build/index.d.ts#Kind
+export interface Kind {
+  readonly code: string;
+  readonly significance?: Significance;
+  readonly label: string;
+}
+
+### build/index.d.ts#KindClass
+export interface KindClass extends LevelTable {
+  readonly id: string;
+  readonly kinds: readonly string[];
+  readonly statuses?: readonly Status[];
+}
+
+### build/index.d.ts#KindEntry
+export interface KindEntry {
+  readonly label: string;
+  readonly summary: string;
+}
+
+### build/index.d.ts#KindPrior
+export interface KindPrior {
+  readonly verified?: Estimate;
+  readonly deaths?: Estimate;
+  readonly injuries?: Estimate;
+  readonly under?: Readonly<Partial<Record<Significance, UnderPrior>>>;
+}
+
+### build/index.d.ts#LEVELS
+export declare const LEVELS: readonly Level[];
+
+### build/index.d.ts#LIFELINES
+export declare const LIFELINES: readonly ["safety", "food-hydration-shelter", "health", "energy", "communications", "transportation", "hazmat", "water"];
+
+### build/index.d.ts#LIFELINES_SOURCE
+export declare const LIFELINES_SOURCE = "https://www.fema.gov/emergency-managers/practitioners/lifelines";
+
+### build/index.d.ts#LIFELINES_TOOLKIT
+export declare const LIFELINES_TOOLKIT = "https://www.fema.gov/sites/default/files/documents/fema_lifelines-toolkit-v2.1_2023.pdf";
+
+### build/index.d.ts#LIFELINE_LABELS
+export declare const LIFELINE_LABELS: Readonly<Record<Lifeline, string>>;
+
+### build/index.d.ts#LIFE_SAFETY_KINDS
+export declare const LIFE_SAFETY_KINDS: readonly string[];
+
+### build/index.d.ts#LIMITED_LEVELS
+export declare const LIMITED_LEVELS: readonly LimitedLevel[];
+
+### build/index.d.ts#LIMIT_KIND
+export declare const LIMIT_KIND = "system.limit";
+
+### build/index.d.ts#LOG_KIND
+export declare const LOG_KIND = "system.log";
+
+### build/index.d.ts#LOG_RECOVERY_WINDOW
+export declare const LOG_RECOVERY_WINDOW: Duration;
+
+### build/index.d.ts#LOG_SUBJECT
+export declare const LOG_SUBJECT = "alerts.log";
+
+### build/index.d.ts#Lateness
+export interface Lateness {
+  readonly expectation: string;
+  readonly from: SourceId;
+  readonly to: SourceId;
+  readonly state: LatenessState;
+  readonly limit?: LatenessLimit;
+  readonly missed: readonly ReportId[];
+  readonly since?: Instant;
+  readonly wakeAt?: Instant;
+}
+
+### build/index.d.ts#LatenessFolds
+export type LatenessFolds = ReadonlyMap<string, DecideState>;
+
+### build/index.d.ts#LatenessLimit
+export interface LatenessLimit {
+  readonly delay: Duration;
+  readonly misses: number;
+}
+
+### build/index.d.ts#LatenessState
+export type LatenessState = "no-limit" | "no-data" | "met" | "late";
+
+### build/index.d.ts#LatenessStep
+export interface LatenessStep {
+  readonly lateness: Lateness[];
+  readonly folds: LatenessFolds;
+}
+
+### build/index.d.ts#Level
+export type Level = "life-safety" | "urgent" | "notice" | "digest";
+
+### build/index.d.ts#LevelRule
+export interface LevelRule {
+  readonly places?: readonly PlaceId[];
+  readonly kinds?: readonly string[];
+  readonly through?: readonly SubjectKind[];
+  readonly max: AssessedLevel;
+}
+
+### build/index.d.ts#LevelTable
+export interface LevelTable {
+  readonly severity: Readonly<Record<Severity, AssessedLevel>>;
+  readonly urgency: Readonly<Record<Urgency, AssessedLevel>>;
+  readonly pastWithin?: Duration;
+}
+
+### build/index.d.ts#Lifeline
+export type Lifeline = (typeof LIFELINES)[number];
+
+### build/index.d.ts#LimitInput
+export interface LimitInput {
+  readonly routes: readonly Route[];
+  readonly deliveries: readonly Delivery[];
+  readonly holds: readonly EscalationHold[];
+  readonly limits?: SendLimits | undefined;
+  readonly share?: number | undefined;
+  readonly started?: ReadonlySet<string> | undefined;
+  readonly reports?: readonly Pick<Report, "id" | "addresses">[] | undefined;
+  readonly now: Instant;
+}
+
+### build/index.d.ts#LimitResult
+export interface LimitResult {
+  readonly routes: readonly Route[];
+  readonly holds: readonly EscalationHold[];
+}
+
+### build/index.d.ts#LimitRule
+export interface LimitRule {
+  readonly delay: (sample: readonly Duration[]) => Duration | undefined;
+  readonly misses: (record: MissRecord) => number | undefined;
+}
+
+### build/index.d.ts#LimitedLevel
+export type LimitedLevel = "notice" | "urgent";
+
+### build/index.d.ts#LinkFamily
+export interface LinkFamily {
+  readonly family: string;
+  readonly windowMs: number;
+  readonly distanceKm: number;
+  readonly magnitude?: number;
+}
+
+### build/index.d.ts#LinkPolicy
+export interface LinkPolicy {
+  readonly families: readonly LinkFamily[];
+}
+
+### build/index.d.ts#LinkRule
+export interface LinkRule {
+  blocks(report: Report): readonly string[];
+  matches(a: Report, b: Report): boolean;
+}
+
+### build/index.d.ts#LoadedConfig
+export interface LoadedConfig {
+  readonly recipients: readonly Recipient[];
+  readonly problems: readonly string[];
+  readonly optIn: readonly OptInRecord[];
+}
+
+### build/index.d.ts#LocateOutcome
+export type LocateOutcome = {
+  readonly ok: true;
+  readonly codes: readonly RegionCode[];
+} | {
+  readonly ok: false;
+  readonly failure: FetchFailure;
+};
+
+### build/index.d.ts#LogRecovery
+export interface LogRecovery {
+  readonly at: Instant;
+  readonly quarantine: string;
+  readonly kept: number;
+  readonly lost: number;
+  readonly whole: boolean;
+}
+
+### build/index.d.ts#MAGNITUDE_PARAMETER
+export declare const MAGNITUDE_PARAMETER = "magnitude";
+
+### build/index.d.ts#MAP_FORMAT
+export declare const MAP_FORMAT = "alerts-map/1";
+
+### build/index.d.ts#MAP_VIEW
+export declare const MAP_VIEW: {
+  readonly width: 1000;
+  readonly height: 640;
+  readonly pad: 24;
+};
+
+### build/index.d.ts#MAX_PLACE_CODES
+export declare const MAX_PLACE_CODES = 1e3;
+
+### build/index.d.ts#MEASURE_ID
+export declare const MEASURE_ID: RegExp;
+
+### build/index.d.ts#MOVES
+export declare const MOVES: readonly Move[];
+
+### build/index.d.ts#MandatoryRule
+export interface MandatoryRule {
+  readonly place: PlaceId;
+  readonly on: boolean;
+  readonly rangeKm: number;
+}
+
+### build/index.d.ts#MapIncident
+export interface MapIncident {
+  readonly anchor: ReportId;
+  readonly status: Status;
+  readonly kind: Kind;
+  readonly level: AssessedLevel;
+  readonly severity: Severity;
+  readonly onset?: Instant;
+  readonly expires?: Instant;
+  readonly shapes: readonly MapShape[];
+  readonly unshaped: readonly RegionCode[];
+  readonly places: readonly PlaceId[];
+  readonly shadow?: ShadowScore;
+}
+
+### build/index.d.ts#MapInput
+export interface MapInput {
+  readonly incidents: readonly Incident[];
+  readonly assessments: readonly Assessment[];
+  readonly places: readonly MapPlaceInput[];
+  readonly coverage: readonly Coverage[];
+  readonly shape: ShapeLookup;
+}
+
+### build/index.d.ts#MapPayload
+export interface MapPayload {
+  readonly format: typeof MAP_FORMAT;
+  readonly at: Instant | null;
+  readonly view: MapView;
+  readonly basemap: readonly MapRegion[];
+  readonly breadth?: IndicatorBreadth;
+}
+
+### build/index.d.ts#MapPayloadInput
+export interface MapPayloadInput extends Omit<MapInput, "assessments"> {
+  readonly at: Instant | null;
+  readonly people: readonly PersonWatch[];
+  readonly policy?: AssessPolicy;
+  readonly basemap: readonly MapRegion[];
+  readonly priors?: ScorePriors;
+  readonly foreign?: ((incident: Pick<Incident, "anchor" | "reports">) => boolean) | undefined;
+  readonly breadth?: IndicatorBreadth;
+}
+
+### build/index.d.ts#MapPlace
+export interface MapPlace {
+  readonly id: PlaceId;
+  readonly label: string;
+  readonly at?: Position;
+  readonly shapes: readonly MapShape[];
+  readonly level: AssessedLevel;
+  readonly incidents: readonly ReportId[];
+  readonly gaps: readonly string[];
+}
+
+### build/index.d.ts#MapPlaceInput
+export interface MapPlaceInput {
+  readonly id: PlaceId;
+  readonly label: string;
+  readonly at?: Position;
+  readonly codes: readonly RegionCode[];
+  readonly bufferKm: number;
+}
+
+### build/index.d.ts#MapProblem
+export interface MapProblem {
+  readonly path: string;
+  readonly message: string;
+  readonly fatal: boolean;
+  readonly lossy?: true;
+}
+
+### build/index.d.ts#MapRegion
+export interface MapRegion {
+  readonly code: RegionCode;
+  readonly name: string;
+  readonly shapes: readonly MapShape[];
+}
+
+### build/index.d.ts#MapResult
+export interface MapResult {
+  readonly reports: readonly Report[];
+  readonly problems: readonly MapProblem[];
+  readonly readings?: readonly Reading[];
+}
+
+### build/index.d.ts#MapShape
+export type MapShape = Extract<Area, {
+  readonly type: "polygon";
+} | {
+  readonly type: "circle";
+}>;
+
+### build/index.d.ts#MapView
+export interface MapView {
+  readonly incidents: readonly MapIncident[];
+  readonly places: readonly MapPlace[];
+  readonly unshaped: readonly RegionCode[];
+}
+
+### build/index.d.ts#MeasureDeclaration
+export interface MeasureDeclaration {
+  readonly id: string;
+  readonly dimension: DimensionId;
+  readonly title: string;
+  readonly unit: string;
+  readonly area: IndicatorAreaKind;
+  readonly moves: Move;
+  readonly baseline: OwnBaseline;
+  readonly cadence?: Duration;
+  readonly delay?: Duration;
+  readonly backfill?: Duration;
+}
+
+### build/index.d.ts#MergeParts
+export interface MergeParts {
+  readonly reports?: readonly Report[];
+  readonly deliveries?: readonly Delivery[];
+  readonly acks?: readonly Acknowledgment[];
+  readonly ends?: readonly EndMark[];
+  readonly retired?: readonly Tombstone[];
+}
+
+### build/index.d.ts#MergeState
+export interface MergeState {
+  readonly reports: readonly Report[];
+  readonly deliveries: readonly Delivery[];
+  readonly acks: readonly Acknowledgment[];
+  readonly ends: readonly EndMark[];
+  readonly retired: readonly Tombstone[];
+}
+
+### build/index.d.ts#Message
+export interface Message {
+  readonly key: string;
+  readonly person: PersonId;
+  readonly level: Level;
+  readonly title: string;
+  readonly body: string;
+  readonly url?: string;
+  readonly incident: ReportId;
+  readonly expires?: Instant;
+  readonly quiet: boolean;
+  readonly useReserve?: boolean;
+  readonly why?: string;
+}
+
+### build/index.d.ts#MessageKeyInput
+export interface MessageKeyInput {
+  readonly incident: ReportId;
+  readonly level: Level;
+  readonly person: PersonId;
+  readonly step: number;
+  readonly episode?: number | undefined;
+}
+
+### build/index.d.ts#MissRecord
+export interface MissRecord {
+  readonly trials: number;
+  readonly misses: number;
+}
+
+### build/index.d.ts#Move
+export type Move = "rise" | "drop" | "both";
+
+### build/index.d.ts#Mute
+export interface Mute {
+  readonly id: string;
+  readonly kinds?: readonly string[];
+  readonly subjects?: readonly NodeKey[];
+  readonly until?: Instant;
+  readonly date: string;
+}
+
+### build/index.d.ts#MuteEffect
+export type MuteEffect = "absent" | "silent";
+
+### build/index.d.ts#NEEDS
+export declare const NEEDS: readonly CitedNeed[];
+
+### build/index.d.ts#NEED_ALERT_LEVELS
+export declare const NEED_ALERT_LEVELS: Readonly<Record<NeedLevel, Level>>;
+
+### build/index.d.ts#NEED_LEVELS
+export declare const NEED_LEVELS: readonly ["life", "health", "comfort"];
+
+### build/index.d.ts#NO_HISTORIES
+export declare const NO_HISTORIES: Histories;
+
+### build/index.d.ts#NO_LABELS
+export declare const NO_LABELS: WhyLabels;
+
+### build/index.d.ts#NO_SYSTEM_LINES
+export declare const NO_SYSTEM_LINES: SystemLines;
+
+### build/index.d.ts#NamedPart
+export interface NamedPart {
+  readonly name: string;
+  readonly part: ConfigPart;
+}
+
+### build/index.d.ts#NearRegion
+export interface NearRegion {
+  readonly region: MapRegion;
+  readonly distanceKm: number;
+}
+
+### build/index.d.ts#Need
+export interface Need {
+  readonly code: NeedCode;
+  readonly lifeline: Lifeline;
+  readonly level: NeedLevel;
+  readonly unit: string;
+  readonly perPersonDay: number;
+}
+
+### build/index.d.ts#NeedCode
+export type NeedCode = string;
+
+### build/index.d.ts#NeedLevel
+export type NeedLevel = (typeof NEED_LEVELS)[number];
+
+### build/index.d.ts#NeedSource
+export interface NeedSource {
+  readonly title: string;
+  readonly url: string;
+  readonly date: string;
+}
+
+### build/index.d.ts#NoReadCause
+export type NoReadCause = "no-reading" | "stale" | "few-samples";
+
+### build/index.d.ts#NodeKey
+export type NodeKey = string;
+
+### build/index.d.ts#OBSERVE_DIGEST_PER_DAY
+export declare const OBSERVE_DIGEST_PER_DAY = 20;
+
+### build/index.d.ts#OBSERVE_WINDOW
+export declare const OBSERVE_WINDOW: Duration;
+
+### build/index.d.ts#ONLY_COPY
+export declare const ONLY_COPY: CopySettings;
+
+### build/index.d.ts#OPT_IN_WAYS
+export declare const OPT_IN_WAYS: readonly ["written", "spoken"];
+
+### build/index.d.ts#OPT_IN_WORDS
+export declare const OPT_IN_WORDS: readonly string[];
+
+### build/index.d.ts#ORIGIN_RANK
+export declare const ORIGIN_RANK: readonly EdgeOrigin[];
+
+### build/index.d.ts#OWN_BASELINES
+export declare const OWN_BASELINES: readonly OwnBaseline[];
+
+### build/index.d.ts#OWN_ENTRY_TIMES
+export declare const OWN_ENTRY_TIMES: EntryTimes;
+
+### build/index.d.ts#Observation
+export interface Observation {
+  readonly id: ObservationId;
+  readonly source: SourceId;
+  readonly fetched: Instant;
+  readonly contentType: string;
+  readonly body: string;
+  readonly transport: {
+    readonly url?: string;
+    readonly status?: number;
+    readonly latency: Duration;
+    readonly etag?: string;
+    readonly lastModified?: string;
+  };
+}
+
+### build/index.d.ts#ObservationId
+export type ObservationId = Id<"ObservationId">;
+
+### build/index.d.ts#ObservationIdInput
+export interface ObservationIdInput {
+  readonly source: SourceId;
+  readonly contentType: string;
+  readonly body: string;
+  readonly url?: string;
+}
+
+### build/index.d.ts#ObserveCondition
+export interface ObserveCondition {
+  readonly source: SourceId;
+  readonly state: "held" | "life-safety";
+  readonly since: Instant;
+  readonly reason: string;
+  readonly incidents: readonly ReportId[];
+}
+
+### build/index.d.ts#ObserveCut
+export interface ObserveCut {
+  readonly sent: readonly Incident[];
+  readonly held: readonly Incident[];
+  readonly lifeSafety: readonly Incident[];
+}
+
+### build/index.d.ts#ObserveCutInput
+export interface ObserveCutInput {
+  readonly incidents: readonly Incident[];
+  readonly state: MergeState;
+  readonly observing: ReadonlySet<SourceId>;
+  readonly started?: ReadonlySet<ReportId>;
+  readonly people: readonly PersonWatch[];
+  readonly places: readonly WatchedPlace[];
+  readonly assess?: AssessPolicy;
+  readonly at: Instant;
+}
+
+### build/index.d.ts#ObserveVerdict
+export interface ObserveVerdict {
+  readonly source: SourceId;
+  readonly since: Instant;
+  readonly at: Instant;
+  readonly hours: number;
+  readonly from: Instant;
+  readonly incidents: number;
+  readonly perHour: number;
+  readonly caps: Readonly<Record<LimitedLevel, number>>;
+  readonly capWindow: Duration;
+  readonly window: Duration;
+  readonly people: readonly ObservedPerson[];
+  readonly pass: boolean;
+  readonly reason: string;
+}
+
+### build/index.d.ts#ObserveVerdictInput
+export interface ObserveVerdictInput {
+  readonly source: SourceId;
+  readonly since: Instant;
+  readonly at: Instant;
+  readonly state: MergeState;
+  readonly incidents: readonly Incident[];
+  readonly people: readonly PersonWatch[];
+  readonly places: readonly WatchedPlace[];
+  readonly assess?: AssessPolicy;
+  readonly limits?: SendLimits;
+  readonly share?: number;
+  readonly window?: Duration;
+}
+
+### build/index.d.ts#ObservedPerson
+export interface ObservedPerson {
+  readonly person: PersonId;
+  readonly matched: number;
+  readonly share: number;
+  readonly worst: Readonly<Record<LimitedLevel, number>>;
+  readonly lifeSafety: number;
+  readonly digestDay: number;
+  readonly over: readonly string[];
+}
+
+### build/index.d.ts#Operation
+export type Operation = "alert" | "update" | "cancel";
+
+### build/index.d.ts#OptInChange
+export interface OptInChange {
+  readonly number: string;
+  readonly kind: "stop" | "start";
+  readonly at: Instant;
+}
+
+### build/index.d.ts#OptInConfig
+export interface OptInConfig {
+  readonly number: AddressValue;
+  readonly at: string;
+  readonly way: OptInWay;
+  readonly words: string;
+}
+
+### build/index.d.ts#OptInRecord
+export interface OptInRecord {
+  readonly number: string;
+  readonly at: string;
+  readonly way: OptInWay;
+  readonly words: string;
+}
+
+### build/index.d.ts#OptInWay
+export type OptInWay = (typeof OPT_IN_WAYS)[number];
+
+### build/index.d.ts#Outage
+export interface Outage {
+  readonly down: Instant;
+  readonly up?: Instant;
+}
+
+### build/index.d.ts#OutageConfig
+export interface OutageConfig {
+  readonly people: readonly OutagePersonConfig[];
+}
+
+### build/index.d.ts#OutagePersonConfig
+export interface OutagePersonConfig {
+  readonly person: PersonId;
+  readonly chain: TryChain;
+}
+
+### build/index.d.ts#OutageReach
+export interface OutageReach {
+  readonly down: Instant;
+  readonly person: PersonId;
+  readonly state: "acked" | "exhausted" | "open" | "untried";
+  readonly tries: number;
+  readonly ackedAt?: Instant;
+}
+
+### build/index.d.ts#OwnBaseline
+export type OwnBaseline = "none" | "expected" | "flag";
+
+### build/index.d.ts#PART_NAME
+export declare const PART_NAME: RegExp;
+
+### build/index.d.ts#PATH_SYSTEMS
+export declare const PATH_SYSTEMS: readonly string[];
+
+### build/index.d.ts#PERSON_SUBJECT
+export declare const PERSON_SUBJECT = "alerts.person";
+
+### build/index.d.ts#PRIORS_FORMAT
+export declare const PRIORS_FORMAT: ScorePriors["format"];
+
+### build/index.d.ts#ParsedConfig
+export interface ParsedConfig {
+  readonly config: AlertConfig;
+  readonly recipients: readonly Recipient[];
+  readonly optIn: readonly OptInRecord[];
+}
+
+### build/index.d.ts#PartText
+export interface PartText {
+  readonly name: string;
+  readonly text: string;
+}
+
+### build/index.d.ts#PassedFetch
+export interface PassedFetch {
+  readonly at: Instant;
+  readonly took: Duration;
+  readonly fatal: number;
+  readonly lossy?: number;
+}
+
+### build/index.d.ts#PersonConfig
+export interface PersonConfig {
+  readonly watch: PersonWatch;
+  readonly defaults?: InterestDefaultsConfig;
+  readonly label?: string;
+  readonly policies?: readonly EscalationPolicy[];
+}
+
+### build/index.d.ts#PersonId
+export type PersonId = Id<"PersonId">;
+
+### build/index.d.ts#PersonInterests
+export interface PersonInterests {
+  readonly watch: PersonWatch;
+  readonly rows: readonly InterestRow[];
+  readonly problem?: string;
+}
+
+### build/index.d.ts#PersonWatch
+export interface PersonWatch {
+  readonly person: PersonId;
+  readonly places: readonly PlaceId[];
+  readonly subjects?: readonly SubjectWatch[];
+  readonly rules: readonly LevelRule[];
+  readonly quiet?: QuietWindow;
+  readonly interests?: InterestGraph;
+  readonly mandatory?: readonly MandatoryRule[];
+}
+
+### build/index.d.ts#PlaceBreadth
+export interface PlaceBreadth extends Breadth {
+  readonly place: PlaceId;
+}
+
+### build/index.d.ts#PlaceConfig
+export interface PlaceConfig {
+  readonly id: PlaceId;
+  readonly label: string;
+  readonly at?: Position;
+  readonly codes: readonly RegionCode[];
+  readonly bufferKm: number;
+  readonly sharePosition?: readonly SourceId[];
+}
+
+### build/index.d.ts#PlaceId
+export type PlaceId = Id<"PlaceId">;
+
+### build/index.d.ts#PlaceMatch
+export interface PlaceMatch {
+  readonly place: PlaceId;
+  readonly codes: readonly RegionCode[];
+  readonly distanceKm?: number;
+  readonly shapeRefused?: true;
+  readonly zoneFallback?: true;
+}
+
+### build/index.d.ts#Position
+export type Position = readonly [lon: number, lat: number];
+
+### build/index.d.ts#ProbeOutcome
+export type ProbeOutcome = {
+  readonly ok: true;
+  readonly at: Instant;
+} | {
+  readonly ok: false;
+  readonly kind: ChannelFailureKind;
+  readonly message: string;
+};
+
+### build/index.d.ts#ProblemEffect
+export type ProblemEffect = "note" | "lossy" | "fatal";
+
+### build/index.d.ts#ProblemSink
+export interface ProblemSink {
+  add(path: string, message: string, effect?: ProblemEffect): void;
+}
+
+### build/index.d.ts#Problems
+export declare class Problems implements ProblemSink {
+  readonly list: MapProblem[];
+  constructor(prefix?: string);
+  add(path: string, message: string, effect?: ProblemEffect): void;
+  get fatal(): number;
+  get lossy(): number;
+}
+
+### build/index.d.ts#ProviderBalance
+export interface ProviderBalance {
+  readonly provider: string;
+  readonly title: string;
+  readonly channels: readonly ChannelId[];
+  readonly floors: readonly number[];
+  readonly maxAge: Duration;
+  readonly since: Instant;
+  readonly read?: BalanceRead;
+}
+
+### build/index.d.ts#QUIET_HORIZON
+export declare const QUIET_HORIZON: Duration;
+
+### build/index.d.ts#QUOTA_KIND
+export declare const QUOTA_KIND = "system.quota";
+
+### build/index.d.ts#QUOTA_STAGES
+export declare const QUOTA_STAGES: readonly QuotaStage[];
+
+### build/index.d.ts#QuietRule
+export interface QuietRule {
+  readonly horizon: Duration;
+  readonly keeps?: ((incident: Incident) => boolean) | undefined;
+}
+
+### build/index.d.ts#QuietWindow
+export interface QuietWindow {
+  readonly zone: string;
+  readonly start: string;
+  readonly end: string;
+}
+
+### build/index.d.ts#QuotaHealth
+export interface QuotaHealth {
+  readonly quota: ChannelQuota;
+  readonly stages: readonly QuotaStage[];
+}
+
+### build/index.d.ts#QuotaStage
+export type QuotaStage = "low" | "reserve" | "spent";
+
+### build/index.d.ts#RANK_DELAY_LIMIT
+export declare const RANK_DELAY_LIMIT: Duration;
+
+### build/index.d.ts#RETENTION_HORIZON
+export declare const RETENTION_HORIZON: Duration;
+
+### build/index.d.ts#RULED_STATUSES
+export declare const RULED_STATUSES: readonly Status[];
+
+### build/index.d.ts#RankDelays
+export type RankDelays = Readonly<Partial<Record<Level, Duration>>>;
+
+### build/index.d.ts#ReachArithmetic
+export interface ReachArithmetic<N> {
+  readonly ring: OrderedRing<N>;
+  readonly of: (chance: number) => N;
+}
+
+### build/index.d.ts#ReachEnd
+export type ReachEnd = "low" | "value" | "high";
+
+### build/index.d.ts#ReadHealth
+export interface ReadHealth {
+  readonly what: string;
+  readonly at: Instant | null;
+  readonly failed: boolean;
+  readonly next: Instant | null;
+}
+
+### build/index.d.ts#Reading
+export interface Reading {
+  readonly source: SourceId;
+  readonly measure: string;
+  readonly series: string;
+  readonly version?: string;
+  readonly at: Instant;
+  readonly value: number;
+  readonly area: IndicatorArea;
+  readonly cadence?: Duration;
+  readonly expected?: number;
+  readonly flagged?: boolean;
+  readonly observation: ObservationId;
+}
+
+### build/index.d.ts#Receipt
+export type Receipt = Readonly<Record<string, string>>;
+
+### build/index.d.ts#Recipient
+export interface Recipient {
+  readonly watch: PersonWatch;
+  readonly policies: readonly EscalationPolicy[];
+  readonly addresses: Readonly<Record<string, Address>>;
+  readonly channelRules?: readonly ChannelRule[];
+}
+
+### build/index.d.ts#RegionCode
+export interface RegionCode {
+  readonly system: string;
+  readonly code: string;
+}
+
+### build/index.d.ts#Relevance
+export interface Relevance {
+  readonly reach: Estimate;
+  readonly best: number;
+  readonly noisyOr: number;
+  readonly paths: readonly RelevancePath[];
+  readonly why?: WhyRecord;
+  readonly weakest?: {
+    readonly edge: string;
+    readonly importance: number;
+  };
+  readonly next?: {
+    readonly edge: string;
+    readonly gain: number;
+  };
+  readonly muted?: {
+    readonly mute: string;
+    readonly effect: MuteEffect;
+  };
+  readonly bound?: "bounds" | "partial";
+}
+
+### build/index.d.ts#RelevanceInput
+export interface RelevanceInput {
+  readonly kind: string;
+  readonly entries: readonly SubjectEntry[];
+  readonly at: Instant;
+  readonly mandatory: boolean;
+}
+
+### build/index.d.ts#RelevanceOptions
+export interface RelevanceOptions {
+  readonly maxSteps?: number;
+}
+
+### build/index.d.ts#RelevancePath
+export interface RelevancePath {
+  readonly subject: NodeKey;
+  readonly edges: readonly string[];
+  readonly chance: number;
+}
+
+### build/index.d.ts#RelevancePolicy
+export interface RelevancePolicy {
+  readonly hopCap: number;
+  readonly topPaths: number;
+  readonly mandatory: MuteEffect;
+  readonly entryMax?: AssessedLevel;
+}
+
+### build/index.d.ts#Report
+export interface Report {
+  readonly id: ReportId;
+  readonly source: SourceId;
+  readonly origin: string;
+  readonly key: string;
+  readonly references: readonly string[];
+  readonly correlation: readonly CorrelationKey[];
+  readonly status: Status;
+  readonly op: Operation;
+  readonly kind: Kind;
+  readonly categories: readonly Category[];
+  readonly severity: Severity;
+  readonly urgency: Urgency;
+  readonly certainty: Certainty;
+  readonly response: readonly ResponseType[];
+  readonly sent: Instant;
+  readonly received: Instant;
+  readonly effective?: Instant;
+  readonly onset?: Instant;
+  readonly expires?: Instant;
+  readonly ends?: Instant;
+  readonly areas: readonly Area[];
+  readonly areaText?: string;
+  readonly about: readonly Subject[];
+  readonly addresses?: readonly PersonId[];
+  readonly sender: string;
+  readonly headline: string;
+  readonly description?: string;
+  readonly instruction?: string;
+  readonly web?: string;
+  readonly observation: ObservationId;
+  readonly parameters: Readonly<Record<string, readonly string[]>>;
+}
+
+### build/index.d.ts#ReportFilter
+export interface ReportFilter {
+  readonly statuses?: readonly Status[];
+  readonly ops?: readonly Operation[];
+  readonly kinds?: readonly string[];
+  readonly parameters?: readonly string[];
+  readonly correlation?: readonly string[];
+}
+
+### build/index.d.ts#ReportId
+export type ReportId = Id<"ReportId">;
+
+### build/index.d.ts#ReportIdInput
+export type ReportIdInput = ReportIdFields & ({
+  readonly sent: Instant;
+  readonly version?: undefined;
+} | {
+  readonly version: string;
+  readonly sent?: undefined;
+});
+
+### build/index.d.ts#ResolvedOptIn
+export interface ResolvedOptIn {
+  readonly records: readonly OptInRecord[];
+  readonly problems: readonly string[];
+}
+
+### build/index.d.ts#ResponseType
+export type ResponseType = "shelter" | "evacuate" | "prepare" | "execute" | "avoid" | "monitor" | "assess" | "allclear" | "none";
+
+### build/index.d.ts#Route
+export interface Route {
+  readonly incident: Incident;
+  readonly person: PersonId;
+  readonly policy: EscalationPolicy;
+  readonly ruled?: {
+    readonly rules: readonly number[];
+    readonly dropped: readonly number[];
+  };
+  readonly start: EscalationStart;
+  readonly fresh: boolean;
+  readonly deliveries: readonly Delivery[];
+  readonly polls: readonly Delivery[];
+  readonly plan: EscalationPlan;
+  readonly episode: number;
+  readonly end?: EscalationEnd;
+  readonly freshEnd: boolean;
+  readonly why?: WhyRecord;
+  readonly held?: EscalationHold;
+  readonly imported?: true;
+  readonly suppressed?: Suppression;
+}
+
+### build/index.d.ts#RouteInput
+export interface RouteInput {
+  readonly state: MergeState;
+  readonly incidents: readonly Incident[];
+  readonly recipients: readonly Recipient[];
+  readonly places: readonly WatchedPlace[];
+  readonly assess?: AssessPolicy | undefined;
+  readonly sources?: ReadonlySet<string> | undefined;
+  readonly starts: readonly EscalationStart[];
+  readonly ends?: readonly EscalationEnd[] | undefined;
+  readonly cancelled: ReadonlySet<string>;
+  readonly channels: readonly ChannelDescriptor[];
+  readonly rank?: number | undefined;
+  readonly rankDelay?: Duration | undefined;
+  readonly rankDelays?: RankDelays | undefined;
+  readonly rankFloor?: Duration | undefined;
+  readonly now: Instant;
+}
+
+### build/index.d.ts#RuledPolicy
+export interface RuledPolicy {
+  readonly policy: EscalationPolicy;
+  readonly rules: readonly number[];
+  readonly dropped: readonly number[];
+}
+
+### build/index.d.ts#SEND_LIMIT_MAX_WINDOW
+export declare const SEND_LIMIT_MAX_WINDOW: Duration;
+
+### build/index.d.ts#SEND_LIMIT_MIN_WINDOW
+export declare const SEND_LIMIT_MIN_WINDOW: Duration;
+
+### build/index.d.ts#SERIES_VERSION
+export declare const SERIES_VERSION: RegExp;
+
+### build/index.d.ts#SEVERITY_ORDER
+export declare const SEVERITY_ORDER: readonly Severity[];
+
+### build/index.d.ts#SHARED_HANDOVER
+export declare const SHARED_HANDOVER: Duration;
+
+### build/index.d.ts#SOURCE_SUBJECT
+export declare const SOURCE_SUBJECT = "alerts.source";
+
+### build/index.d.ts#STORE_FILL_WINDOW
+export declare const STORE_FILL_WINDOW: Duration;
+
+### build/index.d.ts#STORE_KIND
+export declare const STORE_KIND = "system.store";
+
+### build/index.d.ts#STORE_SUBJECT
+export declare const STORE_SUBJECT = "alerts.store";
+
+### build/index.d.ts#SUBJECT_SYSTEMS
+export declare const SUBJECT_SYSTEMS: Readonly<Record<SubjectSystem, SubjectKind>>;
+
+### build/index.d.ts#SYSTEM_SOURCE
+export declare const SYSTEM_SOURCE: SourceId;
+
+### build/index.d.ts#SchemaDrift
+export interface SchemaDrift<T> {
+  readonly "The output or the input of this schema is not exactly its type.": T;
+}
+
+### build/index.d.ts#ScoreFactor
+export interface ScoreFactor {
+  readonly estimate: Estimate;
+  readonly from: ScoreSource;
+}
+
+### build/index.d.ts#ScoreGap
+export type ScoreGap = "probability" | "deaths" | "injuries";
+
+### build/index.d.ts#ScorePriors
+export interface ScorePriors {
+  readonly format: "alerts-priors/2";
+  readonly kinds: Readonly<Record<string, KindPrior>>;
+  readonly certainty: Readonly<Partial<Record<Certainty, Estimate>>>;
+}
+
+### build/index.d.ts#ScoreSource
+export type ScoreSource = {
+  readonly table: "kinds" | "certainty";
+  readonly key: string;
+} | {
+  readonly table: "under";
+  readonly key: string;
+  readonly significance: Significance;
+  readonly area: AlertArea;
+};
+
+### build/index.d.ts#ScoredIncident
+export interface ScoredIncident {
+  readonly anchor: ReportId;
+  readonly level: AssessedLevel;
+  readonly shadow?: ShadowScore;
+}
+
+### build/index.d.ts#Season
+export type Season = "week" | "day" | "none";
+
+### build/index.d.ts#SecretLookup
+export type SecretLookup = (name: string) => string | undefined;
+
+### build/index.d.ts#SecretRef
+export interface SecretRef {
+  readonly secret: string;
+}
+
+### build/index.d.ts#SendInput
+export interface SendInput {
+  readonly message: Message;
+  readonly address: Address;
+  readonly copy?: string;
+}
+
+### build/index.d.ts#SendLimitConfig
+export type SendLimitConfig = Partial<SendLimits>;
+
+### build/index.d.ts#SendLimits
+export interface SendLimits {
+  readonly window: Duration;
+  readonly notice: number;
+  readonly urgent: number;
+}
+
+### build/index.d.ts#SendOutcome
+export type SendOutcome = {
+  readonly ok: true;
+  readonly receipt: Receipt;
+  readonly accepted: Instant;
+} | {
+  readonly ok: false;
+  readonly kind: "network" | "timeout" | "server" | "rate-limited" | "reserved" | "auth" | "refused" | "consent" | "quiet" | "expired";
+  readonly message: string;
+  readonly retryAfter?: Duration;
+};
+
+### build/index.d.ts#SentCheck
+export interface SentCheck {
+  readonly report: ReportId;
+  readonly key: string;
+  readonly event: string;
+  readonly sent: Instant;
+  readonly class: SentClass;
+  readonly copies: readonly CopyTime[];
+  readonly delay?: Duration;
+}
+
+### build/index.d.ts#SentClass
+export type SentClass = "same" | "shifted" | "lost" | "apart" | "none" | "censored";
+
+### build/index.d.ts#SentCounts
+export interface SentCounts {
+  readonly messages: number;
+  readonly same: number;
+  readonly shifted: number;
+  readonly lost: number;
+  readonly apart: number;
+  readonly none: number;
+  readonly censored: number;
+}
+
+### build/index.d.ts#SentGap
+export interface SentGap {
+  readonly report: ReportId;
+  readonly key: string;
+  readonly event: string;
+  readonly sent: Instant;
+  readonly class: "shifted" | "lost" | "apart";
+  readonly copy: CopyTime;
+  readonly match: "id" | "nearest";
+  readonly difference: Duration;
+}
+
+### build/index.d.ts#SentMeasure
+export interface SentMeasure {
+  readonly counts: SentCounts;
+  readonly checks: readonly SentCheck[];
+  readonly gaps: readonly SentGap[];
+}
+
+### build/index.d.ts#SeriesRead
+export type SeriesRead = {
+  readonly kind: "score";
+  readonly at: Instant;
+  readonly score: number;
+  readonly signal: boolean;
+  readonly center: number;
+  readonly samples: number;
+} | {
+  readonly kind: "flag";
+  readonly at: Instant;
+  readonly signal: boolean;
+} | {
+  readonly kind: "no-read";
+  readonly cause: NoReadCause;
+};
+
+### build/index.d.ts#SeriesSignal
+export interface SeriesSignal {
+  readonly series: string;
+  readonly dimension: DimensionId;
+  readonly area: IndicatorArea;
+  readonly read: SeriesRead;
+}
+
+### build/index.d.ts#Severity
+export type Severity = "extreme" | "severe" | "moderate" | "minor" | "unknown";
+
+### build/index.d.ts#ShadowDifference
+export interface ShadowDifference {
+  readonly above: ReportId;
+  readonly below: ReportId;
+}
+
+### build/index.d.ts#ShadowScore
+export type ShadowScore = {
+  readonly read: true;
+  readonly basis?: "event";
+  readonly probability: ScoreFactor;
+  readonly deaths: ScoreFactor;
+  readonly injuries: ScoreFactor;
+  readonly expected: ExpectedHarm;
+} | {
+  readonly read: true;
+  readonly basis: "alert";
+  readonly deaths: ScoreFactor;
+  readonly injuries: ScoreFactor;
+  readonly expected: ExpectedHarm;
+} | {
+  readonly read: false;
+  readonly missing: readonly ScoreGap[];
+};
+
+### build/index.d.ts#ShapeLookup
+export type ShapeLookup = (code: RegionCode) => readonly MapShape[] | undefined;
+
+### build/index.d.ts#Significance
+export type Significance = "warning" | "watch" | "advisory" | "statement" | "outlook" | "observation";
+
+### build/index.d.ts#SourceClearConfig
+export interface SourceClearConfig {
+  readonly floor?: Duration;
+  readonly fetches?: number;
+}
+
+### build/index.d.ts#SourceClearPolicy
+export interface SourceClearPolicy {
+  readonly floor: Duration;
+  readonly fetches: number;
+}
+
+### build/index.d.ts#SourceDescriptor
+export interface SourceDescriptor {
+  readonly id: SourceId;
+  readonly title: string;
+  readonly origins: readonly string[];
+  readonly dependsOn: readonly string[];
+  readonly uses: readonly CellResource[];
+  readonly kinds: readonly string[];
+  readonly coverage: readonly Area[] | "global";
+  readonly transport: Transport;
+  readonly interval: Duration;
+  readonly slowAfter: Duration;
+  readonly maxQuiet?: Duration;
+  readonly auth: "none" | "key" | "oauth";
+  readonly listing?: "snapshot";
+  readonly canary?: string;
+  readonly measures?: readonly MeasureDeclaration[];
+}
+
+### build/index.d.ts#SourceHealth
+export interface SourceHealth {
+  readonly source: SourceId;
+  readonly state: HealthState;
+  readonly since: Instant;
+  readonly lastSuccess?: Instant;
+  readonly lastFailure?: {
+    readonly at: Instant;
+    readonly failure: FetchFailure;
+  };
+  readonly reason: string;
+}
+
+### build/index.d.ts#SourceHealthView
+export interface SourceHealthView extends Omit<SourceHealth, "lastFailure"> {
+  readonly lastFailure?: {
+    readonly at: Instant;
+    readonly kind: FetchFailure["kind"];
+  };
+}
+
+### build/index.d.ts#SourceId
+export type SourceId = Id<"SourceId">;
+
+### build/index.d.ts#SourceProcedures
+export interface SourceProcedures {
+  describe(): SourceDescriptor;
+  fetch(input: {
+    readonly watch: Watch;
+    readonly cursor?: Cursor;
+  }, signal?: FetchSignal): Promise<FetchOutcome>;
+  map(input: {
+    readonly observation: Observation;
+  }): MapResult;
+  check?(input: {
+    readonly observations: readonly Observation[];
+  }): CanaryResult | undefined;
+  locate?(input: {
+    readonly at: Position;
+  }): Promise<LocateOutcome>;
+  close?(): Promise<void>;
+}
+
+### build/index.d.ts#SpendConfig
+export interface SpendConfig {
+  readonly provider: string;
+  readonly monthlyUsd: number;
+  readonly fixed?: readonly FixedCost[];
+  readonly reserveUsd?: number;
+  readonly floor: number | readonly number[];
+  readonly timeZone: string;
+}
+
+### build/index.d.ts#Status
+export type Status = "actual" | "exercise" | "system" | "test" | "draft";
+
+### build/index.d.ts#StoreFill
+export interface StoreFill {
+  readonly store: string;
+  readonly family: string;
+  readonly entries: number;
+  readonly since: Instant;
+  readonly within: Duration;
+  readonly sources: readonly SourceId[];
+}
+
+### build/index.d.ts#Subject
+export interface Subject {
+  readonly system: string;
+  readonly id: string;
+  readonly label?: string;
+}
+
+### build/index.d.ts#SubjectEntry
+export interface SubjectEntry {
+  readonly node: NodeKey;
+  readonly kind: SubjectKind;
+  readonly hit: Estimate;
+}
+
+### build/index.d.ts#SubjectKey
+export type SubjectKey = Pick<Subject, "system" | "id">;
+
+### build/index.d.ts#SubjectKind
+export type SubjectKind = "place" | "topic" | "entity";
+
+### build/index.d.ts#SubjectSystem
+export type SubjectSystem = "place" | "point" | "polygon" | "ugc" | "ugc-fire" | "same" | "fips" | "state" | "iso3166" | "geonames" | "icao" | "topic" | "iptc" | "cap-category" | "cve" | "wikidata" | "asn" | "domain" | "provider-region" | "ticker" | "lei" | "purl";
+
+### build/index.d.ts#SubjectWatch
+export interface SubjectWatch {
+  readonly system: string;
+  readonly id?: string;
+}
+
+### build/index.d.ts#Suppression
+export interface Suppression {
+  readonly key: string;
+  readonly incident: ReportId;
+  readonly level: Level;
+  readonly person: PersonId;
+  readonly channel: ChannelId;
+  readonly step: number;
+  readonly episode: number;
+  readonly at: Instant;
+  readonly reason: SuppressionReason;
+  readonly over: Level;
+}
+
+### build/index.d.ts#SuppressionReason
+export type SuppressionReason = "same-level" | "lower-level";
+
+### build/index.d.ts#SystemLine
+export interface SystemLine {
+  readonly key: string;
+  readonly facts: string;
+  readonly kind: Kind;
+  readonly areas: readonly Area[];
+  readonly about: readonly Subject[];
+  readonly addresses?: readonly PersonId[];
+}
+
+### build/index.d.ts#SystemLines
+export interface SystemLines {
+  readonly count: number;
+  readonly open: Readonly<Record<string, SystemLine>>;
+}
+
+### build/index.d.ts#SystemSnapshot
+export interface SystemSnapshot {
+  readonly sources: readonly SourceDescriptor[];
+  readonly health: readonly SourceHealth[];
+  readonly coverage: readonly Coverage[];
+  readonly threats: readonly Threat[];
+  readonly lateness?: readonly Lateness[];
+  readonly quotas?: readonly ChannelQuota[];
+  readonly balances?: readonly ProviderBalance[];
+  readonly copy?: string;
+  readonly copies?: readonly CopyWatch[];
+  readonly steps?: readonly ClockStep[];
+  readonly recoveries?: readonly LogRecovery[];
+  readonly stores?: readonly StoreFill[];
+  readonly drills?: readonly DrillSnapshot[];
+  readonly drillWatches?: readonly DrillWatch[];
+  readonly exhausted?: readonly Exhaustion[];
+  readonly held?: readonly HeldPerson[];
+  readonly channels?: readonly ChannelSnapshot[];
+  readonly channelDown?: ChannelDownConfig;
+  readonly observing?: readonly ObserveCondition[];
+  readonly sourceClear?: SourceClearConfig;
+}
+
+### build/index.d.ts#SystemStep
+export interface SystemStep {
+  readonly lines: SystemLines;
+  readonly reports: readonly Report[];
+  readonly observations: readonly Observation[];
+}
+
+### build/index.d.ts#TAXONOMY
+export declare const TAXONOMY: Readonly<Record<string, KindEntry>>;
+
+### build/index.d.ts#TELL_CLASSES
+export declare const TELL_CLASSES: readonly ["needs-you", "done-you-asked", "live"];
+
+### build/index.d.ts#TELL_KIND
+export declare const TELL_KIND = "system.tell";
+
+### build/index.d.ts#THREAT_STAGES
+export declare const THREAT_STAGES: readonly Significance[];
+
+### build/index.d.ts#THROTTLE_KEYS
+export declare const THROTTLE_KEYS: readonly ThrottleKey[];
+
+### build/index.d.ts#THROTTLE_MAX_WINDOW
+export declare const THROTTLE_MAX_WINDOW: Duration;
+
+### build/index.d.ts#THROTTLE_MIN_WINDOW
+export declare const THROTTLE_MIN_WINDOW: Duration;
+
+### build/index.d.ts#THROTTLE_STREAMS
+export declare const THROTTLE_STREAMS: readonly ThrottleStreams[];
+
+### build/index.d.ts#TOMBSTONE_LIFE
+export declare const TOMBSTONE_LIFE: Duration;
+
+### build/index.d.ts#TRY_ENDS
+export declare const TRY_ENDS: readonly TryEnd[];
+
+### build/index.d.ts#TableResult
+export interface TableResult {
+  readonly class?: string;
+  readonly bySeverity: AssessedLevel;
+  readonly byUrgency: AssessedLevel;
+  readonly level: AssessedLevel;
+  readonly recentPast?: true;
+  readonly foreign?: true;
+}
+
+### build/index.d.ts#TellClass
+export type TellClass = (typeof TELL_CLASSES)[number];
+
+### build/index.d.ts#TellConfig
+export interface TellConfig {
+  readonly port: number;
+  readonly dailyCap?: number;
+  readonly site?: TellSite;
+}
+
+### build/index.d.ts#TellSite
+export interface TellSite {
+  readonly local: string;
+  readonly phone: string;
+}
+
+### build/index.d.ts#Threat
+export interface Threat {
+  readonly place: PlaceId;
+  readonly kind: string;
+}
+
+### build/index.d.ts#Throttle
+export interface Throttle {
+  readonly window: Duration;
+  readonly key: ThrottleKey;
+  readonly streams: ThrottleStreams;
+  readonly exempt: readonly Level[];
+}
+
+### build/index.d.ts#ThrottleConfig
+export type ThrottleConfig = Partial<Throttle>;
+
+### build/index.d.ts#ThrottleInput
+export interface ThrottleInput {
+  readonly routes: readonly Route[];
+  readonly deliveries: readonly Delivery[];
+  readonly suppressions: readonly Suppression[];
+  readonly reports?: readonly Pick<Report, "id" | "kind" | "addresses">[] | undefined;
+  readonly throttle?: Throttle | undefined;
+  readonly started?: ReadonlySet<string> | undefined;
+  readonly now: Instant;
+}
+
+### build/index.d.ts#ThrottleItem
+export interface ThrottleItem extends Audience {
+  readonly kind: Pick<Kind, "code">;
+}
+
+### build/index.d.ts#ThrottleKey
+export type ThrottleKey = "channel" | "incident";
+
+### build/index.d.ts#ThrottleResult
+export interface ThrottleResult {
+  readonly routes: readonly Route[];
+  readonly suppressions: readonly Suppression[];
+}
+
+### build/index.d.ts#ThrottleStreams
+export type ThrottleStreams = "system" | "family";
+
+### build/index.d.ts#TimedEnd
+export interface TimedEnd {
+  readonly end: TryEnd;
+  readonly at: Instant;
+}
+
+### build/index.d.ts#Tombstone
+export interface Tombstone {
+  readonly report: ReportId;
+  readonly until: Instant;
+}
+
+### build/index.d.ts#Transport
+export type Transport = "poll" | "stream" | "push" | "radio";
+
+### build/index.d.ts#TryChain
+export interface TryChain {
+  readonly steps: readonly ChannelId[];
+}
+
+### build/index.d.ts#TryEnd
+export type TryEnd = "acked" | "unconfirmed" | "failed" | "sent";
+
+### build/index.d.ts#TryRecord
+export interface TryRecord {
+  readonly person: PersonId;
+  readonly started: Instant;
+  readonly end: TryEnd;
+  readonly at: Instant;
+}
+
+### build/index.d.ts#UNKNOWN_KIND
+export declare const UNKNOWN_KIND = "other.unknown";
+
+### build/index.d.ts#UNKNOWN_WEIGHT
+export declare const UNKNOWN_WEIGHT: Estimate;
+
+### build/index.d.ts#US_GALLON_L
+export declare const US_GALLON_L = 3.785411784;
+
+### build/index.d.ts#UnderPrior
+export interface UnderPrior {
+  readonly deaths: Estimate;
+  readonly injuries: Estimate;
+  readonly area: AlertArea;
+}
+
+### build/index.d.ts#Urgency
+export type Urgency = "immediate" | "expected" | "future" | "past" | "unknown";
+
+### build/index.d.ts#WHY_FULL_COVERAGE
+export declare const WHY_FULL_COVERAGE = .99;
+
+### build/index.d.ts#WHY_LIMITS
+export declare const WHY_LIMITS: Readonly<Record<"push" | "text" | "call", WhyLimit>>;
+
+### build/index.d.ts#WORK_DEFAULTS
+export declare const WORK_DEFAULTS: Readonly<Record<string, WorkDefaults>>;
+
+### build/index.d.ts#WORK_DEFAULTS_DATE
+export declare const WORK_DEFAULTS_DATE = "2026-11-17";
+
+### build/index.d.ts#Watch
+export interface Watch {
+  readonly places: readonly WatchedPlace[];
+  readonly kinds?: readonly string[];
+}
+
+### build/index.d.ts#WatchedPlace
+export interface WatchedPlace {
+  readonly id: PlaceId;
+  readonly at?: Position;
+  readonly codes: readonly RegionCode[];
+  readonly bufferKm: number;
+}
+
+### build/index.d.ts#WhyLabels
+export type WhyLabels = (node: NodeKey) => string | undefined;
+
+### build/index.d.ts#WhyLimit
+export interface WhyLimit {
+  readonly chars?: number;
+  readonly words?: number;
+}
+
+### build/index.d.ts#WhyRecord
+export interface WhyRecord {
+  readonly rule: string;
+  readonly subject: NodeKey;
+  readonly kind: SubjectKind;
+  readonly via?: NodeKey;
+  readonly anchor: NodeKey;
+  readonly origin: EdgeOrigin;
+  readonly coverage: number;
+}
+
+### build/index.d.ts#WorkDefaults
+export interface WorkDefaults {
+  readonly label: string;
+  readonly topics: readonly string[];
+}
+
+### build/index.d.ts#ZoneRegions
+export interface ZoneRegions {
+  readonly system: string;
+  readonly code: string;
+  readonly regions: readonly RegionCode[];
+}
+
+### build/index.d.ts#acknowledgedLevel
+export declare function acknowledgedLevel(state: MergeState, incident: Incident, person: PersonId): Level | undefined;
+
+### build/index.d.ts#acknowledgmentOf
+export declare function acknowledgmentOf(delivery: Delivery, status: DeliveryStatus): Acknowledgment | undefined;
+
+### build/index.d.ts#acknowledgmentSchema
+export declare const acknowledgmentSchema: z.ZodType<Acknowledgment, Acknowledgment>;
+
+### build/index.d.ts#add
+export declare function add(state: MergeState, parts: MergeParts): MergeState;
+
+### build/index.d.ts#addHistory
+export declare function addHistory(kept: Histories, payload: HistoryPayload): Histories;
+
+### build/index.d.ts#addSystemReports
+export declare function addSystemReports(lines: SystemLines, reports: readonly Report[], observations: readonly Observation[]): SystemLines;
+
+### build/index.d.ts#addressFieldSchema
+export declare const addressFieldSchema: z.ZodType<AddressField, AddressField>;
+
+### build/index.d.ts#addressProblems
+export declare function addressProblems(address: Address, channel: ChannelDescriptor): string[];
+
+### build/index.d.ts#addressSchema
+export declare const addressSchema: z.ZodType<Address, Address>;
+
+### build/index.d.ts#addressValueSchema
+export declare const addressValueSchema: z.ZodType<AddressValue, AddressValue>;
+
+### build/index.d.ts#admits
+export declare function admits(policy: AssessPolicy, incident: Pick<Incident, "status" | "kind">): boolean;
+
+### build/index.d.ts#advanceHealth
+export declare function advanceHealth(track: HealthTrack, now: Instant, descriptor: SourceDescriptor, options?: HealthOptions): HealthStep;
+
+### build/index.d.ts#alertAreaSchema
+export declare const alertAreaSchema: z.ZodType<AlertArea, AlertArea>;
+
+### build/index.d.ts#alertConfigSchema
+export declare const alertConfigSchema: z.ZodType<AlertConfig, AlertConfig>;
+
+### build/index.d.ts#areaMeetsPlace
+export declare function areaMeetsPlace(area: IndicatorArea, place: WatchedPlace, zones?: readonly ZoneRegions[]): boolean | undefined;
+
+### build/index.d.ts#areaSchema
+export declare const areaSchema: z.ZodType<Area, Area>;
+
+### build/index.d.ts#areasWithoutBlocks
+export declare function areasWithoutBlocks(areas: readonly Area[]): Area[];
+
+### build/index.d.ts#asksForAck
+export declare function asksForAck(policy: EscalationPolicy, channels: readonly ChannelDescriptor[]): boolean;
+
+### build/index.d.ts#assess
+export declare function assess(incident: Incident, person: PersonWatch, places: readonly WatchedPlace[], policy?: AssessPolicy, at?: Instant, foreign?: boolean): Assessment;
+
+### build/index.d.ts#assessPolicySchema
+export declare const assessPolicySchema: z.ZodType<AssessPolicy, AssessPolicy>;
+
+### build/index.d.ts#assessReasonSchema
+export declare const assessReasonSchema: z.ZodType<AssessReason, AssessReason>;
+
+### build/index.d.ts#assessWithShadow
+export declare function assessWithShadow(incident: Incident, person: PersonWatch, places: readonly WatchedPlace[], priors: ScorePriors, policy?: AssessPolicy, at?: Instant): Assessment;
+
+### build/index.d.ts#assessedLevelSchema
+export declare const assessedLevelSchema: z.ZodType<AssessedLevel, AssessedLevel>;
+
+### build/index.d.ts#assessmentSchema
+export declare const assessmentSchema: z.ZodType<Assessment, Assessment>;
+
+### build/index.d.ts#assessmentWhy
+export declare function assessmentWhy(assessment: Pick<Assessment, "reasons" | "places">): WhyRecord | undefined;
+
+### build/index.d.ts#audienceKey
+export declare function audienceKey(item: Audience): string;
+
+### build/index.d.ts#audienceOf
+export declare function audienceOf(addresses: readonly PersonId[]): readonly PersonId[];
+
+### build/index.d.ts#balanceFloors
+export declare function balanceFloors(floor: SpendConfig["floor"]): number[];
+
+### build/index.d.ts#balanceFloorsBelow
+export declare function balanceFloorsBelow(balance: ProviderBalance): number[];
+
+### build/index.d.ts#balanceHealthSchema
+export declare const balanceHealthSchema: z.ZodType<BalanceHealth, BalanceHealth>;
+
+### build/index.d.ts#balanceReadSchema
+export declare const balanceReadSchema: z.ZodType<BalanceRead, BalanceRead>;
+
+### build/index.d.ts#balanceStageSchema
+export declare const balanceStageSchema: z.ZodType<BalanceStage, BalanceStage>;
+
+### build/index.d.ts#balanceStages
+export declare function balanceStages(balance: ProviderBalance, at: Instant): BalanceStage[];
+
+### build/index.d.ts#balanceUnreadAt
+export declare function balanceUnreadAt(balance: ProviderBalance): Instant;
+
+### build/index.d.ts#basemapToleranceKm
+export declare function basemapToleranceKm(regions: readonly MapRegion[]): number | undefined;
+
+### build/index.d.ts#breadthOf
+export declare function breadthOf(series: readonly SeriesSignal[]): Breadth;
+
+### build/index.d.ts#canReach
+export declare function canReach(input: RelevanceInput, graph: InterestGraph, policy: RelevancePolicy, options?: RelevanceOptions): boolean;
+
+### build/index.d.ts#canaryResultSchema
+export declare const canaryResultSchema: z.ZodType<CanaryResult, CanaryResult>;
+
+### build/index.d.ts#canonicalKind
+export declare function canonicalKind(code: string, aliases?: Readonly<Record<string, string>>): string;
+
+### build/index.d.ts#capMessageKey
+export declare function capMessageKey(input: CapMessageKeyInput): CorrelationKey | undefined;
+
+### build/index.d.ts#carriages
+export declare function carriages(state: MergeState, found: readonly Incident[], expectations: readonly Expectation[]): Carriage[];
+
+### build/index.d.ts#categoryOf
+export declare function categoryOf(kindCode: string): Category;
+
+### build/index.d.ts#categorySchema
+export declare const categorySchema: z.ZodType<Category, Category>;
+
+### build/index.d.ts#cellResourceSchema
+export declare const cellResourceSchema: z.ZodType<CellResource, CellResource>;
+
+### build/index.d.ts#certaintySchema
+export declare const certaintySchema: z.ZodType<Certainty, Certainty>;
+
+### build/index.d.ts#chainNext
+export declare function chainNext(chain: TryChain, step?: number, end?: TryEnd): ChainState;
+
+### build/index.d.ts#chainRun
+export declare function chainRun(chain: TryChain, start: Instant, ends: readonly TimedEnd[], instance: string): ChainRun;
+
+### build/index.d.ts#channelDescriptorSchema
+export declare const channelDescriptorSchema: z.ZodType<ChannelDescriptor, ChannelDescriptor>;
+
+### build/index.d.ts#channelDownConfigSchema
+export declare const channelDownConfigSchema: z.ZodType<ChannelDownConfig, ChannelDownConfig>;
+
+### build/index.d.ts#channelDownPolicy
+export declare function channelDownPolicy(config?: ChannelDownConfig): ChannelDownPolicy;
+
+### build/index.d.ts#channelDownRules
+export declare function channelDownRules(channels: readonly ChannelId[]): ChannelRule[];
+
+### build/index.d.ts#channelFailureKindSchema
+export declare const channelFailureKindSchema: z.ZodType<ChannelFailureKind, ChannelFailureKind>;
+
+### build/index.d.ts#channelHealthSchema
+export declare const channelHealthSchema: z.ZodType<ChannelHealth, ChannelHealth>;
+
+### build/index.d.ts#channelIdSchema
+export declare const channelIdSchema: z.ZodType<ChannelId, ChannelId>;
+
+### build/index.d.ts#channelQuotaSchema
+export declare const channelQuotaSchema: z.ZodType<ChannelQuota, ChannelQuota>;
+
+### build/index.d.ts#channelRunSchema
+export declare const channelRunSchema: z.ZodType<ChannelRun, ChannelRun>;
+
+### build/index.d.ts#channelRuns
+export declare function channelRuns(runs: readonly ChannelRun[], step: ChannelRunStep): ChannelRun[];
+
+### build/index.d.ts#checkWith
+export declare function checkWith<T>(schema: z.ZodType<T, T>, value: unknown): Result<T, readonly string[]>;
+
+### build/index.d.ts#classOf
+export declare function classOf(policy: AssessPolicy, kind: string): KindClass | undefined;
+
+### build/index.d.ts#compareMapIncidents
+export declare function compareMapIncidents(a: MapIncident, b: MapIncident): number;
+
+### build/index.d.ts#compareRegionCodes
+export declare function compareRegionCodes(a: RegionCode, b: RegionCode): number;
+
+### build/index.d.ts#composeInterests
+export declare function composeInterests(person: PersonId, layers: readonly (readonly InterestEdge[])[], own?: InterestGraph): ComposedInterests;
+
+### build/index.d.ts#configHash
+export declare function configHash(config: AlertConfig): string;
+
+### build/index.d.ts#configPartSchema
+export declare const configPartSchema: z.ZodType<ConfigPart, ConfigPart>;
+
+### build/index.d.ts#configuredExpectations
+export declare function configuredExpectations(expectations: readonly Expectation[], settings?: readonly ExpectationConfig[]): Expectation[];
+
+### build/index.d.ts#contactChannels
+export declare function contactChannels(config: Pick<AlertConfig, "contacts">, person: PersonId, channels: readonly ChannelDescriptor[], lookup?: ContactLookup): readonly ChannelDescriptor[];
+
+### build/index.d.ts#contactConfigSchema
+export declare const contactConfigSchema: z.ZodType<ContactConfig, ContactConfig>;
+
+### build/index.d.ts#contextSource
+export declare function contextSource(source: SourceDescriptor): boolean;
+
+### build/index.d.ts#copyHealthSchema
+export declare const copyHealthSchema: z.ZodType<CopyHealth, CopyHealth>;
+
+### build/index.d.ts#copyIdSchema
+export declare const copyIdSchema: z.ZodType<string, string>;
+
+### build/index.d.ts#copyListenSchema
+export declare const copyListenSchema: z.ZodType<CopyListen, CopyListen>;
+
+### build/index.d.ts#copyMeasure
+export declare function copyMeasure(reports: readonly Report[], expectation: Expectation, options?: CopyMeasureOptions): SentMeasure;
+
+### build/index.d.ts#copyPeerSchema
+export declare const copyPeerSchema: z.ZodType<CopyPeer, CopyPeer>;
+
+### build/index.d.ts#copyProblems
+export declare function copyProblems(settings: CopySettings): string[];
+
+### build/index.d.ts#copyReadSchema
+export declare const copyReadSchema: z.ZodType<CopyRead, CopyRead>;
+
+### build/index.d.ts#copySettingsSchema
+export declare const copySettingsSchema: z.ZodType<CopySettings, CopySettings>;
+
+### build/index.d.ts#copyStageSchema
+export declare const copyStageSchema: z.ZodType<CopyStage, CopyStage>;
+
+### build/index.d.ts#copyStages
+export declare function copyStages(watch: CopyWatch, at: Instant): CopyStage[];
+
+### build/index.d.ts#copyUnreadAt
+export declare function copyUnreadAt(watch: CopyWatch): Instant;
+
+### build/index.d.ts#copyUnsteadyAt
+export declare function copyUnsteadyAt(watch: CopyWatch): Instant | undefined;
+
+### build/index.d.ts#correlationKeySchema
+export declare const correlationKeySchema: z.ZodType<CorrelationKey, CorrelationKey>;
+
+### build/index.d.ts#coverage
+export declare function coverage(input: CoverageInput, policy?: CoveragePolicy): Coverage[];
+
+### build/index.d.ts#coverageSchema
+export declare const coverageSchema: z.ZodType<Coverage, Coverage>;
+
+### build/index.d.ts#coverageShort
+export declare function coverageShort(entry: Coverage): boolean;
+
+### build/index.d.ts#cursorSchema
+export declare const cursorSchema: z.ZodType<Cursor, Cursor>;
+
+### build/index.d.ts#dailyInstant
+export declare function dailyInstant(daily: DailyTime, at: Instant, next?: boolean): Instant | undefined;
+
+### build/index.d.ts#dailyTimeProblems
+export declare function dailyTimeProblems(daily: DailyTime): string[];
+
+### build/index.d.ts#decide
+export declare function decide(checks: readonly Carriage[], expectation: string, at: Instant, limitOf: (sample: readonly Duration[]) => Duration | undefined): Decision[];
+
+### build/index.d.ts#decideStep
+export declare function decideStep(before: DecideState | undefined, checks: readonly Carriage[], expectation: string, at: Instant, limitOf: (sample: readonly Duration[]) => Duration | undefined): DecideStep;
+
+### build/index.d.ts#defaultEdgeId
+export declare function defaultEdgeId(origin: EdgeOrigin, from: NodeKey, to: NodeKey): string;
+
+### build/index.d.ts#delayLimit
+export declare function delayLimit(delays: readonly Duration[], options: DelayLimitOptions): Duration | undefined;
+
+### build/index.d.ts#deliveryLayer
+export declare function deliveryLayer(channels: readonly ChannelDescriptor[]): readonly InterestEdge[];
+
+### build/index.d.ts#deliverySchema
+export declare const deliverySchema: z.ZodType<Delivery, Delivery>;
+
+### build/index.d.ts#deliveryStateSchema
+export declare const deliveryStateSchema: z.ZodType<DeliveryState, DeliveryState>;
+
+### build/index.d.ts#deliveryStatusSchema
+export declare const deliveryStatusSchema: z.ZodType<DeliveryStatus, DeliveryStatus>;
+
+### build/index.d.ts#digestDeliveries
+export declare function digestDeliveries(send: DigestSend, accepted: Instant, receipt?: Receipt): Delivery[];
+
+### build/index.d.ts#digestEntryKey
+export declare function digestEntryKey(key: string, incident: ReportId): string;
+
+### build/index.d.ts#digestKey
+export declare function digestKey(input: DigestKeyInput): string;
+
+### build/index.d.ts#digestMessageOf
+export declare function digestMessageOf(send: DigestSend, reports: readonly Report[]): Message;
+
+### build/index.d.ts#digestTimeOf
+export declare function digestTimeOf(policy: EscalationPolicy, quiet: QuietWindow | undefined): DailyTime | undefined;
+
+### build/index.d.ts#dimensionIdSchema
+export declare const dimensionIdSchema: z.ZodType<DimensionId, DimensionId>;
+
+### build/index.d.ts#distinctShapes
+export declare function distinctShapes(shapes: readonly MapShape[]): MapShape[];
+
+### build/index.d.ts#downChannels
+export declare function downChannels(lines: SystemLines, copy: string): ChannelId[];
+
+### build/index.d.ts#drillConfigSchema
+export declare const drillConfigSchema: z.ZodType<DrillConfig, DrillConfig>;
+
+### build/index.d.ts#drillDue
+export declare function drillDue(drill: DrillConfig, runs: readonly DrillRun[], at: Instant, quiet?: QuietWindow): boolean;
+
+### build/index.d.ts#drillInCopy
+export declare function drillInCopy(drill: DrillConfig, copy: string, rank: number): boolean;
+
+### build/index.d.ts#drillPathSchema
+export declare const drillPathSchema: z.ZodType<DrillPath, DrillPath>;
+
+### build/index.d.ts#drillProblems
+export declare function drillProblems(drill: DrillConfig, channels: readonly ChannelDescriptor[], quiet?: QuietWindow): string[];
+
+### build/index.d.ts#drillRules
+export declare function drillRules(drill: DrillConfig): ChannelRule[];
+
+### build/index.d.ts#drillVerdict
+export declare function drillVerdict(drill: DrillConfig, run: DrillRun, at: Instant): DrillVerdict;
+
+### build/index.d.ts#drillWatchAt
+export declare function drillWatchAt(lines: SystemLines, watch: DrillWatch, copies: readonly CopyWatch[]): Instant | undefined;
+
+### build/index.d.ts#drillWindowSchema
+export declare const drillWindowSchema: z.ZodType<DrillConfig["window"], DrillConfig["window"]>;
+
+### build/index.d.ts#durationSchema
+export declare const durationSchema: z.ZodType<Duration, Duration>;
+
+### build/index.d.ts#durationText
+export declare function durationText(length: Duration): string;
+
+### build/index.d.ts#edgeKindSchema
+export declare const edgeKindSchema: z.ZodType<EdgeKind, EdgeKind>;
+
+### build/index.d.ts#edgeOriginSchema
+export declare const edgeOriginSchema: z.ZodType<EdgeOrigin, EdgeOrigin>;
+
+### build/index.d.ts#endMarkSchema
+export declare const endMarkSchema: z.ZodType<EndMark, EndMark>;
+
+### build/index.d.ts#endedReports
+export declare function endedReports(state: MergeState, at: Instant): ReadonlySet<ReportId>;
+
+### build/index.d.ts#escalate
+export declare function escalate(input: EscalationInput): EscalationPlan;
+
+### build/index.d.ts#escalationEndSchema
+export declare const escalationEndSchema: z.ZodType<EscalationEnd, EscalationEnd>;
+
+### build/index.d.ts#escalationPolicySchema
+export declare const escalationPolicySchema: z.ZodType<EscalationPolicy, EscalationPolicy>;
+
+### build/index.d.ts#escalationProblems
+export declare function escalationProblems(policy: EscalationPolicy): string[];
+
+### build/index.d.ts#escalationStepSchema
+export declare const escalationStepSchema: z.ZodType<EscalationStep, EscalationStep>;
+
+### build/index.d.ts#estimateSchema
+export declare const estimateSchema: z.ZodType<Estimate, Estimate>;
+
+### build/index.d.ts#exhaustions
+export declare function exhaustions(routes: readonly Route[], channels: readonly ChannelDescriptor[], reports: readonly Report[]): Exhaustion[];
+
+### build/index.d.ts#expectationConfigSchema
+export declare const expectationConfigSchema: z.ZodType<ExpectationConfig, ExpectationConfig>;
+
+### build/index.d.ts#expectationProblems
+export declare function expectationProblems(settings: readonly ExpectationConfig[] | undefined, expectations: readonly Expectation[], at: Instant): string[];
+
+### build/index.d.ts#expectedHarmSchema
+export declare const expectedHarmSchema: z.ZodType<ExpectedHarm, ExpectedHarm>;
+
+### build/index.d.ts#expectedOf
+export declare function expectedOf(probability: Estimate, count: Estimate): Estimate;
+
+### build/index.d.ts#failureDomains
+export declare function failureDomains(source: SourceDescriptor): readonly string[];
+
+### build/index.d.ts#fetchFailureSchema
+export declare const fetchFailureSchema: z.ZodType<FetchFailure, FetchFailure>;
+
+### build/index.d.ts#fetchOutcomeSchema
+export declare const fetchOutcomeSchema: z.ZodType<FetchOutcome, FetchOutcome>;
+
+### build/index.d.ts#fetchRecordSchema
+export declare const fetchRecordSchema: z.ZodType<FetchRecord, FetchRecord>;
+
+### build/index.d.ts#fitsWhy
+export declare function fitsWhy(text: string, limit: WhyLimit): boolean;
+
+### build/index.d.ts#foreignIncidents
+export declare function foreignIncidents(reports: readonly {
+  readonly id: string;
+  readonly source: string;
+}[], sources: ReadonlySet<string> | undefined): (incident: Pick<Incident, "anchor" | "reports">) => boolean;
+
+### build/index.d.ts#gapGrade
+export declare function gapGrade(entry: Coverage, threatened: boolean): {
+  readonly severity: Severity;
+  readonly urgency: Urgency;
+};
+
+### build/index.d.ts#graphLabels
+export declare function graphLabels(labels: WhyLabels, graph: Pick<InterestGraph, "labels"> | undefined): WhyLabels;
+
+### build/index.d.ts#hasKind
+export declare function hasKind(prefixes: readonly string[], kind: string): boolean;
+
+### build/index.d.ts#health
+export declare function health(descriptor: SourceDescriptor, start: Instant, records: readonly FetchRecord[], now: Instant, options?: HealthOptions): HealthStep;
+
+### build/index.d.ts#healthPayload
+export declare function healthPayload(input: HealthPayloadInput): HealthPayload;
+
+### build/index.d.ts#healthPayloadSchema
+export declare const healthPayloadSchema: z.ZodType<HealthPayload, HealthPayload>;
+
+### build/index.d.ts#healthStateSchema
+export declare const healthStateSchema: z.ZodType<HealthState, HealthState>;
+
+### build/index.d.ts#heldPersons
+export declare function heldPersons(holds: readonly EscalationHold[], reports: readonly Pick<Report, "id" | "addresses" | "headline">[], window: Duration, at: Instant): HeldPerson[];
+
+### build/index.d.ts#heldText
+export declare function heldText(entry: Pick<HeldPerson, "alerts">): string;
+
+### build/index.d.ts#higherLevel
+export declare function higherLevel(a: AssessedLevel, b: AssessedLevel): AssessedLevel;
+
+### build/index.d.ts#historyChangeAt
+export declare function historyChangeAt(incident: HistoryIncident, at: Instant): HistoryChange | undefined;
+
+### build/index.d.ts#historyChangeSchema
+export declare const historyChangeSchema: z.ZodType<HistoryChange, HistoryChange>;
+
+### build/index.d.ts#historyIncidentSchema
+export declare const historyIncidentSchema: z.ZodType<HistoryIncident, HistoryIncident>;
+
+### build/index.d.ts#historyPayload
+export declare function historyPayload(input: HistoryInput): HistoryPayload;
+
+### build/index.d.ts#historyPayloadSchema
+export declare const historyPayloadSchema: z.ZodType<HistoryPayload, HistoryPayload>;
+
+### build/index.d.ts#historyPlaceSchema
+export declare const historyPlaceSchema: z.ZodType<HistoryPlace, HistoryPlace>;
+
+### build/index.d.ts#historyRegionSchema
+export declare const historyRegionSchema: z.ZodType<HistoryRegion, HistoryRegion>;
+
+### build/index.d.ts#historyTimes
+export declare function historyTimes(kept: Histories): readonly Instant[];
+
+### build/index.d.ts#historyView
+export declare function historyView(kept: Histories, at: Instant, places: readonly MapPlace[]): MapView;
+
+### build/index.d.ts#holdKey
+export declare function holdKey(hold: Pick<EscalationHold, "incident" | "level" | "person" | "episode">): string;
+
+### build/index.d.ts#inAudience
+export declare function inAudience(item: Audience, person: PersonId): boolean;
+
+### build/index.d.ts#inQuietWindow
+export declare function inQuietWindow(window: QuietWindow | undefined, at: Instant): boolean;
+
+### build/index.d.ts#incidentLineSchema
+export declare const incidentLineSchema: z.ZodType<IncidentLine, IncidentLine>;
+
+### build/index.d.ts#incidentSchema
+export declare const incidentSchema: z.ZodType<Incident, Incident>;
+
+### build/index.d.ts#incidentTitle
+export declare function incidentTitle(incident: Incident, reports: readonly Report[]): string;
+
+### build/index.d.ts#incidents
+export declare function incidents(state: MergeState, at: Instant, options?: IncidentOptions): Incident[];
+
+### build/index.d.ts#indicatorAreaKindSchema
+export declare const indicatorAreaKindSchema: z.ZodType<IndicatorAreaKind, IndicatorAreaKind>;
+
+### build/index.d.ts#indicatorAreaSchema
+export declare const indicatorAreaSchema: z.ZodType<IndicatorArea, IndicatorArea>;
+
+### build/index.d.ts#indicatorBreadth
+export declare function indicatorBreadth(series: readonly SeriesSignal[], places: readonly WatchedPlace[], zones?: readonly ZoneRegions[]): IndicatorBreadth;
+
+### build/index.d.ts#instantSchema
+export declare const instantSchema: z.ZodType<Instant, Instant>;
+
+### build/index.d.ts#interestDefaultsConfigSchema
+export declare const interestDefaultsConfigSchema: z.ZodType<InterestDefaultsConfig, InterestDefaultsConfig>;
+
+### build/index.d.ts#interestEdgeSchema
+export declare const interestEdgeSchema: z.ZodType<InterestEdge, InterestEdge>;
+
+### build/index.d.ts#interestGraphSchema
+export declare const interestGraphSchema: z.ZodType<InterestGraph, InterestGraph>;
+
+### build/index.d.ts#interestRowSchema
+export declare const interestRowSchema: z.ZodType<InterestRow, InterestRow>;
+
+### build/index.d.ts#interestsPayload
+export declare function interestsPayload(config: AlertConfig, channels?: readonly ChannelDescriptor[], lookup?: ContactLookup): InterestsPayload;
+
+### build/index.d.ts#interestsPayloadSchema
+export declare const interestsPayloadSchema: z.ZodType<InterestsPayload, InterestsPayload>;
+
+### build/index.d.ts#interestsPersonSchema
+export declare const interestsPersonSchema: z.ZodType<InterestsPerson, InterestsPerson>;
+
+### build/index.d.ts#isContactUrl
+export declare function isContactUrl(text: string): boolean;
+
+### build/index.d.ts#isDimensionId
+export declare function isDimensionId(text: string): text is DimensionId;
+
+### build/index.d.ts#isLifeline
+export declare function isLifeline(code: string): code is Lifeline;
+
+### build/index.d.ts#isLimitedLevel
+export declare function isLimitedLevel(level: Level): level is LimitedLevel;
+
+### build/index.d.ts#isNeedCode
+export declare function isNeedCode(code: string): boolean;
+
+### build/index.d.ts#isPrivate
+export declare function isPrivate(item: Audience): boolean;
+
+### build/index.d.ts#isShape
+export declare function isShape(area: Area): area is MapShape;
+
+### build/index.d.ts#isSignal
+export declare function isSignal(score: number, moves: Move, cut: number): boolean;
+
+### build/index.d.ts#join
+export declare function join(a: MergeState, b: MergeState): MergeState;
+
+### build/index.d.ts#joinRuns
+export declare function joinRuns(a: DrillRun, b: DrillRun): DrillRun;
+
+### build/index.d.ts#kindClassSchema
+export declare const kindClassSchema: z.ZodType<KindClass, KindClass>;
+
+### build/index.d.ts#kindCodeSchema
+export declare const kindCodeSchema: z.ZodType<string, string>;
+
+### build/index.d.ts#kindLabel
+export declare function kindLabel(code: string): string;
+
+### build/index.d.ts#kindOfNode
+export declare function kindOfNode(node: NodeKey): SubjectKind | undefined;
+
+### build/index.d.ts#kindPriorSchema
+export declare const kindPriorSchema: z.ZodType<KindPrior, KindPrior>;
+
+### build/index.d.ts#kindSchema
+export declare const kindSchema: z.ZodType<Kind, Kind>;
+
+### build/index.d.ts#knownKind
+export declare function knownKind(code: string): boolean;
+
+### build/index.d.ts#lastRun
+export declare function lastRun(runs: readonly DrillRun[], id: string): DrillRun | undefined;
+
+### build/index.d.ts#lateSources
+export declare function lateSources(states: readonly Lateness[]): SourceId[];
+
+### build/index.d.ts#lateness
+export declare function lateness(checks: readonly Carriage[], expectations: readonly Expectation[], at: Instant, rule: LimitRule): Lateness[];
+
+### build/index.d.ts#latenessLimitSchema
+export declare const latenessLimitSchema: z.ZodType<LatenessLimit, LatenessLimit>;
+
+### build/index.d.ts#latenessSchema
+export declare const latenessSchema: z.ZodType<Lateness, Lateness>;
+
+### build/index.d.ts#latenessStateSchema
+export declare const latenessStateSchema: z.ZodType<LatenessState, LatenessState>;
+
+### build/index.d.ts#latenessStep
+export declare function latenessStep(checks: readonly Carriage[], expectations: readonly Expectation[], at: Instant, rule: LimitRule, before?: LatenessFolds): LatenessStep;
+
+### build/index.d.ts#latestIn
+export declare function latestIn<T extends {
+  readonly at: Instant;
+}>(items: readonly T[], at: Instant, window: Duration): T | undefined;
+
+### build/index.d.ts#levelRuleSchema
+export declare const levelRuleSchema: z.ZodType<LevelRule, LevelRule>;
+
+### build/index.d.ts#levelSchema
+export declare const levelSchema: z.ZodType<Level, Level>;
+
+### build/index.d.ts#levelTableSchema
+export declare const levelTableSchema: z.ZodType<LevelTable, LevelTable>;
+
+### build/index.d.ts#limitRoutes
+export declare function limitRoutes(input: LimitInput): LimitResult;
+
+### build/index.d.ts#limitRule
+export declare function limitRule(options: DelayLimitOptions): LimitRule;
+
+### build/index.d.ts#limitShare
+export declare function limitShare(watches: readonly CopyWatch[], at: Instant): number;
+
+### build/index.d.ts#linesAt
+export declare function linesAt(incident: Pick<Incident, "lines">, place: WatchedPlace): IncidentLine[];
+
+### build/index.d.ts#linkFamilySchema
+export declare const linkFamilySchema: z.ZodType<LinkFamily, LinkFamily>;
+
+### build/index.d.ts#linkPolicySchema
+export declare const linkPolicySchema: z.ZodType<LinkPolicy, LinkPolicy>;
+
+### build/index.d.ts#linkRule
+export declare function linkRule(policy: LinkPolicy): LinkRule;
+
+### build/index.d.ts#loadConfig
+export declare function loadConfig(config: AlertConfig, channels: readonly ChannelDescriptor[], secret: SecretLookup, services?: ContactServices): LoadedConfig;
+
+### build/index.d.ts#localPlaces
+export declare function localPlaces(config: AlertConfig): WatchedPlace[];
+
+### build/index.d.ts#locateOutcomeSchema
+export declare const locateOutcomeSchema: z.ZodType<LocateOutcome, LocateOutcome>;
+
+### build/index.d.ts#lowerLevel
+export declare function lowerLevel(a: AssessedLevel, b: AssessedLevel): AssessedLevel;
+
+### build/index.d.ts#mapPayload
+export declare function mapPayload(input: MapPayloadInput): MapPayload;
+
+### build/index.d.ts#mapProblemSchema
+export declare const mapProblemSchema: z.ZodType<MapProblem, MapProblem>;
+
+### build/index.d.ts#mapResultSchema
+export declare const mapResultSchema: z.ZodType<MapResult, MapResult>;
+
+### build/index.d.ts#mapShapeSchema
+export declare const mapShapeSchema: z.ZodType<MapShape, MapShape>;
+
+### build/index.d.ts#mapView
+export declare function mapView(input: MapInput): MapView;
+
+### build/index.d.ts#matchPlaces
+export declare function matchPlaces(incident: Pick<Incident, "areas">, places: readonly WatchedPlace[]): PlaceMatch[];
+
+### build/index.d.ts#matchSubjects
+export declare function matchSubjects(incident: Pick<Incident, "about">, watches: readonly SubjectWatch[]): SubjectWatch[];
+
+### build/index.d.ts#measureDeclarationSchema
+export declare const measureDeclarationSchema: z.ZodType<MeasureDeclaration, MeasureDeclaration>;
+
+### build/index.d.ts#measureOf
+export declare function measureOf(reading: Reading, source: SourceDescriptor): MeasureDeclaration | undefined;
+
+### build/index.d.ts#mergeParts
+export declare function mergeParts(root: AlertConfig, parts: readonly NamedPart[]): Result<AlertConfig, readonly string[]>;
+
+### build/index.d.ts#messageKey
+export declare function messageKey(input: MessageKeyInput): string;
+
+### build/index.d.ts#messageOf
+export declare function messageOf(incident: Incident, reports: readonly Report[], send: EscalationSend, why?: string): Message;
+
+### build/index.d.ts#messageSchema
+export declare const messageSchema: z.ZodType<Message, Message>;
+
+### build/index.d.ts#missLimit
+export declare function missLimit(record: MissRecord, level: number): number | undefined;
+
+### build/index.d.ts#missRecord
+export declare function missRecord(record: readonly Decision[]): MissRecord;
+
+### build/index.d.ts#missedDrillAt
+export declare function missedDrillAt(drill: DrillConfig, runs: readonly DrillRun[], at: Instant, quiet?: QuietWindow): Instant | undefined;
+
+### build/index.d.ts#mostInWindow
+export declare function mostInWindow(times: readonly Instant[], length: Duration): number;
+
+### build/index.d.ts#moveSchema
+export declare const moveSchema: z.ZodType<Move, Move>;
+
+### build/index.d.ts#muteEffectSchema
+export declare const muteEffectSchema: z.ZodType<MuteEffect, MuteEffect>;
+
+### build/index.d.ts#muteOf
+export declare function muteOf(input: RelevanceInput, graph: InterestGraph, policy: RelevancePolicy): {
+  readonly mute: string;
+  readonly effect: MuteEffect;
+} | undefined;
+
+### build/index.d.ts#muteSchema
+export declare const muteSchema: z.ZodType<Mute, Mute>;
+
+### build/index.d.ts#nextDrillAt
+export declare function nextDrillAt(drill: DrillConfig, runs: readonly DrillRun[], at: Instant, quiet?: QuietWindow): Instant | undefined;
+
+### build/index.d.ts#nodeCovers
+export declare function nodeCovers(a: NodeKey, b: NodeKey): boolean;
+
+### build/index.d.ts#nodeKeySchema
+export declare const nodeKeySchema: z.ZodType<NodeKey, NodeKey>;
+
+### build/index.d.ts#nodesOverlap
+export declare function nodesOverlap(a: NodeKey, b: NodeKey): boolean;
+
+### build/index.d.ts#normalize
+export declare function normalize(parts: MergeParts): MergeState;
+
+### build/index.d.ts#observationId
+export declare function observationId(input: ObservationIdInput): ObservationId;
+
+### build/index.d.ts#observationIdSchema
+export declare const observationIdSchema: z.ZodType<ObservationId, ObservationId>;
+
+### build/index.d.ts#observationSchema
+export declare const observationSchema: z.ZodType<Observation, Observation>;
+
+### build/index.d.ts#observeConditions
+export declare function observeConditions(verdicts: readonly ObserveVerdict[], lifeSafety: readonly Incident[], state: MergeState, since: ReadonlyMap<SourceId, Instant>): ObserveCondition[];
+
+### build/index.d.ts#observeCut
+export declare function observeCut(input: ObserveCutInput): ObserveCut;
+
+### build/index.d.ts#observeFetch
+export declare function observeFetch(track: HealthTrack, record: FetchRecord, descriptor: SourceDescriptor, options?: HealthOptions): HealthStep;
+
+### build/index.d.ts#observeVerdict
+export declare function observeVerdict(input: ObserveVerdictInput): ObserveVerdict;
+
+### build/index.d.ts#operationSchema
+export declare const operationSchema: z.ZodType<Operation, Operation>;
+
+### build/index.d.ts#optInConfigSchema
+export declare const optInConfigSchema: z.ZodType<OptInConfig, OptInConfig>;
+
+### build/index.d.ts#optInFields
+export declare function optInFields(channel: Pick<ChannelDescriptor, "address">): readonly AddressField[];
+
+### build/index.d.ts#optInProblems
+export declare function optInProblems(records: readonly (OptInRecord | undefined)[]): string[];
+
+### build/index.d.ts#optInTime
+export declare function optInTime(record: Pick<OptInRecord, "at">): Instant | undefined;
+
+### build/index.d.ts#optedIn
+export declare function optedIn(records: readonly OptInRecord[], changes: readonly OptInChange[], number: string, at: Instant): boolean;
+
+### build/index.d.ts#outageAudit
+export declare function outageAudit(outages: readonly Outage[], chains: ReadonlyMap<PersonId, TryChain>, records: readonly TryRecord[], within: Duration): OutageReach[];
+
+### build/index.d.ts#outageConfigSchema
+export declare const outageConfigSchema: z.ZodType<OutageConfig, OutageConfig>;
+
+### build/index.d.ts#outagePersonConfigSchema
+export declare const outagePersonConfigSchema: z.ZodType<OutagePersonConfig, OutagePersonConfig>;
+
+### build/index.d.ts#ownBaselineSchema
+export declare const ownBaselineSchema: z.ZodType<OwnBaseline, OwnBaseline>;
+
+### build/index.d.ts#parentKind
+export declare function parentKind(code: string): string | null;
+
+### build/index.d.ts#parseConfig
+export declare function parseConfig(text: string, channels: readonly ChannelDescriptor[], secret: SecretLookup, parts?: readonly PartText[], services?: ContactServices): Result<ParsedConfig, readonly string[]>;
+
+### build/index.d.ts#parseCopySettings
+export declare function parseCopySettings(text: string): Result<CopySettings, readonly string[]>;
+
+### build/index.d.ts#partLabel
+export declare function partLabel(name: string, index: number): string;
+
+### build/index.d.ts#personConfigSchema
+export declare const personConfigSchema: z.ZodType<PersonConfig, PersonConfig>;
+
+### build/index.d.ts#personIdSchema
+export declare const personIdSchema: z.ZodType<PersonId, PersonId>;
+
+### build/index.d.ts#personInterests
+export declare function personInterests(entry: PersonConfig, channels?: readonly ChannelDescriptor[]): PersonInterests;
+
+### build/index.d.ts#personWatchSchema
+export declare const personWatchSchema: z.ZodType<PersonWatch, PersonWatch>;
+
+### build/index.d.ts#placeCodesWithContaining
+export declare function placeCodesWithContaining(codes: readonly RegionCode[], containing: (code: RegionCode) => readonly RegionCode[]): RegionCode[];
+
+### build/index.d.ts#placeConfigSchema
+export declare const placeConfigSchema: z.ZodType<PlaceConfig, PlaceConfig>;
+
+### build/index.d.ts#placeIdSchema
+export declare const placeIdSchema: z.ZodType<PlaceId, PlaceId>;
+
+### build/index.d.ts#placeLabels
+export declare function placeLabels(config: AlertConfig): WhyLabels;
+
+### build/index.d.ts#placeNode
+export declare function placeNode(place: PlaceId): NodeKey;
+
+### build/index.d.ts#placeOfNode
+export declare function placeOfNode(node: NodeKey): PlaceId | undefined;
+
+### build/index.d.ts#placeWhy
+export declare function placeWhy(places: readonly PlaceId[]): WhyRecord | undefined;
+
+### build/index.d.ts#placesLayer
+export declare function placesLayer(places: readonly PlaceId[]): readonly InterestEdge[];
+
+### build/index.d.ts#plainLabel
+export declare function plainLabel(labels: WhyLabels, node: NodeKey): string | undefined;
+
+### build/index.d.ts#planDigests
+export declare function planDigests(input: DigestInput): DigestPlan;
+
+### build/index.d.ts#policyFor
+export declare function policyFor(policies: readonly EscalationPolicy[], level: Level, incident: Pick<Incident, "status" | "about">): EscalationPolicy | undefined;
+
+### build/index.d.ts#policyName
+export declare function policyName(policy: EscalationPolicy): string;
+
+### build/index.d.ts#positionSchema
+export declare const positionSchema: z.ZodType<Position, Position>;
+
+### build/index.d.ts#probabilitySchema
+export declare const probabilitySchema: z.ZodType<Estimate, Estimate>;
+
+### build/index.d.ts#providerBalanceSchema
+export declare const providerBalanceSchema: z.ZodType<ProviderBalance, ProviderBalance>;
+
+### build/index.d.ts#pruneTombstones
+export declare function pruneTombstones(state: MergeState, at: Instant): MergeState;
+
+### build/index.d.ts#quietWindowProblems
+export declare function quietWindowProblems(window: QuietWindow): string[];
+
+### build/index.d.ts#quietWindowSchema
+export declare const quietWindowSchema: z.ZodType<QuietWindow, QuietWindow>;
+
+### build/index.d.ts#quotaHealthSchema
+export declare const quotaHealthSchema: z.ZodType<QuotaHealth, QuotaHealth>;
+
+### build/index.d.ts#quotaStageSchema
+export declare const quotaStageSchema: z.ZodType<QuotaStage, QuotaStage>;
+
+### build/index.d.ts#quotaStages
+export declare function quotaStages(quota: ChannelQuota): QuotaStage[];
+
+### build/index.d.ts#rankDelayOf
+export declare function rankDelayOf(level: Level, delays: RankDelays | undefined, fallback: Duration | undefined): Duration | undefined;
+
+### build/index.d.ts#rankDelayProblems
+export declare function rankDelayProblems(delays: RankDelays): string[];
+
+### build/index.d.ts#rankDelaysSchema
+export declare const rankDelaysSchema: z.ZodType<RankDelays, RankDelays>;
+
+### build/index.d.ts#rankFloorProblems
+export declare function rankFloorProblems(floor: Duration | undefined): string[];
+
+### build/index.d.ts#rankFloors
+export declare function rankFloors(channels: readonly ChannelDescriptor[], floor: Duration | undefined): ReadonlyMap<ChannelId, Duration>;
+
+### build/index.d.ts#reachOf
+export declare function reachOf<N>(input: RelevanceInput, graph: InterestGraph, policy: RelevancePolicy, arithmetic: ReachArithmetic<N>, end?: ReachEnd, options?: RelevanceOptions): TwoTerminalReliability<N>;
+
+### build/index.d.ts#reachedAssessment
+export declare function reachedAssessment(assessment: Assessment): Assessment;
+
+### build/index.d.ts#readHealthSchema
+export declare const readHealthSchema: z.ZodType<ReadHealth, ReadHealth>;
+
+### build/index.d.ts#readSeries
+export declare function readSeries(readings: readonly Reading[], measure: MeasureDeclaration, now: Instant, policy?: BaselinePolicy): SeriesRead;
+
+### build/index.d.ts#readingProblems
+export declare function readingProblems(reading: Reading, source: SourceDescriptor): string[];
+
+### build/index.d.ts#readingSchema
+export declare const readingSchema: z.ZodType<Reading, Reading>;
+
+### build/index.d.ts#receiptSchema
+export declare const receiptSchema: z.ZodType<Receipt, Receipt>;
+
+### build/index.d.ts#recentRecovery
+export declare function recentRecovery(recoveries: readonly LogRecovery[], at: Instant): LogRecovery | undefined;
+
+### build/index.d.ts#recentStep
+export declare function recentStep(steps: readonly ClockStep[], at: Instant): ClockStep | undefined;
+
+### build/index.d.ts#recipientProblems
+export declare function recipientProblems(recipient: Recipient, channels: readonly ChannelDescriptor[]): string[];
+
+### build/index.d.ts#regionCodeKey
+export declare function regionCodeKey(code: RegionCode): string;
+
+### build/index.d.ts#regionCodeSchema
+export declare const regionCodeSchema: z.ZodType<RegionCode, RegionCode>;
+
+### build/index.d.ts#regionContains
+export declare function regionContains(area: RegionCode, place: RegionCode): boolean;
+
+### build/index.d.ts#regionCovers
+export declare function regionCovers(area: RegionCode, place: RegionCode): boolean;
+
+### build/index.d.ts#regionDistanceKm
+export declare function regionDistanceKm(region: MapRegion, at: Position): number | undefined;
+
+### build/index.d.ts#regionRank
+export declare function regionRank(code: RegionCode): number;
+
+### build/index.d.ts#regionsNear
+export declare function regionsNear(regions: readonly MapRegion[], at: Position, bufferKm: number): NearRegion[];
+
+### build/index.d.ts#relevance
+export declare function relevance(input: RelevanceInput, graph: InterestGraph, policy: RelevancePolicy, options?: RelevanceOptions): Relevance;
+
+### build/index.d.ts#relevancePathSchema
+export declare const relevancePathSchema: z.ZodType<RelevancePath, RelevancePath>;
+
+### build/index.d.ts#relevancePolicySchema
+export declare const relevancePolicySchema: z.ZodType<RelevancePolicy, RelevancePolicy>;
+
+### build/index.d.ts#relevanceSchema
+export declare const relevanceSchema: z.ZodType<Relevance, Relevance>;
+
+### build/index.d.ts#reportId
+export declare function reportId(input: ReportIdInput): ReportId;
+
+### build/index.d.ts#reportIdSchema
+export declare const reportIdSchema: z.ZodType<ReportId, ReportId>;
+
+### build/index.d.ts#reportPasses
+export declare function reportPasses(filter: ReportFilter, report: Report): boolean;
+
+### build/index.d.ts#reportSchema
+export declare const reportSchema: z.ZodType<Report, Report>;
+
+### build/index.d.ts#reportsShared
+export declare function reportsShared(copy: string | undefined, copies: readonly CopyWatch[] | undefined, at: Instant): boolean;
+
+### build/index.d.ts#requiredFor
+export declare function requiredFor(policy: CoveragePolicy, kind: string): number;
+
+### build/index.d.ts#resolveOptIn
+export declare function resolveOptIn(list: readonly OptInConfig[], secret: SecretLookup): ResolvedOptIn;
+
+### build/index.d.ts#responseTypeSchema
+export declare const responseTypeSchema: z.ZodType<ResponseType, ResponseType>;
+
+### build/index.d.ts#retire
+export declare function retire(state: MergeState, reports: readonly ReportId[], until: Instant): MergeState;
+
+### build/index.d.ts#retirements
+export declare function retirements(state: MergeState, found: readonly Incident[], at: Instant, horizon?: Duration, quiet?: QuietRule): ReportId[];
+
+### build/index.d.ts#route
+export declare function route(input: RouteInput): Route[];
+
+### build/index.d.ts#ruleSteps
+export declare function ruleSteps(policy: EscalationPolicy, rules: readonly ChannelRule[] | undefined, incident: Pick<Incident, "status" | "kind" | "about">): RuledPolicy;
+
+### build/index.d.ts#runOpens
+export declare function runOpens(run: ChannelRun, policy: ChannelDownPolicy): boolean;
+
+### build/index.d.ts#schemaOf
+export declare function schemaOf<T>(): <S extends z.ZodType<T, T>>(schema: S & Exact<S, T>) => z.ZodType<T, T>;
+
+### build/index.d.ts#scoreFactorSchema
+export declare const scoreFactorSchema: z.ZodType<ScoreFactor, ScoreFactor>;
+
+### build/index.d.ts#scorePriorsSchema
+export declare const scorePriorsSchema: z.ZodType<ScorePriors, ScorePriors>;
+
+### build/index.d.ts#secretRefSchema
+export declare const secretRefSchema: z.ZodType<SecretRef, SecretRef>;
+
+### build/index.d.ts#sendCapUsd
+export declare function sendCapUsd(spend: Pick<SpendConfig, "monthlyUsd" | "fixed">): number;
+
+### build/index.d.ts#sendLimitConfigSchema
+export declare const sendLimitConfigSchema: z.ZodType<SendLimitConfig, SendLimitConfig>;
+
+### build/index.d.ts#sendLimitProblems
+export declare function sendLimitProblems(config: SendLimitConfig): string[];
+
+### build/index.d.ts#sendLimitsOf
+export declare function sendLimitsOf(config: SendLimitConfig | undefined): SendLimits;
+
+### build/index.d.ts#sendOutcomeSchema
+export declare const sendOutcomeSchema: z.ZodType<SendOutcome, SendOutcome>;
+
+### build/index.d.ts#sentFails
+export declare function sentFails(counts: SentCounts): boolean;
+
+### build/index.d.ts#sentLevel
+export declare function sentLevel(state: MergeState, incident: Incident, person: PersonId): Level | undefined;
+
+### build/index.d.ts#seriesKey
+export declare function seriesKey(reading: Reading): string;
+
+### build/index.d.ts#servicesLayer
+export declare function servicesLayer(services: readonly NodeKey[]): readonly InterestEdge[];
+
+### build/index.d.ts#severitySchema
+export declare const severitySchema: z.ZodType<Severity, Severity>;
+
+### build/index.d.ts#shadowDifferences
+export declare function shadowDifferences(incidents: readonly ScoredIncident[]): ShadowDifference[];
+
+### build/index.d.ts#shadowScore
+export declare function shadowScore(incident: Pick<Incident, "kind" | "certainty">, priors: ScorePriors): ShadowScore;
+
+### build/index.d.ts#shadowScoreSchema
+export declare const shadowScoreSchema: z.ZodType<ShadowScore, ShadowScore>;
+
+### build/index.d.ts#shapeDistanceKm
+export declare function shapeDistanceKm(shape: MapShape, at: Position): number | undefined;
+
+### build/index.d.ts#sharedHandoverAt
+export declare function sharedHandoverAt(copy: string | undefined, copies: readonly CopyWatch[] | undefined): Instant | undefined;
+
+### build/index.d.ts#shiftDelivery
+export declare function shiftDelivery(delivery: Delivery, size: Duration): Delivery;
+
+### build/index.d.ts#shiftEndMark
+export declare function shiftEndMark(mark: EndMark, size: Duration): EndMark;
+
+### build/index.d.ts#shiftEscalationEnd
+export declare function shiftEscalationEnd(end: EscalationEnd, size: Duration): EscalationEnd;
+
+### build/index.d.ts#shiftEscalationStart
+export declare function shiftEscalationStart(start: EscalationStart, size: Duration): EscalationStart;
+
+### build/index.d.ts#shiftHealth
+export declare function shiftHealth(track: HealthTrack, size: Duration): HealthTrack;
+
+### build/index.d.ts#shiftMerge
+export declare function shiftMerge(state: MergeState, size: Duration): MergeState;
+
+### build/index.d.ts#shiftReport
+export declare function shiftReport(report: Report, size: Duration): Report;
+
+### build/index.d.ts#significanceSchema
+export declare const significanceSchema: z.ZodType<Significance, Significance>;
+
+### build/index.d.ts#simplifyBasemap
+export declare function simplifyBasemap(regions: readonly MapRegion[], toleranceKm: number): MapRegion[];
+
+### build/index.d.ts#sourceClearAt
+export declare function sourceClearAt(lines: SystemLines, snapshot: Pick<SystemSnapshot, "sources" | "health" | "sourceClear">, at: Instant): Instant[];
+
+### build/index.d.ts#sourceClearConfigSchema
+export declare const sourceClearConfigSchema: z.ZodType<SourceClearConfig, SourceClearConfig>;
+
+### build/index.d.ts#sourceClearPolicy
+export declare function sourceClearPolicy(config?: SourceClearConfig): SourceClearPolicy;
+
+### build/index.d.ts#sourceClearTime
+export declare function sourceClearTime(policy: SourceClearPolicy, source: SourceDescriptor | undefined): Duration;
+
+### build/index.d.ts#sourceCovers
+export declare function sourceCovers(source: SourceDescriptor, place: WatchedPlace, kind: string): boolean;
+
+### build/index.d.ts#sourceDescriptorSchema
+export declare const sourceDescriptorSchema: z.ZodType<SourceDescriptor, SourceDescriptor>;
+
+### build/index.d.ts#sourceHealthSchema
+export declare const sourceHealthSchema: z.ZodType<SourceHealth, SourceHealth>;
+
+### build/index.d.ts#sourceHealthView
+export declare function sourceHealthView(health: SourceHealth): SourceHealthView;
+
+### build/index.d.ts#sourceHealthViewSchema
+export declare const sourceHealthViewSchema: z.ZodType<SourceHealthView, SourceHealthView>;
+
+### build/index.d.ts#sourceIdSchema
+export declare const sourceIdSchema: z.ZodType<SourceId, SourceId>;
+
+### build/index.d.ts#sourcePlaces
+export declare function sourcePlaces(config: AlertConfig, source: SourceId): WatchedPlace[];
+
+### build/index.d.ts#spendConfigSchema
+export declare const spendConfigSchema: z.ZodType<SpendConfig, SpendConfig>;
+
+### build/index.d.ts#staleTime
+export declare function staleTime(latest: Reading, measure: MeasureDeclaration, policy?: BaselinePolicy): Duration;
+
+### build/index.d.ts#startHealth
+export declare function startHealth(source: SourceId, at: Instant): HealthTrack;
+
+### build/index.d.ts#statusSchema
+export declare const statusSchema: z.ZodType<Status, Status>;
+
+### build/index.d.ts#stepSizeText
+export declare function stepSizeText(size: Duration): string;
+
+### build/index.d.ts#storeEmptyAt
+export declare function storeEmptyAt(fill: StoreFill): Instant;
+
+### build/index.d.ts#subjectEntrySchema
+export declare const subjectEntrySchema: z.ZodType<SubjectEntry, SubjectEntry>;
+
+### build/index.d.ts#subjectKindSchema
+export declare const subjectKindSchema: z.ZodType<SubjectKind, SubjectKind>;
+
+### build/index.d.ts#subjectNode
+export declare function subjectNode(subject: SubjectKey): NodeKey;
+
+### build/index.d.ts#subjectSchema
+export declare const subjectSchema: z.ZodType<Subject, Subject>;
+
+### build/index.d.ts#subjectWatchSchema
+export declare const subjectWatchSchema: z.ZodType<SubjectWatch, SubjectWatch>;
+
+### build/index.d.ts#systemReports
+export declare function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: Instant): SystemStep;
+
+### build/index.d.ts#tableLevel
+export declare function tableLevel(policy: AssessPolicy, incident: Pick<Incident | IncidentLine, "kind" | "severity" | "urgency" | "onset">, at?: Instant, foreign?: boolean): TableResult;
+
+### build/index.d.ts#tellConfigSchema
+export declare const tellConfigSchema: z.ZodType<TellConfig, TellConfig>;
+
+### build/index.d.ts#tellSiteSchema
+export declare const tellSiteSchema: z.ZodType<TellSite, TellSite>;
+
+### build/index.d.ts#threats
+export declare function threats(incidents: readonly Incident[], places: readonly WatchedPlace[]): Threat[];
+
+### build/index.d.ts#throttleConfigSchema
+export declare const throttleConfigSchema: z.ZodType<ThrottleConfig, ThrottleConfig>;
+
+### build/index.d.ts#throttleOf
+export declare function throttleOf(config: ThrottleConfig | undefined): Throttle;
+
+### build/index.d.ts#throttleProblems
+export declare function throttleProblems(config: ThrottleConfig): string[];
+
+### build/index.d.ts#throttleRoutes
+export declare function throttleRoutes(input: ThrottleInput): ThrottleResult;
+
+### build/index.d.ts#throttleStreamOf
+export declare function throttleStreamOf(item: ThrottleItem, id: string, streams: ThrottleStreams): string;
+
+### build/index.d.ts#topicEntry
+export declare function topicEntry(kind: string, graph: InterestGraph): SubjectEntry | undefined;
+
+### build/index.d.ts#transportSchema
+export declare const transportSchema: z.ZodType<Transport, Transport>;
+
+### build/index.d.ts#tryChainSchema
+export declare const tryChainSchema: z.ZodType<TryChain, TryChain>;
+
+### build/index.d.ts#underPriorSchema
+export declare const underPriorSchema: z.ZodType<UnderPrior, UnderPrior>;
+
+### build/index.d.ts#unknownKinds
+export declare function unknownKinds(codes: Iterable<string>): string[];
+
+### build/index.d.ts#urgencySchema
+export declare const urgencySchema: z.ZodType<Urgency, Urgency>;
+
+### build/index.d.ts#watchSchema
+export declare const watchSchema: z.ZodType<Watch, Watch>;
+
+### build/index.d.ts#watchedDrillMiss
+export declare function watchedDrillMiss(watch: DrillWatch, copies: readonly CopyWatch[], at: Instant, held?: Instant, grace?: Duration): DrillWatchMiss | undefined;
+
+### build/index.d.ts#watchedDrillReportAt
+export declare function watchedDrillReportAt(watch: DrillWatch, copies: readonly CopyWatch[], held?: Instant, grace?: Duration): Instant | undefined;
+
+### build/index.d.ts#watchedPlaceSchema
+export declare const watchedPlaceSchema: z.ZodType<WatchedPlace, WatchedPlace>;
+
+### build/index.d.ts#whyLimitSchema
+export declare const whyLimitSchema: z.ZodType<WhyLimit, WhyLimit>;
+
+### build/index.d.ts#whyLine
+export declare function whyLine(record: WhyRecord, labels: WhyLabels, limit: WhyLimit): string | undefined;
+
+### build/index.d.ts#whyRecordSchema
+export declare const whyRecordSchema: z.ZodType<WhyRecord, WhyRecord>;
+
+### build/index.d.ts#workLayer
+export declare function workLayer(works: readonly string[], table?: Readonly<Record<string, WorkDefaults>>, date?: string): readonly InterestEdge[];
