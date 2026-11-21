@@ -12,7 +12,7 @@ export interface EntryIndex {
   /** This function folds one event of the log. The events come in the order of the log. */
   add(event: RuntimeEvent): void;
   /** This function drops each time of a report that the merge state does not have. */
-  prune(merge: MergeState): void;
+  prune(merge: Pick<MergeState, "reports">): void;
   /**
    * This function gives the times of entry for a state. An own part has its own time, because a step of the clock moved
    * it with the stamps. A part of both sides gets the earlier time.

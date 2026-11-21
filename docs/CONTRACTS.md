@@ -138,6 +138,29 @@ A delivery is one accepted send. A failed send makes no delivery, so its step st
 
 Property tests hold each law. They use the seeded generator of `@mark1russell7/rigor-generators`, and the variable `SEED` replays a run. They also examine that each order of arrival gives the same incidents.
 
+### The retention
+
+The merge state keeps only the recent incidents (AL-47, AL-109). Thus the work of a pass and the memory of a start follow the recent incidents, not the age of the log.
+
+- An incident retires as a whole when it is not live and nothing of it changed in its horizon.
+- The last change is the latest sent, received, expiry, end mark, delivery or acknowledgment time of its reports. Thus an expiry in the future keeps an incident.
+- The horizon of an incident that a person received is 7 days (`RETENTION_HORIZON`). A report of it has a delivery or an acknowledgment.
+- The horizon of a quiet incident is 6 hours (`QUIET_HORIZON`). No person received it. Most incidents are quiet, for example an alert of a far area.
+- The function `quietKeeps` of the runtime gives the full horizon to more incidents. These are incidents with an escalation, a hold or a suppression of this copy.
+- It also gives the full horizon to an incident with a report of a source in observe mode, or with a report that starts the check of an expectation.
+- A retired report gets a tombstone for 30 days (`TOMBSTONE_LIFE`). The tombstone keeps out a late copy of the report, also from another copy of the system.
+- The tombstone also keeps out the late deliveries, acknowledgments and end marks of its report.
+- A tombstone keeps out only the parts of its report id. An update of the source has a new id. Thus it opens a new incident, and the route sends it.
+
+The fold of the runtime retires on a cadence of the event time (AL-109):
+
+- The step comes before the first event at one interval or more after the last step. The interval is 1 hour (`RETIRE_EVERY`). The step has the time of that event.
+- A step of the clock, an import and an observation get no step. An import has the time of another copy, and the start reads no observation.
+- No wall clock decides a retirement, and the step writes no event. Thus the live runtime and the rebuild of its log give the same state at each event.
+- A `retired` event of an older build still folds. It removes its reports and gives them tombstones.
+
+The history of a quiet incident is shorter. The log keeps each event, but it has no index by time. Thus `/history` gives a quiet incident for 6 hours after its last change.
+
 ## The source contract
 
 Each source package registers three or more procedures under `alerts.source.<id>`:
@@ -1955,7 +1978,8 @@ The file `schemas.ts` of the core has one zod 4 schema for each data type of the
 - The link rule has two families, the earthquakes and the geomagnetic storms. Each other kind with two sources of different ids gets its family with its second source.
 - The calculation of the level from probabilities and costs (AL-31), with the base rates from the event log.
 - The count of misses that ends a report of a snapshot source is 2 (`SNAPSHOT_MISSES`). This value is a shortcut. A measure of the flap rate of the IEM list replaces it (AL-8).
-- The merge state grows with each report. A compaction of the incidents that ended before a horizon keeps it small. It must keep the three laws.
+- A copy can read the log of another copy more than 6 hours late. Then it can retire a quiet incident that the other copy sent. The tombstone keeps out the late delivery.
+- The log has no index by time. Thus `/history` gives a quiet incident only for its quiet horizon of 6 hours.
 - The frame clock does not see a step while the process is down, because the first frame starts with the process. Then a time of the log can be after the first pass.
 - The park times of the hosts in `polite-crawler` do not move at a step of the wall clock.
 - The quota gates read the wall clock with no frame. Their windows are civil times, thus a step changes them as it changes the calendar.

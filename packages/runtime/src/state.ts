@@ -6,8 +6,10 @@
 import {
   add,
   addSystemReports,
+  DEFAULT_LINK_POLICY,
   EMPTY_STATE,
   join,
+  linkRule,
   NO_SYSTEM_LINES,
   normalize,
   observeFetch,
@@ -32,10 +34,12 @@ import {
   type EscalationEnd,
   type EscalationHold,
   type EscalationStart,
+  type Expectation,
   type Suppression,
   type HealthOptions,
   type HealthTrack,
   type Instant,
+  type LinkPolicy,
   type MergeParts,
   type MergeState,
   type Report,
@@ -46,12 +50,25 @@ import {
 } from "@mark1russell7/alerts";
 import { compareCodeUnits } from "@mark1russell7/text/order";
 import type { ImportEvent, RefusalKind, RetiredEvent, RuntimeEvent, SharedEvent } from "./events.ts";
+import { retention, retiredEvent, RETIRE_EVERY, type RetentionOptions } from "./retention.ts";
 
-/** What the fold reads from the configuration: the descriptors of the sources and the options of the health. */
+/** What the fold reads from the configuration: the descriptors of the sources, the options of the health and the retention. */
 export interface FoldContext {
   readonly sources: readonly SourceDescriptor[];
   readonly health?: HealthOptions;
+  /**
+   * The retention of old incidents (AL-109). With it, the fold retires on a cadence of the event time, with no event in
+   * the log. Without it, only a `retired` event retires.
+   */
+  readonly retention?: RetentionOptions;
+  /** The policy of the link rule of the merge. The retirement removes only whole incidents of this rule. The default is `DEFAULT_LINK_POLICY`. */
+  readonly link?: LinkPolicy;
+  /** The expectations of the view. A report that starts the check of an expectation keeps its incident (`quietKeeps`). */
+  readonly expectations?: readonly Expectation[];
 }
+
+/** This function gets the report ids of the merge state after each retirement of a fold or a rebuild, in the order of the log. */
+export type RetireHook = (merge: Pick<MergeState, "reports">) => void;
 
 /** The shared state of one side: this copy, or the other copies of the system. */
 export interface SharedState {
@@ -146,6 +163,11 @@ export interface RuntimeState {
    * source with no entry has no mode yet. The mode `live` stays: a later event `observe` does not change it.
    */
   readonly modes: Readonly<Record<string, SourceModeTrack>>;
+  /**
+   * The time of the last step of the retirement (AL-109): the time of its event. The next step comes before the first event
+   * at the interval `every` or more after it. A state with no retention in its context has none.
+   */
+  readonly retiredAt?: Instant;
 }
 
 /** The mode of one source (`ModeEvent`). */
@@ -250,8 +272,18 @@ export const EMPTY_RUNTIME: RuntimeState = {
   modes: {},
 };
 
-/** This function adds one event to the state. */
-export function fold(state: RuntimeState, event: RuntimeEvent, context: FoldContext): RuntimeState {
+/**
+ * This function adds one event to the state. With a retention in the context, a step of the retirement can come before
+ * the event (AL-109). `retired` gets the merge state after the step, and after the fold of a `retired` event.
+ */
+export function fold(state: RuntimeState, event: RuntimeEvent, context: FoldContext, retired?: RetireHook): RuntimeState {
+  const next = foldEvent(retireStep(state, event, context, retired), event, context);
+  if (event.type === "retired") retired?.(next.merge);
+  return next;
+}
+
+// The fold of one event, with no step of the retirement.
+function foldEvent(state: RuntimeState, event: RuntimeEvent, context: FoldContext): RuntimeState {
   const rest = foldRest(state, event, context);
   // A tombstone of this copy keeps the parts of a retired report out of each side. The own merge state applies its own tombstones.
   const parts = event.type === "import" ? withoutRetired(partsOf(event.event), rest.own.merge.retired) : partsOf(event);
@@ -263,16 +295,35 @@ export function fold(state: RuntimeState, event: RuntimeEvent, context: FoldCont
 }
 
 /**
- * This function gives the state of the events of a log, in their order. It equals a fold of each
- * event. The merge is a join of a semilattice, thus the function joins all the parts once, at the end.
+ * This function gives the state of the events of a log, in their order. It equals a fold of each event, and `retired`
+ * gets the same calls. The merge is a join of a semilattice, thus the function joins the parts only at a step of the
+ * retirement and at the end.
  */
-export function rebuild(events: Iterable<RuntimeEvent>, context: FoldContext): RuntimeState {
+export function rebuild(events: Iterable<RuntimeEvent>, context: FoldContext, retired?: RetireHook): RuntimeState {
   let state = EMPTY_RUNTIME;
   const own = collector();
   const imported = collector();
+  const removed = (): void => retired?.({ reports: [...own.parts.reports, ...imported.parts.reports] });
   for (const event of events) {
+    const at = stepTime(state, event, context);
+    if (at !== undefined) {
+      // The step reads the merge state before the event, as the fold does. The compaction also keeps the collectors small.
+      const kept = state.own.merge.retired;
+      const view = withSides(state, own.compact(kept), imported.compact([]));
+      const step = retirementAt(view, at, context);
+      if (step !== undefined) {
+        state = foldRetired(state, step);
+        own.compact([...kept, ...state.own.merge.retired]);
+        imported.drop(step.reports);
+        removed();
+      }
+      state = { ...state, retiredAt: at };
+    }
     // The tombstones before the event. A retirement drops some of them, but they still remove the own parts before it.
     const before = state.own.merge.retired;
+    // The fold moves its own merge state in normal form. A step can change which copy of a report the normal form keeps.
+    // Thus the own parts get the normal form before the step moves them.
+    if (event.type === "clock") own.compact(before);
     state = foldRest(state, event, context);
     // A step moves the own parts before it, as the fold moves its own merge state. The parts after it are in the new frame.
     if (event.type === "clock") own.shift(event.size);
@@ -280,12 +331,44 @@ export function rebuild(events: Iterable<RuntimeEvent>, context: FoldContext): R
       // The fold drops the expired tombstones only at a retirement. Thus each tombstone of before removed each own part up to this event.
       own.compact([...before, ...state.own.merge.retired]);
       imported.drop(event.reports);
+      removed();
     } else if (event.type === "import") imported.push(withoutRetired(partsOf(event.event), state.own.merge.retired));
     else own.push(partsOf(event));
   }
   // The live tombstones are in the state, because the collectors keep no tombstone.
-  const sides = { own: { ...state.own, merge: normalize({ ...own.parts, retired: state.own.merge.retired }) }, imported: { ...state.imported, merge: normalize(imported.parts) } };
+  return withSides(state, normalize({ ...own.parts, retired: state.own.merge.retired }), normalize(imported.parts));
+}
+
+// The state with the merge state of each side, and their join.
+function withSides(state: RuntimeState, own: MergeState, imported: MergeState): RuntimeState {
+  const sides = { own: { ...state.own, merge: own }, imported: { ...state.imported, merge: imported } };
   return { ...state, ...sides, ...joined(sides.own, sides.imported) };
+}
+
+// The time of the step of the retirement before an event, or undefined. The step has the time of the event. These events have no step:
+// - A step of the clock, because its time is in the new frame.
+// - An import, because it has the time of another clock.
+// - An observation, because the start does not read it (`FOLD_TYPES`). The fetch event of the observation follows it with the same time.
+function stepTime(state: RuntimeState, event: RuntimeEvent, context: FoldContext): Instant | undefined {
+  if (context.retention === undefined || event.type === "clock" || event.type === "import" || event.type === "observation") return undefined;
+  const every = context.retention.every ?? RETIRE_EVERY;
+  return state.retiredAt === undefined || event.time >= state.retiredAt + every ? event.time : undefined;
+}
+
+// The retirement of a step at the time `at`, or undefined when nothing retires.
+function retirementAt(state: RuntimeState, at: Instant, context: FoldContext): RetiredEvent | undefined {
+  return retiredEvent(state, at, linkRule(context.link ?? DEFAULT_LINK_POLICY), retention(context.retention), context.expectations ?? []);
+}
+
+// The state after the step of the retirement before an event, or the same state with no step.
+function retireStep(state: RuntimeState, event: RuntimeEvent, context: FoldContext, retired: RetireHook | undefined): RuntimeState {
+  const at = stepTime(state, event, context);
+  if (at === undefined) return state;
+  const step = retirementAt(state, at, context);
+  if (step === undefined) return { ...state, retiredAt: at };
+  const next = foldRetired(state, step);
+  retired?.(next.merge);
+  return { ...next, retiredAt: at };
 }
 
 // The parts of one side of a rebuild, in the order of the log.
@@ -293,7 +376,7 @@ function collector(): {
   readonly parts: MergeParts;
   push(parts: MergeParts | undefined): void;
   shift(size: Duration): void;
-  compact(tombstones: readonly Tombstone[]): void;
+  compact(tombstones: readonly Tombstone[]): MergeState;
   drop(gone: readonly ReportId[]): void;
 } {
   const reports: Report[] = [];
@@ -308,9 +391,11 @@ function collector(): {
   };
   return {
     parts: { reports, deliveries, acks, ends },
-    // The parts with no part of a report with a tombstone. The collector keeps no tombstone.
+    // The parts with no part of a report with a tombstone, in normal form. The collector keeps no tombstone, but the merge state that it gives has them.
     compact(tombstones) {
-      replace(normalize({ reports, deliveries, acks, ends, retired: tombstones }));
+      const merge = normalize({ reports, deliveries, acks, ends, retired: tombstones });
+      replace(merge);
+      return merge;
     },
     drop(gone) {
       replace(withoutReports({ reports, deliveries, acks, ends }, new Set(gone)));
@@ -600,6 +685,7 @@ export function shiftState(state: RuntimeState, size: Duration): RuntimeState {
     holds: state.holds.map((hold) => ({ ...hold, at: hold.at + size })),
     suppressions: state.suppressions.map((suppression) => ({ ...suppression, at: suppression.at + size })),
     steps: state.steps.map((step) => ({ ...step, at: step.at + size })),
+    ...(state.retiredAt === undefined ? {} : { retiredAt: state.retiredAt + size }),
     recoveries: state.recoveries.map((recovery) => ({ ...recovery, at: recovery.at + size })),
     drills: Object.fromEntries(Object.entries(state.drills).map(([drill, at]) => [drill, at + size])),
     modes: Object.fromEntries(

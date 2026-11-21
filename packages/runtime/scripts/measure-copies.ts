@@ -51,6 +51,7 @@ let skipped: number;
 try {
   const types = JSON.stringify(FOLD_TYPES);
   const rows = db.prepare("SELECT body FROM events WHERE type IN (SELECT value FROM json_each(?)) ORDER BY seq").iterate(types) as unknown as Iterable<{ readonly body: string }>;
+  // The context has no retention. Thus the replay keeps each report of the log, except the reports of an old retired event.
   state = rebuild(eventsOf(rows), { sources: INSTANCE_SOURCES });
   skipped = (db.prepare("SELECT count(*) AS n FROM events WHERE type NOT IN (SELECT value FROM json_each(?))").get(types) as { n: number }).n;
 } finally {

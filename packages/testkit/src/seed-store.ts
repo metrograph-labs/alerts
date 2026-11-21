@@ -8,7 +8,7 @@
  * - `fetchStep` gives the observation events and the fetch event of each fetch.
  * - `snapshotStep` gives the `ended` events of a snapshot source.
  * - `importPage` gives the imports of the shared events of a second copy, and the `exchange` events.
- * - `retiredEvent` retires the old incidents on the interval of the runtime.
+ * - The fold retires the old incidents on the cadence of the runtime (AL-109). Thus the log has no `retired` event, as a live log.
  *
  * The options `shapes` and `transit` also write the cache of the zone shapes and the copy of the transit catalog, from
  * `seed-files.ts`.
@@ -31,7 +31,6 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import {
   DEFAULT_LINK_POLICY,
-  linkRule,
   normalize,
   observationId,
   reportId,
@@ -54,12 +53,11 @@ import {
   fold,
   importPage,
   openRuntimeLog,
-  retention,
-  retiredEvent,
   SNAPSHOT_MISSES,
   snapshotStep,
   type ExchangeCursor,
   type FetchEvent,
+  type FoldContext,
   type ObservationEvent,
   type ReceivedPage,
   type RetentionOptions,
@@ -196,7 +194,7 @@ export interface SeedStoreOptions {
   readonly mix?: LogMix;
   /** The time of the first event. The default is 2026-01-01T00:00:00Z. */
   readonly start?: Instant;
-  /** The retention of the runtime. The defaults are the defaults of the runtime. */
+  /** The retention of the runtime, in the context of the fold. The defaults are the defaults of the runtime. */
   readonly retention?: RetentionOptions;
   /** The byte size of `shapes.sqlite`, from `seedShapes`. When it is absent, the function writes no cache of shapes. */
   readonly shapes?: number;
@@ -232,7 +230,6 @@ export const SEED_PEER = "seed-b";
 const SEED_SELF = "seed-a";
 const PEER_LOG = "seed-b-log";
 const START = Date.UTC(2026, 0, 1);
-const FOLD = { sources: [] };
 const SEVERITIES: readonly Severity[] = ["minor", "moderate", "severe", "unknown"];
 // The bytes of an observation event other than its body: the envelope, the id, the source, the type and the transport.
 const OBSERVATION_FRAME = 330;
@@ -267,8 +264,8 @@ export async function seedStore(dir: string, options: SeedStoreOptions): Promise
   await mkdir(dir, { recursive: true });
   const path = join(dir, "runtime.sqlite");
   const mix = options.mix ?? LIVE_MIX;
-  const kept = retention(options.retention);
-  const link = linkRule(DEFAULT_LINK_POLICY);
+  // The context of the fold of a live copy with no source in its configuration. The fold retires on the cadence of the event time.
+  const context: FoldContext = { sources: [], retention: options.retention ?? {} };
   const root = random(seedOf(options.seed));
   const start = options.start ?? START;
   const span = mix.days * DAY;
@@ -280,7 +277,6 @@ export async function seedStore(dir: string, options: SeedStoreOptions): Promise
   const peerAt = new Map<SourceId, Instant>();
   let nextExchange = start + exchangeEvery;
   let nextStart = start + startEvery;
-  let nextRetire = start + kept.every;
   let position: ExchangeCursor | undefined;
   let shared: SharedItem[] = [];
   let peerNext = 0;
@@ -298,7 +294,7 @@ export async function seedStore(dir: string, options: SeedStoreOptions): Promise
   const chunk = Math.min(4_000_000, Math.max(64_000, options.log / 100));
   const add = (events: readonly RuntimeEvent[]): void => {
     for (const event of events) {
-      state = fold(state, event, FOLD);
+      state = fold(state, event, context);
       const bytes = JSON.stringify(event).length;
       const held = (types[event.type] ??= { count: 0, bytes: 0 });
       held.count += 1;
@@ -324,12 +320,8 @@ export async function seedStore(dir: string, options: SeedStoreOptions): Promise
     add([{ ...envelope("started", `started:seed-run-${String(runs)}`, start), run: `seed-run-${String(runs)}` }]);
     while (onDisk + pendingBytes < options.log) {
       const plan = earliest(plans);
-      const at = Math.min(plan.next, nextExchange, nextStart, nextRetire);
-      if (at === nextRetire) {
-        nextRetire += kept.every;
-        const retired = retiredEvent(state, at, link, kept);
-        if (retired !== undefined) add([retired]);
-      } else if (at === nextStart) {
+      const at = Math.min(plan.next, nextExchange, nextStart);
+      if (at === nextStart) {
         nextStart += startEvery;
         runs += 1;
         const run = `seed-run-${String(runs)}`;

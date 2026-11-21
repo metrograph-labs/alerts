@@ -8,8 +8,14 @@ import { LIVE_TYPES, seedStore, type SeedStoreResult } from "./seed-store.ts";
 
 // A small log: approximately 1 hour of the live mix.
 const SIZE = 2_000_000;
-// A short retention, so that a small log has retirements.
+// A short retention, so that a small log has retirements. The quiet horizon is the horizon.
 const RETENTION = { horizon: 5 * 60_000, life: 30 * 60_000, every: 5 * 60_000 };
+// The context of the fold of the seeded copy.
+const CONTEXT = { sources: [], retention: RETENTION };
+// The gate of the state at the plateau (AL-109): the JSON bytes of the state of the whole seeded log, and its growth over the
+// second half of the log. The limit is the bytes of the seed plus 10 %, for a small change of the format.
+const PLATEAU_BYTES = 0;
+const PLATEAU_GROWTH = 1.2;
 // The types of the source path, which the store writes.
 const SOURCE_TYPES = ["observation", "fetch", "import", "ended", "exchange"] as const;
 
@@ -55,15 +61,16 @@ describe("seedStore", () => {
   });
 
   it("writes a log that the fold of the runtime reads", () => {
-    const state = rebuild(events, { sources: [] });
+    const state = rebuild(events, CONTEXT);
     expect(state.time).toBe(first.end);
     expect(state.merge.reports.length).toBeGreaterThan(0);
     expect(state.imported.merge.reports.length).toBeGreaterThan(0);
     expect(state.merge.retired.length).toBeGreaterThan(0);
   });
 
-  it("has each type of the source path, and retirements", () => {
-    for (const type of [...SOURCE_TYPES, "started", "retired"]) expect(first.types[type]?.count ?? 0, type).toBeGreaterThan(0);
+  it("has each type of the source path, and no retired event, because the fold retires (AL-109)", () => {
+    for (const type of [...SOURCE_TYPES, "started"]) expect(first.types[type]?.count ?? 0, type).toBeGreaterThan(0);
+    expect(first.types["retired"]).toBeUndefined();
   });
 
   it("has the byte mix of the live log, within a factor of 1.5 for each large type", () => {
@@ -95,6 +102,16 @@ describe("seedStore", () => {
     const codes = [...text.matchAll(/"system":"ugc","code":"([^"]*)"/gu)].map((match) => match[1]);
     expect(codes.length).toBeGreaterThan(0);
     for (const code of codes) expect(code).toMatch(/^ZZZ\d{3}$/u);
+  });
+
+  it("holds the state of the seeded log at its plateau, under the fixed limit of the seed (AL-109)", () => {
+    // The life of a tombstone is 30 minutes, thus the state stops its growth before the second half of the log. The seed
+    // fixes the log, thus the bytes are exact. A change that grows the state past the limit fails here.
+    const bytesAt = (fraction: number): number => JSON.stringify(rebuild(events.slice(0, Math.round(events.length * fraction)), CONTEXT)).length;
+    const series = [0.5, 0.75, 1].map(bytesAt);
+    const [half, , whole] = series as [number, number, number];
+    expect(whole, JSON.stringify(series)).toBeLessThanOrEqual(PLATEAU_BYTES);
+    expect(whole, JSON.stringify(series)).toBeLessThanOrEqual(half * PLATEAU_GROWTH);
   });
 
   it("refuses a size that is not above 0", async () => {

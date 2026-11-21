@@ -3,6 +3,7 @@ import {
   DEFAULT_LINK_POLICY,
   incidents,
   linkRule,
+  QUIET_HORIZON,
   RETENTION_HORIZON,
   reportId,
   route,
@@ -27,7 +28,7 @@ import { describe, expect, it } from "vitest";
 import { envelope, type RuntimeEvent } from "./events.ts";
 import { importOf, sharedItem } from "./exchange.ts";
 import { openRuntimeLog } from "./log.ts";
-import { retention, retiredEvent, RETIRE_EVERY } from "./retention.ts";
+import { quietKeeps, retention, retiredEvent, RETIRE_EVERY } from "./retention.ts";
 import { openRuntime } from "./runtime.ts";
 import { cancelledKeys, EMPTY_RUNTIME, fold, rebuild, type FoldContext, type RuntimeState } from "./state.ts";
 
@@ -40,6 +41,8 @@ const API = "api" as SourceId;
 const PUSHOVER = "pushover" as ChannelId;
 const PERSON = "person-1" as PersonId;
 const CONTEXT: FoldContext = { sources: [] };
+/** The context of a fold that retires on the cadence of the event time, with the defaults of the retention (AL-109). */
+const RETAIN: FoldContext = { sources: [], retention: {} };
 const KANSAS: WatchedPlace = { id: "place:a" as PlaceId, codes: [{ system: "ugc", code: "KSZ083" }], bufferKm: 0 };
 /** A person who watches the place in Kansas, with one push for a life-safety warning. The address is fake. */
 const RECIPIENT: Recipient = {
@@ -321,18 +324,21 @@ describe("the retirement in the pass", () => {
       retention: { horizon: 2 * HOUR, life: 6 * HOUR, every: HOUR },
     });
 
-  it("writes one retired event for an old incident, keeps the next copies out, and a restart gives the same state", async () => {
+  const retiredEntries = (log: ReturnType<typeof openRuntimeLog>): unknown[] => [...log.entries({ after: 0, types: ["retired"], limit: 100 })];
+
+  it("retires an old incident in the fold with no retired event, keeps the next copies out, and a restart gives the same state", async () => {
     const log = openRuntimeLog(":memory:");
     const clock = fakeWallClock(T0);
     const runtime = open(log, clock, "run-1");
     await runtime.pass();
     expect(ids(runtime.state().merge.reports)).toEqual([W1]);
-    // The warning expires at T0 + 1 h. The last change is the expiry, thus it retires at T0 + 3 h.
+    // The warning expires at T0 + 1 h. No person got it, thus the quiet horizon applies: here it is the horizon of 2 h.
+    // The first event at T0 + 3 h is one interval after the last step, thus the step before it retires the incident.
     await clock.advance(3 * HOUR);
     await runtime.pass();
-    const retirements = [...log.entries({ after: 0, types: ["retired"], limit: 100 })].map((entry) => entry.event);
-    expect(retirements).toMatchObject([{ type: "retired", reports: [W1], until: T0 + 9 * HOUR, cancelled: [] }]);
     expect(runtime.state().merge.reports).toEqual([]);
+    expect(runtime.state().own.merge.retired).toEqual([{ report: W1, until: T0 + 9 * HOUR }]);
+    expect(retiredEntries(log)).toEqual([]);
     // The feed lists the report again. The tombstone keeps it out.
     await clock.advance(HOUR);
     await runtime.pass();
@@ -340,37 +346,172 @@ describe("the retirement in the pass", () => {
     expect(rebuild(log.read(), runtime.config)).toEqual(runtime.state());
     const again = open(log, clock, "run-2");
     expect(again.state().merge).toEqual(runtime.state().merge);
+    expect(again.state().retiredAt).toBe(runtime.state().retiredAt);
     log.close();
   });
 
-  it("searches at most once in each interval", async () => {
+  it("steps at most once in each interval of the event time", async () => {
     const log = openRuntimeLog(":memory:");
     const clock = fakeWallClock(T0);
     const runtime = open(log, clock, "run-1");
     await runtime.pass();
-    // At T0 + 3 h - 1 min, the incident is not old enough. The next pass in the interval does not search again.
+    // At T0 + 3 h - 1 min, the incident is not old enough. The next pass in the interval has no step.
     await clock.advance(3 * HOUR - MINUTE);
     await runtime.pass();
+    expect(runtime.state().retiredAt).toBe(T0 + 3 * HOUR - MINUTE);
     await clock.advance(2 * MINUTE);
     await runtime.pass();
-    expect([...log.entries({ after: 0, types: ["retired"], limit: 100 })]).toEqual([]);
+    expect(ids(runtime.state().merge.reports)).toEqual([W1]);
+    expect(runtime.state().retiredAt).toBe(T0 + 3 * HOUR - MINUTE);
     await clock.advance(HOUR);
     await runtime.pass();
-    expect([...log.entries({ after: 0, types: ["retired"], limit: 100 })]).toHaveLength(1);
+    expect(runtime.state().merge.reports).toEqual([]);
+    expect(retiredEntries(log)).toEqual([]);
+    expect(rebuild(log.read(), runtime.config)).toEqual(runtime.state());
     log.close();
   });
 });
 
 describe("retention", () => {
   it("gives the defaults of the core and an interval of one hour", () => {
-    expect(retention()).toEqual({ horizon: 7 * DAY, life: TOMBSTONE_LIFE, every: RETIRE_EVERY });
+    expect(retention()).toEqual({ horizon: 7 * DAY, life: TOMBSTONE_LIFE, every: RETIRE_EVERY, quiet: QUIET_HORIZON });
     expect(RETIRE_EVERY).toBe(HOUR);
+    // A horizon that is shorter than the quiet horizon is also the quiet horizon.
+    expect(retention({ horizon: 2 * HOUR }).quiet).toBe(2 * HOUR);
   });
 
-  it("refuses a time that is not a finite number of 0 or more, and an interval of 0", () => {
+  it("refuses a time that is not a finite number of 0 or more, an interval of 0, and a quiet horizon longer than the horizon", () => {
     expect(() => retention({ horizon: -1 })).toThrow("The horizon of the retention is -1");
     expect(() => retention({ life: Number.NaN })).toThrow("The life of the retention is NaN");
     expect(() => retention({ every: 0 })).toThrow("The interval of the retirements is 0");
+    expect(() => retention({ quiet: -1 })).toThrow("The quiet horizon of the retention is -1");
+    expect(() => retention({ quiet: 8 * DAY })).toThrow(`The quiet horizon of the retention is ${8 * DAY}, longer than the horizon ${7 * DAY}.`);
+  });
+});
+
+describe("the incidents that are not quiet (AL-109)", () => {
+  const w1 = report("w1", T0 + SECOND);
+  const base: RuntimeEvent[] = [started("run-a", T0), fetched("fetch:1", T0 + SECOND, [w1])];
+  const incidentOf = (state: RuntimeState) => incidents(state.merge, T0 + 2 * HOUR, { link: linkRule(DEFAULT_LINK_POLICY) })[0]!;
+  const keeps = (events: readonly RuntimeEvent[], expectations: Parameters<typeof quietKeeps>[1] = []): boolean => {
+    const state = foldAll([...base, ...events]);
+    return quietKeeps(state, expectations)(incidentOf(state));
+  };
+
+  it("keeps no incident with no escalation, hold, suppression, observed source or expectation", () => {
+    expect(keeps([])).toBe(false);
+  });
+
+  it("keeps an incident with an escalation start, a hold or a suppression of this copy", () => {
+    expect(keeps([escalation(W1, T0 + 2 * SECOND)])).toBe(true);
+    const hold: RuntimeEvent = { ...envelope("hold", "hold:1", T0 + 2 * SECOND), hold: { incident: W1, level: "life-safety", person: PERSON, episode: 0, at: T0 + 2 * SECOND } };
+    expect(keeps([hold])).toBe(true);
+    const suppression: RuntimeEvent = {
+      ...envelope("suppressed", "suppressed:1", T0 + 2 * SECOND),
+      suppression: { key: "s1", incident: W1, level: "life-safety", person: PERSON, channel: PUSHOVER, step: 0, episode: 0, at: T0 + 2 * SECOND, reason: "same-level" },
+    };
+    expect(keeps([suppression])).toBe(true);
+  });
+
+  it("keeps an incident with a report of a source in observe mode, and not after the source goes live", () => {
+    const observe: RuntimeEvent = { ...envelope("mode", "mode:1", T0), source: API, mode: "observe", reason: "a test" };
+    const live: RuntimeEvent = { ...envelope("mode", "mode:2", T0 + 2 * SECOND), source: API, mode: "live", reason: "a test" };
+    expect(keeps([observe])).toBe(true);
+    expect(keeps([observe, live])).toBe(false);
+  });
+
+  it("keeps an incident with a report that starts the check of an expectation", () => {
+    const expectation = { id: "e1", from: API, to: "other" as SourceId, when: { kinds: ["met.tornado"] } };
+    expect(keeps([], [expectation])).toBe(true);
+    expect(keeps([], [{ ...expectation, when: { kinds: ["met.flood"] } }])).toBe(false);
+    expect(keeps([], [{ ...expectation, from: "other" as SourceId }])).toBe(false);
+  });
+});
+
+describe("the cadence of the retirement (AL-109)", () => {
+  const link = linkRule(DEFAULT_LINK_POLICY);
+  const foldIn = (events: readonly RuntimeEvent[], context: FoldContext = RETAIN): RuntimeState => events.reduce((state, event) => fold(state, event, context), EMPTY_RUNTIME);
+  const expectRebuild = (events: readonly RuntimeEvent[], context: FoldContext = RETAIN): void => {
+    for (let count = 1; count <= events.length; count += 1) expect(rebuild(events.slice(0, count), context)).toEqual(foldIn(events.slice(0, count), context));
+  };
+
+  it("retires a quiet incident at the first event one interval after the last step, and the log has no retired event", () => {
+    // The warning expires at T0 + 1 h, thus its quiet horizon of 6 h ends at T0 + 7 h.
+    const events = [
+      started("run-a", T0),
+      fetched("fetch:1", T0 + SECOND, [report("w1", T0 + SECOND)]),
+      // The step at this event is one minute early.
+      fetched("fetch:2", T0 + 7 * HOUR - MINUTE, []),
+      // This event is in the interval of the last step, thus it has no step.
+      fetched("fetch:3", T0 + 7 * HOUR + MINUTE, []),
+      fetched("fetch:4", T0 + 8 * HOUR - MINUTE, []),
+    ];
+    expect(ids(foldIn(events.slice(0, 4)).merge.reports)).toEqual([W1]);
+    expect(foldIn(events.slice(0, 4)).retiredAt).toBe(T0 + 7 * HOUR - MINUTE);
+    const state = foldIn(events);
+    expect(state.merge.reports).toEqual([]);
+    expect(state.own.merge.retired).toEqual([{ report: W1, until: T0 + 8 * HOUR - MINUTE + TOMBSTONE_LIFE }]);
+    expect(state.retiredAt).toBe(T0 + 8 * HOUR - MINUTE);
+    expectRebuild(events);
+    // Without a retention in the context, the fold retires nothing.
+    expect(ids(foldIn(events, CONTEXT).merge.reports)).toEqual([W1]);
+    expect(foldIn(events, CONTEXT).retiredAt).toBeUndefined();
+  });
+
+  it("keeps an incident that a person got for the full horizon", () => {
+    const events = [
+      started("run-a", T0),
+      fetched("fetch:1", T0 + SECOND, [report("w1", T0 + SECOND)]),
+      delivered("k1", W1, T0 + 2 * SECOND),
+      fetched("fetch:2", T0 + 2 * DAY, []),
+      fetched("fetch:3", T0 + HOUR + RETENTION_HORIZON, []),
+    ];
+    expect(ids(foldIn(events.slice(0, 4)).merge.reports)).toEqual([W1]);
+    expect(foldIn(events).merge.reports).toEqual([]);
+    expectRebuild(events);
+  });
+
+  it("opens a new incident for a new live update of a retired incident, and routes it", () => {
+    // The source ends the warning at T0 + 30 min, and the warning expires at T0 + 1 h. No person got it, thus it is quiet.
+    // 7 h later, the source sends an update with a new key and a new sent time, thus a new id. The feed also lists the old warning again.
+    const update: Report = { ...report("u1", T0 + 8 * HOUR, T0 + 8 * HOUR), op: "update", references: ["w1"] };
+    const events = [started("run-a", T0), fetched("fetch:1", T0 + SECOND, [report("w1", T0 + SECOND)]), ended(T0 + 30 * MINUTE, [W1]), fetched("fetch:2", T0 + 8 * HOUR, [report("w1", T0 + 8 * HOUR), update])];
+    const state = foldIn(events);
+    // The tombstone keeps out only the copy of the old warning. The update is a new part, thus it stays.
+    expect(state.own.merge.retired.map((one) => one.report)).toEqual([W1]);
+    expect(ids(state.merge.reports)).toEqual([update.id]);
+    const now = T0 + 8 * HOUR + SECOND;
+    const found = incidents(state.merge, now, { link });
+    expect(found.map((incident) => ({ reports: incident.reports, live: incident.live }))).toEqual([{ reports: [update.id], live: true }]);
+    const routes = route({ state: state.merge, incidents: found, recipients: [RECIPIENT], places: [KANSAS], starts: state.starts, ends: state.escalationEnds, cancelled: cancelledKeys(state), channels: [POLLED], now });
+    expect(routes.map((one) => one.incident.reports)).toEqual([[update.id]]);
+    expect(routes[0]!.plan.sends.length).toBeGreaterThan(0);
+    expectRebuild(events);
+  });
+
+  it("keeps the copy of a report that the rebuild keeps across a step of the clock", () => {
+    // Two copies of one report, received at 9 and at 10. The normal form keeps the copy with the lower text: "10" is before "9".
+    // After a step of 1 ms, the times are 10 and 11, and "10" is before "11". Thus the fold and the rebuild must apply the
+    // normal form before the step.
+    const events = [fetched("fetch:1", 9, [report("w1", 9)]), fetched("fetch:2", 10, [report("w1", 10)]), stepped(1, 11, 1)];
+    expect(foldIn(events, CONTEXT).merge.reports.map((one) => one.received)).toEqual([11]);
+    expectRebuild(events, CONTEXT);
+    expectRebuild(events);
+  });
+
+  it("gives the rebuild the same calls of the hook as the fold, also for an old retired event", () => {
+    const events = [
+      started("run-a", T0),
+      fetched("fetch:1", T0 + SECOND, [report("w1", T0 + SECOND), report("w2", T0 + SECOND)]),
+      retired(T0 + 2 * SECOND, [W2], T0 + DAY),
+      fetched("fetch:2", T0 + 8 * HOUR, []),
+    ];
+    const folded: string[][] = [];
+    events.reduce((state, event) => fold(state, event, RETAIN, (merge) => folded.push(ids(merge.reports))), EMPTY_RUNTIME);
+    const rebuilt: string[][] = [];
+    rebuild(events, RETAIN, (merge) => rebuilt.push(ids(merge.reports)));
+    expect(folded).toEqual([[W1], []]);
+    expect(rebuilt).toEqual(folded);
   });
 });
 
