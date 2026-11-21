@@ -14,7 +14,7 @@
 
 import { observationId, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch } from "@mark1russell7/alerts";
 import { createRequester } from "@mark1russell7/alerts-fetch";
-import { isRecord, type Fields } from "@mark1russell7/optional/read";
+import { isRecord, timeOf, type Fields } from "@mark1russell7/optional/read";
 import type { Condition, Pace, Transport } from "polite-crawler/api";
 
 import { COMPONENT_FIELDS, INCIDENT_FIELDS, isIncident, PAGE_FIELDS, UPDATE_FIELDS } from "./map.ts";
@@ -103,12 +103,12 @@ export function readSummary(body: string): Summary | undefined {
   if (!isRecord(parsed) || !isRecord(page) || typeof page["id"] !== "string" || !Array.isArray(incidents)) return { head: body, incidents: [], complete: false };
   const status = isRecord(parsed["status"]) ? pick(parsed["status"], STATUS_FIELDS) : parsed["status"];
   const head = JSON.stringify({ page: pick(page, PAGE_FIELDS), ...(status === undefined ? {} : { status }) });
-  const updated = typeof page["updated_at"] === "string" ? Date.parse(page["updated_at"]) : Number.NaN;
+  const updated = timeOf(page, "updated_at");
   return {
     head,
     incidents: [...new Set(incidents.map((incident) => (isRecord(incident) ? incidentBody(incident) : JSON.stringify(incident))))],
     complete: incidents.every((incident) => isRecord(incident) && isIncident(incident)),
-    ...(Number.isFinite(updated) ? { asOf: updated } : {}),
+    ...(updated === undefined ? {} : { asOf: updated }),
   };
 }
 

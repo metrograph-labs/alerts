@@ -27,6 +27,7 @@ import {
   SPACE_WEATHER_KIND,
   type ScaleLevel,
 } from "@mark1russell7/alerts-space-weather";
+import { isRecord } from "@mark1russell7/optional/read";
 import { errorMessage } from "@mark1russell7/text";
 
 import { messageTime, parseMessage, periodEnd, polewardOf, statedScale, watchDays, type Head, type MessageText, type WatchDay } from "./text.ts";
@@ -165,10 +166,6 @@ export function entryTime(value: unknown): Instant | undefined {
   const same = date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day && date.getUTCHours() === hour && date.getUTCMinutes() === minute && date.getUTCSeconds() === second;
   return same ? time : undefined;
 }
-
-type Fields = Readonly<Record<string, unknown>>;
-
-const isFields = (value: unknown): value is Fields => typeof value === "object" && value !== null && !Array.isArray(value);
 
 /** The values that each report of one message shares. */
 interface Common {
@@ -369,7 +366,7 @@ function mapOrThrow(observation: Observation): MapResult {
     return { reports: [], problems: [{ path: "", message: "the body is not JSON", fatal: true }] };
   }
   // The fetch gives the whole answer as one observation when the answer is not a list of entries.
-  if (!isFields(entry) || typeof entry["message"] !== "string") {
+  if (!isRecord(entry) || typeof entry["message"] !== "string") {
     return { reports: [], problems: [{ path: "", message: "the observation is not an entry of the product list: the format changed", fatal: true }] };
   }
   const parsed = parseMessage(entry["message"]);

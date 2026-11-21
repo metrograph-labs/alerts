@@ -4,6 +4,7 @@
  */
 
 import type { CanaryResult, Instant, Observation } from "@mark1russell7/alerts";
+import { isRecord } from "@mark1russell7/optional/read";
 
 import { intervalStart, intervalText } from "./map.ts";
 
@@ -14,7 +15,7 @@ export const NEWEST_MAX_AGE_MS: number = 6 * 3_600_000;
 function startOf(observation: Observation): Instant | undefined {
   try {
     const fields: unknown = JSON.parse(observation.body);
-    return typeof fields === "object" && fields !== null ? intervalStart((fields as Record<string, unknown>)["datetime"]) : undefined;
+    return isRecord(fields) ? intervalStart(fields["datetime"]) : undefined;
   } catch {
     return undefined;
   }

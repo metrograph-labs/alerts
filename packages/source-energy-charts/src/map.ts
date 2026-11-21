@@ -9,6 +9,7 @@
  */
 
 import { Problems, type IndicatorArea, type Instant, type MapResult, type Observation, type Reading, type SourceId } from "@mark1russell7/alerts";
+import { isRecord } from "@mark1russell7/optional/read";
 import { errorMessage } from "@mark1russell7/text";
 
 /** The id of this source. */
@@ -59,10 +60,6 @@ export interface MinuteBody {
   readonly frequency: readonly (number | null)[];
 }
 
-type Fields = Readonly<Record<string, unknown>>;
-
-const isFields = (value: unknown): value is Fields => typeof value === "object" && value !== null && !Array.isArray(value);
-
 /** This function gives the text of the start of a minute, for example `2026-11-18T03:07:00Z`. */
 export function minuteText(time: Instant): string {
   return new Date(time).toISOString().replace(".000Z", "Z");
@@ -99,7 +96,7 @@ function mapOrThrow(observation: Observation): MapResult {
     return { reports: [], problems: [{ path: "", message: "the body is not JSON", fatal: true }] };
   }
   // The fetch gives the whole answer, or one row, as one observation when the answer is not the series of the frequency.
-  if (!isFields(fields) || typeof fields["minute"] !== "string" || !Array.isArray(fields["frequency"])) {
+  if (!isRecord(fields) || typeof fields["minute"] !== "string" || !Array.isArray(fields["frequency"])) {
     return { reports: [], problems: [{ path: "", message: "the observation is not one minute of the frequency series of Energy-Charts: the format or the license changed", fatal: true }] };
   }
   const problems = new Problems();

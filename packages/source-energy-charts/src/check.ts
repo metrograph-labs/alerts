@@ -4,6 +4,7 @@
  */
 
 import type { CanaryResult, Instant, Observation } from "@mark1russell7/alerts";
+import { isRecord } from "@mark1russell7/optional/read";
 
 import { MEASURE_DELAY_MS } from "./descriptor.ts";
 import { minuteStart, MINUTE_MS } from "./map.ts";
@@ -18,7 +19,7 @@ export const NEWEST_MAX_AGE_MS: number = MEASURE_DELAY_MS + 2 * MINUTE_MS;
 function startOf(observation: Observation): Instant | undefined {
   try {
     const fields: unknown = JSON.parse(observation.body);
-    return typeof fields === "object" && fields !== null ? minuteStart((fields as Record<string, unknown>)["minute"]) : undefined;
+    return isRecord(fields) ? minuteStart(fields["minute"]) : undefined;
   } catch {
     return undefined;
   }

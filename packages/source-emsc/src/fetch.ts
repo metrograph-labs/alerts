@@ -8,6 +8,7 @@
 
 import { observationId, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch } from "@mark1russell7/alerts";
 import { createRequester } from "@mark1russell7/alerts-fetch";
+import { isRecord, type Fields } from "@mark1russell7/optional/read";
 import type { Condition, Conditions, Pace, Reply, Transport } from "polite-crawler/api";
 
 import { EVENT_FIELDS, eventTime, REPORT_LIFE_MS, SOURCE_ID } from "./map.ts";
@@ -60,10 +61,6 @@ export interface EmscFetchInput {
   readonly watch: Watch;
 }
 
-type Fields = Readonly<Record<string, unknown>>;
-
-const isFields = (value: unknown): value is Fields => typeof value === "object" && value !== null && !Array.isArray(value);
-
 const isText = (value: unknown): boolean => typeof value === "string";
 const isNumber = (value: unknown): boolean => typeof value === "number" && Number.isFinite(value);
 const isTextOrNull = (value: unknown): boolean => value === null || isText(value);
@@ -88,9 +85,9 @@ const FIELD_TYPES: Readonly<Record<(typeof EVENT_FIELDS)[number], (value: unknow
  * not have is absent. A value that is not a feature gives `undefined`.
  */
 export function eventFields(feature: unknown): Fields | undefined {
-  if (!isFields(feature)) return undefined;
-  const properties = isFields(feature["properties"]) ? feature["properties"] : {};
-  const geometry = isFields(feature["geometry"]) ? feature["geometry"] : {};
+  if (!isRecord(feature)) return undefined;
+  const properties = isRecord(feature["properties"]) ? feature["properties"] : {};
+  const geometry = isRecord(feature["geometry"]) ? feature["geometry"] : {};
   const all: Fields = { ...properties, id: feature["id"], coordinates: geometry["coordinates"] };
   const kept: Record<string, unknown> = {};
   for (const field of EVENT_FIELDS) if (all[field] !== undefined) kept[field] = all[field];
@@ -151,9 +148,9 @@ export function readAnswer(reply: Reply, url: string, fetched: Instant, latency:
   } catch {
     return undefined;
   }
-  const features = isFields(parsed) && parsed["type"] === "FeatureCollection" && Array.isArray(parsed["features"]) ? (parsed["features"] as unknown[]) : undefined;
-  if (features === undefined || !isFields(parsed)) return { listed: [{ time: undefined, observation: observation(reply.body) }], complete: false };
-  const metadata = isFields(parsed["metadata"]) ? parsed["metadata"] : {};
+  const features = isRecord(parsed) && parsed["type"] === "FeatureCollection" && Array.isArray(parsed["features"]) ? (parsed["features"] as unknown[]) : undefined;
+  if (features === undefined || !isRecord(parsed)) return { listed: [{ time: undefined, observation: observation(reply.body) }], complete: false };
+  const metadata = isRecord(parsed["metadata"]) ? parsed["metadata"] : {};
   const counted = metadata["count"] === features.length;
   const complete = features.length > 0 && features.length < QUERY_LIMIT && counted && features.every(isEmscEvent);
   // The answer has one feature for each event. One body twice gives one observation.

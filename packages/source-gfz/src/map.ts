@@ -9,6 +9,7 @@
 
 import { categoryOf, kindLabel, Problems, reportId, type Area, type Instant, type MapResult, type Observation, type Report, type SourceId } from "@mark1russell7/alerts";
 import { GEOMAGNETIC_STORM_KIND, geomagneticLevel, kpText, POLEWARD_BY_LEVEL, polarCaps, SEVERITY_BY_LEVEL } from "@mark1russell7/alerts-space-weather";
+import { isRecord } from "@mark1russell7/optional/read";
 import { errorMessage } from "@mark1russell7/text";
 
 /** The id of this source. */
@@ -59,10 +60,6 @@ export const INTERVAL_FIELDS = ["datetime", "Kp", "status", "run"] as const;
 /** The status of each value, as GFZ writes it. */
 export const STATUSES: Readonly<Record<string, string>> = { pre: "preliminary", def: "definitive" };
 
-type Fields = Readonly<Record<string, unknown>>;
-
-const isFields = (value: unknown): value is Fields => typeof value === "object" && value !== null && !Array.isArray(value);
-
 /**
  * This function gives the time of the start of an interval. The value is a UTC time at an hour that is a multiple of
  * 3, for example `2026-11-16T03:00:00Z`. Each other value gives `undefined`.
@@ -103,7 +100,7 @@ function mapOrThrow(observation: Observation): MapResult {
     return { reports: [], problems: [{ path: "", message: "the body is not JSON", fatal: true }] };
   }
   // The fetch gives the whole answer as one observation when the answer is not the series, or its license changed.
-  if (!isFields(fields) || typeof fields["datetime"] !== "string") {
+  if (!isRecord(fields) || typeof fields["datetime"] !== "string") {
     return { reports: [], problems: [{ path: "", message: "the observation is not one interval of the series of GFZ: the format or the license changed", fatal: true }] };
   }
   const problems = new Problems();

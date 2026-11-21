@@ -9,6 +9,7 @@
 
 import { observationId, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch } from "@mark1russell7/alerts";
 import { createRequester } from "@mark1russell7/alerts-fetch";
+import { isRecord } from "@mark1russell7/optional/read";
 import type { Condition, Pace, Reply, Transport } from "polite-crawler/api";
 
 import { ENTRY_FIELDS, entryTime, SOURCE_ID } from "./map.ts";
@@ -40,10 +41,6 @@ export interface SwpcFetchInput {
   readonly watch: Watch;
 }
 
-type Fields = Readonly<Record<string, unknown>>;
-
-const isFields = (value: unknown): value is Fields => typeof value === "object" && value !== null && !Array.isArray(value);
-
 /** The tests of the fields of an entry: the structure that the fetch examines. */
 const FIELD_TYPES: Readonly<Record<(typeof ENTRY_FIELDS)[number], (value: unknown) => boolean>> = {
   product_id: (value) => typeof value === "string",
@@ -53,7 +50,7 @@ const FIELD_TYPES: Readonly<Record<(typeof ENTRY_FIELDS)[number], (value: unknow
 
 /** This function tells if an entry has the structure of the list: each field of `ENTRY_FIELDS` with its type. */
 export function isSwpcEntry(entry: unknown): boolean {
-  return isFields(entry) && ENTRY_FIELDS.every((field) => FIELD_TYPES[field](entry[field]));
+  return isRecord(entry) && ENTRY_FIELDS.every((field) => FIELD_TYPES[field](entry[field]));
 }
 
 /**
@@ -62,7 +59,7 @@ export function isSwpcEntry(entry: unknown): boolean {
  * and the map tells of the change.
  */
 export function entryBody(entry: unknown): string {
-  if (!isFields(entry)) return JSON.stringify(entry);
+  if (!isRecord(entry)) return JSON.stringify(entry);
   const kept: Record<string, unknown> = {};
   for (const field of ENTRY_FIELDS) if (entry[field] !== undefined) kept[field] = entry[field];
   return JSON.stringify(kept);

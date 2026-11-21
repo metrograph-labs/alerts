@@ -10,6 +10,7 @@
 import { observationId, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch } from "@mark1russell7/alerts";
 import { createRequester } from "@mark1russell7/alerts-fetch";
 import { geomagneticLevel } from "@mark1russell7/alerts-space-weather";
+import { isRecord } from "@mark1russell7/optional/read";
 import type { Pace, Reply, Transport } from "polite-crawler/api";
 
 import { GFZ_LICENSE, INTERVAL_FIELDS, INTERVAL_MS, intervalStart, intervalText, kpOf, REPORT_LIFE_MS, SOURCE_ID, STATUSES } from "./map.ts";
@@ -53,10 +54,6 @@ export interface GfzFetchOptions {
 export interface GfzFetchInput {
   readonly watch: Watch;
 }
-
-type Fields = Readonly<Record<string, unknown>>;
-
-const isFields = (value: unknown): value is Fields => typeof value === "object" && value !== null && !Array.isArray(value);
 
 /** This function gives the path of the query at the time `now`: the current interval and the `WINDOW_INTERVALS` intervals before it. */
 export function queryPath(now: Instant): string {
@@ -155,8 +152,8 @@ export function readAnswer(reply: Reply, url: string, series: string, fetched: I
   } catch {
     return undefined;
   }
-  const columns = isFields(parsed) ? ([parsed["datetime"], parsed["Kp"], parsed["status"]] as const) : undefined;
-  const meta = isFields(parsed) && isFields(parsed["meta"]) ? parsed["meta"] : undefined;
+  const columns = isRecord(parsed) ? ([parsed["datetime"], parsed["Kp"], parsed["status"]] as const) : undefined;
+  const meta = isRecord(parsed) && isRecord(parsed["meta"]) ? parsed["meta"] : undefined;
   if (columns === undefined || !columns.every(Array.isArray) || new Set(columns.map((column) => (column as unknown[]).length)).size !== 1 || meta?.["license"] !== GFZ_LICENSE) {
     return { observations: [observation(reply.body)], complete: false };
   }

@@ -8,8 +8,8 @@
  * (`provider-region:azure/westeurope`).
  */
 
-import { categoryOf, kindLabel, Problems, reportId, type Instant, type MapResult, type Observation, type Report, type Subject } from "@mark1russell7/alerts";
-import { isRecord, textOf, type Fields } from "@mark1russell7/optional/read";
+import { categoryOf, kindLabel, Problems, reportId, type MapResult, type Observation, type Report, type Subject } from "@mark1russell7/alerts";
+import { isRecord, readHttpTime, textOf, type Fields } from "@mark1russell7/optional/read";
 import { errorMessage } from "@mark1russell7/text";
 import { scanHtml } from "@mark1russell7/text/html";
 import { decodeReferences } from "@mark1russell7/text/references";
@@ -21,16 +21,6 @@ import { AZURE_DOMAIN, AZURE_KIND, AZURE_ORIGIN, AZURE_PAGE, AZURE_SOURCE, categ
  * Thus each report has the middle level.
  */
 export const AZURE_SEVERITY = "moderate";
-
-/**
- * This function gives the time of the RSS date of a field, or `undefined`. An RSS date is RFC 822, and `readTime` reads
- * only ISO 8601. `readHttpTime` of `@mark1russell7/optional/read` replaces this function at its release (AL-71).
- */
-function rssTimeOf(fields: Fields, field: string): Instant | undefined {
-  const text = textOf(fields, field);
-  const time = text === undefined ? Number.NaN : Date.parse(text);
-  return Number.isFinite(time) ? time : undefined;
-}
 
 /** This function gives the texts of a list field. A value that is not a text gives no entry. */
 function textsOf(fields: Fields, field: string): readonly string[] {
@@ -71,7 +61,7 @@ function mapOrThrow(observation: Observation): MapResult {
   }
   const problems = new Problems();
   if (textOf(fields, "key") === undefined) problems.add("key", "the incident has no guid: the map makes no report", "fatal");
-  if (rssTimeOf(fields, "published") === undefined) problems.add("published", "the incident has no time: the map makes no report", "fatal");
+  if (readHttpTime(textOf(fields, "published")) === undefined) problems.add("published", "the incident has no time: the map makes no report", "fatal");
   if (textOf(fields, "title") === undefined) problems.add("title", "the incident has no title: the map makes no report", "fatal");
   if (problems.fatal > 0) return { reports: [], problems: problems.list };
   return { reports: [reportOf(observation, fields)], problems: problems.list };
@@ -81,7 +71,7 @@ function mapOrThrow(observation: Observation): MapResult {
 function reportOf(observation: Observation, incident: Fields): Report {
   const key = textOf(incident, "key")!;
   const title = textOf(incident, "title")!;
-  const sent = rssTimeOf(incident, "published")!;
+  const sent = readHttpTime(textOf(incident, "published"))!;
   const { regions, services } = categoriesOf(textsOf(incident, "categories"));
   const description = plainText(textOf(incident, "description"));
   const link = textOf(incident, "link");

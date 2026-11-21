@@ -7,22 +7,12 @@
  * The id of the component is the key of the report. Thus a change of the status gives a new report of the same incident.
  */
 
-import { categoryOf, kindLabel, Problems, reportId, type Instant, type MapResult, type Observation, type Report, type Severity } from "@mark1russell7/alerts";
+import { categoryOf, kindLabel, Problems, reportId, type MapResult, type Observation, type Report, type Severity } from "@mark1russell7/alerts";
 import { readFeed, type FeedEntry } from "@mark1russell7/alerts-format-cap";
-import { isRecord, textOf, type Fields } from "@mark1russell7/optional/read";
+import { isRecord, readHttpTime, textOf, type Fields } from "@mark1russell7/optional/read";
 
 import type { Summary } from "./fetch.ts";
 import { subjectsOf, type StatusPage } from "./page.ts";
-
-/**
- * This function gives the time of the RSS date of a field, or `undefined`. An RSS date is RFC 822, and `readTime` reads
- * only ISO 8601. `readHttpTime` of `@mark1russell7/optional/read` replaces this function at its release (AL-71).
- */
-function rssTimeOf(fields: Fields, field: string): Instant | undefined {
-  const text = textOf(fields, field);
-  const time = text === undefined ? Number.NaN : Date.parse(text);
-  return Number.isFinite(time) ? time : undefined;
-}
 
 /** The path of the RSS feed of a page. */
 export const STATUSIQ_PATH = "/rss";
@@ -85,8 +75,8 @@ export function readComponents(body: string): Summary | undefined {
   if (!read.ok) return read.malformed ? undefined : { head: JSON.stringify({ document: body }), incidents: [], complete: false };
   const components = read.entries.map(componentOf);
   const valid = (component: ComponentStatus): boolean =>
-    component.id !== undefined && component.name !== undefined && component.status !== undefined && Number.isFinite(Date.parse(component.since ?? ""));
-  const times = components.map((component) => Date.parse(component.since ?? "")).filter(Number.isFinite);
+    component.id !== undefined && component.name !== undefined && component.status !== undefined && readHttpTime(component.since) !== undefined;
+  const times = components.flatMap((component) => readHttpTime(component.since) ?? []);
   return {
     head: JSON.stringify({ feed: read.title === undefined ? {} : { title: read.title } }),
     incidents: [...new Set(components.filter(hasOutage).map((component) => JSON.stringify(component)))],
@@ -111,7 +101,7 @@ export function mapComponent(observation: Observation, page: StatusPage, fields:
   if (textOf(fields, "id") === undefined) problems.add("id", "the item has no id of a component in its link: the map makes no report", "fatal");
   if (textOf(fields, "name") === undefined) problems.add("name", "the item has no name of a component in its title: the map makes no report", "fatal");
   if (textOf(fields, "status") === undefined) problems.add("status", "the item has no status in its title: the map makes no report", "fatal");
-  if (rssTimeOf(fields, "since") === undefined) problems.add("since", "the item has no time of its last change: the map makes no report", "fatal");
+  if (readHttpTime(textOf(fields, "since")) === undefined) problems.add("since", "the item has no time of its last change: the map makes no report", "fatal");
   if (problems.fatal > 0) return { reports: [], problems: problems.list };
   const status = textOf(fields, "status")!;
   if (SEVERITY_OF_STATUSIQ[status] === undefined) problems.add("status", `the status ${JSON.stringify(status)} is not a status of StatusIQ: the severity is unknown`);
@@ -123,7 +113,7 @@ function reportOf(observation: Observation, page: StatusPage, component: Fields)
   const key = textOf(component, "id")!;
   const name = textOf(component, "name")!;
   const status = textOf(component, "status")!;
-  const sent = rssTimeOf(component, "since")!;
+  const sent = readHttpTime(textOf(component, "since"))!;
   const link = textOf(component, "link");
   const keys = (page.components ?? []).filter((each) => each.id === key);
   return {

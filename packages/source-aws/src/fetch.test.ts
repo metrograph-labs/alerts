@@ -65,6 +65,12 @@ describe("eventBodies", () => {
     const body = JSON.parse(eventBodies([{ id: "https://status.aws.amazon.com/#ec2-eu-west-1_1800000000", title: "Service impact: X", updated: "soon" }]).bodies[0]!) as { latest: { time: string } };
     expect(body.latest.time).toBe(new Date(1_800_000_000_000).toISOString());
   });
+
+  it("reads a pubDate as an RFC 822 time only, so an ISO 8601 pubDate gives the time of the guid", () => {
+    const timeOf = (updated: string): string => (JSON.parse(eventBodies([{ id: "https://status.aws.amazon.com/#ec2-eu-west-1_1800000000", title: "Service impact: X", updated }]).bodies[0]!) as { latest: { time: string } }).latest.time;
+    expect(timeOf("Wed, 18 Nov 2026 02:30:00 PST")).toBe("2026-11-18T10:30:00.000Z");
+    expect(timeOf("2026-11-18T10:30:00Z")).toBe(new Date(1_800_000_000_000).toISOString());
+  });
 });
 
 describe("createAwsFetch", () => {

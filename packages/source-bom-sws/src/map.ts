@@ -17,6 +17,7 @@
 
 import { categoryOf, kindLabel, Problems, reportId, type Area, type Instant, type MapResult, type Observation, type Report, type SourceId } from "@mark1russell7/alerts";
 import { GEOMAGNETIC_STORM_KIND, POLEWARD_BY_LEVEL, polarCaps, SEVERITY_BY_LEVEL } from "@mark1russell7/alerts-space-weather";
+import { isRecord, type Fields } from "@mark1russell7/optional/read";
 import { errorMessage } from "@mark1russell7/text";
 
 /** The id of this source. */
@@ -81,10 +82,6 @@ export interface ItemBody {
   readonly method: Method;
   readonly item: Readonly<Record<string, unknown>>;
 }
-
-type Fields = Readonly<Record<string, unknown>>;
-
-const isFields = (value: unknown): value is Fields => typeof value === "object" && value !== null && !Array.isArray(value);
 
 /**
  * This function gives the time of a text of the API: a UTC time `yyyy-mm-dd hh:mm:ss`, for example
@@ -163,7 +160,7 @@ export function readItemBody(body: string): ItemBody | undefined {
   } catch {
     return undefined;
   }
-  if (!isFields(parsed) || !isFields(parsed["item"])) return undefined;
+  if (!isRecord(parsed) || !isRecord(parsed["item"])) return undefined;
   const method = Object.values(METHODS).find((name) => name === parsed["method"]);
   return method === undefined ? undefined : { method, item: parsed["item"] };
 }
@@ -310,8 +307,8 @@ function mapWarning(observation: Observation, item: Fields): MapResult {
   const reports: Report[] = [];
   activity.forEach((day: unknown, index) => {
     const path = `activity[${index}]`;
-    const date = isFields(day) ? day["date"] : undefined;
-    const forecast = isFields(day) ? day["forecast"] : undefined;
+    const date = isRecord(day) ? day["date"] : undefined;
+    const forecast = isRecord(day) ? day["forecast"] : undefined;
     const start = bomDate(date);
     if (start === undefined || typeof forecast !== "string") {
       problems.add(path, `the day ${JSON.stringify(day)} has no date or no forecast: the map makes no report for it`);

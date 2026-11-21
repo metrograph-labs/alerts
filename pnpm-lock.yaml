@@ -380,8 +380,8 @@ importers:
         specifier: ^0.1.0
         version: 0.1.0
       '@mark1russell7/optional':
-        specifier: ^1.2.0
-        version: 1.4.0
+        specifier: ^1.5.0
+        version: 1.5.0
       '@mark1russell7/quantity':
         specifier: ^0.4.3
         version: 0.4.3(zod@4.6.7)
@@ -454,8 +454,8 @@ importers:
         specifier: workspace:*
         version: link:../format-nws
       '@mark1russell7/optional':
-        specifier: ^1.3.0
-        version: 1.4.0
+        specifier: ^1.5.0
+        version: 1.5.0
       '@nodable/entities':
         specifier: ^3.1.0
         version: 3.1.0
@@ -547,8 +547,8 @@ importers:
         specifier: workspace:*
         version: link:../format-nws
       '@mark1russell7/optional':
-        specifier: ^1.3.0
-        version: 1.4.0
+        specifier: ^1.5.0
+        version: 1.5.0
       '@mark1russell7/rigor-statistics':
         specifier: ^0.2.8
         version: 0.2.8
@@ -662,8 +662,8 @@ importers:
         specifier: ^0.0.4
         version: 0.0.4
       '@mark1russell7/optional':
-        specifier: ^1.3.0
-        version: 1.4.0
+        specifier: ^1.5.0
+        version: 1.5.0
       '@mark1russell7/quantity':
         specifier: ^0.4.3
         version: 0.4.3(zod@4.6.7)
@@ -735,8 +735,8 @@ importers:
         specifier: ^0.5.3
         version: 0.5.3
       '@mark1russell7/optional':
-        specifier: ^1.3.0
-        version: 1.4.0
+        specifier: ^1.5.0
+        version: 1.5.0
       '@mark1russell7/sqlite':
         specifier: ^0.4.0
         version: 0.4.0
@@ -781,8 +781,8 @@ importers:
         specifier: ^0.5.2
         version: 0.5.3
       '@mark1russell7/optional':
-        specifier: ^1.3.0
-        version: 1.4.0
+        specifier: ^1.5.0
+        version: 1.5.0
       '@mark1russell7/site-pages':
         specifier: ^0.8.0
         version: 0.8.1
@@ -832,8 +832,8 @@ importers:
         specifier: workspace:*
         version: link:../format-cap
       '@mark1russell7/optional':
-        specifier: ^1.4.0
-        version: 1.4.0
+        specifier: ^1.5.0
+        version: 1.5.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -872,8 +872,8 @@ importers:
         specifier: workspace:*
         version: link:../format-cap
       '@mark1russell7/optional':
-        specifier: ^1.4.0
-        version: 1.4.0
+        specifier: ^1.5.0
+        version: 1.5.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -908,6 +908,9 @@ importers:
       '@mark1russell7/alerts-space-weather':
         specifier: workspace:*
         version: link:../space-weather
+      '@mark1russell7/optional':
+        specifier: ^1.5.0
+        version: 1.5.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -980,8 +983,8 @@ importers:
         specifier: workspace:*
         version: link:../fetch
       '@mark1russell7/optional':
-        specifier: ^1.4.0
-        version: 1.4.0
+        specifier: ^1.5.0
+        version: 1.5.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -1026,8 +1029,8 @@ importers:
         specifier: workspace:*
         version: link:../source-gcp
       '@mark1russell7/optional':
-        specifier: ^1.4.0
-        version: 1.4.0
+        specifier: ^1.5.0
+        version: 1.5.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -1102,6 +1105,9 @@ importers:
       '@mark1russell7/alerts-quake':
         specifier: workspace:*
         version: link:../quake
+      '@mark1russell7/optional':
+        specifier: ^1.5.0
+        version: 1.5.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -1139,6 +1145,9 @@ importers:
       '@mark1russell7/alerts-fetch':
         specifier: workspace:*
         version: link:../fetch
+      '@mark1russell7/optional':
+        specifier: ^1.5.0
+        version: 1.5.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -1177,8 +1186,8 @@ importers:
         specifier: workspace:*
         version: link:../fetch
       '@mark1russell7/optional':
-        specifier: ^1.4.0
-        version: 1.4.0
+        specifier: ^1.5.0
+        version: 1.5.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -1216,6 +1225,9 @@ importers:
       '@mark1russell7/alerts-space-weather':
         specifier: workspace:*
         version: link:../space-weather
+      '@mark1russell7/optional':
+        specifier: ^1.5.0
+        version: 1.5.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -1253,6 +1265,9 @@ importers:
       '@mark1russell7/alerts-fetch':
         specifier: workspace:*
         version: link:../fetch
+      '@mark1russell7/optional':
+        specifier: ^1.5.0
+        version: 1.5.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -1395,8 +1410,8 @@ importers:
         specifier: workspace:*
         version: link:../format-nws
       '@mark1russell7/optional':
-        specifier: ^1.3.0
-        version: 1.4.0
+        specifier: ^1.5.0
+        version: 1.5.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -1487,8 +1502,8 @@ importers:
         specifier: workspace:*
         version: link:../format-cap
       '@mark1russell7/optional':
-        specifier: ^1.4.0
-        version: 1.4.0
+        specifier: ^1.5.0
+        version: 1.5.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -1529,6 +1544,9 @@ importers:
       '@mark1russell7/alerts-space-weather':
         specifier: workspace:*
         version: link:../space-weather
+      '@mark1russell7/optional':
+        specifier: ^1.5.0
+        version: 1.5.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -1606,6 +1624,9 @@ importers:
       '@mark1russell7/alerts-quake':
         specifier: workspace:*
         version: link:../quake
+      '@mark1russell7/optional':
+        specifier: ^1.5.0
+        version: 1.5.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -1699,8 +1720,8 @@ importers:
         specifier: ^0.9.9
         version: 0.9.9(zod@4.6.7)
       '@mark1russell7/optional':
-        specifier: ^1.3.0
-        version: 1.4.0
+        specifier: ^1.5.0
+        version: 1.5.0
       '@mark1russell7/rigor-chaos':
         specifier: ^0.3.3
         version: 0.3.3
@@ -2039,8 +2060,8 @@ packages:
     resolution: {integrity: sha512-/al3v3Q/DH9QvSVZdAqxjKIcoC53FfhCR6T6p819lUIMFglNswy8AaXEo3EZ7rz0xBwBj5C4X0bPLWitrcOsLg==}
     engines: {node: '>=22.12'}
 
-  '@mark1russell7/optional@1.4.0':
-    resolution: {integrity: sha512-GkLNYn4iJL/ydaWh3Z8UeYaMo7UHY0kuKdqfdp2G/U6jkE0fm6KceQqhcqVPSSO0m5yRWkUUUDhAWqg2Qs5eOw==}
+  '@mark1russell7/optional@1.5.0':
+    resolution: {integrity: sha512-QpVjyHD/1JYriLVVJr4P6QpDJJN9q2BiM6CFu0q1hnyEEaH5RlrIMQSsrsKKzyED29VnT08xmliR65WbTkNTFw==}
     engines: {node: '>=22.12'}
 
   '@mark1russell7/predicates@0.1.5':
@@ -3668,7 +3689,7 @@ snapshots:
   '@mark1russell7/collections@0.10.2(zod@4.6.7)':
     dependencies:
       '@mark1russell7/algebra': 0.8.10(zod@4.6.7)
-      '@mark1russell7/optional': 1.4.0
+      '@mark1russell7/optional': 1.5.0
       '@mark1russell7/rigor-statistics': 0.1.29
     transitivePeerDependencies:
       - zod
@@ -3676,7 +3697,7 @@ snapshots:
   '@mark1russell7/collections@0.11.2(zod@4.6.7)':
     dependencies:
       '@mark1russell7/algebra': 0.8.10(zod@4.6.7)
-      '@mark1russell7/optional': 1.4.0
+      '@mark1russell7/optional': 1.5.0
       '@mark1russell7/rigor-statistics': 0.2.8
     transitivePeerDependencies:
       - zod
@@ -3694,7 +3715,7 @@ snapshots:
 
   '@mark1russell7/geo@0.5.3':
     dependencies:
-      '@mark1russell7/optional': 1.4.0
+      '@mark1russell7/optional': 1.5.0
       '@mark1russell7/predicates': 0.1.5
 
   '@mark1russell7/interval@0.1.0': {}
@@ -3709,7 +3730,7 @@ snapshots:
     transitivePeerDependencies:
       - zod
 
-  '@mark1russell7/optional@1.4.0': {}
+  '@mark1russell7/optional@1.5.0': {}
 
   '@mark1russell7/predicates@0.1.5': {}
 
