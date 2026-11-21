@@ -1174,7 +1174,7 @@ export interface Carriage {
 }
 
 ### build/index.d.ts#Category
-export type Category = "geo" | "met" | "safety" | "security" | "rescue" | "fire" | "health" | "env" | "transport" | "infra" | "cbrne" | "other" | "cyber" | "market" | "civic" | "system";
+export type Category = "geo" | "met" | "safety" | "security" | "rescue" | "fire" | "health" | "env" | "transport" | "infra" | "cbrne" | "other" | "cyber" | "market" | "civic" | "personal" | "system";
 
 ### build/index.d.ts#CellResource
 export type CellResource = "internet" | "dns" | "power" | "receiver";
