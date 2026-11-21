@@ -10,6 +10,7 @@
  * - `importPage` gives the imports of the shared events of a second copy, and the `exchange` events.
  * - The fold retires the old incidents on the cadence of the runtime (AL-109). Thus the log has no `retired` event, as a live log.
  * - `createDispatcher` gives the delivery path, with the made-up people and channels of `seed-delivery.ts` (AL-104).
+ * - `systemView` gives the `system` events at the steps of the delivery path, with the causes of `seed-system.ts` (AL-104).
  *
  * The options `shapes` and `transit` also write the cache of the zone shapes and the copy of the transit catalog, from
  * `seed-files.ts`.
@@ -24,9 +25,6 @@
  * - The text of each record is a list of made-up words, at the byte size of the mix.
  *
  * The draws come from one seed. The same seed and the same size give the same log.
- *
- * The `system` events are not in the store. In the live log they are 0.2 percent of the events and 1.3 percent of the bytes.
- * The second part of AL-104 adds them.
  */
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -37,12 +35,14 @@ import {
   reportId,
   type Area,
   type Category,
+  type FetchFailure,
   type Instant,
   type Observation,
   type ObservationId,
   type Report,
   type ReportId,
   type Severity,
+  type SourceDescriptor,
   type SourceId,
   type Subject,
 } from "@mark1russell7/alerts";
@@ -70,6 +70,7 @@ import {
 import { random, seedOf, type Random } from "@mark1russell7/rigor-generators";
 import { openDatabase } from "@mark1russell7/sqlite";
 import { seedDelivery, type DeliveryMix } from "./seed-delivery.ts";
+import { seedSystem, type SystemMix } from "./seed-system.ts";
 import { SEED_FORECAST_ZONES, seedShapes, seedTransit, type SeedShapesResult, type SeedTransitResult } from "./seed-files.ts";
 import { fileBytes, pagesOf, textOf } from "./seed-parts.ts";
 
@@ -123,6 +124,8 @@ export interface LogMix {
   readonly starts: number;
   /** The delivery path. Without it, the log has no event of the delivery path. */
   readonly delivery?: DeliveryMix;
+  /** The causes of the system lines. The view steps at the steps of the delivery path, thus `system` needs `delivery`. */
+  readonly system?: SystemMix;
 }
 
 /** The count and the bytes of the events of one type. */
@@ -143,8 +146,12 @@ const OTHER_OBSERVATION_BYTES = 1_700_000 / 1_034;
  * - Approximately 40 status sources have 1,232 fetches each, with 0 to 65 reports each. The two power sources are in that count,
  *   thus the group of status pages has 37 sources. Their 492 reports and 0.5 MB are the rest of the totals of the measure.
  * - The measure does not give the observations of usgs, swpc, ipaws and the status pages. Each report of them gets one observation.
- * - A sweep on 2026-11-21 gave the delivery mix. On 3 seeds of 4.4 hours, each delivery type with 2 or more events in
- *   each live hour had 0.46 to 2.0 times its live rate.
+ * - A sweep on 2026-11-21 gave the delivery mix. Most live escalations came from system lines, and few from weather reports.
+ *   Thus each place has only 2 zones. On 5 seeds of 36 hours, each frequent type had 0.29 to 2.0 times its live rate.
+ * - Approximately 3 in 4 live deliveries were in a digest. The live digests went at one time of each day.
+ * - The fetches of the live log gave the system mix: approximately 2 outages of the cell in a day, most of 5 minutes or less.
+ *   One source refused each fetch. Out of the outages, approximately 3 fetches in 10,000 failed.
+ * - The other copy had approximately 15 gaps in a day of its reads, out of the outages.
  */
 export const LIVE_MIX: LogMix = {
   days: 5.8,
@@ -163,7 +170,8 @@ export const LIVE_MIX: LogMix = {
   exchanges: 2_508,
   importBytes: 37_200_000,
   starts: 119,
-  delivery: { people: 2, zones: 25, refusal: 0.15, gap: 2 * 60_000, every: 15 * 60_000, limits: { window: 3_600_000, notice: 1, urgent: 3 }, crash: 0.06 },
+  delivery: { people: 4, zones: 2, refusal: 0.15, gap: 2 * 60_000, every: 15 * 60_000, limits: { window: 3_600_000, notice: 1, urgent: 3 }, crash: 0.06, digest: "13:00" },
+  system: { outages: 2.1, outage: [2 * 60_000, 12 * 60_000], down: 1, failure: 3e-4, gaps: 15, gap: [90_000, 10 * 60_000] },
 };
 
 /**
@@ -271,12 +279,16 @@ export async function seedStore(dir: string, options: SeedStoreOptions): Promise
   await mkdir(dir, { recursive: true });
   const path = join(dir, "runtime.sqlite");
   const mix = options.mix ?? LIVE_MIX;
-  // The context of the fold of a live copy with no source in its configuration. The fold retires on the cadence of the event time.
-  const context: FoldContext = { sources: [], retention: options.retention ?? {} };
+  if (mix.system !== undefined && mix.delivery === undefined) throw new Error("The mix has a system mix with no delivery mix. The view steps at the steps of the delivery path.");
   const root = random(seedOf(options.seed));
   const start = options.start ?? START;
   const span = mix.days * DAY;
   const plans = mix.sources.flatMap((source) => plansOf(source, span, root, start));
+  const retention = options.retention ?? {};
+  // The context of the fold of a live copy. With a system mix, the configuration has the sources of the plans. The fold
+  // retires on the cadence of the event time.
+  const sources = mix.system === undefined ? [] : plans.map(descriptorOf);
+  const context: FoldContext = { sources, retention };
   const share = Math.min(1, mix.importBytes / mix.sources.reduce((sum, source) => sum + source.reportBytes, 0));
   const peer = root.fork("peer");
   const exchangeEvery = Math.round(span / mix.exchanges);
@@ -324,6 +336,7 @@ export async function seedStore(dir: string, options: SeedStoreOptions): Promise
   };
 
   const delivery = mix.delivery === undefined ? undefined : seedDelivery(mix.delivery, root.fork("delivery"), { start, run: `seed-run-${String(runs)}`, state: () => state, append: add });
+  const system = mix.system === undefined ? undefined : seedSystem(mix.system, root.fork("system"), { start, self: SEED_SELF, peer: SEED_PEER, sources, retention, state: () => state });
 
   try {
     add([{ ...envelope("started", `started:seed-run-${String(runs)}`, start), run: `seed-run-${String(runs)}` }]);
@@ -331,8 +344,13 @@ export async function seedStore(dir: string, options: SeedStoreOptions): Promise
       const plan = earliest(plans);
       const at = Math.min(plan.next, nextExchange, nextStart, delivery?.due ?? Number.POSITIVE_INFINITY);
       if (at === delivery?.due) {
+        // The view comes before the delivery step, as in a pass of the runtime. Its system reports are incidents too.
+        const view = system?.step(at, delivery.places);
+        if (view !== undefined) add(view.events);
+        const stopped = await delivery.step(at);
+        if (view?.wakeAt !== undefined) delivery.wake(view.wakeAt);
         // After a stop of the runtime in the step, the next start comes at once.
-        if (await delivery.step(at)) nextStart = at;
+        if (stopped) nextStart = at;
       } else if (at === nextStart) {
         nextStart += startEvery;
         runs += 1;
@@ -341,6 +359,7 @@ export async function seedStore(dir: string, options: SeedStoreOptions): Promise
         // The counts of the misses and the times of the dispatcher are in memory only. After a start they begin again.
         for (const each of plans) each.misses = new Map();
         delivery?.restart(run);
+        system?.restart(at);
       } else if (at === nextExchange) {
         nextExchange += exchangeEvery;
         peerNext += shared.length + peer.int(5, 40);
@@ -351,13 +370,15 @@ export async function seedStore(dir: string, options: SeedStoreOptions): Promise
         shared = [];
         add(read.events);
       } else {
-        const events = fetchOf(plan, at);
+        const result = system?.fetch(plan.id, at);
+        const events = fetchOf(plan, at, result?.failure);
         add(events);
         const fetch = events.at(-1) as FetchEvent;
         if (fetch.reports.length > 0 && peer.chance(share)) shared.push({ from: SEED_PEER, event: peerCopy(fetch, peer, peerAt) });
-        if (plan.mix.listing === "snapshot") add(snapshotOf(plan, fetch));
-        // Only the reports of the zones reach a made-up place, thus only their fetches bring the next step.
-        if (fetch.reports.length > 0 && plan.mix.shape === "zone") delivery?.wake(at);
+        if (plan.mix.listing === "snapshot" && result?.failure === undefined) add(snapshotOf(plan, fetch));
+        // Only the reports of the zones reach a made-up place. A fetch with other results than the last fetch of its source
+        // can change the health. Thus these fetches bring the next step.
+        if ((fetch.reports.length > 0 && plan.mix.shape === "zone") || result?.turned === true) delivery?.wake(at);
       }
       if (pendingBytes >= chunk) flush();
     }
@@ -370,6 +391,28 @@ export async function seedStore(dir: string, options: SeedStoreOptions): Promise
   const shapes = options.shapes === undefined ? undefined : await seedShapes(dir, { bytes: options.shapes, seed: options.seed, fetched: end });
   const transit = options.transit === undefined ? undefined : await seedTransit(dir, { bytes: options.transit, seed: options.seed, fetched: end });
   return { path, bytes: fileBytes(path), events: written, start, end, types, ...(shapes === undefined ? {} : { shapes }), ...(transit === undefined ? {} : { transit }) };
+}
+
+// The map of a fetch with a failure. The fetch has no observation, thus the step does not use it.
+const NO_MAP = { map: () => ({ reports: [], problems: [] }) };
+
+// The descriptor of the source of a plan, for the health and the coverage of the view. Each source has its own provider,
+// thus the sources of a kind are independent. Each source covers each place. A fetch takes 1.5 seconds or less.
+function descriptorOf(plan: SourcePlan): SourceDescriptor {
+  return {
+    id: plan.id,
+    title: `Seeded source ${plan.id}`,
+    origins: [plan.mix.source],
+    dependsOn: [`provider:${plan.id}`],
+    uses: ["internet", "dns", "power"],
+    kinds: plan.mix.kinds,
+    coverage: "global",
+    transport: "poll",
+    interval: Math.round(plan.every),
+    slowAfter: 10_000,
+    auth: "none",
+    ...(plan.mix.listing === "snapshot" ? { listing: "snapshot" as const } : {}),
+  };
 }
 
 // The plans of the sources of a mix. A group gets one plan for each source, with an equal part of each count.
@@ -411,11 +454,13 @@ function countOf(r: Random, mean: number): number {
   return whole + (r.chance(mean - whole) ? 1 : 0);
 }
 
-// The events of one fetch of a source: its new observations, and the fetch event from `fetchStep`.
-function fetchOf(plan: SourcePlan, started: Instant): (ObservationEvent | FetchEvent)[] {
+// The events of one fetch of a source: its new observations, and the fetch event from `fetchStep`. A fetch with a failure
+// gives only its fetch event.
+function fetchOf(plan: SourcePlan, started: Instant, failure: FetchFailure | undefined): (ObservationEvent | FetchEvent)[] {
   const { r, mix } = plan;
   plan.next = Math.round(started + plan.every * r.range(0.9, 1.1));
   const ended = started + r.int(80, 1_500);
+  if (failure !== undefined) return fetchStep({ source: plan.id, procedures: NO_MAP, started, ended, outcome: { ok: false, failure }, known: () => true }).events;
   const fresh: Observation[] = [];
   const reports = new Map<ObservationId, Report[]>();
   // The reports of an observation come after it, thus their keys have the number of the observation.

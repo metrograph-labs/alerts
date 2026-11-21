@@ -7,7 +7,8 @@
  * - Each person watches one place. A place has `zones` forecast zones of the codes `ZZZ001` to `ZZZ120`.
  * - The channel `seed-push` repeats each message until a stop, and it has polls. It refuses a send at the chance `refusal`.
  * - The channels `seed-note` and `seed-text` have no acknowledgment. A notice goes to `seed-note`.
- * - Each person has a policy for the levels `notice`, `urgent` and `life-safety`. A digest starts no escalation.
+ * - Each person has a policy for the levels `digest`, `notice`, `urgent` and `life-safety`. The digest goes each day
+ *   with the incidents of the level `digest` and the held incidents of the day. The core cancels no digest.
  *
  * The clock of the steps is a fake wall clock. Each call of a channel ends at once, thus no call passes its limit.
  * A copy stays open only after a stop of the runtime in a step, at the chance `crash`. The next start settles it.
@@ -43,12 +44,16 @@ export interface DeliveryMix {
    * the next start comes at once. Its first step stops the open copy and writes a `settled` event, as after a live crash.
    */
   readonly crash: number;
+  /** The daily time `HH:MM` of the digest of each person, in the time zone `UTC`. */
+  readonly digest: string;
 }
 
 /** The delivery stage of `seedStore`. */
 export interface SeedDelivery {
   /** The time of the next step. */
   readonly due: Instant;
+  /** The made-up places of the people. */
+  readonly places: readonly WatchedPlace[];
   /** This method makes a new dispatcher with the run id `run`, as a start of the runtime does. Its first step stops the open copies. */
   restart(run: string): void;
   /** This method brings the next step to `at`, or to the end of the gap after the last step. A fetch with new reports starts it. */
@@ -78,12 +83,12 @@ const MINUTE = 60_000;
 // The policies of the people. A notice goes once to the channel that does not repeat. A life-safety message goes at once
 // by push, and the text comes after a wait. The people of an odd number get an urgent message by push, and the others by
 // note. Thus the log has the two policies of an urgent message.
-const policiesOf = (urgent: ChannelId): readonly EscalationPolicy[] => [
+const policiesOf = (urgent: ChannelId, digest: string): readonly EscalationPolicy[] => [
+  { level: "digest", daily: { zone: "UTC", time: digest }, steps: [{ channel: SEED_NOTE, at: 0 }], exhaustedAfter: 10 * MINUTE },
   { level: "life-safety", steps: [{ channel: SEED_PUSH, at: 0 }, { channel: SEED_TEXT, at: 5 * MINUTE }], exhaustedAfter: 20 * MINUTE },
   { level: "urgent", steps: [{ channel: urgent, at: 0 }, { channel: SEED_TEXT, at: 15 * MINUTE }], exhaustedAfter: 30 * MINUTE },
   { level: "notice", steps: [{ channel: SEED_NOTE, at: 0 }], exhaustedAfter: 10 * MINUTE },
 ];
-const POLICIES = [policiesOf(SEED_PUSH), policiesOf(SEED_NOTE)] as const;
 
 // The times of the delivery options, as in the configuration of a live copy.
 const TIMES = { pollEvery: MINUTE, retry: 30_000, callLimit: 10_000, flightLimit: 40_000 } as const;
@@ -102,6 +107,8 @@ export function seedDelivery(mix: DeliveryMix, r: Random, context: SeedDeliveryC
   for (const [name, chance] of [["refusal", mix.refusal], ["crash", mix.crash]] as const) {
     if (!(chance >= 0 && chance < 1)) throw new Error(`The delivery mix has the chance ${name} ${String(chance)}. It must be 0 or more, and less than 1.`);
   }
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/u.test(mix.digest)) throw new Error(`The delivery mix has the digest time ${mix.digest}. It must be HH:MM, from 00:00 to 23:59.`);
+  const policies = [policiesOf(SEED_PUSH, mix.digest), policiesOf(SEED_NOTE, mix.digest)] as const;
   const zones = Math.min(mix.zones, SEED_FORECAST_ZONES);
   const places: WatchedPlace[] = Array.from({ length: mix.people }, (_, index) => ({
     id: `seed-place-${String(index + 1)}` as PlaceId,
@@ -110,7 +117,7 @@ export function seedDelivery(mix: DeliveryMix, r: Random, context: SeedDeliveryC
   }));
   const recipients: Recipient[] = places.map((place, index) => ({
     watch: { person: `seed-person-${String(index + 1)}` as PersonId, places: [place.id], rules: [] },
-    policies: POLICIES[index % 2]!,
+    policies: policies[index % 2]!,
     addresses: { [SEED_PUSH]: { user: `seed-user-${String(index + 1)}` }, [SEED_NOTE]: { topic: `seed-topic-${String(index + 1)}` }, [SEED_TEXT]: { to: `seed-to-${String(index + 1)}` } },
   }));
   const clock = fakeWallClock(context.start);
@@ -146,6 +153,7 @@ export function seedDelivery(mix: DeliveryMix, r: Random, context: SeedDeliveryC
     get due() {
       return due;
     },
+    places,
     restart(run) {
       dispatcher = dispatcherOf(run);
     },
