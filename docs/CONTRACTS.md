@@ -775,8 +775,13 @@ The mirror does these steps before each read of the reload hook (`config-sync.ts
 ### The checks of the copies
 
 - Each copy pings its own first check, with the URL of `pingKey`. Thus the owner gets a message when one copy stops.
-- The copies share the loud check, and each copy pings it. Thus the outage call comes only when no copy pings it in its grace.
-- A fail ping of one copy still makes the loud check go down. A fail comes from a channel that refuses, or from an overdue send of the joined ledger. Thus it tells of the whole system.
+- The copies share the loud check, and each copy sends it only the success pings. Thus the outage call comes only when no copy pings it in its grace: no copy can tell the person.
+- A fail of one copy goes only to its own first check. A fail comes from a channel that refuses, or from an overdue send of the joined ledger. While another copy sends success, the loud check stays up. Thus a fault of one copy makes no call (AL-100).
+- One outage gives one call. The loud check goes down one time, and Healthchecks.io calls one time for each down. The first success of a copy ends the outage.
+- A fail of the only copy also stops its success pings. Thus the loud check calls after its period and grace, not at once. The first check tells the owner at once.
+- After a start, a copy sends its first success to the loud check 5 minutes after its first pass (`LOUD_STEADY`). A start that stops before then sends no success to it.
+- On 2026-11-21, the starts of a copy with too little memory stopped after 3 minutes of passes or less. Each of their success pings ended the down, and the next down called again: 6 rounds of calls in 11 hours.
+- Thus a stop and a start of the only copy must end in the period plus the grace of the loud check, less `LOUD_STEADY`.
 
 ### The quotas and the caps
 
@@ -1409,9 +1414,11 @@ The runtime cannot tell the person that it stopped. A check of Healthchecks.io t
 - The hook starts the ping and ends at once. One ping is in flight at a time, for 10 seconds or less. A failed ping goes to the log, and its text holds no ping URL. The next pass pings again.
 - The key `HEALTHCHECKS_PING_URL` of `secrets.env` gives the ping URL, with `https`. The profile `daemon` does not start without it.
 - The optional key `HEALTHCHECKS_LOUD_PING_URL` gives a second check: the loud check. Its integration makes a phone call to the person, and it shares no channel with the instance.
-- The heartbeat sends each ping to the two checks, with one hook for each check. A slow ping to one check does not hold the other. Without the key, nothing changes.
+- The heartbeat has one hook for each check. A slow ping to one check does not hold the other. Without the key, nothing changes.
+- The first check gets each ping. The loud check gets only the success pings (the option `successOnly` of the hook). After a fail, the first success pings the loud check at once.
+- The first success ping to the loud check waits for `LOUD_STEADY` after the first pass (the option `steadyAfter` of the hook). The wait counts on the monotonic clock.
 - The loud check has a longer grace than the first check. Thus a short stop, for example a reboot, does not make a phone call.
-- `install.ts status` also reads the loud check, when `secrets.env` has its key.
+- `install.ts status` also reads the loud check, when `secrets.env` has its key. The loud check needs the gap plus `LOUD_STEADY`.
 - `heartbeatGap` gives the longest time between two success pings. It adds the period of the pings, two pass limits, the longest wait of the loop and the ping limit. Each failed pass adds a pass limit and a wait. The check lets one failed pass go.
 - The period plus the grace of the check must be this gap or more: 430 seconds for the instance. `install.ts status` reads the check with `HEALTHCHECKS_API_KEY`, and fails when it is shorter.
 - A new check alerts only after its first ping. Thus the first install checks that the check is up.
