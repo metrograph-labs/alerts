@@ -233,6 +233,7 @@ export const TAXONOMY: Readonly<Record<string, KindEntry>> = {
   "health.drug-shortage": entry("Drug or medical supply shortage", "A shortage of a medicine or medical product that affects patients."),
   "health.drug-supply-threat": entry("Dangerous drug supply or overdose cluster", "A new adulterant or potent drug in the illicit supply, or a spike in overdoses in an area."),
   "health.hospital-capacity": entry("Hospital or emergency care strain", "Hospitals in an area are full, on diversion or closed, so emergency care takes longer."),
+  "health.medical-emergency": entry("Medical emergency", "A person needs emergency medical care now, for example after a fall, an injury, a stroke or a heart attack at home."),
   "health.outbreak": entry("Disease outbreak", "An unusual cluster or spread of an infectious disease, reported by a public health agency."),
   "health.outbreak.foodborne": entry("Foodborne illness outbreak", "Illnesses linked to a food product, under investigation, often before or with a recall."),
   "health.travel-notice": entry("Travel health notice", "A health notice for travellers to a country, from usual precautions to avoid all travel."),
