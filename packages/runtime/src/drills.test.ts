@@ -1,6 +1,7 @@
 import { fakeWallClock } from "@mark1russell7/algebra/clock";
 import {
   DRILL_SUBJECT,
+  DRILL_WATCH_GRACE,
   EMPTY_STATE,
   NO_SYSTEM_LINES,
   drillRules,
@@ -9,8 +10,10 @@ import {
   type ChannelDescriptor,
   type ChannelId,
   type ChannelProcedures,
+  type CopyWatch,
   type DeliveryStatus,
   type DrillConfig,
+  type DrillWatch,
   type EscalationPolicy,
   type Message,
   type PersonId,
@@ -20,9 +23,9 @@ import {
   type WatchedPlace,
 } from "@mark1russell7/alerts";
 import { describe, expect, it } from "vitest";
-import { copyDrills, drillRunOf, drillStarts, drillStep, type CopyDrill } from "./drills.ts";
+import { copyDrills, drillRunOf, drillStarts, drillStep, watchedDrills, type CopyDrill } from "./drills.ts";
 import { openRuntimeLog, type RuntimeLog } from "./log.ts";
-import { openRuntime, type RuntimeOptions } from "./runtime.ts";
+import { openRuntime, type CopyChecks, type RuntimeOptions } from "./runtime.ts";
 
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
@@ -75,6 +78,19 @@ describe("the drills of a copy (AL-43)", () => {
     // Without a list of copies, only the copy of rank 0 starts a drill. The list names each copy that starts it.
     expect(copyDrills([DRILL, cloud], [RECIPIENT], "cloud", 1)).toEqual([{ drill: cloud, quiet: QUIET }]);
     expect(copyDrills([DRILL], [], COPY, 0)).toEqual([{ drill: DRILL }]);
+  });
+
+  it("watches each drill that another copy starts, with the quiet window of its person", () => {
+    const cloud: DrillConfig = { ...DRILL, id: "cloud-weekly", copies: ["cloud"] };
+    const both: DrillConfig = { ...DRILL, id: "both-weekly", copies: [COPY, "cloud", "third"] };
+    // The copy of rank 0 starts the drill with no list, thus it watches only the drills of the lists.
+    expect(watchedDrills([DRILL, cloud, both], [RECIPIENT], COPY, 0)).toEqual([
+      { drill: cloud, quiet: QUIET, copy: "cloud" },
+      { drill: both, quiet: QUIET, copy: "cloud" },
+      { drill: both, quiet: QUIET, copy: "third" },
+    ]);
+    // A copy of another rank watches the drill with no list, with no copy in the watch.
+    expect(watchedDrills([DRILL, cloud], [], "cloud", 1)).toEqual([{ drill: DRILL }]);
   });
 
   it("counts only the first acknowledgment of the person on the path, of a run report after the start", () => {
@@ -146,7 +162,7 @@ function channel(id: ChannelId, ack: ChannelDescriptor["ack"], now: () => number
   return { procedures, calls };
 }
 
-function open(options: { readonly status?: () => DeliveryStatus; readonly drills?: readonly CopyDrill[]; readonly log?: RuntimeLog; readonly clock?: ReturnType<typeof fakeWallClock> } = {}) {
+function open(options: { readonly status?: () => DeliveryStatus; readonly drills?: readonly CopyDrill[]; readonly copies?: CopyChecks; readonly drillWatches?: readonly DrillWatch[]; readonly log?: RuntimeLog; readonly clock?: ReturnType<typeof fakeWallClock> } = {}) {
   const clock = options.clock ?? fakeWallClock(T0);
   const log = options.log ?? openRuntimeLog(":memory:");
   const pushover = channel(PUSHOVER, "poll", () => clock.now(), options.status);
@@ -161,6 +177,8 @@ function open(options: { readonly status?: () => DeliveryStatus; readonly drills
     copy: COPY,
     delivery: { recipients: [RECIPIENT], channels: [pushover.procedures, sms.procedures], pollEvery: 30 * SECOND, retry: 15 * SECOND, callLimit: 10 * SECOND, flightLimit: 40 * SECOND },
     drills: options.drills ?? OWN,
+    ...(options.copies === undefined ? {} : { copies: options.copies }),
+    ...(options.drillWatches === undefined ? {} : { drillWatches: options.drillWatches }),
   });
   return { clock, log, runtime, pushover: pushover.calls, sms: sms.calls };
 }
@@ -265,6 +283,31 @@ describe("the drills in the passes of the runtime (AL-43)", () => {
     expect(drillLines(back.runtime.state().lines)).toEqual([`drill/${COPY}/${DRILL.id}`]);
     expect(back.pushover.send.map((message) => message.title)).toEqual([RUN.headline]);
     log.close();
+  });
+
+  it("tells of a start of a drill of another copy that did not come, and wakes at its time", async () => {
+    const HOUR = 60 * MINUTE;
+    const cloud: DrillConfig = { ...DRILL, id: "cloud-weekly", copies: ["cloud"] };
+    const clock = fakeWallClock(T0);
+    // The other copy answers each read, and its last start of the drill is one week before.
+    const copies: CopyChecks = {
+      watches: (): readonly CopyWatch[] => [{ copy: "cloud", skewLimit: MINUTE, maxAge: 5 * MINUTE, since: T0 - DAY, read: { at: clock.now(), skew: 0, sameConfig: true }, drills: { [cloud.id]: T0 - 7 * DAY } }],
+      shift: () => {},
+      ready: async () => {},
+    };
+    const { runtime } = open({ clock, drills: [], copies, drillWatches: watchedDrills([cloud], [RECIPIENT], COPY, 0) });
+    // The due start is Saturday 11:00 in Chicago, one hour before T0. Its window ends at 17:00.
+    const missAt = T0 + 5 * HOUR + DRILL_WATCH_GRACE;
+    const watchLines = () => Object.keys(runtime.state().lines.open).filter((line) => line.startsWith("drill-watch/"));
+    const first = await runtime.pass();
+    expect(watchLines()).toEqual([]);
+    expect(first.wakeAt).toBeLessThanOrEqual(missAt);
+    await clock.advance(missAt - 1 - T0);
+    await runtime.pass();
+    expect(watchLines()).toEqual([]);
+    await clock.advance(1);
+    await runtime.pass();
+    expect(watchLines()).toEqual(["drill-watch/cloud/cloud-weekly"]);
   });
 
   it("ends the open lines of a drill that leaves the configuration", async () => {
