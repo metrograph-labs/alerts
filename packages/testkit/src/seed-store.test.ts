@@ -16,11 +16,13 @@ const CONTEXT = { sources: [], retention: RETENTION };
 const SOURCE_TYPES = ["observation", "fetch", "import", "ended", "exchange"] as const;
 // The types of the delivery path, which the dispatcher of the runtime writes (AL-104).
 const DELIVERY_TYPES = ["escalation", "escalation-end", "hold", "delivery", "attempt", "cancelled", "refused", "settled"] as const;
-// The types of the delivery path with a rate of 2 or more events in each hour of the live log.
-const FREQUENT_TYPES = ["escalation", "delivery", "hold", "attempt", "cancelled"] as const;
-// The largest ratio between the hourly rate of a frequent type in the seeded log and in the live log. On 3 seeds of
-// 4.4 hours, the worst ratio was 2.17 (2026-11-21).
-const RATE_FACTOR = 2.5;
+// The types with a rate of 2 or more events in each hour of the live log: the frequent types of the delivery path, and
+// the system events (AL-104).
+const FREQUENT_TYPES = ["escalation", "delivery", "hold", "attempt", "cancelled", "system"] as const;
+// The largest ratio between the hourly rate of a frequent type in the seeded log and in the live log. On 5 seeds of
+// 36 hours, the worst ratio was 3.4 (2026-11-21). A log has approximately 3 outages of the cell, and most system lines
+// and escalations come at an outage. Thus the rates of a log change much between the seeds, as the days of the live log do.
+const RATE_FACTOR = 4;
 // A mix with more refusals and stops, so that a log of a few hours has each rare type of the delivery path.
 const STRESS_MIX = { ...LIVE_MIX, delivery: { ...LIVE_MIX.delivery!, refusal: 0.5, crash: 0.5 } };
 
@@ -28,8 +30,8 @@ let dir: string;
 let first: SeedStoreResult;
 let again: SeedStoreResult;
 let other: SeedStoreResult;
-// A log of 4.4 hours of the live mix, for the rates of the delivery path.
-let long: SeedStoreResult;
+// A log of 36 hours of the live mix, for the rates of the frequent types.
+let steady: SeedStoreResult;
 // A log of 4.4 hours of the stress mix, for the rare types of the delivery path.
 let stress: SeedStoreResult;
 let events: readonly RuntimeEvent[];
@@ -48,10 +50,10 @@ beforeAll(async () => {
   first = await seedStore(join(dir, "a"), { log: SIZE, seed: "al-103", retention: RETENTION });
   again = await seedStore(join(dir, "b"), { log: SIZE, seed: "al-103", retention: RETENTION });
   other = await seedStore(join(dir, "c"), { log: SIZE, seed: "al-103-other", retention: RETENTION });
-  long = await seedStore(join(dir, "e"), { log: 4 * SIZE, seed: "al-104" });
+  steady = await seedStore(join(dir, "e"), { log: 32 * SIZE, seed: "al-104-steady" });
   stress = await seedStore(join(dir, "f"), { log: 4 * SIZE, seed: "al-104-stress", mix: STRESS_MIX });
   events = eventsOf(first.path);
-}, 120_000);
+}, 300_000);
 
 afterAll(async () => {
   await rm(dir, { recursive: true, force: true });
@@ -103,13 +105,31 @@ describe("seedStore", () => {
     expect(Object.values(state.delivered).reduce((sum, count) => sum + count, 0)).toBe(stress.types["delivery"]?.count);
   });
 
-  it("has the rates of the live log for the frequent types of the delivery path, within a factor of RATE_FACTOR", () => {
-    const hours = (long.end - long.start) / 3_600_000;
+  it("has the rates of the live log for the frequent types, within a factor of RATE_FACTOR", () => {
+    const hours = (steady.end - steady.start) / 3_600_000;
     for (const type of FREQUENT_TYPES) {
-      const ratio = (long.types[type]?.count ?? 0) / hours / ((LIVE_TYPES[type]?.count ?? 0) / (LIVE_MIX.days * 24));
+      const ratio = (steady.types[type]?.count ?? 0) / hours / ((LIVE_TYPES[type]?.count ?? 0) / (LIVE_MIX.days * 24));
       expect(ratio, type).toBeGreaterThan(1 / RATE_FACTOR);
       expect(ratio, type).toBeLessThan(RATE_FACTOR);
     }
+  });
+
+  it("has each family of the system lines of the live log, from the view of the runtime", () => {
+    const families = new Set<string>();
+    for (const event of eventsOf(steady.path)) {
+      if (event.type !== "system") continue;
+      for (const report of event.reports) families.add(`${report.kind.code.startsWith("system.coverage.") ? "system.coverage" : report.kind.code}:${report.op}`);
+    }
+    for (const family of ["system.health.failing", "system.coverage", "system.copy.unread"]) {
+      expect(families, family).toContain(`${family}:alert`);
+      expect(families, family).toContain(`${family}:cancel`);
+    }
+  });
+
+  it("refuses a system mix with no delivery mix", async () => {
+    const { delivery, ...mix } = LIVE_MIX;
+    expect(delivery).toBeDefined();
+    await expect(seedStore(join(dir, "g"), { log: SIZE, seed: 1, mix })).rejects.toThrow(/system mix with no delivery mix/u);
   });
 
   it("writes the delivery path for made-up people only", () => {
