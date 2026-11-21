@@ -9,10 +9,11 @@
 
 import { observationId, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch } from "@mark1russell7/alerts";
 import { createRequester } from "@mark1russell7/alerts-fetch";
+import { isRecord, timeOf, type Fields } from "@mark1russell7/optional/read";
 import type { Condition, Pace, Transport } from "polite-crawler/api";
 
 import { GCP_DASHBOARD, INCIDENTS_PATH, type GoogleDashboard } from "./feed.ts";
-import { HISTORY_FIELDS, INCIDENT_FIELDS, isIncident, ITEM_FIELDS, timeOf, UPDATE_FIELDS } from "./map.ts";
+import { HISTORY_FIELDS, INCIDENT_FIELDS, isIncident, ITEM_FIELDS, UPDATE_FIELDS } from "./map.ts";
 
 /** The longest time of one request when the source gives none, in milliseconds. */
 export const INCIDENTS_TIMEOUT_MS = 30_000;
@@ -38,10 +39,6 @@ export interface GcpFetchInput {
   readonly watch: Watch;
 }
 
-type Fields = Readonly<Record<string, unknown>>;
-
-const isFields = (value: unknown): value is Fields => typeof value === "object" && value !== null && !Array.isArray(value);
-
 /** This function gives the fields of `value` that `order` names, in that order. */
 function pick(value: Fields, order: readonly string[]): Record<string, unknown> {
   const picked: Record<string, unknown> = {};
@@ -51,7 +48,7 @@ function pick(value: Fields, order: readonly string[]): Record<string, unknown> 
 
 /** This function gives the listed values of a field, each with only the fields of `order`. */
 function pickEach(value: unknown, order: readonly string[]): unknown {
-  return Array.isArray(value) ? value.map((each) => (isFields(each) ? pick(each, order) : each)) : value;
+  return Array.isArray(value) ? value.map((each) => (isRecord(each) ? pick(each, order) : each)) : value;
 }
 
 /**
@@ -63,7 +60,7 @@ export function incidentBody(incident: Fields): string {
   for (const field of ["affected_products", "currently_affected_locations", "previously_affected_locations"]) {
     if (body[field] !== undefined) body[field] = pickEach(body[field], ITEM_FIELDS);
   }
-  if (isFields(body["most_recent_update"])) {
+  if (isRecord(body["most_recent_update"])) {
     const latest = pick(body["most_recent_update"], UPDATE_FIELDS);
     if (latest["affected_locations"] !== undefined) latest["affected_locations"] = pickEach(latest["affected_locations"], ITEM_FIELDS);
     body["most_recent_update"] = latest;
@@ -77,7 +74,7 @@ export function incidentBody(incident: Fields): string {
  * is not an object is live, so the map tells of the change of the format.
  */
 export function isLive(incident: unknown, now: Instant): boolean {
-  if (!isFields(incident)) return true;
+  if (!isRecord(incident)) return true;
   const end = timeOf(incident, "end");
   return end === undefined ? incident["end"] === undefined || incident["end"] === null || incident["end"] === "" : end > now;
 }
@@ -104,8 +101,8 @@ export function readIncidents(body: string, now: Instant): Incidents | undefined
   if (!Array.isArray(parsed)) return { bodies: [body], complete: false };
   const live = parsed.filter((incident) => isLive(incident, now));
   return {
-    bodies: [...new Set(live.map((incident) => (isFields(incident) ? incidentBody(incident) : JSON.stringify(incident))))],
-    complete: live.every((incident) => isFields(incident) && isIncident(incident)),
+    bodies: [...new Set(live.map((incident) => (isRecord(incident) ? incidentBody(incident) : JSON.stringify(incident))))],
+    complete: live.every((incident) => isRecord(incident) && isIncident(incident)),
   };
 }
 

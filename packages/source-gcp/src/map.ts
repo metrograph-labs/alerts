@@ -9,6 +9,7 @@
  */
 
 import { categoryOf, kindLabel, Problems, reportId, type Instant, type MapResult, type Observation, type Report, type Severity, type Subject, type Urgency } from "@mark1russell7/alerts";
+import { isRecord, textOf, timeOf, type Fields } from "@mark1russell7/optional/read";
 import { errorMessage } from "@mark1russell7/text";
 
 import { DOMAIN_SYSTEM, GCP_DASHBOARD, GCP_KIND, GCP_ORIGIN, REGION_SYSTEM, regionId, type GoogleDashboard, type ProductKey } from "./feed.ts";
@@ -49,24 +50,6 @@ export const SEVERITY_OF_INCIDENT: Readonly<Record<string, Severity>> = { high: 
  */
 export const URGENCY_OF_STATUS: Readonly<Record<string, Urgency>> = { SERVICE_OUTAGE: "immediate", SERVICE_DISRUPTION: "immediate", SERVICE_INFORMATION: "future", AVAILABLE: "past" };
 
-type Fields = Readonly<Record<string, unknown>>;
-
-const isFields = (value: unknown): value is Fields => typeof value === "object" && value !== null && !Array.isArray(value);
-
-/** This function gives the time of a field, or `undefined` for an absent value or a value that is not a time. */
-export function timeOf(fields: Fields, field: string): Instant | undefined {
-  const value = fields[field];
-  if (typeof value !== "string" || value === "") return undefined;
-  const time = Date.parse(value);
-  return Number.isFinite(time) ? time : undefined;
-}
-
-/** This function gives the text of a field, or `undefined` for an empty or absent text. */
-function textOf(fields: Fields, field: string): string | undefined {
-  const value = fields[field];
-  return typeof value === "string" && value.trim() !== "" ? value.trim() : undefined;
-}
-
 /** This function gives the time of the last change of an incident: its field `modified`, else its field `created`. */
 export function sentOf(incident: Fields): Instant | undefined {
   return timeOf(incident, "modified") ?? timeOf(incident, "created");
@@ -79,7 +62,7 @@ export function isIncident(incident: Fields): boolean {
 
 /** This function gives the items of a list field with an id: each product or location, with no id twice. */
 export function itemsOf(fields: Fields, field: string): readonly { readonly id: string; readonly title?: string }[] {
-  const items = Array.isArray(fields[field]) ? (fields[field] as unknown[]).filter(isFields) : [];
+  const items = Array.isArray(fields[field]) ? (fields[field] as unknown[]).filter(isRecord) : [];
   const seen = new Set<string>();
   const out: { id: string; title?: string }[] = [];
   for (const item of items) {
@@ -133,7 +116,7 @@ function mapOrThrow(observation: Observation, dashboard: GoogleDashboard): MapRe
     return { reports: [], problems: [{ path: "", message: "the body is not JSON", fatal: true }] };
   }
   // The fetch gives the whole answer as one observation when the answer is not a list of incidents.
-  if (!isFields(fields) || !Object.hasOwn(fields, "id")) {
+  if (!isRecord(fields) || !Object.hasOwn(fields, "id")) {
     return { reports: [], problems: [{ path: "", message: `the observation is not one incident of ${dashboard.sender}: the format changed`, fatal: true }] };
   }
   const problems = new Problems();
@@ -143,7 +126,7 @@ function mapOrThrow(observation: Observation, dashboard: GoogleDashboard): MapRe
   if (!isIncident(fields)) return { reports: [], problems: problems.list };
   const severity = typeof fields["severity"] === "string" ? fields["severity"] : undefined;
   if (severity === undefined || SEVERITY_OF_INCIDENT[severity] === undefined) problems.add("severity", `the severity ${JSON.stringify(fields["severity"])} is not a severity of the feed: the severity is unknown`);
-  const latest = isFields(fields["most_recent_update"]) ? fields["most_recent_update"] : undefined;
+  const latest = isRecord(fields["most_recent_update"]) ? fields["most_recent_update"] : undefined;
   const status = latest !== undefined && typeof latest["status"] === "string" ? latest["status"] : undefined;
   if (status === undefined || URGENCY_OF_STATUS[status] === undefined) problems.add("most_recent_update.status", `the status ${JSON.stringify(latest?.["status"])} is not a status of the feed: the urgency is unknown`);
   return { reports: [reportOf(observation, dashboard, fields, severity, latest, status)], problems: problems.list };
