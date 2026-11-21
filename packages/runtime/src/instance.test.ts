@@ -47,7 +47,7 @@ import { DATE_FORMAT as EIA_DATE_FORMAT, EIA_930_DESCRIPTOR, HOUR_MS, periodEnd,
 import { memoryQuotaStore, quotaGate, type Exchange, type Transport } from "polite-crawler/api";
 import { DEFAULT_POLICY } from "polite-crawler/politeness";
 import { afterEach, describe, expect, it } from "vitest";
-import { ACCOUNT_SOURCES, BOM_SWS_KEY, CHECKS_KEY, EIA_KEY, CLOUDFLARE_RADAR_KEY, checksKeys, DAEMON_CHECK, daemonCheck, DELIVERY_TIMES, INSTANCE_CHANNELS, INSTANCE_CHECK, INSTANCE_EXPECTATIONS, INSTANCE_FETCH_LIMIT, INSTANCE_SOURCES, INSTANCE_TIMES, instanceCheck, instanceProblems, instanceServices, shownNode, shownServices, LOUD_PING_URL_KEY, LOUD_STEADY, nwwsKeys, nwwsSetup, openInstance, PING_URL_KEY, pingKeyOf, pingTargets, RANK_DELAY, RANK_FLOOR, SOURCE_POLICY, sourcePace, twilioSetup, USER_AGENT_NAME, type Instance, type InstanceOptions } from "./instance.ts";
+import { ACCOUNT_SOURCES, BOM_SWS_KEY, CHECKS_KEY, EIA_KEY, CLOUDFLARE_RADAR_KEY, checksKeys, DAEMON_CHECK, daemonCheck, DELIVERY_TIMES, INSTANCE_CHANNELS, INSTANCE_CHECK, INSTANCE_EXPECTATIONS, instanceExpectations, INSTANCE_FETCH_LIMIT, INSTANCE_SOURCES, INSTANCE_TIMES, instanceCheck, instanceProblems, instanceServices, shownNode, shownServices, LOUD_PING_URL_KEY, LOUD_STEADY, nwwsKeys, nwwsSetup, openInstance, PING_URL_KEY, pingKeyOf, pingTargets, RANK_DELAY, RANK_FLOOR, SOURCE_POLICY, sourcePace, twilioSetup, USER_AGENT_NAME, type Instance, type InstanceOptions } from "./instance.ts";
 import { heartbeatGap } from "./heartbeat.ts";
 import { spendGates, spendQuota } from "./balance.ts";
 import { CLOCK_SKEW_LIMIT, COPY_TOKEN_KEY, EXCHANGE_EVERY, EXCHANGE_LIMIT } from "./copy.ts";
@@ -1531,6 +1531,18 @@ describe("the check of the instance", () => {
     const unknown = "The configuration sets the expectation other, and the instance has no such expectation.";
     expect(instanceProblems(parsed, store(SECRETS), INSTANCE_SOURCES, 5_000)).toEqual([unknown, `The since of the expectation ${wea} is in the future. The check of the source then has no record until that time.`]);
     expect(instanceProblems(parsed, store(SECRETS), INSTANCE_SOURCES, 9_000)).toEqual([unknown]);
+  });
+
+  it("uses only the expectations of its sources, with the since of the settings", () => {
+    const ids = (list: readonly { readonly id: string }[]): string[] => list.map((entry) => entry.id);
+    expect(ids(INSTANCE_EXPECTATIONS)).toEqual(["nws-api.ipaws", "nws-api.nwws"]);
+    // A copy with an account of NWWS-OI checks the copies of NWWS-OI. A copy with no account does not.
+    expect(ids(instanceExpectations(undefined, [...INSTANCE_SOURCES, NWWS_DESCRIPTOR]))).toEqual(["nws-api.ipaws", "nws-api.nwws"]);
+    expect(ids(instanceExpectations(undefined, INSTANCE_SOURCES))).toEqual(["nws-api.ipaws"]);
+    const set = instanceExpectations([{ id: "nws-api.nwws", since: 7_000 }], [...INSTANCE_SOURCES, NWWS_DESCRIPTOR]);
+    expect(set.map((expectation) => expectation.since)).toEqual([undefined, 7_000]);
+    // The check of NWWS-OI takes only the reports with the key of the CAP message.
+    expect(set[1]?.when).toEqual({ statuses: ["actual"], correlation: ["cap"] });
   });
 
   it("needs the key of the outside heartbeat only for the live instance", () => {

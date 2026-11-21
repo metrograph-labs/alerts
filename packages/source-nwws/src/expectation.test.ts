@@ -48,8 +48,8 @@ const STATEMENT = {
 const withoutKeys = (reports: readonly Report[]): Report[] => reports.map((report) => ({ ...report, correlation: [] }));
 
 describe("COPY_EXPECTATION: NWWS-OI carries the messages of the NWS API", () => {
-  it("goes from the NWS API source to this source, for each actual report", () => {
-    expect(COPY_EXPECTATION).toEqual({ id: "nws-api.nwws", from: API, to: SOURCE_ID, when: { statuses: ["actual"] } });
+  it("goes from the NWS API source to this source, for each actual report with the key of its CAP message", () => {
+    expect(COPY_EXPECTATION).toEqual({ id: "nws-api.nwws", from: API, to: SOURCE_ID, when: { statuses: ["actual"], correlation: [CAP_MESSAGE_SYSTEM] } });
   });
 
   it("finds the copy of each message at its sent time, and a copy that came first gives a delay below 0", () => {
@@ -68,9 +68,9 @@ describe("COPY_EXPECTATION: NWWS-OI carries the messages of the NWS API", () => 
     expect(STATEMENT.stream[0]?.correlation).toEqual(STATEMENT.api[0]?.correlation);
     const result = copyMeasure([...STATEMENT.api, ...STATEMENT.stream], COPY_EXPECTATION, { eventOf: nwsEvent });
     expect(result.counts).toEqual({ messages: 1, same: 1, shifted: 0, lost: 0, apart: 0, none: 0, censored: 0 });
-    // With no key of the message, the copy is in a different incident, as in the live log before this key.
+    // A report with no key of the message comes from an older map. It is not a check, so it gives no apart copy (AL-8).
     const bare = copyMeasure([...withoutKeys(STATEMENT.api), ...withoutKeys(STATEMENT.stream)], COPY_EXPECTATION, { eventOf: nwsEvent });
-    expect(bare.counts).toEqual({ messages: 1, same: 0, shifted: 0, lost: 0, apart: 1, none: 0, censored: 0 });
+    expect(bare.counts).toEqual({ messages: 0, same: 0, shifted: 0, lost: 0, apart: 0, none: 0, censored: 0 });
   });
 
   it("counts the extension as lost when the stream lost its copy", () => {

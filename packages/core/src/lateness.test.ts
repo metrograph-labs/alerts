@@ -100,6 +100,10 @@ describe("the filter of an expectation", () => {
     expect(reportPasses({ parameters: ["WEAHandling"] }, base)).toBe(true);
     expect(reportPasses({ parameters: ["WEAHandling"] }, { ...base, parameters: { WEAHandling: [] } })).toBe(false);
     expect(reportPasses({ parameters: ["WEAHandling"] }, { ...base, parameters: {} })).toBe(false);
+    const keyed = { ...base, correlation: [{ system: "vtec", id: "KTOP.TO.W.0001.2026" }] };
+    expect(reportPasses({ correlation: ["vtec"] }, keyed)).toBe(true);
+    expect(reportPasses({ correlation: ["vtec", "cap"] }, keyed)).toBe(false);
+    expect(reportPasses({ correlation: ["cap"] }, { ...base, correlation: [] })).toBe(false);
   });
 });
 

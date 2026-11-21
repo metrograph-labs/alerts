@@ -26,6 +26,11 @@ export interface ReportFilter {
   readonly kinds?: readonly string[];
   /** The names of the parameters that the report must have, each with one value or more. */
   readonly parameters?: readonly string[];
+  /**
+   * The systems of the correlation keys that the report must have, each with one key or more. An expectation that
+   * joins its copies by a key thus does not check a report of an older map with no such key.
+   */
+  readonly correlation?: readonly string[];
 }
 
 /**
@@ -122,7 +127,8 @@ export function reportPasses(filter: ReportFilter, report: Report): boolean {
     (filter.statuses === undefined || filter.statuses.includes(report.status)) &&
     (filter.ops === undefined || filter.ops.includes(report.op)) &&
     (filter.kinds === undefined || hasKind(filter.kinds, report.kind.code)) &&
-    (filter.parameters ?? []).every((name) => (report.parameters[name]?.length ?? 0) > 0)
+    (filter.parameters ?? []).every((name) => (report.parameters[name]?.length ?? 0) > 0) &&
+    (filter.correlation ?? []).every((system) => report.correlation.some((key) => key.system === system))
   );
 }
 

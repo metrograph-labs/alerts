@@ -1,7 +1,6 @@
 /**
- * This script measures the copies of each candidate expectation over the log of a runtime (AL-8). The expectations of
- * the runtime and the candidates of the sources go through the same measure. Thus the result shows the rate of the
- * copies of a candidate before the runtime uses it.
+ * This script measures the copies of each expectation of the runtime over the log of a runtime (AL-8). A new candidate
+ * goes into the list of the script first. Thus the result shows the rate of its copies before the runtime uses it.
  *
  * The script opens the log to read only, and replays it with the fold of the runtime. It reads only the types of
  * `FOLD_TYPES`, as a start does. The fold changes nothing for an observation. It prints only counts, delays and event
@@ -13,7 +12,6 @@
 import { DEFAULT_LINK_POLICY, linkRule } from "@mark1russell7/alerts";
 import { nwsEvent } from "@mark1russell7/alerts-format-nws";
 import { COPY_SUFFIX, SOURCE_ID as IPAWS } from "@mark1russell7/alerts-source-ipaws";
-import { COPY_EXPECTATION } from "@mark1russell7/alerts-source-nwws";
 import { openDatabase } from "@mark1russell7/sqlite";
 import { copySummaries, type CopyCandidate } from "../src/copy-store.ts";
 import { FOLD_TYPES, parseEvent, type RuntimeEvent } from "../src/events.ts";
@@ -32,11 +30,10 @@ if (!Number.isFinite(censorMinutes) || censorMinutes < 0) {
   process.exit(2);
 }
 
-// The candidates: the expectations of the runtime, then the candidates of the sources. An IPAWS copy has its own key.
-const CANDIDATES: readonly CopyCandidate[] = [
-  ...INSTANCE_EXPECTATIONS.map((expectation) => (expectation.to === IPAWS ? { expectation, copyKey: (key: string) => `${key}${COPY_SUFFIX}` } : { expectation })),
-  { expectation: COPY_EXPECTATION },
-];
+// The candidates: the expectations of the runtime. An IPAWS copy has its own key.
+const CANDIDATES: readonly CopyCandidate[] = INSTANCE_EXPECTATIONS.map((expectation) =>
+  expectation.to === IPAWS ? { expectation, copyKey: (key: string) => `${key}${COPY_SUFFIX}` } : { expectation },
+);
 
 // The rows go from SQLite into the fold one at a time, thus the script keeps no copy of the log (AL-103). The read has
 // the filter of `RuntimeLog.read(FOLD_TYPES)`, on a connection that only reads. Thus its memory is the memory of the
