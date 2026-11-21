@@ -10,12 +10,15 @@
  * - `importPage` gives the imports of the shared events of a second copy, and the `exchange` events.
  * - `retiredEvent` retires the old incidents on the interval of the runtime.
  *
+ * The options `shapes` and `transit` also write the cache of the zone shapes and the copy of the transit catalog, from
+ * `seed-files.ts`.
+ *
  * The function folds each event into a state, as a live copy does. Thus the retirements keep the state bounded, and the
  * log ends in the state of a copy that operated for the days of the log.
  *
  * The reports and the observations are made-up records. They have no real place, zone code, feed or person:
  *
- * - The zone codes are `ZZZ001` to `ZZZ120`. No state has the code `ZZ`.
+ * - The zone codes are `ZZZ001` to `ZZZ120`, the forecast zones of the first state of `seedShapes`. No state has the code `ZZ`.
  * - The transit feeds are `gtfs-seed-1` to `gtfs-seed-4`, and the status pages are `status-seed-01` to `status-seed-37`.
  * - The text of each record is a list of made-up words, at the byte size of the mix.
  *
@@ -24,7 +27,6 @@
  * The delivery path is not in the store: the events `delivery`, `escalation`, `hold`, `attempt`, `cancelled`, `refused`
  * and `settled`, and the `system` events. In the live log they are 2 percent of the events and 2 percent of the bytes. AL-104 adds them.
  */
-import { statSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import {
@@ -68,6 +70,8 @@ import {
 } from "@mark1russell7/alerts-runtime";
 import { random, seedOf, type Random } from "@mark1russell7/rigor-generators";
 import { openDatabase } from "@mark1russell7/sqlite";
+import { SEED_FORECAST_ZONES, seedShapes, seedTransit, type SeedShapesResult, type SeedTransitResult } from "./seed-files.ts";
+import { fileBytes, pagesOf, textOf } from "./seed-parts.ts";
 
 const DAY = 86_400_000;
 
@@ -194,6 +198,10 @@ export interface SeedStoreOptions {
   readonly start?: Instant;
   /** The retention of the runtime. The defaults are the defaults of the runtime. */
   readonly retention?: RetentionOptions;
+  /** The byte size of `shapes.sqlite`, from `seedShapes`. When it is absent, the function writes no cache of shapes. */
+  readonly shapes?: number;
+  /** The byte size of `transit-catalog.json`, from `seedTransit`. When it is absent, the function writes no copy of the catalog. */
+  readonly transit?: number;
 }
 
 /** The result of `seedStore`. */
@@ -210,6 +218,10 @@ export interface SeedStoreResult {
   readonly end: Instant;
   /** The count and the JSON bytes of the events of each type. */
   readonly types: Readonly<Record<string, TypeCount>>;
+  /** The cache of shapes, when the options give its size. Its records have the fetch time `end`. */
+  readonly shapes?: SeedShapesResult;
+  /** The copy of the catalog, when the options give its size. Its fetch time is `end`. */
+  readonly transit?: SeedTransitResult;
 }
 
 /** The id of the second copy of the store, and the id of its log. */
@@ -218,8 +230,6 @@ const SEED_SELF = "seed-a";
 const PEER_LOG = "seed-b-log";
 const START = Date.UTC(2026, 0, 1);
 const FOLD = { sources: [] };
-const ZONES = 120;
-const WORDS = ["alpha", "bravo", "delta", "level", "value", "north", "south", "river", "ridge", "field", "line", "part", "item", "test", "seed", "wind", "rain", "road", "unit", "note"];
 const SEVERITIES: readonly Severity[] = ["minor", "moderate", "severe", "unknown"];
 // The bytes of an observation event other than its body: the envelope, the id, the source, the type and the transport.
 const OBSERVATION_FRAME = 330;
@@ -274,8 +284,7 @@ export async function seedStore(dir: string, options: SeedStoreOptions): Promise
   let runs = 0;
 
   const log = openRuntimeLog(path);
-  // A second connection reads the size of the database: its pages, with the pages in the write-ahead log. The sum of the
-  // file and the write-ahead log counts a page two times when the log has a new copy of it.
+  // A second connection reads the size of the database, with the pages in the write-ahead log.
   const reader = openDatabase(path, { readOnly: true });
   const types: Record<string, { count: number; bytes: number }> = {};
   let state: RuntimeState = EMPTY_RUNTIME;
@@ -347,7 +356,10 @@ export async function seedStore(dir: string, options: SeedStoreOptions): Promise
     reader.close();
     log.close();
   }
-  return { path, bytes: fileBytes(path), events: written, start, end: state.time, types };
+  const end = state.time;
+  const shapes = options.shapes === undefined ? undefined : await seedShapes(dir, { bytes: options.shapes, seed: options.seed, fetched: end });
+  const transit = options.transit === undefined ? undefined : await seedTransit(dir, { bytes: options.transit, seed: options.seed, fetched: end });
+  return { path, bytes: fileBytes(path), events: written, start, end, types, ...(shapes === undefined ? {} : { shapes }), ...(transit === undefined ? {} : { transit }) };
 }
 
 // The plans of the sources of a mix. A group gets one plan for each source, with an equal part of each count.
@@ -387,13 +399,6 @@ function earliest(plans: readonly SourcePlan[]): SourcePlan {
 function countOf(r: Random, mean: number): number {
   const whole = Math.floor(mean);
   return whole + (r.chance(mean - whole) ? 1 : 0);
-}
-
-// Made-up words at a length in characters.
-function textOf(r: Random, length: number): string {
-  let text = "";
-  while (text.length < length) text += `${r.pick(WORDS)} `;
-  return text.slice(0, Math.max(0, length)).trimEnd();
 }
 
 // The events of one fetch of a source: its new observations, and the fetch event from `fetchStep`.
@@ -506,7 +511,7 @@ function reportOf(plan: SourcePlan, observation: Observation, part: number): Rep
 function areasOf(r: Random, shape: SeedShape): readonly Area[] {
   if (shape === "circle") return [{ type: "circle", center: [r.range(-179, 179), r.range(-60, 70)], radiusKm: r.range(5, 300) }];
   if (shape === "subject") return [];
-  return Array.from({ length: r.int(1, 3) }, () => ({ type: "code" as const, system: "ugc", code: `ZZZ${String(r.int(1, ZONES)).padStart(3, "0")}` }));
+  return Array.from({ length: r.int(1, 3) }, () => ({ type: "code" as const, system: "ugc", code: `ZZZ${String(r.int(1, SEED_FORECAST_ZONES)).padStart(3, "0")}` }));
 }
 
 function aboutOf(r: Random, shape: SeedShape, source: SourceId): readonly Subject[] {
@@ -524,23 +529,4 @@ function peerCopy(fetch: FetchEvent, r: Random, peerAt: Map<SourceId, Instant>):
     ...envelope("fetch", `fetch:${source}:${String(at)}`, fetch.time + late),
     reports: fetch.reports.map((report) => ({ ...report, received: report.received + late })),
   };
-}
-
-// The bytes of the database: its count of pages, with the pages of the write-ahead log, times the size of a page.
-function pagesOf(reader: ReturnType<typeof openDatabase>): number {
-  const count = reader.prepare("PRAGMA page_count").get() as { readonly page_count: number };
-  const size = reader.prepare("PRAGMA page_size").get() as { readonly page_size: number };
-  return count.page_count * size.page_size;
-}
-
-// The bytes of the file and its write-ahead log.
-function fileBytes(path: string): number {
-  const size = (file: string): number => {
-    try {
-      return statSync(file).size;
-    } catch {
-      return 0;
-    }
-  };
-  return size(path) + size(`${path}-wal`);
 }
