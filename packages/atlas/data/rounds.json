@@ -879,5 +879,39 @@
       "members": 1757,
       "cause": "Round 15 adds planned sources to the cyber classes. The gaps go from 109 to 104, because five cyber classes get a second source. No source is adopted, so the cover and the totals do not change. The unknown origins go from 4 to 15, and the unknown paths from 30 to 33: three new sources have no host. The families and the members are new measures."
     }
+  },
+  {
+    "round": 16,
+    "date": "2026-11-21",
+    "by": "One session, for the case codes of a household plan (AL-106).",
+    "method": "No search of sources. The round adds one class for a new code of the taxonomy, with its gap. It read the FEMA page of the lifelines for the reference of the class.",
+    "lists": [
+      "FEMA Community Lifelines: https://www.fema.gov/emergency-managers/practitioners/lifelines"
+    ],
+    "queries": [],
+    "notes": [
+      "The code health.medical-emergency is a sudden illness or injury of one person at home. No public feed gives it. The person or the household starts it."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 202,
+      "gaps": 105,
+      "cover": {
+        "adopted": 54,
+        "paths": 54,
+        "origins": 4
+      },
+      "total": {
+        "adopted": 146,
+        "paths": 146,
+        "origins": 67
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 5,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 16 adds the class health.medical-emergency with a gap. The classes go from 201 to 202, and the gaps from 104 to 105. No source changes."
+    }
   }
 ]
