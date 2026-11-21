@@ -9,6 +9,7 @@
  * - `snapshotStep` gives the `ended` events of a snapshot source.
  * - `importPage` gives the imports of the shared events of a second copy, and the `exchange` events.
  * - The fold retires the old incidents on the cadence of the runtime (AL-109). Thus the log has no `retired` event, as a live log.
+ * - `createDispatcher` gives the delivery path, with the made-up people and channels of `seed-delivery.ts` (AL-104).
  *
  * The options `shapes` and `transit` also write the cache of the zone shapes and the copy of the transit catalog, from
  * `seed-files.ts`.
@@ -24,8 +25,8 @@
  *
  * The draws come from one seed. The same seed and the same size give the same log.
  *
- * The delivery path is not in the store: the events `delivery`, `escalation`, `hold`, `attempt`, `cancelled`, `refused`
- * and `settled`, and the `system` events. In the live log they are 2 percent of the events and 2 percent of the bytes. AL-104 adds them.
+ * The `system` events are not in the store. In the live log they are 0.2 percent of the events and 1.3 percent of the bytes.
+ * The second part of AL-104 adds them.
  */
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -68,6 +69,7 @@ import {
 } from "@mark1russell7/alerts-runtime";
 import { random, seedOf, type Random } from "@mark1russell7/rigor-generators";
 import { openDatabase } from "@mark1russell7/sqlite";
+import { seedDelivery, type DeliveryMix } from "./seed-delivery.ts";
 import { SEED_FORECAST_ZONES, seedShapes, seedTransit, type SeedShapesResult, type SeedTransitResult } from "./seed-files.ts";
 import { fileBytes, pagesOf, textOf } from "./seed-parts.ts";
 
@@ -119,6 +121,8 @@ export interface LogMix {
   readonly importBytes: number;
   /** The count of `started` events. */
   readonly starts: number;
+  /** The delivery path. Without it, the log has no event of the delivery path. */
+  readonly delivery?: DeliveryMix;
 }
 
 /** The count and the bytes of the events of one type. */
@@ -139,6 +143,8 @@ const OTHER_OBSERVATION_BYTES = 1_700_000 / 1_034;
  * - Approximately 40 status sources have 1,232 fetches each, with 0 to 65 reports each. The two power sources are in that count,
  *   thus the group of status pages has 37 sources. Their 492 reports and 0.5 MB are the rest of the totals of the measure.
  * - The measure does not give the observations of usgs, swpc, ipaws and the status pages. Each report of them gets one observation.
+ * - A sweep on 2026-11-21 gave the delivery mix. On 3 seeds of 4.4 hours, each delivery type with 2 or more events in
+ *   each live hour had 0.46 to 2.0 times its live rate.
  */
 export const LIVE_MIX: LogMix = {
   days: 5.8,
@@ -157,6 +163,7 @@ export const LIVE_MIX: LogMix = {
   exchanges: 2_508,
   importBytes: 37_200_000,
   starts: 119,
+  delivery: { people: 2, zones: 25, refusal: 0.15, gap: 2 * 60_000, every: 15 * 60_000, limits: { window: 3_600_000, notice: 1, urgent: 3 }, crash: 0.06 },
 };
 
 /**
@@ -316,18 +323,24 @@ export async function seedStore(dir: string, options: SeedStoreOptions): Promise
     onDisk = pagesOf(reader);
   };
 
+  const delivery = mix.delivery === undefined ? undefined : seedDelivery(mix.delivery, root.fork("delivery"), { start, run: `seed-run-${String(runs)}`, state: () => state, append: add });
+
   try {
     add([{ ...envelope("started", `started:seed-run-${String(runs)}`, start), run: `seed-run-${String(runs)}` }]);
     while (onDisk + pendingBytes < options.log) {
       const plan = earliest(plans);
-      const at = Math.min(plan.next, nextExchange, nextStart);
-      if (at === nextStart) {
+      const at = Math.min(plan.next, nextExchange, nextStart, delivery?.due ?? Number.POSITIVE_INFINITY);
+      if (at === delivery?.due) {
+        // After a stop of the runtime in the step, the next start comes at once.
+        if (await delivery.step(at)) nextStart = at;
+      } else if (at === nextStart) {
         nextStart += startEvery;
         runs += 1;
         const run = `seed-run-${String(runs)}`;
         add([{ ...envelope("started", `started:${run}`, at), run }]);
-        // The counts of the misses are in memory only. After a start they begin at 0.
+        // The counts of the misses and the times of the dispatcher are in memory only. After a start they begin again.
         for (const each of plans) each.misses = new Map();
+        delivery?.restart(run);
       } else if (at === nextExchange) {
         nextExchange += exchangeEvery;
         peerNext += shared.length + peer.int(5, 40);
@@ -343,6 +356,8 @@ export async function seedStore(dir: string, options: SeedStoreOptions): Promise
         const fetch = events.at(-1) as FetchEvent;
         if (fetch.reports.length > 0 && peer.chance(share)) shared.push({ from: SEED_PEER, event: peerCopy(fetch, peer, peerAt) });
         if (plan.mix.listing === "snapshot") add(snapshotOf(plan, fetch));
+        // Only the reports of the zones reach a made-up place, thus only their fetches bring the next step.
+        if (fetch.reports.length > 0 && plan.mix.shape === "zone") delivery?.wake(at);
       }
       if (pendingBytes >= chunk) flush();
     }
