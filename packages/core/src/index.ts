@@ -4,7 +4,8 @@
  * holds the health of the sources, the lateness across sources, the coverage, the system reports and
  * the view of the map. It holds the checks of the indicator readings and the read of each indicator series.
  *
- * It holds the taxonomy of the kinds. The map functions put their problems in its collector.
+ * It holds the taxonomy of the kinds, and the lifelines and the needs of a person. The map functions put
+ * their problems in its collector.
  * `docs/CONTRACTS.md` explains them.
  */
 export * from "./contracts.ts";
@@ -48,3 +49,4 @@ export * from "./schemas.ts";
 export * from "./shapes.ts";
 export * from "./system-reports.ts";
 export * from "./taxonomy.ts";
+export * from "./lifelines.ts";
