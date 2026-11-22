@@ -6,6 +6,8 @@
  *   catalog, the counts of the quotas and the priors. The start rebuilds the state from the log in the same way.
  * - The start has no network. Each fetch of a source and each send of a channel fails at once, and no request leaves
  *   the process. A failed fetch writes its event to the log, as in a live start.
+ * - With the option `services`, the fetches and the sends go to fakes on `127.0.0.1` (AL-131). The lab of the capacity
+ *   models starts the fakes. No request goes to another host.
  * - The start reads no key. The keys of the measure are fake keys that the caller gives. The start reads no
  *   `secrets.env` and no `copy.json`. Thus the runtime is the only copy, with no exchange and no heartbeat.
  * - The start takes the lock of the home folder. Thus a measure stops when a live runtime holds the folder.
@@ -21,7 +23,7 @@ import { realClock, wallClock, type WallClock } from "@mark1russell7/algebra/clo
 import { nodeHostPorts } from "@mark1russell7/service/host";
 import type { ChunkOptions, FoldKey, FoldMark, FoldRow, FoldSnapshot, MarkLog } from "@mark1russell7/sqlite";
 import { SqliteHostStateStore } from "polite-crawler";
-import { quotaGate, type Transport } from "polite-crawler/api";
+import { fetchTransport, quotaGate, type Transport } from "polite-crawler/api";
 import { CONFIG_FILE, envSecrets } from "./config.ts";
 import { holdHome } from "./home-lock.ts";
 import { instanceCheck, openInstance, type Instance } from "./instance.ts";
@@ -39,11 +41,72 @@ export const MEASURE_KEYS: Readonly<Record<string, string>> = { PUSHOVER_APP_TOK
 /** The message of each fetch and each send of a measured start. */
 export const NO_NETWORK = "A measured start has no network.";
 
+/**
+ * The header of each request to a fake: the instant of the wall clock of the measured start, in milliseconds. The wall clock of
+ * a measure starts at the end of a seeded log, not at the time of the platform. Thus a fake gives its answers at this instant.
+ */
+export const MEASURE_NOW_HEADER = "x-measure-now";
+
+/** The hosts of the URL of a fake. */
+const FAKE_HOSTS: ReadonlySet<string> = new Set(["127.0.0.1", "localhost"]);
+
+/**
+ * The base URLs of the fakes of the outside services of a measured start (AL-131). Each URL is an HTTP URL on `127.0.0.1` or
+ * `localhost`. A request to `https://<host><path>` goes to `<base>/<host><path>`, with the header `MEASURE_NOW_HEADER`.
+ */
+export interface MeasuredServices {
+  /** The fake of the feeds. Each fetch of a source goes to it. */
+  readonly feeds?: string;
+  /** The fake of the channels. Each send of the Pushover channel goes to it. */
+  readonly channels?: string;
+}
+
+/**
+ * This function reads the base URL of a fake, with no `/` at the end. The text of an error holds no URL.
+ *
+ * @throws RangeError when the text is not an HTTP URL on `127.0.0.1` or `localhost`.
+ */
+export function fakeBase(text: string, what: string): string {
+  let url: URL;
+  try {
+    url = new URL(text);
+  } catch {
+    throw new RangeError(`The base URL of the fake of the ${what} is not a URL.`);
+  }
+  if (url.protocol !== "http:" || !FAKE_HOSTS.has(url.hostname) || url.search !== "" || url.hash !== "") {
+    throw new RangeError(`The base URL of the fake of the ${what} is not an HTTP URL on 127.0.0.1 or localhost, with no query.`);
+  }
+  return `${url.origin}${url.pathname.replace(/\/+$/u, "")}`;
+}
+
+/** This function gives the URL of a request at a fake: the base, then the host, the path and the query of the request. */
+export function fakeUrl(base: string, url: string): string {
+  const target = new URL(url);
+  return `${base}/${target.host}${target.pathname}${target.search}`;
+}
+
+/** The User-Agent of the transport to the fake of the feeds. Each source also sends its own User-Agent. */
+const MEASURE_USER_AGENT = "alerts-measure";
+
+/**
+ * This transport sends each fetch of a source to the fake of the feeds. The pace of polite-crawler stays the pace of each
+ * host of a source, because the requester of the source keeps its own host. Only the transport changes the URL.
+ */
+function fakeTransport(base: string, wall: WallClock): Transport {
+  const inner = fetchTransport({ userAgent: MEASURE_USER_AGENT });
+  return (exchange, signal) => inner({ ...exchange, url: fakeUrl(base, exchange.url), headers: { ...exchange.headers, [MEASURE_NOW_HEADER]: String(Math.round(wall.now())) } }, signal);
+}
+
+/** This fetch sends each request of the Pushover channel to the fake of the channels. */
+function fakeSend(base: string, wall: WallClock): PushoverChannelOptions["fetch"] {
+  return (url, init) => fetch(fakeUrl(base, url), { ...init, headers: { ...init.headers, [MEASURE_NOW_HEADER]: String(Math.round(wall.now())) } });
+}
+
 /** The options of a measured start. */
 export interface MeasuredOptions {
   /**
    * The fake keys of the start, by name. The configuration of the home folder names its keys. Default: `MEASURE_KEYS`.
-   * Give no real key: the start sends nothing, and a real key has no use in it.
+   * Give no real key. The start sends nothing to a real service, thus a real key has no use in it.
    */
   readonly keys?: Readonly<Record<string, string>>;
   /** This function gets each line that a live start writes to its output. Default: no output. */
@@ -70,6 +133,12 @@ export interface MeasuredOptions {
    * the capacity models gives the count of the feeds of its seed, to measure the cost of each polled source (AL-126).
    */
   readonly transitLimit?: number;
+  /**
+   * The base URLs of the fakes of the outside services (AL-131). Default: no fakes, and the start has no network. With `feeds`,
+   * each fetch of a source goes to the fake of the feeds. With `channels`, each send of the Pushover channel goes to the fake
+   * of the channels. Each request has the header `MEASURE_NOW_HEADER`.
+   */
+  readonly services?: MeasuredServices;
 }
 
 /** The record of one write of the snapshot of the start, with the option `timeSnapshot`. */
@@ -201,11 +270,16 @@ function timedSnapshot(store: FoldSnapshot, writes: SnapshotWriteTime[]): FoldSn
 }
 
 /**
- * This function opens the runtime of the home folder `home` with no network and no key, and it resolves after the first
- * pass. It throws when the private files of the folder do not pass the check, or when a live runtime holds the folder.
+ * This function opens the runtime of the home folder `home` with no key, and it resolves after the first pass. The start has
+ * no network, or only the fakes of the option `services`. It throws when the private files of the folder do not pass the
+ * check, or when a live runtime holds the folder.
+ *
+ * @throws RangeError when a base URL of `services` is not an HTTP URL on `127.0.0.1` or `localhost`. Then the start takes no lock.
  */
 export async function openMeasuredRuntime(home: string, options: MeasuredOptions = {}): Promise<MeasuredRuntime> {
   const report = options.report ?? ((): void => undefined);
+  const feeds = options.services?.feeds === undefined ? undefined : fakeBase(options.services.feeds, "feeds");
+  const channels = options.services?.channels === undefined ? undefined : fakeBase(options.services.channels, "channels");
   const held = await holdHome(home, nodeHostPorts());
   try {
     // The texts of a start, with the fake keys in place of secrets.env and with no copy.json. The check is the check of main.ts.
@@ -239,8 +313,8 @@ export async function openMeasuredRuntime(home: string, options: MeasuredOptions
       ...(priors === undefined ? {} : { priors }),
       clock: realClock,
       wall,
-      transport: offline,
-      pushover: noSend,
+      transport: feeds === undefined ? offline : fakeTransport(feeds, wall),
+      pushover: channels === undefined ? noSend : fakeSend(channels, wall),
       pushoverQuota: quotaGate(PUSHOVER_QUOTA, { key: "pushover:app", store: quotas, now: () => wall.now() }),
       pushoverReserveNotices: quotaGate(PUSHOVER_RESERVE_NOTICES, { key: "pushover:reserve-notices", store: quotas, now: () => wall.now() }),
       run: randomUUID(),
