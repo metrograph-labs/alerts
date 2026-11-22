@@ -52,7 +52,7 @@ jobs:
           VARIANTS: ${{ inputs.variants || 'off,168,6' }}
         run: |
           mkdir -p "$GITHUB_WORKSPACE/fold"
-          node scripts/fold-profile.ts "$RUNNER_TEMP/seed" "$SIZE" "$VARIANTS" | tee "$GITHUB_WORKSPACE/fold/records.jsonl"
+          node --expose-gc scripts/fold-profile.ts "$RUNNER_TEMP/seed" "$SIZE" "$VARIANTS" | tee "$GITHUB_WORKSPACE/fold/records.jsonl"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
