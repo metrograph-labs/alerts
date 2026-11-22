@@ -318,6 +318,8 @@ export async function openMeasuredRuntime(home: string, options: MeasuredOptions
       wall,
       transport: feeds === undefined ? offline : fakeTransport(feeds, wall),
       pushover: channels === undefined ? noSend : fakeSend(channels, wall),
+      // The fake of the channels is a fake of Pushover. The webhook of a measured start sends nothing.
+      webhook: noSend,
       pushoverQuota: quotaGate(PUSHOVER_QUOTA, { key: "pushover:app", store: quotas, now: () => wall.now() }),
       pushoverReserveNotices: quotaGate(PUSHOVER_RESERVE_NOTICES, { key: "pushover:reserve-notices", store: quotas, now: () => wall.now() }),
       run: randomUUID(),

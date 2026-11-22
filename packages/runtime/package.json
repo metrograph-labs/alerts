@@ -15,6 +15,7 @@
     "@mark1russell7/alerts": "workspace:*",
     "@mark1russell7/alerts-channel-pushover": "workspace:*",
     "@mark1russell7/alerts-channel-twilio": "workspace:*",
+    "@mark1russell7/alerts-channel-webhook": "workspace:*",
     "@mark1russell7/alerts-format-nws": "workspace:*",
     "@mark1russell7/alerts-rates": "workspace:*",
     "@mark1russell7/alerts-shapes-nws": "workspace:*",

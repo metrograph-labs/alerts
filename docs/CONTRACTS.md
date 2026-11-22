@@ -676,6 +676,42 @@ The cap of the spend of a Twilio channel is two gates of `polite-crawler/api`, w
 - The text channel takes its units from the same gates as the call channel. Thus one cap holds the calls and the texts of the account.
 - `takeSpend` in `spend.ts` takes the units for each channel. The quota line of the status is the line of `twilio-call`.
 
+The webhook channel (`@mark1russell7/alerts-channel-webhook`, AL-55) sends each message as one signed JSON request to the URL of a receiver:
+
+- The request follows Standard Webhooks (`@procedures/notify/webhook`). Each request has the headers `webhook-id`, `webhook-timestamp` and `webhook-signature`.
+- The id is the delivery key of the message. Thus the requests of two copies have one id, and the receiver keeps one of them.
+- The body is the event `alert.message`. Its data has the key, the person, the level, the title, the body, the incident and the quiet flag of the message.
+- The data also has the URL, the end time, the why line and the copy id, when the send has them.
+- The secrets are the value of the key `WEBHOOK_SECRET` of `secrets.env`, in the `whsec_` form. A space splits two secrets.
+- Each secret adds a signature. Thus a receiver can change its secret with no gap.
+- A bad value stops the start. Its problem names the key and the place of the bad secret, and no value.
+- Without the key, the instance has no sender on the channel. A step on the channel then stops the start.
+- The address has one field, `url`: an `https:` URL, or an `http:` URL of the loopback host.
+- The load of the configuration refuses a plain URL to another host, because the body holds the alert.
+- The receiver is a program. Thus the channel has no silent mode, no repeats and no acknowledgement. The body tells if the message is quiet.
+- The channel follows no redirect. A status of 2xx is a send. 401 and 403 give `auth`.
+- 429, 502 and 504 give `rate-limited`, with a wait of 5 seconds or more. Each other status of 5xx gives `server`.
+- 410, a redirect and each other status give `refused`. A fault of the network gives `network`, and the time limit of 10 seconds gives `timeout`.
+- The channel sends no message after its end time. It gives `expired`.
+- `status` gives `accepted`, because a receiver tells no state after its answer. `cancel` does nothing.
+- The User-Agent of each request is `alerts-runtime`. The receiver gets no contact of the configuration.
+- The channel has no probe, because each probe is a request to the receiver.
+
+The supervisor sends a notice to a receiver when the runtime stops again and again (`loop-notice.ts`, AL-55). A runtime in a loop sends no alert, because the runtime is the sender:
+
+- The URL is the value of the key `SUPERVISOR_WEBHOOK_URL` of `secrets.env`. Each copy has its own file, thus its own receiver.
+- The key `WEBHOOK_SECRET` signs each notice. A URL with no secret is a bad key.
+- Without the key, the supervisor sends no notice.
+- A bad key writes one warning, and the supervisor sends no notice. The supervisor does not stop.
+- The supervisor reads the keys at its start. A change of the keys takes effect at the next start of the supervisor.
+- A loop starts at 3 stops of the runtime in 15 minutes. A stop after a ready start counts too, because a crash after each ready start is a loop.
+- The start of a loop sends the event `runtime.restarts`. Its data has the copy id, the count of stops, the window, the end of the last stop and the time of the first stop.
+- A loop ends when the runtime is ready and has no stop for 15 minutes. The end sends the event `runtime.ready`, with the copy id, the count of stops and the time of the first stop.
+- One loop gives one event of each type. The id comes from the copy, the type and the time of the first stop.
+- A failed send goes again after 60 seconds, with the same id. Thus the receiver keeps one of each event.
+- The end of the last stop comes from the warning of the group. It has one line of 200 characters or fewer.
+- The requests follow the rules of the webhook channel: the same headers, the same URL rule and the User-Agent `alerts-runtime`.
+
 ## The delivery promise
 
 For `life-safety`, the system prefers a duplicate to a miss.
