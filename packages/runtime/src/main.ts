@@ -308,6 +308,7 @@ async function runtime(): Promise<ServiceBuilder> {
     pushoverReserveNotices,
     // The Twilio calls and the read of the balance. The cap of the spend counts in quotas.sqlite.
     twilio: fetch,
+    webhook: fetch,
     // The stage of the slot writes the outage bundles to this file. A deploy reads it, thus it starts no esbuild (AL-112).
     outageBundles: fileBundleStore(OUTAGE_BUNDLE_FILE),
     spendStore: quotas,

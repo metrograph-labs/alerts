@@ -29,6 +29,7 @@ import {
   type TellConfig,
 } from "@mark1russell7/alerts";
 import type { TwilioFetch } from "@mark1russell7/alerts-channel-twilio";
+import { WEBHOOK_CHANNEL, WEBHOOK_EVENT, type WebhookFetch } from "@mark1russell7/alerts-channel-webhook";
 import { PUSHOVER_QUOTA, PUSHOVER_RESERVE_NOTICES, PUSHOVER_TIMEOUT_MS, type PushoverChannelOptions } from "@mark1russell7/alerts-channel-pushover";
 import { memoryCache, type ShapeCache } from "@mark1russell7/alerts-shapes-nws";
 import { CANARY_PATH, createNwsSource } from "@mark1russell7/alerts-source-nws-api";
@@ -47,7 +48,7 @@ import { DATE_FORMAT as EIA_DATE_FORMAT, EIA_930_DESCRIPTOR, HOUR_MS, periodEnd,
 import { memoryQuotaStore, quotaGate, type Exchange, type Transport } from "polite-crawler/api";
 import { DEFAULT_POLICY } from "polite-crawler/politeness";
 import { afterEach, describe, expect, it } from "vitest";
-import { ACCOUNT_SOURCES, BOM_SWS_KEY, CHECKS_KEY, EIA_KEY, CLOUDFLARE_RADAR_KEY, checksKeys, DAEMON_CHECK, daemonCheck, DELIVERY_TIMES, INSTANCE_CHANNELS, INSTANCE_CHECK, INSTANCE_EXPECTATIONS, instanceExpectations, INSTANCE_FETCH_LIMIT, INSTANCE_SOURCES, INSTANCE_TIMES, instanceCheck, instanceProblems, instanceServices, shownNode, shownServices, LOUD_PING_URL_KEY, LOUD_STEADY, nwwsKeys, nwwsSetup, openInstance, PING_URL_KEY, pingKeyOf, pingTargets, RANK_DELAY, RANK_FLOOR, SOURCE_POLICY, sourcePace, twilioSetup, USER_AGENT_NAME, type Instance, type InstanceOptions } from "./instance.ts";
+import { ACCOUNT_SOURCES, BOM_SWS_KEY, CHECKS_KEY, EIA_KEY, CLOUDFLARE_RADAR_KEY, checksKeys, DAEMON_CHECK, daemonCheck, DELIVERY_TIMES, INSTANCE_CHANNELS, INSTANCE_CHECK, INSTANCE_EXPECTATIONS, instanceExpectations, INSTANCE_FETCH_LIMIT, INSTANCE_SOURCES, INSTANCE_TIMES, instanceCheck, instanceProblems, instanceServices, shownNode, shownServices, LOUD_PING_URL_KEY, LOUD_STEADY, nwwsKeys, nwwsSetup, openInstance, PING_URL_KEY, pingKeyOf, pingTargets, RANK_DELAY, RANK_FLOOR, SOURCE_POLICY, sourcePace, twilioSetup, USER_AGENT_NAME, instanceSenders, WEBHOOK_SECRET_KEY, WEBHOOK_USER_AGENT, webhookSetup, type Instance, type InstanceOptions } from "./instance.ts";
 import { heartbeatGap } from "./heartbeat.ts";
 import { spendGates, spendQuota } from "./balance.ts";
 import { CLOCK_SKEW_LIMIT, COPY_TOKEN_KEY, EXCHANGE_EVERY, EXCHANGE_LIMIT } from "./copy.ts";
@@ -1159,6 +1160,71 @@ describe("openInstance", () => {
     expect(messageOf(() => open(phone("+15555550123"), withPhone(steps)))).toContain("Step 1 of life-safety of person-1 uses the channel twilio-call, and the instance has no sender on it.");
     // A number with no step only waits for its sender. The instance starts.
     expect(() => open(phone("+15555550123"), withPhone(pushOnly))).not.toThrow();
+  });
+});
+
+describe("the webhook channel of the instance (AL-55)", () => {
+  // Fake secrets: fixed bytes in the whsec_ form of Standard Webhooks. A test looks for them in each problem.
+  const SECRET = `whsec_${Buffer.alloc(32, 7).toString("base64")}`;
+  const NEXT = `whsec_${Buffer.alloc(32, 9).toString("base64")}`;
+  const HOOK_URL = "https://hooks.example.test/alerts";
+  // Each policy sends the alert to the receiver at once, next to the Pushover message. Without steps, the contact only waits.
+  const hooked = (steps = true): AlertConfig => ({
+    ...CONFIG,
+    contacts: [...CONFIG.contacts, { person, channel: WEBHOOK_CHANNEL, address: { url: HOOK_URL } }],
+    policies: steps ? CONFIG.policies.map((entry) => ({ ...entry, steps: [...entry.steps, { channel: WEBHOOK_CHANNEL, at: 0 }] })) : CONFIG.policies,
+  });
+
+  /** A fake receiver. It takes each request with the status 204. */
+  function receiver() {
+    const calls: Array<{ url: string; headers: Record<string, string>; body: string }> = [];
+    const fetch: WebhookFetch = async (url, init) => {
+      calls.push({ url, headers: init.headers, body: init.body ?? "" });
+      return { status: 204, text: async () => "", headers: { get: () => null } };
+    };
+    return { fetch, calls };
+  }
+
+  it("sends the alert to the URL of the contact as one request with a signature of each secret", async () => {
+    const hooks = receiver();
+    const { instance, clock, server } = open(store({ ...SECRETS, [WEBHOOK_SECRET_KEY]: `${SECRET} ${NEXT}` }), hooked(), undefined, undefined, { webhook: hooks.fetch });
+    const pass = await finish(clock, instance.runtime.pass());
+    expect(pass.delivery?.sent).toHaveLength(2);
+    expect(server.calls).toHaveLength(1);
+    expect(hooks.calls).toHaveLength(1);
+    const [call] = hooks.calls;
+    expect(call?.url).toBe(HOOK_URL);
+    // The receiver gets the name of the runtime, and no contact of the configuration.
+    expect(call?.headers["user-agent"]).toBe(WEBHOOK_USER_AGENT);
+    expect(call?.headers["webhook-signature"]?.split(" ")).toHaveLength(2);
+    const event = JSON.parse(call?.body ?? "{}") as { type: string; data: { key: string; person: string; title: string; quiet: boolean } };
+    expect(event).toMatchObject({ type: WEBHOOK_EVENT, data: { person: "person-1", quiet: false } });
+    expect(event.data.title).toContain("Flood Warning");
+    // The id of the request is the key of the delivery. Thus the requests of two copies have one id.
+    expect(call?.headers["webhook-id"]).toBe(event.data.key);
+  });
+
+  it("has a sender on the channel only with a good value of the key", () => {
+    expect(instanceSenders(store({ ...SECRETS, [WEBHOOK_SECRET_KEY]: SECRET }))).toContain(WEBHOOK_CHANNEL);
+    expect(instanceSenders(store(SECRETS))).not.toContain(WEBHOOK_CHANNEL);
+    expect(instanceSenders(store({ ...SECRETS, [WEBHOOK_SECRET_KEY]: "whsec_bad-secret-value!" }))).not.toContain(WEBHOOK_CHANNEL);
+    expect(webhookSetup(store({ ...SECRETS, [WEBHOOK_SECRET_KEY]: "  " }))).toEqual({ tag: "ok", value: undefined });
+  });
+
+  it("does not start with a bad secret, and no message holds its value", () => {
+    const bad = messageOf(() => open(store({ ...SECRETS, [WEBHOOK_SECRET_KEY]: `${SECRET} whsec_bad-secret-value!` }), hooked(false), undefined, undefined, { webhook: receiver().fetch }));
+    expect(bad).toContain(`The value of ${WEBHOOK_SECRET_KEY} is not a list of secrets of Standard Webhooks. Secret 2 of 2:`);
+    expect(bad).not.toContain("bad-secret-value");
+    expect(bad).not.toContain(SECRET);
+  });
+
+  it("does not start with a step on the channel before its sender, and starts with a contact that has no step", () => {
+    expect(messageOf(() => open(store(SECRETS), hooked()))).toContain("Step 1 of life-safety of person-1 uses the channel webhook, and the instance has no sender on it.");
+    expect(() => open(store(SECRETS), hooked(false))).not.toThrow();
+  });
+
+  it("does not start with the key and no fetch of the channel", () => {
+    expect(messageOf(() => open(store({ ...SECRETS, [WEBHOOK_SECRET_KEY]: SECRET }), hooked()))).toContain("the instance has no fetch for it");
   });
 });
 

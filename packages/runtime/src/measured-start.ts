@@ -241,6 +241,7 @@ export async function openMeasuredRuntime(home: string, options: MeasuredOptions
       wall,
       transport: offline,
       pushover: noSend,
+      webhook: noSend,
       pushoverQuota: quotaGate(PUSHOVER_QUOTA, { key: "pushover:app", store: quotas, now: () => wall.now() }),
       pushoverReserveNotices: quotaGate(PUSHOVER_RESERVE_NOTICES, { key: "pushover:reserve-notices", store: quotas, now: () => wall.now() }),
       run: randomUUID(),

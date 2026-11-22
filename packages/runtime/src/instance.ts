@@ -75,6 +75,7 @@ import {
   type TwilioCredentials,
   type TwilioFetch,
 } from "@mark1russell7/alerts-channel-twilio";
+import { createWebhookChannel, parseWebhookSecrets, WEBHOOK_CHANNEL, webhookDescriptor, type WebhookFetch, type WebhookSecret } from "@mark1russell7/alerts-channel-webhook";
 import { CHANNEL_ID, createPushoverChannel, isPushoverKey, pushoverDescriptor, PUSHOVER_REPEAT_MS, PUSHOVER_TIMEOUT_MS, type PushoverChannelOptions } from "@mark1russell7/alerts-channel-pushover";
 import { createEmscSource, EMSC_DESCRIPTOR } from "@mark1russell7/alerts-source-emsc";
 import { createIpawsSource, IPAWS_DESCRIPTOR, WEA_EXPECTATION } from "@mark1russell7/alerts-source-ipaws";
@@ -229,7 +230,7 @@ export { DELAY_LIMITS };
  * recipient against this list: the channel of each step, and the fields of each address. Thus the loader
  * and the instance agree on the channels.
  */
-export const INSTANCE_CHANNELS: readonly ChannelDescriptor[] = [pushoverDescriptor(), twilioCallDescriptor(), twilioTextDescriptor()];
+export const INSTANCE_CHANNELS: readonly ChannelDescriptor[] = [pushoverDescriptor(), twilioCallDescriptor(), twilioTextDescriptor(), webhookDescriptor()];
 
 /**
  * The names of the keys of `secrets.env` for the Twilio call channel. The secret is the secret of an API key
@@ -242,6 +243,27 @@ export const TWILIO_KEYS = { accountSid: "TWILIO_ACCOUNT_SID", keySid: "TWILIO_A
  * needs a registered sender: the phone of a 10DLC campaign or a verified toll-free phone. Without the key, the instance sends no text.
  */
 export const TWILIO_TEXT_FROM_KEY = "TWILIO_TEXT_FROM";
+
+/**
+ * The name of the key of `secrets.env` that holds the secrets of the webhook channel (AL-55), in the `whsec_` form of
+ * Standard Webhooks. A space splits two secrets, thus a receiver can change its secret with no gap. Without the key, the
+ * instance has no webhook channel.
+ */
+export const WEBHOOK_SECRET_KEY = "WEBHOOK_SECRET";
+
+/** The User-Agent of each request of the webhook channel. A receiver gets no contact of the configuration. */
+export const WEBHOOK_USER_AGENT = "alerts-runtime";
+
+/**
+ * This function gives the secrets of the webhook channel from the secret store. With no value of `WEBHOOK_SECRET_KEY`, it
+ * gives `undefined`. A bad value gives a problem that names the key and no value.
+ */
+export function webhookSetup(secret: SecretLookup): Result<readonly WebhookSecret[] | undefined, readonly string[]> {
+  const text = secret(WEBHOOK_SECRET_KEY) ?? "";
+  if (text.trim() === "") return ok(undefined);
+  const parsed = parseWebhookSecrets(text);
+  return parsed.ok ? ok(parsed.secrets) : err([`The value of ${WEBHOOK_SECRET_KEY} is not a list of secrets of Standard Webhooks. ${parsed.problem}`]);
+}
 
 /** The setup of the Twilio channels: the credentials of the account, the number that calls and the number that texts. */
 export interface TwilioSetup {
@@ -313,12 +335,15 @@ function accountProblems(copy: CopySettings): string[] {
 
 /**
  * This function gives the channels that the instance sends on. Pushover is always one. The Twilio call channel needs the keys of
- * `TWILIO_KEYS`, and the text channel also needs `TWILIO_TEXT_FROM_KEY`. A step on another channel of `INSTANCE_CHANNELS` stops the start.
+ * `TWILIO_KEYS`, and the text channel also needs `TWILIO_TEXT_FROM_KEY`. The webhook channel needs `WEBHOOK_SECRET_KEY`. A step
+ * on another channel of `INSTANCE_CHANNELS` stops the start.
  */
 export function instanceSenders(secret: SecretLookup): readonly ChannelId[] {
+  const webhook = webhookSetup(secret);
+  const hooks = webhook.tag === "ok" && webhook.value !== undefined ? [WEBHOOK_CHANNEL] : [];
   const twilio = twilioSetup(secret);
-  if (twilio.tag === "err" || twilio.value === undefined) return [CHANNEL_ID];
-  return twilio.value.textFrom === undefined ? [CHANNEL_ID, TWILIO_CHANNEL] : [CHANNEL_ID, TWILIO_CHANNEL, TEXT_CHANNEL_ID];
+  if (twilio.tag === "err" || twilio.value === undefined) return [CHANNEL_ID, ...hooks];
+  return twilio.value.textFrom === undefined ? [CHANNEL_ID, TWILIO_CHANNEL, ...hooks] : [CHANNEL_ID, TWILIO_CHANNEL, TEXT_CHANNEL_ID, ...hooks];
 }
 
 /** The tsunami warning centers of the NWS. Each center is a source of its own, with its own health. */
@@ -524,6 +549,7 @@ export const RANK_FLOOR: Duration = DELIVERY_TIMES.callLimit + 3 * EXCHANGE_EVER
  *
  * - a missing token, or a token with a bad form
  * - some keys of Twilio and not all, or a key of Twilio with a bad form
+ * - a value of `WEBHOOK_SECRET_KEY` that is not a list of secrets of Standard Webhooks
  * - one key of the NWWS-OI account of the copy and not the other, or an account of the copy with no keys
  * - an id of a source with no account in the field `accounts` of the copy
  * - a step of a policy on a channel with no sender
@@ -549,6 +575,9 @@ export function instanceProblems(parsed: ParsedConfig, secret: SecretLookup, des
   // Bad keys of Twilio fail each call. Thus they stop the start, before the first alert.
   const twilio = twilioSetup(secret);
   const twilioProblems = twilio.tag === "err" ? twilio.error : [];
+  // A bad secret of the webhook channel fails each send. Thus it stops the start, before the first alert.
+  const webhook = webhookSetup(secret);
+  const webhookProblems = webhook.tag === "err" ? webhook.error : [];
   // A half of a key pair of NWWS-OI is a fault of the secret store, not a choice of no stream. Thus it stops the start.
   const nwws = nwwsSetup(secret, copy);
   const nwwsProblems = nwws.tag === "err" ? nwws.error : [];
@@ -587,6 +616,7 @@ export function instanceProblems(parsed: ParsedConfig, secret: SecretLookup, des
   return [
     ...tokenProblems,
     ...twilioProblems,
+    ...webhookProblems,
     ...nwwsProblems,
     ...accountProblems(copy),
     ...senderProblems,
@@ -704,6 +734,8 @@ export interface InstanceOptions {
    * secrets have the keys of Twilio.
    */
   readonly twilio?: TwilioFetch;
+  /** The fetch of the webhook channel (AL-55). The instance needs it when the secrets have the key `WEBHOOK_SECRET_KEY`. */
+  readonly webhook?: WebhookFetch;
   /** The transport of the billing reads of GitHub (AL-111). The default is the transport of `@procedures/gh`. A test gives a fake. */
   readonly github?: RestTransport;
   /** The store of the file of the outage bundles. The entry gives the file of the slot. Without it, each deploy makes the bundles. */
@@ -999,6 +1031,7 @@ export function openInstance(options: InstanceOptions): Instance {
     ...(options.pushoverReserveNotices === undefined ? {} : { reserveNotices: options.pushoverReserveNotices }),
   });
   const twilio = twilioChannel(options, config.spend, options.config.optIn);
+  const webhook = webhookChannel(options, () => wall.now());
   // The worker of the exchange reads the runtime only in its rounds, after the start of the service. Thus it gets the runtime through a function.
   const peers = copy.peers ?? [];
   const worker =
@@ -1021,7 +1054,11 @@ export function openInstance(options: InstanceOptions): Instance {
   const spent = twilio?.spend;
   const reads = [...(replies === undefined ? [] : [replies]), ...(spent === undefined ? [] : [spent])];
   // The text channel takes its units from the gates of the call channel. Thus the quota of the call channel counts the texts too.
-  const channels = twilio === undefined ? [pushover] : [pushover, twilio.channel, ...(twilio.text === undefined ? [] : [twilio.text])];
+  const channels = [
+    pushover,
+    ...(twilio === undefined ? [] : [twilio.channel, ...(twilio.text === undefined ? [] : [twilio.text])]),
+    ...(webhook === undefined ? [] : [webhook]),
+  ];
   // The labels of the places go only into the why line of each message. The policy of the configuration replaces the default policy of the core.
   // A person with a score rule needs the priors in the policy (AL-31). With no score rule, the policy stays the same.
   const assess = policyWithPriors(
@@ -1259,6 +1296,17 @@ interface TwilioParts {
   readonly watch?: BalanceWatch;
   readonly replies?: ReplyWatch;
   readonly spend?: SpendWatch;
+}
+
+/**
+ * This function makes the webhook channel when the secrets have its key (AL-55). A bad value stops the start in
+ * `instanceProblems`, thus this function makes no channel for it.
+ */
+function webhookChannel(options: InstanceOptions, now: () => Instant): ChannelProcedures | undefined {
+  const setup = webhookSetup(options.secret);
+  if (setup.tag === "err" || setup.value === undefined) return undefined;
+  if (options.webhook === undefined) throw new Error("The secret store has the key of the webhook channel, and the instance has no fetch for it.");
+  return createWebhookChannel({ secrets: setup.value, fetch: options.webhook, userAgent: WEBHOOK_USER_AGENT, now });
 }
 
 /**
