@@ -1,0 +1,62 @@
+# The measure of the CPU time of a start (AL-114). Each run seeds one log in a scratch folder. Then it rebuilds the log with
+# each retention variant, one time with no profiler and one time under the CPU profiler. The records give the time, the
+# functions with the most self time and the inclusive time of the retire step. Time on a shared computer tells nothing, thus
+# the measure runs in CI only. It is a measure, not a gate.
+name: Measure fold
+
+on:
+  # A pull request that changes the measure gets a run of the default size.
+  pull_request:
+    paths:
+      - packages/testkit/scripts/fold-profile.ts
+      - .github/workflows/measure-fold.yml
+  # A person starts a run of another size: gh workflow run measure-fold.yml -f size=96 -f variants=off,168,6
+  workflow_dispatch:
+    inputs:
+      size:
+        description: The size of the log in MB
+        default: "192"
+      variants:
+        description: The retention variants, as a comma list (off, or a quiet horizon in hours)
+        default: "off,168,6"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: measure-fold-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Profile the rebuild of each variant
+        working-directory: packages/testkit
+        env:
+          SIZE: ${{ inputs.size || '192' }}
+          VARIANTS: ${{ inputs.variants || 'off,168,6' }}
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/fold"
+          node scripts/fold-profile.ts "$RUNNER_TEMP/seed" "$SIZE" "$VARIANTS" | tee "$GITHUB_WORKSPACE/fold/records.jsonl"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: measure-fold-${{ github.run_id }}-${{ github.run_attempt }}
+          path: fold/
+          if-no-files-found: error
+          retention-days: 90
