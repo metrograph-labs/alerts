@@ -9,6 +9,7 @@ import { channelDownPolicy, DEFAULT_SEND_LIMITS, downChannels, heldPersons, indi
 import type { FoldMark, FoldSnapshot } from "@mark1russell7/sqlite";
 import { errorMessage } from "@mark1russell7/text";
 import type { BalanceWatch } from "./balance.ts";
+import type { LimitWatch } from "./use.ts";
 import { channelWatch, lastFetchSuccess } from "./channel-watch.ts";
 import { createDispatcher, type DeliveryOptions, type DeliveryStep } from "./delivery.ts";
 import { drillStarts, drillStep, type CopyDrill } from "./drills.ts";
@@ -96,6 +97,11 @@ export interface RuntimeOptions {
    * its fetches. Each stage of a balance is a line of system reports.
    */
   readonly balances?: readonly BalanceWatch[];
+  /**
+   * The watches of the use of the hard limits of the paid provider accounts (AL-111). Each pass starts `check` of each
+   * watch, next to its fetches. Each level of a use is a line of system reports.
+   */
+  readonly uses?: readonly LimitWatch[];
   /**
    * The other watches that read on a schedule: for example the watch of the replies of the texts. Each pass starts
    * `check` of each watch, next to its fetches. A step of the wall clock moves their times.
@@ -420,7 +426,9 @@ export function openRuntime(options: RuntimeOptions): Runtime {
   const providers = watches.map((watch) => watch.provider);
   if (new Set(providers).size !== providers.length) throw new Error("Two balance watches have the same provider. Give one watch to each account.");
   // Each watch that reads on a schedule: the balance watches and the other reads.
-  const scheduled: readonly ReadWatch[] = [...watches, ...(options.reads ?? [])];
+  const uses = options.uses ?? [];
+  if (new Set(uses.map((watch) => watch.id)).size !== uses.length) throw new Error("Two watches of a limit have the same id. Give one watch to each limit.");
+  const scheduled: readonly ReadWatch[] = [...watches, ...uses, ...(options.reads ?? [])];
 
   // A fault of the store of a gate ends no line of a quota. The notes of the heartbeat tell of the fault.
   const readQuotas = (): readonly ChannelQuota[] | undefined => {
@@ -518,7 +526,7 @@ export function openRuntime(options: RuntimeOptions): Runtime {
       const stores = readStores();
       // The persons with a hold of the send limit (AL-81). With no delivery, no person has a hold, and each open line stays.
       const held = dispatcher === undefined ? undefined : heldOf(at);
-      const view = systemView(state, config, at, { drills: drilled.snapshots, ...(quotas === undefined ? {} : { quotas }), ...(stores === undefined ? {} : { stores }), balances: watches.flatMap((watch) => watch.balance() ?? []), ...(options.copies === undefined ? {} : { copies: options.copies.watches(), copy: self, drillWatches: options.drillWatches ?? [] }), ...(folds === undefined ? {} : { folds }), ...(exhausted === undefined ? {} : { exhausted }), ...(held === undefined ? {} : { held }), ...(channels === undefined ? {} : { channels: channels.snapshots() }), ...(observing === undefined ? {} : { observing }) });
+      const view = systemView(state, config, at, { drills: drilled.snapshots, ...(quotas === undefined ? {} : { quotas }), ...(stores === undefined ? {} : { stores }), balances: watches.flatMap((watch) => watch.balance() ?? []), uses: uses.flatMap((watch) => watch.use() ?? []), ...(options.copies === undefined ? {} : { copies: options.copies.watches(), copy: self, drillWatches: options.drillWatches ?? [] }), ...(folds === undefined ? {} : { folds }), ...(exhausted === undefined ? {} : { exhausted }), ...(held === undefined ? {} : { held }), ...(channels === undefined ? {} : { channels: channels.snapshots() }), ...(observing === undefined ? {} : { observing }) });
       folds = view.folds;
       const event = systemEvent(view);
       if (event !== undefined) conflicts.push(...append([event]));

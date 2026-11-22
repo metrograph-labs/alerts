@@ -97,6 +97,8 @@ import { err, ok, type Result } from "@mark1russell7/optional";
 import type { WorkerLoop } from "@mark1russell7/service";
 import type { Pace, QuotaStore, Transport } from "polite-crawler/api";
 import { DEFAULT_POLICY, HostScheduler, type PolitenessPolicy } from "polite-crawler/politeness";
+import type { RestTransport } from "@procedures/gh";
+import { limitProblems, limitWatches, type LimitWatch } from "./use.ts";
 import { balanceWatch, SPEND_UNIT, spendEntryOf, spendGates, spendQuota, spendUnits, spendWatch, type BalanceWatch, type SpendGates, type SpendWatch } from "./balance.ts";
 import { replyWatch, type ReplyWatch } from "./replies.ts";
 import { parseSecrets, requireKey, SECRETS_FILE, type FileText, type InstanceCheck } from "./config.ts";
@@ -526,7 +528,8 @@ export const RANK_FLOOR: Duration = DELIVERY_TIMES.callLimit + 3 * EXCHANGE_EVER
  * - a step on a channel with a cost, when the configuration has no spend entry for its provider
  * - a place that no regional source covers. A source with the coverage `global` covers each place, with no code.
  * - an outage call with no keys of Twilio, no token `OUTAGE_TOKEN` or a bad list
- * - a setting of an unknown expectation, or a `since` after the time `at`.
+ * - a setting of an unknown expectation, or a `since` after the time `at`
+ * - each problem of `limitProblems`.
  *
  * The message names ids, fields and the names of secrets, and no value.
  *
@@ -589,6 +592,7 @@ export function instanceProblems(parsed: ParsedConfig, secret: SecretLookup, des
     ...placeProblems,
     ...outageProblems,
     ...expectationProblems(parsed.config.expectations, INSTANCE_EXPECTATIONS, at),
+    ...limitProblems(parsed.config.limits ?? [], secret),
   ];
 }
 
@@ -698,6 +702,8 @@ export interface InstanceOptions {
    * secrets have the keys of Twilio.
    */
   readonly twilio?: TwilioFetch;
+  /** The transport of the billing reads of GitHub (AL-111). The default is the transport of `@procedures/gh`. A test gives a fake. */
+  readonly github?: RestTransport;
   /** The store of the file of the outage bundles. The entry gives the file of the slot. Without it, each deploy makes the bundles. */
   readonly outageBundles?: BundleStore;
   /**
@@ -812,6 +818,8 @@ export interface Instance {
   readonly quotas: () => readonly ChannelQuota[];
   /** The watches of the balances of the paid provider accounts. */
   readonly balances: readonly BalanceWatch[];
+  /** The watches of the use of the hard limits of the paid provider accounts (AL-111). */
+  readonly uses: readonly LimitWatch[];
   /** The watch of the STOP and START replies of the texts, when the instance has the text channel and an opt-in list. */
   readonly replies?: ReplyWatch;
   /** The watch of the spend that Twilio reports for the month of the cap, when the configuration has a spend entry for Twilio. */
@@ -993,6 +1001,7 @@ export function openInstance(options: InstanceOptions): Instance {
     ...(twilio?.gates === undefined ? [] : [channelQuota(TWILIO_CHANNEL, twilio.gates.gate, SPEND_UNIT)]),
   ];
   const balances = twilio?.watch === undefined ? [] : [twilio.watch];
+  const uses = limitWatches(config.limits ?? [], options.secret, options.github);
   const replies = twilio?.replies;
   const spent = twilio?.spend;
   const reads = [...(replies === undefined ? [] : [replies]), ...(spent === undefined ? [] : [spent])];
@@ -1050,6 +1059,8 @@ export function openInstance(options: InstanceOptions): Instance {
     // Each stage of a quota is a line of system reports, and so is each stage of a balance.
     quotas,
     balances,
+    // Each level of the use of a hard limit is a line of system reports (AL-111).
+    ...(uses.length === 0 ? {} : { uses }),
     // Each family of a store with no entry at the end of its window after the start is a line of system reports (AL-86).
     stores: () => shapes.fill(startedAt, STORE_FILL_WINDOW, shapeSources(runtime.config.sources).map((source) => source.id)),
     // Each pass reads the replies of the texts and the spend of Twilio when each read is due.
@@ -1120,7 +1131,7 @@ export function openInstance(options: InstanceOptions): Instance {
       copies: worker?.watches() ?? [],
       quotas: quotas(),
       balances: balances.flatMap((watch) => watch.balance() ?? []),
-      reads: reads.map((watch) => watch.health()),
+      reads: [...reads, ...uses].map((watch) => watch.health()),
       channels: runtime.channels(),
       channelDown: channelDownPolicy(runtime.config.channelDown),
     });
@@ -1164,6 +1175,7 @@ export function openInstance(options: InstanceOptions): Instance {
     ...(start === undefined ? {} : { zones: start.counts }),
     quotas,
     balances,
+    uses,
     ...(replies === undefined ? {} : { replies }),
     ...(spent === undefined ? {} : { spend: spent }),
     map,

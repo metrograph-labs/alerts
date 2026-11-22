@@ -136,6 +136,7 @@ import {
   CONFIG_PART_FORMAT,
   COPY_FORMAT,
   copyProblems,
+  LIMIT_ACCOUNT_KINDS,
   loadConfig,
   mergeParts,
   partLabel,
@@ -152,6 +153,7 @@ import {
   type OutagePersonConfig,
   type PersonConfig,
   type InterestDefaultsConfig,
+  type LimitConfig,
   type PlaceConfig,
   type SecretLookup,
   type SpendConfig,
@@ -1521,6 +1523,30 @@ export const spendConfigSchema: z.ZodType<SpendConfig, SpendConfig> = schemaOf<S
     .readonly(),
 );
 
+/**
+ * This schema checks the watch of one hard limit of a provider account (AL-111). `loadConfig` checks the ids and the
+ * monthly limit of the account of a user.
+ */
+export const limitConfigSchema: z.ZodType<LimitConfig, LimitConfig> = schemaOf<LimitConfig>()(
+  z
+    .strictObject({
+      id: z.string().min(1),
+      provider: z.string().min(1),
+      title: z.string().min(1),
+      accountKind: z.enum(LIMIT_ACCOUNT_KINDS),
+      account: z.string().min(1),
+      products: z.array(z.string().min(1)).min(1, "A watch of a limit counts one product or more.").readonly(),
+      monthlyUsd: z.number().positive().exactOptional(),
+      budget: z.string().min(1).exactOptional(),
+      levels: z
+        .array(z.number().positive("A level is a share above 0.").finite())
+        .min(1, "A watch of a limit has one level or more.")
+        .readonly()
+        .exactOptional(),
+    })
+    .readonly(),
+);
+
 /** This schema checks the link of one family of kinds: its code, its window, its distance and its limit of the magnitude. */
 export const linkFamilySchema: z.ZodType<LinkFamily, LinkFamily> = schemaOf<LinkFamily>()(
   z
@@ -1662,6 +1688,7 @@ export const alertConfigSchema: z.ZodType<AlertConfig, AlertConfig> = schemaOf<A
       contact: z.string().refine(isContactUrl, "The contact is not an https URL or a mailto URL.").exactOptional(),
       expectations: z.array(expectationConfigSchema).readonly().exactOptional(),
       spend: z.array(spendConfigSchema).readonly().exactOptional(),
+      limits: z.array(limitConfigSchema).readonly().exactOptional(),
       link: linkPolicySchema.exactOptional(),
       outage: outageConfigSchema.exactOptional(),
       rankDelay: rankDelaysSchema.exactOptional(),

@@ -7,6 +7,7 @@ import { random, seedsFrom } from "@mark1russell7/rigor-generators";
 import { openFoldSnapshot, type FoldSnapshot } from "@mark1russell7/sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import { balanceWatch, type BalanceReading } from "./balance.ts";
+import { limitWatch, type UseReading } from "./use.ts";
 import { FOLD_TYPES, type RuntimeEvent } from "./events.ts";
 import { openRuntimeLog, type RuntimeLog } from "./log.ts";
 import { openRuntime, type Pass, type RuntimeOptions } from "./runtime.ts";
@@ -396,6 +397,33 @@ describe("one pass of the runtime", () => {
     ]);
     expect(reads).toBe(4);
     expect(() => open([], { balances: [watch, watch] })).toThrow("the same provider");
+    log.close();
+  });
+
+  it("checks each watch of a limit in each pass, gives one line for each level, and wakes for its first read (AL-111)", async () => {
+    let answer: UseReading = { ok: true, month: "2026-11", used: 8, limit: 10, currency: "USD", levels: [0.5, 0.8, 1], level: 0.8 };
+    let reads = 0;
+    const read = async (): Promise<UseReading> => {
+      reads += 1;
+      return answer;
+    };
+    const watch = limitWatch({ id: "github:example/actions", provider: "provider:github", title: "GitHub Actions", read, delay: 60_000, every: 60_000 });
+    const useReports = (pass: Pass) => pass.view.step.reports.filter((report) => report.kind.code.startsWith("system.use.")).map((report) => [report.op, report.parameters["level"]?.[0]]);
+    const { clock, runtime, log } = open([], { uses: [watch] });
+    const first = await runtime.pass();
+    // The first pass does not read. It wakes at the first read.
+    expect(useReports(first)).toEqual([]);
+    expect(first.wakeAt).toBe(T0 + 60_000);
+    await clock.advance(60_000);
+    expect(useReports(await runtime.pass())).toEqual([
+      ["alert", "0.5"],
+      ["alert", "0.8"],
+    ]);
+    answer = { ...answer, used: 9 };
+    await clock.advance(60_000);
+    expect(useReports(await runtime.pass())).toEqual([]);
+    expect(reads).toBe(2);
+    expect(() => open([], { uses: [watch, watch] })).toThrow("the same id");
     log.close();
   });
 

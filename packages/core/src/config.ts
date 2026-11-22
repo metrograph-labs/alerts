@@ -127,6 +127,40 @@ export interface FixedCost {
   readonly usd: number;
 }
 
+/** The kinds of an account of a provider in a watch of a limit: the account of a user, or an organization. */
+export const LIMIT_ACCOUNT_KINDS: readonly ["user", "organization"] = ["user", "organization"];
+
+/** The kind of an account of a provider in a watch of a limit. */
+export type LimitAccountKind = (typeof LIMIT_ACCOUNT_KINDS)[number];
+
+/**
+ * The watch of the use of one hard limit of a paid provider account (AL-111). The values are private. Only the
+ * configuration holds them.
+ */
+export interface LimitConfig {
+  /** The id of the limit. It is unique in the list: for example `github:<login>/actions`. */
+  readonly id: string;
+  /** The provider: for example `provider:github`. The runtime has a reader for each provider that it knows. */
+  readonly provider: string;
+  /** The name of the limit in a text: for example `GitHub Actions`. */
+  readonly title: string;
+  /** The kind of the account at the provider. */
+  readonly accountKind: LimitAccountKind;
+  /** The login of the account at the provider. */
+  readonly account: string;
+  /** The products of the use of the account that the limit counts, as the provider names them: for example `actions`. */
+  readonly products: readonly string[];
+  /**
+   * The hard limit of a month, in US dollars. Without it, the budget of the organization that stops the paid use gives
+   * the limit. An account of a user has no budget that the runtime can read, thus it needs this field.
+   */
+  readonly monthlyUsd?: number;
+  /** The product of the budget of the organization that gives the limit. The default is the first product. */
+  readonly budget?: string;
+  /** The levels of the used share, each one above 0. The default is the levels of the runtime: 50, 80 and 100 %. */
+  readonly levels?: readonly number[];
+}
+
 /**
  * This function gives the part of the monthly cap of a spend entry that the sends get, in US dollars. That part is the
  * cap less the fixed costs. The value is 0 or less when the fixed costs use all of the cap.
@@ -206,6 +240,8 @@ export interface AlertConfig {
   readonly expectations?: readonly ExpectationConfig[];
   /** The money rules of each paid provider account. A provider with no entry has no cap and no watch of its balance. */
   readonly spend?: readonly SpendConfig[];
+  /** The watches of the use of the hard limits of the paid provider accounts (AL-111). */
+  readonly limits?: readonly LimitConfig[];
   /** The policy of the link rule of the merge. Without it, the instance uses `DEFAULT_LINK_POLICY`. */
   readonly link?: LinkPolicy;
   /** The outage call. Without it, an outage of the instance calls no person. */
@@ -468,6 +504,7 @@ export interface LoadedConfig {
  * - two settings of one expectation
  * - two spend entries of one provider, and a provider that no channel depends on
  * - a reserve of a spend entry that is not below its cap, and a time zone that is not an IANA name
+ * - two watches of a limit with one id, and a watch of the account of a user with no monthly limit
  * - an unknown person of the outage call, a person two times in it, and a chain with no step
  * - a step of the outage call on a channel with no contact of the person
  * - a rank delay that is not a whole number of milliseconds up to `RANK_DELAY_LIMIT`
@@ -562,6 +599,14 @@ export function loadConfig(config: AlertConfig, channels: readonly ChannelDescri
     if (!(sends > 0)) problems.push(`The fixed costs of the spend of ${provider} use all of its monthly cap. No send can go.`);
     else if (!((spend.reserveUsd ?? 0) < sends)) problems.push(`The reserve of the spend of ${provider} is not below its monthly cap less its fixed costs.`);
     if (localTime(0, spend.timeZone) === undefined) problems.push(`The time zone of the spend of ${provider} is not an IANA name.`);
+  }
+
+  const limitIds = new Set<string>();
+  for (const limit of config.limits ?? []) {
+    if (limitIds.has(limit.id)) problems.push(`Two watches of a limit have the id ${limit.id}.`);
+    limitIds.add(limit.id);
+    // The runtime cannot read a budget of the account of a user. Thus the watch has no limit, and it gives no level.
+    if (limit.accountKind === "user" && limit.monthlyUsd === undefined) problems.push(`The watch of the limit ${limit.id} is for the account of a user, and it has no monthly limit.`);
   }
 
   problems.push(...rankDelayProblems(config.rankDelay ?? {}));

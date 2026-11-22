@@ -87,6 +87,7 @@ import {
   configPartSchema,
   drillConfigSchema,
   expectationConfigSchema,
+  limitConfigSchema,
   outageConfigSchema,
   outagePersonConfigSchema,
   spendConfigSchema,
@@ -485,6 +486,7 @@ const SCHEMA_NAMES = [
   "levelRuleSchema",
   "levelSchema",
   "levelTableSchema",
+  "limitConfigSchema",
   "linkFamilySchema",
   "linkPolicySchema",
   "locateOutcomeSchema",
@@ -968,6 +970,15 @@ describe("the private configuration", () => {
     holds(spendConfigSchema, { ...spend, fixed: [{ what: "toll-free number", usd: 2.15 }, { what: "free", usd: 0 }] });
     holds(spendConfigSchema, { ...spend, fixed: [{ what: "rent", usd: 50 }] });
     for (const bad of [[{ what: "", usd: 1 }], [{ what: "rent", usd: -1 }], [{ what: "rent" }], [{ what: "rent", usd: 1, extra: 1 }], {}]) fails(spendConfigSchema, { ...spend, fixed: bad });
+  });
+
+  it("checks the form of a watch of a limit, and leaves the ids and the limit of a user to the load (AL-111)", () => {
+    const limit = { id: "github:example/actions", provider: "provider:github", title: "GitHub Actions", accountKind: "organization", account: "example", products: ["actions"] };
+    holds(alertConfigSchema, { ...CONFIG, limits: [limit] });
+    holds(limitConfigSchema, { ...limit, accountKind: "user", monthlyUsd: 10, budget: "actions", levels: [0.5, 0.9] });
+    // An account of a user with no monthly limit is a problem of the load.
+    holds(limitConfigSchema, { ...limit, accountKind: "user" });
+    for (const bad of [{ products: [] }, { products: [""] }, { accountKind: "team" }, { monthlyUsd: 0 }, { levels: [] }, { levels: [0] }, { levels: [Number.POSITIVE_INFINITY] }, { id: "" }, { extra: 1 }]) fails(limitConfigSchema, { ...limit, ...bad });
   });
 
   it("checks the form of the outage call, and leaves the people and the channels to the load", () => {
