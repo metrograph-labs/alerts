@@ -10,10 +10,11 @@
 import { mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { consoleLogger, type ServiceBuilder } from "@mark1russell7/service";
+import type { ServiceBuilder } from "@mark1russell7/service";
 import { discoveryOf, nodeHostPorts, removeDiscovery, superviseGroup, writeDiscovery } from "@mark1russell7/service/host";
 import { writeFileAtomic } from "@procedures/fs/files";
 import { declareSupervisor, hostFolder, hostGroup, hostReadyWindow, supervisorDiscovery, supervisorHome, supervisorLogger } from "./host.ts";
+import { outputOf, timedLogger } from "./output.ts";
 import { entryRoot } from "./slots.ts";
 import { addMissedStart, hostFileText, readyWindowText, startTimesPath } from "./start-times.ts";
 
@@ -42,13 +43,16 @@ export function supervisor(argument: string | undefined): ServiceBuilder {
   const home = supervisorHome(argument, process.cwd());
   // The supervisor writes its log to its output. Each start that misses its ready window also goes to the file of the start
   // times, thus the next supervisor starts with a longer window (AL-99).
-  const logger = supervisorLogger(consoleLogger(), (windowMs) => {
-    recordMissed(home, windowMs).catch((error: unknown) => console.warn(`The missed start was not written to the file of the start times: ${error instanceof Error ? error.message : String(error)}`));
+  // Each line starts with the time of the wall clock (AL-120).
+  const timed = timedLogger();
+  const out = outputOf(timed);
+  const logger = supervisorLogger(timed, (windowMs) => {
+    recordMissed(home, windowMs).catch((error: unknown) => out.warn(`The missed start was not written to the file of the start times: ${error instanceof Error ? error.message : String(error)}`));
   });
   const ports = nodeHostPorts({ logger });
   // The ready window comes from the measured starts of this host. A new window takes effect at the next start of the supervisor.
   const window = hostReadyWindow(home, hostFileText);
-  console.log(readyWindowText(window));
+  out.log(readyWindowText(window));
   const group = superviseGroup(hostGroup({ home, root: ROOT, node: process.execPath, readyWithin: { value: window.ms, unit: "ms" } }), ports);
   // The discovery file names this process. With it, the remove of the task stops the process tree.
   const discovery = supervisorDiscovery(home);

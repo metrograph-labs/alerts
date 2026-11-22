@@ -115,7 +115,7 @@ The target is the whole vision. The milestones give the order of the work.
 | ID | Item | Status | Summary |
 | --- | --- | --- | --- |
 | AL-119 | A line during a long block, before the liveness stop | later | AL-88 writes a block after its end. A watch thread writes a line during a block of 10 s or more, before the liveness probe stops the child. |
-| AL-120 | A time on each line of the output | later | The lines of the runtime and the supervisor get a time from the console logger of the service package. |
+| AL-120 | A time on each line of the output | done | Each line of the runtime and of the supervisor starts with the time of the wall clock. The log file of the runtime had no time before. |
 | AL-77 | Cyber adapter 1: CSAF 2.0 | later | One adapter reads the CSAF 2.0 protocol: `provider-metadata.json`, then ROLIE or `changes.csv`. Each provider is a data row. It takes the published vulnerabilities and the ICS advisories from 0 to 2 or more independent sources. Its observe-only period reports the rate per hour and the share that matches the places and interests of each person. The gate of AL-72 judges that share. |
 | AL-78 | Cyber adapter 2: the advisories of CERTs | later | One adapter reads the RSS and Atom feeds of the advisories of CERTs, with each feed as data. It takes the campaigns from 0 to 2 or more sources. It has the observe-only period and the gate of AL-77. |
 | AL-79 | Cyber adapter 3: OSV | later | One adapter reads the OSV format: the OSV API and the OpenSSF list of malicious packages. It takes the malicious packages of the supply chain from 0 to 2 sources. It has the observe-only period and the gate of AL-77. |
