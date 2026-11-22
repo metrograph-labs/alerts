@@ -1373,7 +1373,8 @@ The function `openInstance` makes the instance of the owner from the private con
 - The spend entry of Twilio also gives the watch of the balance: one read each day, and its floors.
 - Each entry of the field `limits` gives the watch of the use of one hard limit (AL-111). The section "The use report" tells its lines.
 - The watch of a limit of GitHub reads the usage report of the account one time each day. The first read comes 20 minutes after the start.
-- The token of the reads is the key `GITHUB_BILLING_TOKEN`. A fine-grained token needs Plan (read) of a user, or Administration (read) of an organization.
+- The token of the reads is in the key `tokenKey` of the limit, or in `GITHUB_BILLING_TOKEN`. A fine-grained token needs Plan (read) of a user, or Administration (read) of an organization.
+- A fine-grained token has one owner: a user or one organization. Thus each account needs its own key. The limits with one key share one client.
 - The used amount is the sum of the net amounts of the products of the limit in the month, in UTC.
 - The limit is `monthlyUsd`, or the smallest budget of the organization that stops the paid use of its product (the field `budget`, or the first product).
 - The level comes from `useStates` of `@mark1russell7/stack-spend`. The reader loads it and the client of GitHub at its first read.
@@ -1391,7 +1392,7 @@ The instance does not start when it finds one of these problems:
 - the key `TWILIO_TEXT_FROM` with no keys of Twilio, or a value of the key that is not in E.164 form
 - a step of a policy on a channel that the instance has no sender for. Without the keys of Twilio, the call channel has no sender. Without `TWILIO_TEXT_FROM`, the text channel has no sender.
 - a step on a channel with a cost, when the configuration has no spend entry for a provider of the channel
-- a watch of a limit of a provider with no reader, or watches of limits of GitHub with no value for `GITHUB_BILLING_TOKEN`
+- a watch of a limit of a provider with no reader, or a limit of GitHub with no value for the key of its token
 - a place that no regional source covers. Usually the place does not have a code of each level: the zone, the county, SAME, the state and the country. A source with the coverage `global`, for example the SWPC, covers each place with no code. Thus the check does not count it.
 
 The environment gives `PORT` (8080), `PROBE_PORT` (9090) and `SERVICE_PROFILE` (`local`, `daemon` or `pod`). The folder `ALERTS_HOME` (`.alerts` in the home folder) holds the private files: `config.json`, `secrets.env`, the log `runtime.sqlite` and the outlines of the zones `shapes.sqlite`. It also holds the counts of the quotas, `quotas.sqlite`, and the copy of the transit catalog, `transit-catalog.json`. No repository holds them. A problem of `secrets.env` names its line and its key, and no value. The output of a failed pass shows no value of `secrets.env`.

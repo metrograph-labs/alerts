@@ -159,6 +159,12 @@ export interface LimitConfig {
   readonly budget?: string;
   /** The levels of the used share, each one above 0. The default is the levels of the runtime: 50, 80 and 100 %. */
   readonly levels?: readonly number[];
+  /**
+   * The key of the secret store that holds the token of the reads, in capital letters, digits and underscores. A token
+   * of a provider can have one owner only, thus each account can need its own key. The reader of the provider gives the
+   * default key.
+   */
+  readonly tokenKey?: string;
 }
 
 /**

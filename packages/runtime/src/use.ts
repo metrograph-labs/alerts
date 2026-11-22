@@ -136,10 +136,17 @@ export function limitWatch(options: LimitWatchOptions): LimitWatch {
 export const GITHUB_PROVIDER = "provider:github";
 
 /**
- * The name of the key of `secrets.env` that holds the token of the billing reads of GitHub. A fine-grained token needs
- * the permissions of `BILLING_PERMISSIONS` of `@procedures/gh`: Plan (read) of a user, Administration (read) of an organization.
+ * The default key of `secrets.env` that holds the token of the billing reads of GitHub. A fine-grained token needs the
+ * permissions of `BILLING_PERMISSIONS` of `@procedures/gh`: Plan (read) of a user, Administration (read) of an organization.
+ * A fine-grained token has one owner, thus a user and an organization need two tokens. `LimitConfig.tokenKey` names the
+ * key of each other token.
  */
 export const GITHUB_BILLING_TOKEN = "GITHUB_BILLING_TOKEN";
+
+/** This function gives the key of the token of a limit of GitHub: `tokenKey`, or `GITHUB_BILLING_TOKEN`. */
+export function githubTokenKey(limit: Pick<LimitConfig, "tokenKey">): string {
+  return limit.tokenKey ?? GITHUB_BILLING_TOKEN;
+}
 
 /** The modules that the reader of GitHub loads at its first read. A test gives its own. */
 export interface GithubUseModules {
@@ -149,7 +156,7 @@ export interface GithubUseModules {
 
 /** The options of the readers of GitHub. */
 export interface GithubUseOptions {
-  /** The token of the billing reads, from the key `GITHUB_BILLING_TOKEN`. */
+  /** The token of the billing reads, from the key of `githubTokenKey`. */
   readonly token: string;
   /** The transport of the client of GitHub. The default is the transport of `@procedures/gh`. A test gives a fake. */
   readonly transport?: RestTransport;
@@ -168,8 +175,8 @@ async function loadGithubUse(): Promise<GithubUseModules> {
 const same = (one: string, other: string): boolean => one.toLowerCase() === other.toLowerCase();
 
 /**
- * This function gives the reader of the use of each limit of GitHub. The readers share one client and one load of the
- * modules. A load that fails loads again at the next read.
+ * This function gives the reader of the use of each limit of GitHub with one token. The readers share one client and one
+ * load of the modules. A load that fails loads again at the next read.
  *
  * - The used amount is the sum of the net amounts of the products of the limit in the month of the read, in UTC.
  * - The limit is `monthlyUsd`, or the smallest budget of the organization that stops the paid use of its product.
@@ -216,25 +223,33 @@ export function githubUse(options: GithubUseOptions): (limit: LimitConfig) => Us
 }
 
 /**
- * This function gives the problems of the watches of the limits (AL-111): a provider with no reader, and watches with
- * no value for `GITHUB_BILLING_TOKEN`. A problem names ids and keys, and no value.
+ * This function gives the problems of the watches of the limits (AL-111). A provider with no reader is a problem. A
+ * limit of GitHub with no value for the key of its token is a problem. A problem names ids and keys, and no value.
  */
 export function limitProblems(limits: readonly LimitConfig[], secret: SecretLookup): string[] {
-  const unknown = limits.filter((limit) => limit.provider !== GITHUB_PROVIDER).map((limit) => `The watch of the limit ${limit.id} names the provider ${limit.provider}, and the runtime has no reader of it.`);
-  const token = limits.some((limit) => limit.provider === GITHUB_PROVIDER) && (secret(GITHUB_BILLING_TOKEN) ?? "") === "";
-  return [...unknown, ...(token ? [`The configuration has watches of limits of GitHub, and the secret store has no value for ${GITHUB_BILLING_TOKEN}.`] : [])];
+  return limits.flatMap((limit) => {
+    if (limit.provider !== GITHUB_PROVIDER) return [`The watch of the limit ${limit.id} names the provider ${limit.provider}, and the runtime has no reader of it.`];
+    const key = githubTokenKey(limit);
+    return (secret(key) ?? "") === "" ? [`The watch of the limit ${limit.id} needs a token in the key ${key}, and the secret store has no value for it.`] : [];
+  });
 }
 
 /**
- * This function makes the watch of each limit of GitHub in the configuration (AL-111). The watches share one reader. With
- * no token, it makes no watch: `limitProblems` stops such a start.
+ * This function makes the watch of each limit of GitHub in the configuration (AL-111). The watches with one key of a token
+ * share one reader. A limit with no token gets no watch: `limitProblems` stops such a start.
  */
 export function limitWatches(limits: readonly LimitConfig[], secret: SecretLookup, transport?: RestTransport): LimitWatch[] {
-  const token = secret(GITHUB_BILLING_TOKEN) ?? "";
-  const github = limits.filter((limit) => limit.provider === GITHUB_PROVIDER);
-  if (token === "" || github.length === 0) return [];
-  const reader = githubUse({ token, ...(transport === undefined ? {} : { transport }) });
-  return github.map((limit) =>
-    limitWatch({ id: limit.id, provider: limit.provider, title: limit.title, ...(limit.levels === undefined ? {} : { levels: limit.levels }), read: reader(limit) }),
-  );
+  const readers = new Map<string, (limit: LimitConfig) => UseReader>();
+  return limits.flatMap((limit) => {
+    if (limit.provider !== GITHUB_PROVIDER) return [];
+    const key = githubTokenKey(limit);
+    const token = secret(key) ?? "";
+    if (token === "") return [];
+    let reader = readers.get(key);
+    if (reader === undefined) {
+      reader = githubUse({ token, ...(transport === undefined ? {} : { transport }) });
+      readers.set(key, reader);
+    }
+    return [limitWatch({ id: limit.id, provider: limit.provider, title: limit.title, ...(limit.levels === undefined ? {} : { levels: limit.levels }), read: reader(limit) })];
+  });
 }
