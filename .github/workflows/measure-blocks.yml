@@ -5,6 +5,7 @@
 #
 # The gate: in the start that folds the whole log, the longest part of each snapshot write between two pauses is at most
 # BLOCK_LIMIT_MS. The limit is the worst of 5 runs plus their spread. The liveness probe has a time-out of 2000 ms.
+# Run 44990182336 (sqlite 0.6.0) gave 13.9 ms to 47.4 ms, thus the limit is 47.4 + 33.5, rounded up to 81 ms.
 # A study of the start on a small cloud machine is outside this workflow.
 # This file is a gate with paths (CI.md): the job changes gives the match, and the job Measure blocks OK gives the result.
 name: Measure blocks
@@ -79,7 +80,7 @@ jobs:
           PASSES: ${{ inputs.passes || '4' }}
           # The longest part of a snapshot write between two pauses, in ms. The script exits with 1 above it, and with 1
           # when the start that folds the whole log has no snapshot write. A run with no record is no read, not a pass.
-          BLOCK_LIMIT_MS: ""
+          BLOCK_LIMIT_MS: "81"
         run: |
           mkdir -p "$GITHUB_WORKSPACE/blocks" "$RUNNER_TEMP/seed"
           node scripts/start-blocks.ts "$RUNNER_TEMP/seed" "$SIZE" "$PASSES" | tee "$GITHUB_WORKSPACE/blocks/records.jsonl"
