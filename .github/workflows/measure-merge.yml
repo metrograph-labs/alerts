@@ -105,7 +105,8 @@ jobs:
         working-directory: packages/testkit
         env:
           # The largest ratio of one add to one rebuild. Empty: the read only reports.
-          MERGE_RATIO_LIMIT: ""
+          # Run 44996694405 (5 jobs, 6 rounds): the worst job bound was 0.0499, and the spread was 0.0097.
+          MERGE_RATIO_LIMIT: "0.0597"
         run: node scripts/merge-add.ts verdict "$GITHUB_WORKSPACE/merge"
 
   measure-ok:
