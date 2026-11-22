@@ -8,7 +8,7 @@ import { entryIndex } from "./entries.ts";
 import { envelope, type RuntimeEvent } from "./events.ts";
 import { importOf, sharedItem } from "./exchange.ts";
 import { FOLD_VERSION, openStartSnapshot, readSnapshot, snapshotKey, snapshotRows, startReadText, type StartSnapshot } from "./start-snapshot.ts";
-import { EMPTY_RUNTIME, rebuild, type FoldContext, type RuntimeState } from "./state.ts";
+import { EMPTY_RUNTIME, fold, rebuild, type FoldContext, type RuntimeState } from "./state.ts";
 
 const T0 = Date.UTC(2026, 3, 1, 18, 0, 0);
 const MINUTE = 60_000;
@@ -262,5 +262,26 @@ describe("the version of the fold (AL-105)", () => {
       }),
     );
     expect(digests, `The digests of FOLD_VERSION ${String(FOLD_VERSION)}: ${JSON.stringify(digests)}`).toEqual(DIGESTS[FOLD_VERSION]);
+  });
+});
+
+describe("the fold under a write of the snapshot (AL-115)", () => {
+  // The write of the snapshot reads the state over many pauses, and the passes fold new events in the pauses. Thus the
+  // rows of the write are one cut of the state only when a fold gives a new state and does not change the state before it.
+  it("does not change the state before it, for each event of each seeded log", () => {
+    const contexts: readonly FoldContext[] = [{ sources: [], retention: {} }, { sources: [], retention: { horizon: 24 * HOUR, quiet: 3 * HOUR, life: 48 * HOUR, every: HOUR } }];
+    const none = entryIndex().snapshot();
+    const rowsOf = (state: RuntimeState): string => JSON.stringify([...snapshotRows({ state, entries: none })]);
+    for (const seed of ["a", "b", "c"]) {
+      for (const context of contexts) {
+        let state = EMPTY_RUNTIME;
+        for (const event of seededLog(seed, 300)) {
+          const before = rowsOf(state);
+          const next = fold(state, event, context);
+          expect(rowsOf(state), `The fold of ${event.type} changed the state before it (seed ${seed}).`).toBe(before);
+          state = next;
+        }
+      }
+    }
   });
 });

@@ -111,7 +111,7 @@ import { outageDeploy, outageDeployWorker, outageSetup, type OutageDeployWorker 
 import { exchangeLoop, exchangeWorker, type EntriesSource, type ExchangeCall, type ExchangeRound, type ExchangeWorker } from "./peers.ts";
 import { channelQuota } from "./quota.ts";
 import { openRuntime, type Pass, type Runtime, type RuntimeOptions } from "./runtime.ts";
-import { START_SNAPSHOT_EVERY } from "./start-snapshot.ts";
+import { START_SNAPSHOT_EVERY, START_SNAPSHOT_FLOOR } from "./start-snapshot.ts";
 import { addZoneCodes, keepShapes, placeCodesKey, refreshUntil, shapeSources, type InstanceShapes, type ShapeOutcome, type ZoneCodeCounts } from "./shapes.ts";
 import { chooseFeeds, feedsKey, keepTransit, type InstanceTransit, type TransitCache, type TransitOutcome } from "./transit.ts";
 import { tellSource, type TellIntake } from "./tell-intake.ts";
@@ -771,6 +771,11 @@ export interface InstanceOptions {
   /** The instance gives each fault of a write of the snapshot of the start to this function. The pass continues. */
   readonly onStartSnapshotFault?: (error: unknown) => void;
   /**
+   * The least count of new events of the log since the last snapshot for a write of the snapshot (AL-115). Default:
+   * `START_SNAPSHOT_FLOOR`. A measure or a test with a small log gives 1.
+   */
+  readonly startSnapshotFloor?: number;
+  /**
    * The priors of the shadow score. With them, the map gives the score of each incident that reaches a person. The log
    * keeps the score at the start of each escalation. The score does not change a level.
    */
@@ -1035,6 +1040,9 @@ export function openInstance(options: InstanceOptions): Instance {
   // writes no copy of the snapshot that it read at its first passes, when the other work of the start is due (AL-115). Before
   // the first write of a start with no snapshot, it is undefined.
   let snapshotAt: Instant | undefined;
+  // A write of the snapshot is in progress (AL-115). A pass in the write starts no second write.
+  let snapshotting = false;
+  const snapshotFloor = options.startSnapshotFloor ?? START_SNAPSHOT_FLOOR;
   const runtime: Runtime = openRuntime({
     log: options.log,
     clock: wall,
@@ -1083,13 +1091,21 @@ export function openInstance(options: InstanceOptions): Instance {
       if (options.startGood?.() ?? true) {
         shapes.afterPass(pass.view.incidents, refreshUntil(runtime.config.sources, (descriptor) => nextFetch(runtime.state(), descriptor)));
         transit?.afterPass();
-        // The snapshot of the start (AL-105). The first write is at the first pass after the good start. A failed write tries again at the next pass.
-        if (options.startSnapshot !== undefined && (snapshotAt === undefined || wall.now() >= snapshotAt + START_SNAPSHOT_EVERY)) {
+        // The snapshot of the start (AL-105). The first write is at the first pass after the good start, when the log has
+        // `snapshotFloor` new events since the last snapshot. The write has short transactions with pauses, thus the loop
+        // answers its probes in the write (AL-115). The period counts from the start of the write. A failed write tries again
+        // at the next pass.
+        if (options.startSnapshot !== undefined && !snapshotting && (snapshotAt === undefined || wall.now() >= snapshotAt + START_SNAPSHOT_EVERY) && runtime.eventsAfterSnapshot() >= snapshotFloor) {
+          const before = snapshotAt;
+          snapshotAt = wall.now();
+          snapshotting = true;
           try {
-            runtime.writeStartSnapshot();
-            snapshotAt = wall.now();
+            await runtime.writeStartSnapshot();
           } catch (error) {
+            snapshotAt = before;
             options.onStartSnapshotFault?.(error);
+          } finally {
+            snapshotting = false;
           }
         }
       }

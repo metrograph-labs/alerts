@@ -1,16 +1,18 @@
 # The measure of the blocks of the event loop in a start and in its next passes (AL-115). Each run seeds one log with the
 # live cache files. Then it opens the home two times: one start folds the whole log, and the next start reads the snapshot.
 # The records give the blocks of each phase, and the time of each write of the snapshot: the rows apart from SQLite. Time on
-# a shared computer tells nothing, thus the measure runs in CI only. Five runs give the spread. It is a measure, not a gate.
+# a shared computer tells nothing, thus the measure runs in CI only. Five runs give the spread.
+#
+# The gate: in the start that folds the whole log, the longest part of each snapshot write between two pauses is at most
+# BLOCK_LIMIT_MS. The limit is the worst of 5 runs plus their spread. The liveness probe has a time-out of 2000 ms.
+# Run 44990182336 (sqlite 0.6.0) gave 13.9 ms to 47.4 ms, thus the limit is 47.4 + 33.5, rounded up to 81 ms.
+# A study of the start on a small cloud machine is outside this workflow.
+# This file is a gate with paths (CI.md): the job changes gives the match, and the job Measure blocks OK gives the result.
 name: Measure blocks
 
 on:
-  # A pull request that changes the measure gets a run of the default size.
+  # Each pull request starts the workflow. The job changes skips the measure when no file of the gate changes.
   pull_request:
-    paths:
-      - packages/testkit/scripts/start-blocks.ts
-      - packages/runtime/src/measured-start.ts
-      - .github/workflows/measure-blocks.yml
   # A person starts a run of another size: gh workflow run measure-blocks.yml -f size=96 -f passes=4
   workflow_dispatch:
     inputs:
@@ -33,7 +35,27 @@ defaults:
     shell: bash
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    outputs:
+      match: ${{ steps.changes.outputs.match }}
+    steps:
+      - id: changes
+        uses: mark1russell7/template/.github/actions/changes@a456a3a088d2bf443f2bce9ac0dc0041e827a1de # main
+        with:
+          paths: |
+            packages/runtime/src/**
+            packages/testkit/scripts/start-blocks.ts
+            packages/testkit/src/seed-*.ts
+            pnpm-lock.yaml
+            .github/workflows/measure-blocks.yml
+
   measure:
+    needs: changes
+    if: needs.changes.outputs.match == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -56,8 +78,11 @@ jobs:
         env:
           SIZE: ${{ inputs.size || '192' }}
           PASSES: ${{ inputs.passes || '4' }}
+          # The longest part of a snapshot write between two pauses, in ms. The script exits with 1 above it, and with 1
+          # when the start that folds the whole log has no snapshot write. A run with no record is no read, not a pass.
+          BLOCK_LIMIT_MS: "81"
         run: |
-          mkdir -p "$GITHUB_WORKSPACE/blocks"
+          mkdir -p "$GITHUB_WORKSPACE/blocks" "$RUNNER_TEMP/seed"
           node scripts/start-blocks.ts "$RUNNER_TEMP/seed" "$SIZE" "$PASSES" | tee "$GITHUB_WORKSPACE/blocks/records.jsonl"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
@@ -66,3 +91,15 @@ jobs:
           path: blocks/
           if-no-files-found: error
           retention-days: 90
+
+  measure-ok:
+    name: Measure blocks OK
+    if: ${{ !cancelled() }}
+    needs: [changes, measure]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - uses: mark1russell7/template/.github/actions/gate-summary@a456a3a088d2bf443f2bce9ac0dc0041e827a1de # main
+        with:
+          needs: ${{ toJSON(needs) }}

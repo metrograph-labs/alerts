@@ -4,11 +4,14 @@
  * second start reads the snapshot that the first start wrote. Time on a shared computer tells nothing, thus the workflow
  * `measure-blocks.yml` starts it in CI.
  *
- * Usage: node scripts/start-blocks.ts <folder> [size in MB] [passes].
+ * Usage: node scripts/start-blocks.ts <folder> [size in MB] [passes]. With the environment variable `BLOCK_LIMIT_MS`, the
+ * script is a gate. It exits with 1 when a part of a snapshot write between two pauses is longer than the limit. It also
+ * exits with 1 when the start that folds the whole log has no snapshot write. A gate that cannot read the case is no pass.
  *
  * Each start gives one JSON line. For each phase, the line has the wall time, the CPU time, the blocks of the event loop and
  * the pauses of the garbage collector. A phase is the open with its first pass, or one more pass. The line also has the time
- * of each write of the snapshot: the build of the rows apart from the write of SQLite.
+ * of each write of the snapshot: the build of the rows apart from the write of SQLite. It also has the longest part between two
+ * pauses of the write.
  */
 import { statSync, writeFileSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
@@ -21,6 +24,9 @@ import { LIVE_FILES } from "../src/seed-files.ts";
 import { seedStore } from "../src/seed-store.ts";
 
 const [folder, sizeText = "192", passesText = "4"] = process.argv.slice(2);
+const limitText = process.env["BLOCK_LIMIT_MS"];
+const limit = limitText === undefined || limitText === "" ? undefined : Number(limitText);
+if (limit !== undefined && !(limit > 0)) throw new RangeError("BLOCK_LIMIT_MS must be a number of milliseconds above 0.");
 if (folder === undefined) throw new Error("Give a scratch folder.");
 const size = Number(sizeText);
 const passes = Number(passesText);
@@ -122,6 +128,8 @@ await mkdir(dir, { recursive: true });
 const seeded = await seedStore(dir, { log: size * 1_000_000, seed: "al105", shapes: LIVE_FILES.shapes, transit: LIVE_FILES.transit });
 writeFileSync(join(dir, "config.json"), JSON.stringify(config));
 
+// The longest part of a snapshot write in the start that folds the whole log, for the gate.
+let longest: number | undefined;
 for (const kind of ["full", "snapshot"] as const) {
   const phases: Phase[] = [];
   const recorder = recordBlocks();
@@ -143,9 +151,9 @@ for (const kind of ["full", "snapshot"] as const) {
   }
   const gc: Block[] = pauses.map((entry) => ({ start: entry.startTime, ms: entry.duration }));
   const writes = measured!.snapshotWrites;
-  // A block overlaps a write when the two intervals share a point. The longest block outside each write is the work of the
-  // pass apart from the snapshot.
-  const inWrite = (block: Block): boolean => writes.some((write) => block.start < write.at + write.rowsMs + write.writeMs && block.start + block.ms > write.at);
+  // A block overlaps a write when the two intervals share a point. The interval of a write has its pauses. The longest block
+  // outside each write is the work of the pass apart from the snapshot.
+  const inWrite = (block: Block): boolean => writes.some((write) => block.start < write.at + write.wallMs && block.start + block.ms > write.at);
   const record = {
     kind: "start",
     start: kind,
@@ -183,10 +191,26 @@ for (const kind of ["full", "snapshot"] as const) {
       rowsMs: round(write.rowsMs),
       writeMs: round(write.writeMs),
       cpuMs: round(write.cpuMs),
+      wallMs: round(write.wallMs),
+      longestMs: round(write.longestMs),
+      chunks: write.chunks,
     })),
     files: { snapshot: fileBytes(join(dir, START_SNAPSHOT_FILE)), wal: fileBytes(join(dir, `${START_SNAPSHOT_FILE}-wal`)) },
     reports: lines.length,
   };
   console.log(JSON.stringify(record));
+  if (kind === "full") longest = writes.length === 0 ? undefined : Math.max(...writes.map((write) => write.longestMs));
 }
 await rm(dir, { recursive: true, force: true });
+
+if (limit !== undefined) {
+  if (longest === undefined) {
+    console.error("gate: no read. The start that folds the whole log wrote no snapshot.");
+    process.exitCode = 1;
+  } else if (longest > limit) {
+    console.error(`gate: block. The longest part of the snapshot write is ${String(round(longest))} ms, above the limit of ${String(limit)} ms.`);
+    process.exitCode = 1;
+  } else {
+    console.error(`gate: pass. The longest part of the snapshot write is ${String(round(longest))} ms, at most ${String(limit)} ms.`);
+  }
+}
