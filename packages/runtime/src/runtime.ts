@@ -5,7 +5,7 @@
  * that it gets.
  */
 import { isFrameClock, type WallClock } from "@mark1russell7/algebra/clock";
-import { channelDownPolicy, DEFAULT_SEND_LIMITS, downChannels, heldPersons, indicatorBreadth, limitShare, observeConditions, ONLY_COPY, type ChannelQuota, type ChannelSnapshot, type CopyWatch, type DrillWatch, type Duration, type EntryTimes, type Exhaustion, type FetchOutcome, type HeldPerson, type Incident, type IndicatorBreadth, type Instant, type LatenessFolds, type LoopBlock, type MergeState, type ObserveCondition, type ReportId, type SourceDescriptor, type SourceId, type StoreFill, type SourceProcedures, type Watch, type ZoneRegions } from "@mark1russell7/alerts";
+import { channelDownPolicy, DEFAULT_SEND_LIMITS, downChannels, heldPersons, indicatorBreadth, knowsReport, limitShare, observeConditions, ONLY_COPY, type ChannelQuota, type ChannelSnapshot, type CopyWatch, type DrillWatch, type Duration, type EntryTimes, type Exhaustion, type FetchOutcome, type HeldPerson, type Incident, type IndicatorBreadth, type Instant, type LatenessFolds, type LoopBlock, type MergeState, type ObserveCondition, type Report, type ReportId, type SourceDescriptor, type SourceId, type StoreFill, type SourceProcedures, type Watch, type ZoneRegions } from "@mark1russell7/alerts";
 import type { ChunkOptions, FoldMark, FoldSnapshot } from "@mark1russell7/sqlite";
 import { errorMessage } from "@mark1russell7/text";
 import type { BalanceWatch } from "./balance.ts";
@@ -142,6 +142,12 @@ export interface RuntimeOptions {
    * not need the readings. The error can quote a value of a reading, thus the hook gives no value to an outside service.
    */
   readonly onReadingsFault?: (error: unknown, action: ReadingsAction) => void;
+  /**
+   * The runtime gives this hook the new reports of each fetch, after the write of the log (AL-132). The live metrics count
+   * them. A failed write gives the hook nothing, thus the next fetch gives the reports again. A fault of the hook does not
+   * stop the pass, because the alerts do not need the metrics.
+   */
+  readonly onReports?: (reports: readonly Report[]) => void;
   /**
    * The regions of the zones of the indicator areas, from a table of the atlas. The breadth of a place reads them. Without
    * the table, a series with the area of a zone is in the list `unplaced` of the breadth.
@@ -300,7 +306,23 @@ export function openRuntime(options: RuntimeOptions): Runtime {
   const start: StartRead = { events: folded, ...(resumed.mark === undefined ? {} : { snapshot: resumed.mark }), ...(resumed.fault === undefined ? {} : { fault: resumed.fault }) };
 
   // The fold runs on a draft before each write. The state changes only when the transaction commits.
-  const append = (events: readonly RuntimeEvent[]): readonly string[] => {
+  // The new reports of the fetch events that the log accepted go to the hook of the metrics. A report is new when the own
+  // merge did not know its id before the write. A feed that gives a report again in a new observation adds no count.
+  const reported = (accepted: readonly RuntimeEvent[], before: MergeState): void => {
+    if (options.onReports === undefined) return;
+    const seen = new Set<string>();
+    const reports = accepted
+      .flatMap((event) => (event.type === "fetch" ? event.reports : []))
+      .filter((report) => !seen.has(report.id) && !knowsReport(before, report.id) && Boolean(seen.add(report.id)));
+    if (reports.length === 0) return;
+    try {
+      options.onReports(reports);
+    } catch {
+      // A fault of the metrics does not stop the pass.
+    }
+  };
+  const append = (events: readonly RuntimeEvent[], kept?: (accepted: readonly RuntimeEvent[], before: MergeState) => void): readonly string[] => {
+    const before = state.own.merge;
     let draft = state;
     const accepted: RuntimeEvent[] = [];
     // The merge state after each retirement of the fold, with the position of its event.
@@ -317,6 +339,7 @@ export function openRuntime(options: RuntimeOptions): Runtime {
       entries.add(event);
       for (; next < retirements.length && retirements[next]!.at === at; next += 1) entries.prune(retirements[next]!.merge);
     });
+    kept?.(accepted, before);
     return conflicts;
   };
 
@@ -427,7 +450,7 @@ export function openRuntime(options: RuntimeOptions): Runtime {
       guarded("add", (readings) => readings.add(fetched.readings));
       indicatorReads?.note(fetched.readings);
     }
-    const conflicts = append(fetched.events);
+    const conflicts = append(fetched.events, reported);
     if (descriptor.listing !== "snapshot") return conflicts;
     // The step reads the merge state after the fetch, thus a new report of the fetch has no miss. It reads only the own
     // merge state: a report that only another copy sees does not end or come back in this copy.

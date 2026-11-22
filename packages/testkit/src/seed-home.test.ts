@@ -3,9 +3,11 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { CONFIG_FILE, openMeasuredRuntime } from "@mark1russell7/alerts-runtime";
+import { CONFIG_FILE, openMeasuredRuntime, RUNTIME_METRICS } from "@mark1russell7/alerts-runtime";
 import { wallClock } from "@mark1russell7/algebra/clock";
+import { MeterProvider } from "@opentelemetry/sdk-metrics";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { collectReadings, LabMetricReader } from "./lab-readings.ts";
 import { DEFAULT_LEVELS, LAB_READY, MEASURE_CONFIG, measureConfig, readSeedRecord, SEED_RECORD_FILE, seededLine, seedHome } from "./seed-home.ts";
 import type { SeedStoreResult } from "./seed-store.ts";
 
@@ -76,10 +78,12 @@ describe("seedHome with levels", () => {
     expect(() => measureConfig(0)).toThrow(RangeError);
   });
 
-  it("gives a start with a polled source for each feed, and a route for each incident and person", async () => {
+  it("gives a start with a polled source for each feed, a route for each incident and person, and the levels in the live metrics", async () => {
     const home = join(dir, "levels");
     const record = readSeedRecord(home);
-    const measured = await openMeasuredRuntime(home, { wall: wallClock({ start: record.end }), startSnapshot: true, transitLimit: record.levels.feeds });
+    const reader = new LabMetricReader();
+    const meter = new MeterProvider({ readers: [reader] }).getMeter("alerts-runtime");
+    const measured = await openMeasuredRuntime(home, { wall: wallClock({ start: record.end }), startSnapshot: true, transitLimit: record.levels.feeds, meter });
     try {
       expect(measured.instance.transit?.chosen.feeds).toHaveLength(LEVELS.feeds);
       // The start also has the incidents of the system, for example the health of the sources of a start with no network.
@@ -92,6 +96,10 @@ describe("seedHome with levels", () => {
       const system = routes.filter((route) => route.incident.kind.code.startsWith("system."));
       const each = new Set(Array.from({ length: LEVELS.persons }, (_, index) => system.filter((route) => route.person === `person-${String(index + 1)}`).length));
       expect(each.size).toBe(1);
+      // The gauges of the live metrics give the levels of the seed (AL-132). The start fetches nothing, thus no report is new.
+      const read = new Map((await collectReadings(reader, record.end)).readings.map((reading) => [reading.series, reading.value]));
+      expect([RUNTIME_METRICS.feeds, RUNTIME_METRICS.persons, RUNTIME_METRICS.incidents].map((series) => read.get(series))).toEqual([LEVELS.feeds, LEVELS.persons, LEVELS.incidents]);
+      expect([RUNTIME_METRICS.event, RUNTIME_METRICS.update].map((series) => read.get(series))).toEqual([0, 0]);
     } finally {
       await measured.close();
     }
@@ -102,6 +110,7 @@ describe("capacity-app.json", () => {
   const app = JSON.parse(readFileSync(join(ROOT, "capacity-app.json"), "utf8")) as {
     readonly variables: readonly { readonly id: string; readonly kind: string }[];
     readonly start: Readonly<Record<"seed" | "run", { readonly argv: readonly string[]; readonly cwd: string; readonly ready?: { readonly text: string } }>>;
+    readonly metrics: readonly { readonly id: string }[];
   };
 
   it("names the seed and the run scripts of this package", () => {
@@ -123,6 +132,11 @@ describe("capacity-app.json", () => {
     for (const variable of app.variables.filter((each) => each.kind === "store")) {
       expect(app.start.seed.argv).toContain(`{variable.${variable.id}}`);
     }
+  });
+
+  it("names each instrument of the live metrics of the runtime in one series (AL-132)", () => {
+    const sorted = (ids: readonly string[]): readonly string[] => [...ids].sort();
+    expect(sorted(app.metrics.map((series) => series.id))).toEqual(sorted(Object.values(RUNTIME_METRICS)));
   });
 
   it("has a level variable for each level of a home, in the order of the arguments of the seed script", () => {

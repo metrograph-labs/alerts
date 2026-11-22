@@ -19,11 +19,16 @@
  * transit feeds of the start. Thus each feed is one polled source, also past the limit of a live copy. The ready line gives
  * the feeds, the persons and the open incidents of the start, and the routes of its first pass.
  *
+ * The runtime gets a meter of the OpenTelemetry SDK (AL-132). After the ready line and after each pass line, the script
+ * collects the meter. Then it writes one line `lab-readings` with the readings of the series of `capacity-app.json` at the wall time.
+ *
  * Usage: node scripts/lab-runtime.ts <home folder> [<feeds URL> <channels URL>].
  */
 import { performance } from "node:perf_hooks";
 import { openMeasuredRuntime } from "@mark1russell7/alerts-runtime";
 import { delay, wallClock } from "@mark1russell7/algebra/clock";
+import { MeterProvider } from "@opentelemetry/sdk-metrics";
+import { collectReadings, LAB_READINGS, LabMetricReader } from "../src/lab-readings.ts";
 import { LAB_READY, readSeedRecord } from "../src/seed-home.ts";
 
 const [home, feeds, channels] = process.argv.slice(2);
@@ -39,7 +44,14 @@ const report = (text: string): void => {
   process.stderr.write(`${text}\n`);
 };
 const services = feeds === undefined || channels === undefined ? {} : { services: { feeds, channels } };
-const measured = await openMeasuredRuntime(home, { wall, startSnapshot: true, transitLimit: record.levels.feeds, report, ...services });
+const reader = new LabMetricReader();
+const meter = new MeterProvider({ readers: [reader] }).getMeter("alerts-runtime");
+const measured = await openMeasuredRuntime(home, { wall, startSnapshot: true, transitLimit: record.levels.feeds, report, meter, ...services });
+const readings = async (): Promise<void> => {
+  const at = wall.now();
+  const collection = await collectReadings(reader, at);
+  line({ ev: LAB_READINGS, at: new Date(at).toISOString(), readings: collection.readings, ...(collection.errors === 0 ? {} : { errors: collection.errors }) });
+};
 line({
   ev: LAB_READY,
   opened: Math.round(measured.opened),
@@ -51,6 +63,7 @@ line({
   incidents: record.levels.incidents,
   routes: measured.first.delivery?.routes.length ?? 0,
 });
+await readings();
 const retry = measured.instance.loop.times.retryCap;
 let wakeAt = measured.first.wakeAt;
 for (;;) {
@@ -58,5 +71,6 @@ for (;;) {
   const started = performance.now();
   const pass = await measured.pass();
   line({ ev: "lab-pass", at: pass.at, ms: Math.round(performance.now() - started), fetched: pass.fetched.length });
+  await readings();
   wakeAt = pass.wakeAt;
 }

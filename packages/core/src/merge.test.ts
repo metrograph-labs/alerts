@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { Acknowledgment, ChannelId, Delivery, EndMark, Incident, MergeState, ObservationId, PersonId, Report, Severity, SourceId, Status } from "./contracts.ts";
 import { reportId } from "./ids.ts";
 import { areasWithoutBlocks } from "./shapes.ts";
-import { EMPTY_STATE, acknowledgedLevel, add, endedReports, incidents, join, normalize, sentLevel, type IncidentOptions, type LinkRule, type MergeParts } from "./merge.ts";
+import { EMPTY_STATE, acknowledgedLevel, add, endedReports, incidents, join, knowsReport, normalize, sentLevel, type IncidentOptions, type LinkRule, type MergeParts } from "./merge.ts";
 
 // The count of canonical JSON texts. The mock gives the real text, thus each test reads the same values.
 const texts = vi.hoisted(() => ({ count: 0 }));
@@ -245,6 +245,21 @@ describe("the add of parts", () => {
     expect(next.deliveries).toEqual([]);
     // A report with a tombstone does not come back.
     expect(add(next, { reports: [a] })).toBe(next);
+  });
+
+  it("knows each report and each tombstone of a state, in the one form and in a copy (AL-132)", () => {
+    const kept = Array.from({ length: 300 }, (_, i) => report({ key: `k${i}` }));
+    const gone = report({ key: "gone" });
+    const state = normalize({ reports: kept, retired: [{ report: gone.id, until: T0 + HOUR }] });
+    const fresh = report({ key: "fresh" });
+    for (const each of [state, { ...state }]) {
+      expect(kept.every((x) => knowsReport(each, x.id))).toBe(true);
+      expect(knowsReport(each, gone.id)).toBe(true);
+      expect(knowsReport(each, fresh.id)).toBe(false);
+    }
+    expect(knowsReport(EMPTY_STATE, fresh.id)).toBe(false);
+    // An id that the state does not know is a report that an add puts into the state.
+    expect(add(state, { reports: [fresh] }).reports).toHaveLength(kept.length + 1);
   });
 });
 
