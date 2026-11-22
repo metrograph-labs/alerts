@@ -31,7 +31,7 @@ afterEach(async () => {
 /** This function starts the context of the traces with the exporter of a capture, and stops it after the test. */
 function capturedContext(): TelemetryCapture {
   const capture = captureTelemetry({ sdk: "external" });
-  const context = startTelemetry({ version: "0.0.0-test", copy: "copy-a", spanProcessors: [new SimpleSpanProcessor(capture.spanExporter)], env: {} });
+  const context = startTelemetry({ version: "0.0.0-test", copy: "copy-a", spanProcessors: [new SimpleSpanProcessor({ exporter: capture.spanExporter })], env: {} });
   stops.push(() => context.shutdown());
   return capture;
 }
