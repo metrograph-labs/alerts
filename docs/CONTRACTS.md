@@ -1537,8 +1537,12 @@ The two slots keep each start on the code of one commit:
 The supervisor keeps the code of its own start:
 
 - The supervisor loads its own files only at its start. A swap and a restart of the runtime do not change them.
-- The parts of the supervisor are the files of `SUPERVISOR_FILES` (`supervise.ts`, `host.ts` and `start-times.ts`) and the version of `@mark1russell7/service`.
-- `start-times.ts` gives the ready window. Thus a change of the ready window is a change of the supervisor.
+- The parts of the supervisor are the files of `SUPERVISOR_FILES` (`supervise.ts` and `host.ts`) and the version of `@mark1russell7/service`.
+- `host.ts` gives the ready spec, and `@mark1russell7/service` measures the window. Thus a change of the ready window is a change of the supervisor.
+- The supervisor measures each start of the runtime from its spawn to the first pass of `/readiness`. The file `host/runtime.ready.json` keeps the last 20 times (AL-84).
+- The window is 120 s until 5 ready starts. Then it is the worst time plus the worst minus the best, from 35 s to 10 minutes.
+- A missed start makes the next window at least two times longer, to 10 minutes. A ready start removes the missed starts.
+- `install.ts` reads the same file with `hostReadyWindow`, thus it waits for the window of the next start. The supervisor does not read the old file `host/start-times.json`.
 - `stage` and `swap` compare these parts in the two slots. Each of them prints the parts that change, or one line that tells no change.
 - A change of a part needs a restart of the boot task. On Linux, the boot task is a user unit of systemd.
 - The restart of the boot task is a step of the operator. Until that restart, the old supervisor starts each runtime with its old ready window.
@@ -1856,7 +1860,7 @@ A deploy of new code does not change the live checkout (AL-89). The live path of
 
 The supervisor and `install.ts` take the folder of the package from the path of the command line (`entryRoot`), not from the URL of the module. Node resolves the links in the URL of a module, but not in the path of the command line. Thus each start of the runtime goes through the link, and takes the slot that the link names at that time.
 
-The supervisor loads its own files only at its own start. The stage and the swap tell when `supervise.ts`, `host.ts`, `start-times.ts` or the version of `@mark1russell7/service` change. Such a change needs a restart of the boot task.
+The supervisor loads its own files only at its own start. The stage and the swap tell when `supervise.ts`, `host.ts` or the version of `@mark1russell7/service` change. Such a change needs a restart of the boot task.
 
 The environment variable `PNPM` gives the program of pnpm. A path that ends in `.cjs` starts with Node. On Windows the variable is necessary, because Node cannot start `pnpm.cmd` with no shell.
 

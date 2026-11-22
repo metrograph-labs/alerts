@@ -112,8 +112,8 @@ export interface MeasuredRuntime {
    */
   readonly opened: number;
   /**
-   * The first pass. At the end of this pass, a live start is good: it writes its start time and its last good set.
-   * The file `host/start-times.json` holds the time to this point, not the time to `opened`.
+   * The first pass. At the end of this pass, a live start is good: it writes its last good set. The supervisor measures each
+   * start from its spawn to the first pass of `/readiness`, in the file `host/runtime.ready.json`.
    */
   readonly first: Pass;
   /** The record of each write of the snapshot, in order. It is empty without the options `startSnapshot` and `timeSnapshot`. */
