@@ -172,6 +172,9 @@ async function stage(commit: string, page: boolean): Promise<void> {
   await heavy("install", call.program, [...call.prefix, ...installArgs(page)], folder, env);
   if (page) await heavy("page", call.program, [...call.prefix, "--filter", "./packages/site", "build"], folder, env);
   const runtime = join(folder, "packages", "runtime");
+  // The bundles of the outage Functions go to a file of the slot. A deploy of the runtime reads the file, thus it starts no esbuild (AL-112).
+  const bundles = await heavy("bundles", process.execPath, [join(runtime, "src", "outage-bundles.ts")], runtime);
+  console.log(bundles.stdout.trim());
   const config = await heavy("config", process.execPath, [join(runtime, "src", "check.ts")], runtime);
   console.log(config.stdout.trim());
   // The load needs no private file. An empty home keeps each write of a module away from the live home.

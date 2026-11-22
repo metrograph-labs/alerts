@@ -1554,7 +1554,13 @@ The module `deploy.ts` of the package puts the three Functions and the list on o
 - A plan with a sender of texts also sets the variable `OUTAGE_TEXT_FROM`.
 - The version of the plan is the start of the content hash of the files and of the build. A second deploy of the same plan reads three lists and changes nothing.
 - The variables are not in the version. A new token or a new number changes only the variables.
-- `deployOutage` makes the bundles with esbuild, and then it deploys the plan. It loads esbuild only when it deploys.
+- `deployOutage` gets the bundles from `outageBundles`, and then it deploys the plan. The module `bundle-file.ts` gives the file of the bundles (AL-112).
+- The stage of a slot makes the bundles with esbuild and writes the file `packages/channel-twilio/build/outage-bundles.json`. Git does not keep it.
+- The file holds the key of the build and the SHA-256 of each input file: each module of the bundles, the lockfile and the package files of the workspace.
+- The key is a hash of the format, the runtime, the dependencies, the sources, the text of `bundle.ts` and the version of esbuild.
+- A deploy reads the file and each input file again. It uses the bundles of the file only when the key and each hash are the same.
+- A missing or old file makes the bundles with esbuild and writes the file again. A failed write gives a line, and the deploy continues.
+- Thus a good file starts no esbuild, and a bundle of old code does not go to Twilio. Only `bundle.ts` imports esbuild, with a dynamic import.
 - esbuild works in the folder of the package. Thus the start folder of the process does not change the bundles or the version (AL-44).
 - `outageEntryUrl` gives the address of the entry. The webhook of the outside check calls it with the parameter `token`.
 
@@ -1565,6 +1571,7 @@ The runtime operates the deploy in the worker `outage` of its service (`outage.t
 - With the key, the list has the text `OUTAGE_TEXT_MESSAGE`, and the deploy gives the number to the Functions. Without the key, the outage call sends no text.
 - Only a person whose number is on the opt-in list gets the text. The list then has `text` for the person, and the cap counts one text for the person.
 - The worker deploys at the steady time of each start: 10 minutes after the good start (`steadyWait`, AL-112). Before that time, it deploys nothing and loads no bundle. Thus esbuild does not compete with the start.
+- The entry gives the deploy the file of the bundles of its slot (`fileBundleStore`). An instance with no store makes the bundles at each deploy.
 - A start that does not get steady deploys nothing. Then the Functions that Twilio has stay as they are, and the outside check calls them.
 - A change of the private files restarts the runtime. Thus a change of the list or of its keys goes live at the steady time of the next start.
 - Once in each day, the worker deploys again. Thus a change on the side of Twilio heals in a day.
@@ -1754,11 +1761,12 @@ A deploy of new code does not change the live checkout (AL-89). The live path of
 - On Linux, `adopt` operates while the runtime runs. On Windows, a folder in use cannot move, thus stop the boot task first.
 - `node src/deploy.ts stage <commit>` clones the live slot into the other slot when it does not exist, and checks out the commit there.
 - Then the stage installs the dependencies with the lockfile (`--frozen-lockfile`). `--page` also installs each package and builds the local page.
+- Then the stage starts `outage-bundles.ts`. It writes the file of the outage bundles and checks it as a deploy checks it (AL-112).
 - Then the stage starts `check.ts` and `main.ts load` with the new code. The mode `load` loads each module and starts no service.
 - `check.ts` reads the live private files. `main.ts load` gets an empty temporary home, thus it cannot change the live home.
 - `loadStep` gives the load its empty home. `runStep` puts the variables of a step over the environment of the stage.
 - The stage and each of its programs run at the lowest priority of the processor.
-- On Linux, the install, the page, the check and the load run in a scope of the user manager (`systemd-run --user --scope`).
+- On Linux, the install, the page, the bundles, the check and the load run in a scope of the user manager (`systemd-run --user --scope`).
 - The scope caps the memory of each step at a quarter of the memory of the host, and gives it the processor weight 10.
 - A nice value does not count against another `cgroup`. The scope is next to the runtime, thus its weight counts against the runtime.
 - A host with no scope runs the stage with only the low priority.

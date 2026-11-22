@@ -4,8 +4,8 @@
  * `@procedures/notify/twilio-serverless` sends the requests. A second deploy of the same plan reads
  * three lists and changes nothing.
  *
- * The bundles need esbuild. `deployOutage` loads the module `bundle.ts` only when it deploys, so the
- * import of this module does not load esbuild.
+ * The bundles need esbuild. The stage of a slot writes them to a file (`bundle-file.ts`), and `deployOutage` reads the file.
+ * Only a missing or old file loads the module `bundle.ts`, with a dynamic import. Thus the import of this module does not load esbuild.
  */
 
 import { canonicalHash } from "@mark1russell7/rigor-generators";
@@ -17,7 +17,7 @@ import {
   type TwilioServerlessFile,
 } from "@procedures/notify/twilio-serverless";
 import type { TwilioCredentials } from "@procedures/notify/twilio";
-import type { FunctionBundle } from "./bundle.ts";
+import { FUNCTION_DEPENDENCIES, FUNCTION_RUNTIME, outageBundles, type FunctionBundle, type OutageBundlesOptions } from "./bundle-file.ts";
 import { OUTAGE_PATHS, type OutageList } from "./outage.ts";
 import { OUTAGE_LIST_ASSET } from "./twilio-runtime.ts";
 
@@ -35,7 +35,7 @@ export const OUTAGE_ENVIRONMENT = { uniqueName: "production", domainSuffix: "pro
 /** The count of the characters of the hash in the version of a plan. */
 const VERSION_LENGTH = 16;
 
-/** The build of the Functions: the runtime of Node and the npm packages. `bundle.ts` gives them. */
+/** The build of the Functions: the runtime of Node and the npm packages. `bundle-file.ts` gives them. */
 export interface OutageBuild {
   readonly runtime: string;
   readonly dependencies: Readonly<Record<string, string>>;
@@ -87,14 +87,21 @@ export function outageDeployPlan(input: OutageDeployInput): TwilioServerlessDepl
 export type OutageSecrets = Pick<OutageDeployInput, "list" | "token" | "from" | "textFrom">;
 
 /**
- * This function makes the bundles of the Functions and deploys the plan. It gives the result of
+ * This function gets the bundles of the Functions and deploys the plan. It gives the result of
  * `twilioServerlessDeploy`. It throws when the bundles fail, when the plan breaks a rule, and at the abort of `ports.signal`.
+ *
+ * - With `bundles.store`, a good file of the bundles gives them with no esbuild. A missing or old file makes them and writes the file.
+ * - Without a store, the function makes the bundles with esbuild at each deploy.
  *
  * The address of the entry is `https://`, the domain name of the result and `OUTAGE_PATHS.entry`.
  */
-export async function deployOutage(ports: TwilioServerlessDeployPorts, credentials: TwilioCredentials, secrets: OutageSecrets): Promise<TwilioServerlessDeployResult> {
-  const { bundleFunctions, FUNCTION_DEPENDENCIES, FUNCTION_RUNTIME } = await import("./bundle.ts");
-  const bundles = await bundleFunctions();
+export async function deployOutage(
+  ports: TwilioServerlessDeployPorts,
+  credentials: TwilioCredentials,
+  secrets: OutageSecrets,
+  bundleOptions: OutageBundlesOptions = {},
+): Promise<TwilioServerlessDeployResult> {
+  const bundles = await outageBundles(bundleOptions);
   const plan = outageDeployPlan({ ...secrets, bundles, build: { runtime: FUNCTION_RUNTIME, dependencies: FUNCTION_DEPENDENCIES } });
   return twilioServerlessDeploy(ports, credentials, plan);
 }

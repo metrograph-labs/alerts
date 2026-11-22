@@ -7,10 +7,14 @@
  *   nothing and loads no bundle, thus esbuild does not compete with the start. A start that does not get steady deploys nothing,
  *   and the Functions that Twilio has stay as they are.
  * - A change of the private files restarts the runtime. Thus a new list deploys at the steady time of the next start.
+ * - A deploy reads the bundles from the file that the stage of the slot wrote. Only a missing or old file starts esbuild,
+ *   and that deploy writes the file again (AL-112).
  * - Once in each day, the worker deploys again. A deploy with no change reads three lists. Thus a change on the side of Twilio heals in a day.
  * - A failed deploy goes again after a backoff. The worker runs beside the passes, so a slow build of Twilio holds no alert.
  */
 import { sendCapUsd, type Duration, type Instant, type ParsedConfig, type SecretLookup, type SpendConfig } from "@mark1russell7/alerts";
+import { mkdir, readFile } from "node:fs/promises";
+import { dirname } from "node:path";
 import {
   deployOutage,
   OUTAGE_MONTH_MAX,
@@ -18,6 +22,7 @@ import {
   OUTAGE_TEXT_MESSAGE,
   TWILIO_CALL_COST_USD,
   twilioCallDescriptor,
+  type BundleStore,
   type OutageList,
   type OutageMonthCap,
   type TwilioCredentials,
@@ -27,6 +32,7 @@ import {
 import { delay, type Clock, type WallClock } from "@mark1russell7/algebra/clock";
 import { err, ok, type Result } from "@mark1russell7/optional";
 import { workerLoop, type WorkerLoop } from "@mark1russell7/service";
+import { writeFileAtomic } from "@procedures/fs/files";
 import { errorMessage } from "@mark1russell7/text";
 import { spendEntryOf, spendQuota, spendUnits } from "./balance.ts";
 
@@ -241,6 +247,29 @@ export interface OutageDeployPorts {
   readonly fetch: TwilioFetch;
   readonly clock: Clock;
   readonly log?: (line: string) => void;
+  /** The store of the file of the bundles (AL-112). Without it, each deploy makes the bundles with esbuild. */
+  readonly bundles?: BundleStore;
+}
+
+/**
+ * This function gives the store of the file of the bundles at `path`. A read of a missing file gives `undefined`. A write
+ * makes the folder, and it replaces the file in one step. Thus a reader does not get half of a file.
+ */
+export function fileBundleStore(path: string): BundleStore {
+  return {
+    read: async () => {
+      try {
+        return await readFile(path, "utf8");
+      } catch (error) {
+        if ((error as { readonly code?: unknown }).code === "ENOENT") return undefined;
+        throw error;
+      }
+    },
+    write: async (text) => {
+      await mkdir(dirname(path), { recursive: true });
+      await writeFileAtomic(path, text);
+    },
+  };
 }
 
 /** This function gives the deploy of a setup: the bundles, the plan and the requests of `deployOutage`. */
@@ -257,5 +286,6 @@ export function outageDeploy(setup: OutageSetup, ports: OutageDeployPorts): (sig
       },
       credentials,
       { list, token, from, ...(textFrom === undefined ? {} : { textFrom }) },
+      { ...(ports.bundles === undefined ? {} : { store: ports.bundles }), ...(ports.log === undefined ? {} : { log: ports.log }) },
     );
 }

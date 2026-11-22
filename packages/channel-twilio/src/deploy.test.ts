@@ -1,7 +1,7 @@
 import type { ChannelId, PersonId } from "@mark1russell7/alerts";
 import type { TwilioFetch } from "@procedures/notify/twilio";
 import { describe, expect, it } from "vitest";
-import type { FunctionBundle } from "./bundle.ts";
+import { bundleFileOf, bundleFileText, type BundleFile, type FunctionBundle } from "./bundle-file.ts";
 import { deployOutage, OUTAGE_ENVIRONMENT, OUTAGE_SERVICE, outageDeployPlan, outageEntryUrl, type OutageDeployInput } from "./deploy.ts";
 import { CHANNEL_ID } from "./descriptor.ts";
 import { OUTAGE_PATHS, type OutageList } from "./outage.ts";
@@ -98,4 +98,22 @@ describe("deployOutage", () => {
     expect(result).toMatchObject({ ok: false, stage: "service" });
     expect(urls).toEqual([`https://serverless.twilio.com/v1/Services/${OUTAGE_SERVICE.uniqueName}`]);
   }, 30_000);
+
+  it("takes the bundles from a good file of the store and makes no bundle (AL-112)", async () => {
+    const file = await bundleFileOf({ bundles: BUNDLES, inputs: ["src/functions/outage.ts", "src/functions/press.ts", "src/functions/ended.ts"] });
+    const writes: string[] = [];
+    const store = { read: async () => bundleFileText(file), write: async (text: string) => void writes.push(text) };
+    const make = async (): Promise<BundleFile> => {
+      throw new Error("The deploy made the bundles.");
+    };
+    const urls: string[] = [];
+    const fetch: TwilioFetch = async (url) => {
+      urls.push(url);
+      return { status: 401, text: async () => JSON.stringify({ code: 20003, message: "Authenticate", status: 401 }), headers: { get: () => null } };
+    };
+    const result = await deployOutage({ fetch, now: () => 0, sleep: async () => undefined }, CREDENTIALS, { list: LIST, token: TOKEN, from: FROM }, { store, make });
+    expect(result).toMatchObject({ ok: false, stage: "service" });
+    expect(urls).toHaveLength(1);
+    expect(writes).toEqual([]);
+  });
 });

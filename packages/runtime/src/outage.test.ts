@@ -1,13 +1,16 @@
 import { readdirSync, readFileSync } from "node:fs";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fakeClock, type FakeClock, type WallClock } from "@mark1russell7/algebra/clock";
 import { CONFIG_FORMAT, parseConfig, type AlertConfig, type ChannelId, type EscalationPolicy, type PersonId, type PlaceId, type SecretLookup, type SpendConfig } from "@mark1russell7/alerts";
-import { OUTAGE_TEXT_MESSAGE, type TwilioFetch, type TwilioServerlessDeployResult } from "@mark1russell7/alerts-channel-twilio";
+import { checkBundleFile, OUTAGE_TEXT_MESSAGE, type TwilioFetch, type TwilioServerlessDeployResult } from "@mark1russell7/alerts-channel-twilio";
 import { seedsFrom } from "@mark1russell7/rigor-generators";
 import { detachedLifecycle } from "@mark1russell7/service/testing";
 import fc from "fast-check";
 import { afterEach, describe, expect, it } from "vitest";
 import { INSTANCE_CHANNELS } from "./instance.ts";
-import { OUTAGE_TOKEN_KEY, outageDeploy, outageDeployWorker, outageMonthCapOf, outageSetup, type OutageDeployOptions, type OutageDeployWorker, type OutageKeys } from "./outage.ts";
+import { fileBundleStore, OUTAGE_TOKEN_KEY, outageDeploy, outageDeployWorker, outageMonthCapOf, outageSetup, type OutageDeployOptions, type OutageDeployWorker, type OutageKeys } from "./outage.ts";
 
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
@@ -281,6 +284,12 @@ describe("outageDeployWorker", () => {
 });
 
 describe("outageDeploy", () => {
+  let folder = "";
+  afterEach(async () => {
+    if (folder !== "") await rm(folder, { recursive: true, force: true });
+    folder = "";
+  });
+
   it("makes the bundles and sends the requests of the deploy through the fetch of the instance", async () => {
     const urls: string[] = [];
     const fetch: TwilioFetch = async (url) => {
@@ -295,6 +304,25 @@ describe("outageDeploy", () => {
     expect(result).toMatchObject({ ok: false, stage: "service" });
     expect(urls).toEqual(["https://serverless.twilio.com/v1/Services/alerts-outage"]);
   }, 30_000);
+
+  it("writes the file of the bundles at the first deploy, and the next deploy reads the file (AL-112)", async () => {
+    folder = await mkdtemp(join(tmpdir(), "alerts-outage-bundles-"));
+    const bundles = fileBundleStore(join(folder, "build", "outage-bundles.json"));
+    expect(await bundles.read()).toBeUndefined();
+    const fetch: TwilioFetch = async () => ({ status: 401, text: async () => JSON.stringify({ code: 20003, message: "Authenticate", status: 401 }), headers: { get: () => null } });
+    const lines: string[] = [];
+    const secret = store(SECRETS);
+    const setup = outageSetup(parse(withOutage([call]), secret), secret, KEYS);
+    if (setup.tag === "err" || setup.value === undefined) throw new Error("The setup has problems.");
+    const deploy = outageDeploy(setup.value, { fetch, clock: fakeClock(T0), bundles, log: (line) => lines.push(line) });
+    expect(await deploy(new AbortController().signal)).toMatchObject({ ok: false, stage: "service" });
+    expect(lines.filter((line) => line.includes("bundles"))).toEqual([expect.stringContaining("does not exist")]);
+    expect((await checkBundleFile(await bundles.read())).ok).toBe(true);
+    // The second deploy finds a good file. Thus it gives no line of the bundles, and it starts no esbuild.
+    lines.length = 0;
+    expect(await deploy(new AbortController().signal)).toMatchObject({ ok: false, stage: "service" });
+    expect(lines.filter((line) => line.includes("bundles"))).toEqual([]);
+  }, 60_000);
 });
 
 // The packages of the workspace, by name. Each package has its entry in `src/index.ts`.
@@ -338,6 +366,8 @@ describe("the load of the bundles (AL-112)", () => {
     // The walk reaches the deploy, thus a static import of the bundles from it is in the walk.
     expect([...graph.files].some((file) => file.endsWith("/channel-twilio/src/deploy.ts"))).toBe(true);
     expect([...graph.files].filter((file) => file.endsWith("/channel-twilio/src/bundle.ts"))).toEqual([]);
+    // The read of the file of the bundles is in the static load. It imports no esbuild.
+    expect([...graph.files].some((file) => file.endsWith("/channel-twilio/src/bundle-file.ts"))).toBe(true);
     expect([...graph.outside]).not.toContain("esbuild");
     expect(graph.outside.size).toBeGreaterThan(3);
   });
