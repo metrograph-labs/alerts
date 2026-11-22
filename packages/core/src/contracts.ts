@@ -1259,6 +1259,22 @@ export interface AssessPolicy {
   readonly otherwise: LevelTable;
   /** The policy of the relevance for a person with an interest graph. When it is absent, the assessment uses `DEFAULT_RELEVANCE_POLICY`. */
   readonly relevance?: RelevancePolicy;
+  /**
+   * The priors of the score rules of the persons (`PersonWatch.score`, AL-31). With no priors, a score rule has no
+   * read, and the table decides. `policyWithPriors` sets them only when a person has a score rule.
+   */
+  readonly priors?: ScorePriors;
+}
+
+/**
+ * The score rule of a person (AL-31). An incident gets the level `life-safety` when its expected deaths in one place
+ * (`shadowScore`) reach `risk`. The table stays the floor: the rule does not lower a level.
+ */
+export interface ScoreRule {
+  /** The lowest expected deaths in one county or zone under one alert of the kind that raise the level. It is above 0. */
+  readonly risk: number;
+  /** The prefixes of the taxonomy codes that the rule does not raise, for example `met.rip-current`. The table decides them. */
+  readonly except?: readonly string[];
 }
 
 /**
@@ -1331,6 +1347,8 @@ export interface PersonWatch {
    * with no rule has the rule on, and its range is the buffer of the place.
    */
   readonly mandatory?: readonly MandatoryRule[];
+  /** The score rule of the person (AL-31). When it is absent, the table alone gives the level. */
+  readonly score?: ScoreRule;
 }
 
 /**
@@ -1550,6 +1568,12 @@ export type AssessReason =
   | { readonly kind: "rule"; readonly place?: PlaceId; readonly index: number; readonly max: AssessedLevel }
   /** The shadow score of the incident. It does not change the level. */
   | { readonly kind: "shadow"; readonly score: ShadowScore }
+  /**
+   * The score rule of the person examined the incident (AL-31). `raised` is true when the expected deaths reach `risk`
+   * and the table gives a level below `life-safety`. Then the level is `life-safety`. The score is absent when the
+   * policy has no priors.
+   */
+  | { readonly kind: "score"; readonly risk: number; readonly raised: boolean; readonly score?: ShadowScore }
   /**
    * The relevance of the incident over the interest graph of the person. `reached` holds the entries that reach the
    * person alone: the places, the areas, the subjects and the topic, in this order. `mandatory` holds the places

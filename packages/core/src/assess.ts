@@ -26,6 +26,8 @@ import type {
   Relevance,
   RelevancePolicy,
   ReportId,
+  ScorePriors,
+  ScoreRule,
   SubjectEntry,
   SubjectKind,
   SubjectSystem,
@@ -36,7 +38,9 @@ import { ASSESSED_LEVELS, SUBJECT_SYSTEMS, SYSTEM_SOURCE } from "./contracts.ts"
 import { hasKind } from "./kind-prefix.ts";
 import type { MapShape } from "./map.ts";
 import { DEFAULT_ENTRY_MAX, DEFAULT_RELEVANCE_POLICY, canReach, relevance, topicEntry } from "./relevance.ts";
+import { shadowScore } from "./score.ts";
 import { isShape, shapeDistanceKm } from "./shapes.ts";
+import { STATE_POSTAL } from "./state-codes.ts";
 import { kindOfNode, nodesOverlap, placeNode, subjectNode } from "./why.ts";
 
 export { hasKind } from "./kind-prefix.ts";
@@ -361,6 +365,48 @@ export function tableLevel(
   };
 }
 
+/** The reason of the score rule of a person (AL-31). */
+export type ScoreRuleReason = Extract<AssessReason, { readonly kind: "score" }>;
+
+/**
+ * This function gives the result of the score rule of a person for an incident or a line (AL-31). The result is
+ * `undefined` when the rule does not examine the kind. Three conditions cause this:
+ *
+ * - The person has no rule.
+ * - The table is the quiet table of other copies (AL-76).
+ * - A prefix of `except` holds the kind.
+ *
+ * Else `raised` is true when two conditions are true. The expected deaths of the score (`shadowScore`) reach the risk of
+ * the rule. The table gives a level below `life-safety`. A score with no read does not raise. With no priors in the
+ * policy, the result has no score, and `raised` is false.
+ */
+export function scoreRuleResult(
+  policy: AssessPolicy,
+  rule: ScoreRule | undefined,
+  incident: Pick<Incident | IncidentLine, "kind" | "certainty">,
+  table: TableResult,
+): ScoreRuleReason | undefined {
+  if (rule === undefined || table.foreign === true || hasKind(rule.except ?? [], incident.kind.code)) return undefined;
+  if (policy.priors === undefined) return { kind: "score", risk: rule.risk, raised: false };
+  const score = shadowScore(incident, policy.priors);
+  const raised = score.read && score.expected.deaths.value >= rule.risk && rank(table.level) < rank("life-safety");
+  return { kind: "score", risk: rule.risk, raised, score };
+}
+
+/**
+ * This function gives the policy of the assessment with the priors of the score rules (AL-31). The priors go in only
+ * when a person has a score rule and the policy has no priors. Else the function gives the policy as it is. Thus with no
+ * score rule, each assessment stays the same.
+ */
+export function policyWithPriors(
+  policy: AssessPolicy | undefined,
+  people: readonly Pick<PersonWatch, "score">[],
+  priors: ScorePriors | undefined,
+): AssessPolicy | undefined {
+  if (priors === undefined || policy?.priors !== undefined || !people.some((person) => person.score !== undefined)) return policy;
+  return { ...(policy ?? DEFAULT_ASSESS_POLICY), priors };
+}
+
 /**
  * This function gives the test of an incident of the sources of other copies (AL-76). The test is true when each report
  * of the incident comes from a source that is not in `sources`. Such an incident came from another copy only. A report
@@ -443,6 +489,9 @@ export interface PlaceMatch {
  * - A fire zone code (`ugc-fire`) covers only a fire zone code of a place. A place with no fire zone code of
  *   a state uses the forecast zone code (`ugc`) with the same code. This is on the safe side, and the match
  *   tells it with `zoneFallback`.
+ * - In a block with zone codes of a state, the county codes of that state do not widen the match (AL-69). The
+ *   county codes are SAME, FIPS and UGC county codes. They decide only for a place with no zone code of that kind
+ *   and that state. Thus a place with no zone code keeps the match of its county.
  */
 export function matchPlaces(incident: Pick<Incident, "areas">, places: readonly WatchedPlace[]): PlaceMatch[] {
   const ids = new Set(incident.areas.flatMap((area) => (area.type === "place" ? [area.place] : [])));
@@ -461,6 +510,7 @@ export function matchPlaces(incident: Pick<Incident, "areas">, places: readonly 
     const direct = new Set<RegionCode>();
     const fallback = new Set<RegionCode>();
     const fireStates = new Set(place.codes.flatMap((code) => (code.system === "ugc-fire" ? [code.code.slice(0, 2)] : [])));
+    const placeZones = zoneKeys(place.codes);
     for (const [block, areas] of groups) {
       const shapes = areas.filter(isShape);
       const distance = place.at === undefined || shapes.length === 0 ? undefined : nearestShape(shapes, place.at);
@@ -468,8 +518,10 @@ export function matchPlaces(incident: Pick<Incident, "areas">, places: readonly 
       // A block decides by its shapes when geo reads one of them. The areas with no block always give their codes.
       if (block !== undefined && distance !== undefined) continue;
       const codeAreas = areas.filter((area) => area.type === "code");
+      const zoned = block === undefined ? new Set<string>() : zoneKeys(codeAreas);
       const byBlock: RegionCode[] = [];
       for (const code of place.codes) {
+        if (zoned.size > 0 && zonedCounty(code, zoned, placeZones)) continue;
         if (codeAreas.some((area) => regionCovers(area, code))) {
           direct.add(code);
           byBlock.push(code);
@@ -501,6 +553,33 @@ export function matchPlaces(incident: Pick<Incident, "areas">, places: readonly 
 // The caller uses it only for a place with no fire zone code of the state of that code.
 function zoneFallbackCovers(area: RegionCode, place: RegionCode): boolean {
   return area.system === "ugc-fire" && place.system === "ugc" && area.code === place.code;
+}
+
+// The kind and the state of each zone code, as `<system>:<state>`. A zone code is a fire zone code, or a UGC code with the
+// letter Z (a forecast zone).
+function zoneKeys(codes: readonly RegionCode[]): Set<string> {
+  return new Set(codes.flatMap((code) => (isZoneCode(code) ? [`${code.system}:${code.code.slice(0, 2)}`] : [])));
+}
+
+function isZoneCode(code: RegionCode): boolean {
+  return code.system === "ugc-fire" || (code.system === "ugc" && code.code.charAt(2) === "Z");
+}
+
+// The postal code of the state of a county code: a UGC code with the letter C, a SAME code or a FIPS code. A SAME code of the
+// full state or of the full country, and each other code, give `undefined`.
+function countyState(code: RegionCode): string | undefined {
+  if (code.system === "ugc") return code.code.charAt(2) === "C" ? code.code.slice(0, 2) : undefined;
+  if (code.system === "same") return SAME.test(code.code) && code.code.slice(3) !== "000" ? STATE_POSTAL[code.code.slice(1, 3)] : undefined;
+  if (code.system === "fips") return /^\d{5}$/.test(code.code) && code.code.slice(2) !== "000" ? STATE_POSTAL[code.code.slice(0, 2)] : undefined;
+  return undefined;
+}
+
+// A county code of a place that a block with zone codes does not use: the block and the place have a zone code of one kind
+// in the state of the county code. Then the zone codes decide for that place.
+function zonedCounty(code: RegionCode, zoned: ReadonlySet<string>, placeZones: ReadonlySet<string>): boolean {
+  const state = countyState(code);
+  if (state === undefined) return false;
+  return ["ugc", "ugc-fire"].some((system) => zoned.has(`${system}:${state}`) && placeZones.has(`${system}:${state}`));
 }
 
 // The distance to the nearest shape that geo reads, or `undefined` when geo refuses each shape.
@@ -554,6 +633,10 @@ export function reachedAssessment(assessment: Assessment): Assessment {
  *
  * The value `foreign` tells that this copy runs no source of the incident (`foreignIncidents`). A kind with no class
  * then gets `FOREIGN_TABLE`, not the table `otherwise` (AL-76).
+ *
+ * A person with a score rule (`PersonWatch.score`, AL-31) gets `life-safety` when the expected deaths of the score reach
+ * the risk of the rule (`scoreRuleResult`). The rule raises the table level of the incident and of each line, before the
+ * rules of the person. The reason `score` follows the reason `table`.
  */
 export function assess(
   incident: Incident,
@@ -598,6 +681,13 @@ export function assess(
     return result("none");
   }
   const table = tableLevel(policy, incident, at, foreign);
+  // The score rule of the person can raise the level of the table to `life-safety` (AL-31). It does not lower a level.
+  const scored = scoreRuleResult(policy, person.score, incident, table);
+  const incidentLevel: AssessedLevel = scored?.raised === true ? "life-safety" : table.level;
+  const lineLevel = (line: IncidentLine): AssessedLevel => {
+    const found = tableLevel(policy, line, at, foreign);
+    return scoreRuleResult(policy, person.score, line, found)?.raised === true ? "life-safety" : found.level;
+  };
   const tables = new Map<PlaceId, PlaceTable>();
   // The level of the table at one place: the highest table of the lines that hold the place.
   const placeTable = (id: PlaceId): PlaceTable => {
@@ -606,9 +696,7 @@ export function assess(
     const place = byId.get(id);
     const holding = place === undefined ? [] : linesAt(incident, place);
     const found: PlaceTable =
-      holding.length === 0
-        ? { level: table.level, reports: [] }
-        : { level: holding.map((line) => tableLevel(policy, line, at, foreign).level).reduce(higherLevel), reports: holding.map((line) => line.report) };
+      holding.length === 0 ? { level: incidentLevel, reports: [] } : { level: holding.map(lineLevel).reduce(higherLevel), reports: holding.map((line) => line.report) };
     tables.set(id, found);
     return found;
   };
@@ -630,7 +718,8 @@ export function assess(
     return result("none");
   }
   reasons.push({ kind: "table", ...table });
-  const entryLevel = lowerLevel(table.level, relevancePolicy.entryMax ?? DEFAULT_ENTRY_MAX);
+  if (scored !== undefined) reasons.push(scored);
+  const entryLevel = lowerLevel(incidentLevel, relevancePolicy.entryMax ?? DEFAULT_ENTRY_MAX);
   if (plan !== undefined) {
     const { reach, why } = plan.relevance;
     reasons.push({
@@ -658,22 +747,44 @@ export function assess(
   };
   if (isPrivate(incident)) {
     reasons.push({ kind: "addressed" });
-    return result(atMatch(undefined, table.level, "entity"));
+    return result(atMatch(undefined, incidentLevel, "entity"));
   }
   for (const match of matches) {
     reasons.push({ kind: "place", ...match });
     if (plan !== undefined && !plan.places.has(match.place)) continue;
     const found = placeTable(match.place);
-    if (found.reports.length > 0 && found.level !== table.level) reasons.push({ kind: "place-table", place: match.place, reports: found.reports, level: found.level });
+    if (found.reports.length > 0 && found.level !== incidentLevel) reasons.push({ kind: "place-table", place: match.place, reports: found.reports, level: found.level });
     level = higherLevel(level, atMatch(match.place, found.level, "place"));
   }
   // Each kind of the other entries that count gets its own rule. Thus a rule through topics does not lower an entity.
   for (const through of plan?.others ?? []) level = higherLevel(level, atMatch(undefined, entryLevel, through));
   for (const subject of subjects) {
     reasons.push({ kind: "subject", subject });
-    level = higherLevel(level, atMatch(undefined, table.level, kindOfNode(subjectNode({ system: subject.system, id: subject.id ?? "*" })) ?? "entity"));
+    level = higherLevel(level, atMatch(undefined, incidentLevel, kindOfNode(subjectNode({ system: subject.system, id: subject.id ?? "*" })) ?? "entity"));
   }
   return result(level);
+}
+
+/**
+ * This function gives the assessment of `assess`, with the shadow score as its last reason. The score
+ * does not change the level or the other reasons. An assessment with no reason of the table gets no
+ * score. Examples are an ended incident, a status that the policy does not send and an incident with no match.
+ *
+ * The reason of the score rule of a person holds the score when the policy has priors (AL-31). Such an assessment
+ * gets no second score.
+ */
+export function assessWithShadow(
+  incident: Incident,
+  person: PersonWatch,
+  places: readonly WatchedPlace[],
+  priors: ScorePriors,
+  policy: AssessPolicy = DEFAULT_ASSESS_POLICY,
+  at?: Instant,
+): Assessment {
+  const assessment = assess(incident, person, places, policy, at);
+  if (!assessment.reasons.some((reason) => reason.kind === "table")) return assessment;
+  if (assessment.reasons.some((reason) => reason.kind === "score" && reason.score !== undefined)) return assessment;
+  return { ...assessment, reasons: [...assessment.reasons, { kind: "shadow", score: shadowScore(incident, priors) }] };
 }
 
 // The level of the table at one place, and the reports of the lines that hold the place.

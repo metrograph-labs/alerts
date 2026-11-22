@@ -1,23 +1,19 @@
 /**
  * The shadow score of an incident: the probability of the event and the harm of one event, from public
- * measures. The score operates next to the table, and it does not decide a level at this time. The table
- * decides each send, and the gate test of `score.test.ts` holds this.
+ * measures. The score operates next to the table. It decides a level only for a person with a score rule
+ * (`PersonWatch.score`, AL-31). Else the table decides each send, and the gate test of `score.test.ts` holds this.
  */
 
 import { interval } from "@mark1russell7/interval";
 import { compareCodeUnits } from "@mark1russell7/text/order";
-import { assess, DEFAULT_ASSESS_POLICY, hasKind } from "./assess.ts";
+import { hasKind } from "./kind-prefix.ts";
 import {
   LEVELS,
-  type AssessPolicy,
-  type Assessment,
   type Certainty,
   type Estimate,
   type ExpectedHarm,
   type Incident,
-  type Instant,
   type KindPrior,
-  type PersonWatch,
   type ScoredIncident,
   type ScoreFactor,
   type ScoreGap,
@@ -26,7 +22,6 @@ import {
   type ShadowScore,
   type Significance,
   type UnderPrior,
-  type WatchedPlace,
 } from "./contracts.ts";
 
 /** The format of a file of priors. */
@@ -109,24 +104,6 @@ export function shadowScore(incident: Pick<Incident, "kind" | "certainty">, prio
   if (deaths === undefined) missing.push("deaths");
   if (injuries === undefined) missing.push("injuries");
   return { read: false, missing };
-}
-
-/**
- * This function gives the assessment of `assess`, with the shadow score as its last reason. The score
- * does not change the level or the other reasons. An assessment with no reason of the table gets no
- * score. Examples are an ended incident, a status that the policy does not send and an incident with no match.
- */
-export function assessWithShadow(
-  incident: Incident,
-  person: PersonWatch,
-  places: readonly WatchedPlace[],
-  priors: ScorePriors,
-  policy: AssessPolicy = DEFAULT_ASSESS_POLICY,
-  at?: Instant,
-): Assessment {
-  const assessment = assess(incident, person, places, policy, at);
-  if (!assessment.reasons.some((reason) => reason.kind === "table")) return assessment;
-  return { ...assessment, reasons: [...assessment.reasons, { kind: "shadow", score: shadowScore(incident, priors) }] };
 }
 
 // True when each expected measure of `a` is above that of `b`, and the intervals do not overlap.

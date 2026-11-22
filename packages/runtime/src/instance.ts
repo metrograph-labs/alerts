@@ -22,6 +22,7 @@ import {
   optedIn,
   placeLabels,
   placeCodesWithContaining,
+  policyWithPriors,
   sendLimitsOf,
   throttleOf,
   sourceCovers,
@@ -1022,11 +1023,17 @@ export function openInstance(options: InstanceOptions): Instance {
   // The text channel takes its units from the gates of the call channel. Thus the quota of the call channel counts the texts too.
   const channels = twilio === undefined ? [pushover] : [pushover, twilio.channel, ...(twilio.text === undefined ? [] : [twilio.text])];
   // The labels of the places go only into the why line of each message. The policy of the configuration replaces the default policy of the core.
+  // A person with a score rule needs the priors in the policy (AL-31). With no score rule, the policy stays the same.
+  const assess = policyWithPriors(
+    config.assess,
+    recipients.map((recipient) => recipient.watch),
+    options.priors,
+  );
   const delivery: DeliveryOptions = {
     recipients,
     channels,
     labels: placeLabels(placed),
-    ...(config.assess === undefined ? {} : { assess: config.assess }),
+    ...(assess === undefined ? {} : { assess }),
     // The sources of this copy: a report of only other sources came from another copy, maybe of a newer build (AL-76).
     sources: new Set(descriptors.map((descriptor) => descriptor.id)),
     ...(options.priors === undefined ? {} : { priors: options.priors }),

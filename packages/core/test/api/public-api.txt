@@ -383,6 +383,8 @@ SERIES_VERSION: build/index.d.ts#SERIES_VERSION
 SEVERITY_ORDER: build/index.d.ts#SEVERITY_ORDER
 SHARED_HANDOVER: build/index.d.ts#SHARED_HANDOVER
 SOURCE_SUBJECT: build/index.d.ts#SOURCE_SUBJECT
+STATE_FIPS: build/index.d.ts#STATE_FIPS
+STATE_POSTAL: build/index.d.ts#STATE_POSTAL
 STORE_FILL_WINDOW: build/index.d.ts#STORE_FILL_WINDOW
 STORE_KIND: build/index.d.ts#STORE_KIND
 STORE_SUBJECT: build/index.d.ts#STORE_SUBJECT
@@ -392,6 +394,8 @@ SchemaDrift: build/index.d.ts#SchemaDrift
 ScoreFactor: build/index.d.ts#ScoreFactor
 ScoreGap: build/index.d.ts#ScoreGap
 ScorePriors: build/index.d.ts#ScorePriors
+ScoreRule: build/index.d.ts#ScoreRule
+ScoreRuleReason: build/index.d.ts#ScoreRuleReason
 ScoreSource: build/index.d.ts#ScoreSource
 ScoredIncident: build/index.d.ts#ScoredIncident
 Season: build/index.d.ts#Season
@@ -759,6 +763,7 @@ plainLabel: build/index.d.ts#plainLabel
 planDigests: build/index.d.ts#planDigests
 policyFor: build/index.d.ts#policyFor
 policyName: build/index.d.ts#policyName
+policyWithPriors: build/index.d.ts#policyWithPriors
 positionSchema: build/index.d.ts#positionSchema
 probabilitySchema: build/index.d.ts#probabilitySchema
 providerBalanceSchema: build/index.d.ts#providerBalanceSchema
@@ -811,6 +816,8 @@ runOpens: build/index.d.ts#runOpens
 schemaOf: build/index.d.ts#schemaOf
 scoreFactorSchema: build/index.d.ts#scoreFactorSchema
 scorePriorsSchema: build/index.d.ts#scorePriorsSchema
+scoreRuleResult: build/index.d.ts#scoreRuleResult
+scoreRuleSchema: build/index.d.ts#scoreRuleSchema
 secretRefSchema: build/index.d.ts#secretRefSchema
 sendCapUsd: build/index.d.ts#sendCapUsd
 sendLimitConfigSchema: build/index.d.ts#sendLimitConfigSchema
@@ -969,6 +976,7 @@ export interface AssessPolicy {
   readonly classes: readonly KindClass[];
   readonly otherwise: LevelTable;
   readonly relevance?: RelevancePolicy;
+  readonly priors?: ScorePriors;
 }
 
 ### build/index.d.ts#AssessReason
@@ -1021,6 +1029,11 @@ export type AssessReason = {
 } | {
   readonly kind: "shadow";
   readonly score: ShadowScore;
+} | {
+  readonly kind: "score";
+  readonly risk: number;
+  readonly raised: boolean;
+  readonly score?: ShadowScore;
 } | {
   readonly kind: "reach";
   readonly reach: Estimate;
@@ -3163,6 +3176,7 @@ export interface PersonWatch {
   readonly quiet?: QuietWindow;
   readonly interests?: InterestGraph;
   readonly mandatory?: readonly MandatoryRule[];
+  readonly score?: ScoreRule;
 }
 
 ### build/index.d.ts#PlaceBreadth
@@ -3507,6 +3521,12 @@ export declare const SHARED_HANDOVER: Duration;
 ### build/index.d.ts#SOURCE_SUBJECT
 export declare const SOURCE_SUBJECT = "alerts.source";
 
+### build/index.d.ts#STATE_FIPS
+export declare const STATE_FIPS: Readonly<Record<string, string>>;
+
+### build/index.d.ts#STATE_POSTAL
+export declare const STATE_POSTAL: Readonly<Record<string, string>>;
+
 ### build/index.d.ts#STORE_FILL_WINDOW
 export declare const STORE_FILL_WINDOW: Duration;
 
@@ -3542,6 +3562,17 @@ export interface ScorePriors {
   readonly kinds: Readonly<Record<string, KindPrior>>;
   readonly certainty: Readonly<Partial<Record<Certainty, Estimate>>>;
 }
+
+### build/index.d.ts#ScoreRule
+export interface ScoreRule {
+  readonly risk: number;
+  readonly except?: readonly string[];
+}
+
+### build/index.d.ts#ScoreRuleReason
+export type ScoreRuleReason = Extract<AssessReason, {
+  readonly kind: "score";
+}>;
 
 ### build/index.d.ts#ScoreSource
 export type ScoreSource = {
@@ -4957,6 +4988,9 @@ export declare function policyFor(policies: readonly EscalationPolicy[], level: 
 ### build/index.d.ts#policyName
 export declare function policyName(policy: EscalationPolicy): string;
 
+### build/index.d.ts#policyWithPriors
+export declare function policyWithPriors(policy: AssessPolicy | undefined, people: readonly Pick<PersonWatch, "score">[], priors: ScorePriors | undefined): AssessPolicy | undefined;
+
 ### build/index.d.ts#positionSchema
 export declare const positionSchema: z.ZodType<Position, Position>;
 
@@ -5112,6 +5146,12 @@ export declare const scoreFactorSchema: z.ZodType<ScoreFactor, ScoreFactor>;
 
 ### build/index.d.ts#scorePriorsSchema
 export declare const scorePriorsSchema: z.ZodType<ScorePriors, ScorePriors>;
+
+### build/index.d.ts#scoreRuleResult
+export declare function scoreRuleResult(policy: AssessPolicy, rule: ScoreRule | undefined, incident: Pick<Incident | IncidentLine, "kind" | "certainty">, table: TableResult): ScoreRuleReason | undefined;
+
+### build/index.d.ts#scoreRuleSchema
+export declare const scoreRuleSchema: z.ZodType<ScoreRule, ScoreRule>;
 
 ### build/index.d.ts#secretRefSchema
 export declare const secretRefSchema: z.ZodType<SecretRef, SecretRef>;

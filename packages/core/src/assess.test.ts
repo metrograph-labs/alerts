@@ -896,6 +896,70 @@ describe("the fire zones (AL-33)", () => {
   });
 });
 
+describe("the county codes of a block with zone codes (AL-69)", () => {
+  // A Red Flag Warning names its fire zones and each county that they touch, in one block. Each code is a code of Kansas or Texas.
+  const keyed = (system: string, code: string): Area => ({ type: "code", system, code, block: "feature" });
+  const fireZone = { system: "ugc-fire", code: "KSZ083" } as const;
+  const forecast = { system: "ugc", code: "KSZ083" } as const;
+  const county = { system: "ugc", code: "KSC173" } as const;
+  const same = { system: "same", code: "020173" } as const;
+  const fips = { system: "fips", code: "20173" } as const;
+  const counties = [keyed("ugc", "KSC173"), keyed("same", "020173"), keyed("fips", "20173")];
+  const inZone: WatchedPlace = { id: home, codes: [forecast, county, same, fips, fireZone], bufferKm: 0 };
+  const noZone: WatchedPlace = { id: other, codes: [county, same, fips], bufferKm: 0 };
+
+  it("matches a place with a fire zone code of the state only through its fire zone codes", () => {
+    expect(matchPlaces({ areas: [keyed("ugc-fire", "KSZ084"), ...counties] }, [inZone])).toEqual([]);
+    expect(matchPlaces({ areas: [keyed("ugc-fire", "KSZ083"), ...counties] }, [inZone])).toEqual([{ place: home, codes: [fireZone] }]);
+  });
+
+  it("keeps the county match of a place with no zone code", () => {
+    expect(matchPlaces({ areas: [keyed("ugc-fire", "KSZ084"), ...counties] }, [noZone])).toEqual([{ place: other, codes: [county, same, fips] }]);
+  });
+
+  it("keeps the county codes for a place with a zone code of a different kind or of a different state", () => {
+    // The place has a forecast zone code and no fire zone code. The fire zones of the block do not decide alone for it.
+    const forecastOnly: WatchedPlace = { id: home, codes: [forecast, county, same], bufferKm: 0 };
+    expect(matchPlaces({ areas: [keyed("ugc-fire", "KSZ084"), ...counties] }, [forecastOnly])).toEqual([{ place: home, codes: [county, same] }]);
+    // The block has no zone code of Texas. Thus a Texas county code decides for the place.
+    const texas = [{ system: "ugc", code: "TXC029" }, { system: "same", code: "048029" }] as const;
+    const border: WatchedPlace = { id: home, codes: [fireZone, ...texas], bufferKm: 0 };
+    const areas = [keyed("ugc-fire", "KSZ084"), keyed("ugc", "TXC029"), keyed("same", "048029")];
+    expect(matchPlaces({ areas }, [border])).toEqual([{ place: home, codes: [...texas] }]);
+  });
+
+  it("uses the same rule for the forecast zones", () => {
+    const place: WatchedPlace = { id: home, codes: [forecast, county, same], bufferKm: 0 };
+    expect(matchPlaces({ areas: [keyed("ugc", "KSZ084"), ...counties] }, [place])).toEqual([]);
+    expect(matchPlaces({ areas: [keyed("ugc", "KSZ083"), ...counties] }, [place])).toEqual([{ place: home, codes: [forecast] }]);
+  });
+
+  it("keeps the union rule for the areas with no block key, and a county code in its own block decides", () => {
+    const loose: Area[] = [{ type: "code", system: "ugc-fire", code: "KSZ084" }, { type: "code", ...county }];
+    expect(matchPlaces({ areas: loose }, [inZone])).toEqual([{ place: home, codes: [county] }]);
+    const apart: Area[] = [keyed("ugc-fire", "KSZ084"), { type: "code", ...county, block: "other" }];
+    expect(matchPlaces({ areas: apart }, [inZone])).toEqual([{ place: home, codes: [county] }]);
+  });
+
+  it.each(SEEDS)("removes only county matches of places with a zone code of the block (seed %i)", (seed) => {
+    const r = random(seed);
+    const zones = [keyed("ugc-fire", "KSZ083"), keyed("ugc-fire", "KSZ084"), keyed("ugc", "KSZ083"), keyed("ugc", "KSZ084")];
+    const pool: readonly Area[] = [...zones, ...counties, keyed("ugc", "TXC029"), keyed("same", "048029")];
+    const codes = [fireZone, forecast, county, same, fips, { system: "ugc", code: "TXC029" }, { system: "same", code: "048029" }] as const;
+    for (let round = 0; round < 200; round += 1) {
+      const areas = r.sample(pool, r.int(1, pool.length)).map((area) => (r.chance(0.2) ? ({ ...area, block: "other" } as Area) : area));
+      const place: WatchedPlace = { id: home, codes: r.sample(codes, r.int(1, codes.length)), bufferKm: 0 };
+      const match = matchPlaces({ areas }, [place]);
+      const union = matchPlaces({ areas: areasWithoutBlocks(areas) }, [place]);
+      for (const code of match[0]?.codes ?? []) expect(union[0]?.codes).toContainEqual(code);
+      // A place with no zone code matches as if the areas had no zone code.
+      const zoneFree = place.codes.every((code) => code.system !== "ugc-fire" && !(code.system === "ugc" && code.code.charAt(2) === "Z"));
+      if (zoneFree) expect(match).toEqual(matchPlaces({ areas: areas.filter((area) => !zones.some((zone) => area.type === "code" && zone.type === "code" && zone.system === area.system && zone.code === area.code)) }, [place]));
+      expect(matchPlaces({ areas: r.shuffle(areas) }, [place])).toEqual(match);
+    }
+  });
+});
+
 describe("a private incident (AL-92)", () => {
   const addressed = "person-1" as PersonId;
   const stranger = "person-9" as PersonId;

@@ -1276,7 +1276,7 @@ Each assessment has its reasons: the gate that stopped it, the class, the two lo
 
 The table becomes the calculation of AL-31. The calculation multiplies the probability that the event is real and the harm of the event. It compares the result with the cost to interrupt the person at that time. Each factor comes from a public measure, not from a value that a person sets.
 
-The shadow score (`shadowScore`) is the first step. It operates next to the table, and it does not decide a level:
+The shadow score (`shadowScore`) is the first step. It operates next to the table. It decides a level only through the score rule of a person (step 4, below):
 
 - The priors (`ScorePriors`, format `alerts-priors/2`) are data. For each prefix of a kind, they give the verified share of its warnings and the deaths and injuries of one event. For each CAP certainty value, they give a probability.
 - Format 2 adds the harm in one area under one active alert of a kind, for each significance (`KindPrior.under`). The measure counts each event under an alert, so it holds the probability of the event.
@@ -1288,7 +1288,7 @@ The shadow score (`shadowScore`) is the first step. It operates next to the tabl
 - The expected harm (`expectedOf`) is the probability times the deaths, and the probability times the injuries. `mul` of `@mark1russell7/interval` rounds each interval outward. Thus the interval holds each exact product.
 - Each count of the priors is from 0 to `Number.MAX_SAFE_INTEGER`. Thus each product has a finite interval.
 - A factor that the priors do not give makes a score with no read. The score names each missing factor. It does not take 0 or a default value.
-- `assessWithShadow` adds the score as the last reason of an assessment with a reason of the table. The level and the other reasons stay those of `assess`. A seeded gate test holds this.
+- `assessWithShadow` adds the score as the last reason of an assessment with a reason of the table. The level and the other reasons stay those of `assess`. A seeded gate test holds this. An assessment whose reason `score` holds the score gets no second score.
 
 The priors come from the base rates of the package `rates` (`priorsOf`). The file `packages/rates/data/priors.json` holds them. A test holds it equal to the priors of `data/rates.json`:
 
@@ -1342,6 +1342,16 @@ The runtime reads the committed priors at its start (`committedPriors` of the pa
 - The map route gives the score of each incident that reaches a person (the field `shadow` of each incident of the view).
 - The log keeps the score at the start of each escalation (the field `shadow` of the event `escalation`). Thus a later study can compare each decision of the table with its score. A score of a log line from before the basis `alert` has no field `basis`. Its basis is `event`.
 - `shadowDifferences` gives each pair of incidents where the table and the score disagree. The table gives one incident the higher level. The score gives the other more expected deaths and more expected injuries, and the intervals do not overlap. Thus the rule needs no weight between a death and an injury.
+
+The score rule of a person (`PersonWatch.score`, step 4 of AL-31) lets the score decide a level, with the rule of the replay:
+
+- The rule has a risk value above 0. An incident gets `life-safety` when the expected deaths of its score are at the risk value or higher. Thus the risk value of the replay curve gives the sends of the rule.
+- The table stays the floor. The rule raises the level of the incident and of each line. It does not lower a level, and the rules of the person still lower the raised level.
+- The list `except` holds the prefixes of the kinds that the rule does not examine. For these kinds, the table decides. An example is the kinds of the beach (`met.rip-current`, `met.surf`, `met.beach-hazards`): they hurt swimmers, not a person who sleeps.
+- The quiet table of the sources of other copies (AL-76) is not raised.
+- The reason `score` follows the reason `table`. It gives the risk value, the score and the field `raised`. A score with no read does not raise.
+- The rule reads the priors in the policy (`AssessPolicy.priors`). The runtime adds the committed priors to the policy only when a person has a score rule (`policyWithPriors`). With no priors, the reason has no score, and the table decides.
+- A person with no rule gets each assessment of the table. A seeded gate test holds this. The value of each person goes in the private configuration.
 
 ## The service
 
@@ -1527,8 +1537,12 @@ The two slots keep each start on the code of one commit:
 The supervisor keeps the code of its own start:
 
 - The supervisor loads its own files only at its start. A swap and a restart of the runtime do not change them.
-- The parts of the supervisor are the files of `SUPERVISOR_FILES` (`supervise.ts`, `host.ts` and `start-times.ts`) and the version of `@mark1russell7/service`.
-- `start-times.ts` gives the ready window. Thus a change of the ready window is a change of the supervisor.
+- The parts of the supervisor are the files of `SUPERVISOR_FILES` (`supervise.ts` and `host.ts`) and the version of `@mark1russell7/service`.
+- `host.ts` gives the ready spec, and `@mark1russell7/service` measures the window. Thus a change of the ready window is a change of the supervisor.
+- The supervisor measures each start of the runtime from its spawn to the first pass of `/readiness`. The file `host/runtime.ready.json` keeps the last 20 times (AL-84).
+- The window is 120 s until 5 ready starts. Then it is the worst time plus the worst minus the best, from 35 s to 10 minutes.
+- A missed start makes the next window at least two times longer, to 10 minutes. A ready start removes the missed starts.
+- `install.ts` reads the same file with `hostReadyWindow`, thus it waits for the window of the next start. The supervisor does not read the old file `host/start-times.json`.
 - `stage` and `swap` compare these parts in the two slots. Each of them prints the parts that change, or one line that tells no change.
 - A change of a part needs a restart of the boot task. On Linux, the boot task is a user unit of systemd.
 - The restart of the boot task is a step of the operator. Until that restart, the old supervisor starts each runtime with its old ready window.
@@ -1846,7 +1860,7 @@ A deploy of new code does not change the live checkout (AL-89). The live path of
 
 The supervisor and `install.ts` take the folder of the package from the path of the command line (`entryRoot`), not from the URL of the module. Node resolves the links in the URL of a module, but not in the path of the command line. Thus each start of the runtime goes through the link, and takes the slot that the link names at that time.
 
-The supervisor loads its own files only at its own start. The stage and the swap tell when `supervise.ts`, `host.ts`, `start-times.ts` or the version of `@mark1russell7/service` change. Such a change needs a restart of the boot task.
+The supervisor loads its own files only at its own start. The stage and the swap tell when `supervise.ts`, `host.ts` or the version of `@mark1russell7/service` change. Such a change needs a restart of the boot task.
 
 The environment variable `PNPM` gives the program of pnpm. A path that ends in `.cjs` starts with Node. On Windows the variable is necessary, because Node cannot start `pnpm.cmd` with no shell.
 
@@ -1896,6 +1910,10 @@ The core matches the area of a report to a place with one rule for each source. 
 - A place with no position matches by the codes of each block.
 - `@mark1russell7/geo` can refuse a shape, for example a ring with fewer than 4 positions. When it refuses each shape of a block, the codes of that block decide. This error is on the safe side. The match has `shapeRefused: true`, and the view tells it.
 - A fire zone code (`ugc-fire`) covers only a fire zone code of a place. A place with no fire zone code of a state uses its forecast zone code (`ugc`) with the same code. This is on the safe side. The match has `zoneFallback: true`, and the view tells it.
+- In a block with zone codes of a state, the county codes of that state do not widen the match (AL-69). The county codes are the UGC county codes, the SAME codes and the FIPS codes of a county.
+  - A county code of a place does not decide when the place has a zone code of the same kind and state as a zone code of the block. Then the zone codes decide for that place.
+  - A place with no zone code of that kind and that state keeps the match of its county. Thus no place loses an alert that it got without a zone code.
+  - For example, a Red Flag Warning names 2 to 26 counties and no shape. A place with a fire zone code matches only when the warning names that fire zone.
 - One block that matches is enough.
 - The areas with no block key keep the union rule. Their codes are the floor of the match, and a shape adds a place in its buffer. A shape that geo refuses adds no place.
 - A position in a shape has the distance 0. The reason `place` of the assessment has `distanceKm` when the distance is in the buffer. A match by a shape only has no codes.

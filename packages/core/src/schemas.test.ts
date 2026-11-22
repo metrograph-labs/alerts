@@ -530,6 +530,7 @@ const SCHEMA_NAMES = [
   "responseTypeSchema",
   "scoreFactorSchema",
   "scorePriorsSchema",
+  "scoreRuleSchema",
   "secretRefSchema",
   "sendLimitConfigSchema",
   "sendOutcomeSchema",
