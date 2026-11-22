@@ -1110,5 +1110,43 @@
       "members": 1757,
       "cause": "Round 20 adds planned and later sources to the 9 classes of round 19. The gaps go from 112 to 109, because 3 classes get two live sources: civic.ai-collapse, health.outbreak.pandemic and infra.power.grid-collapse. The dimensions with two live sources go from 7 to 8, because ree-redata-api is a second source of power-demand. No source is adopted, so the cover and the totals do not change."
     }
+  },
+  {
+    "round": 21,
+    "date": "2026-11-22",
+    "by": "One session, for the classes of the adopted records (AL-129).",
+    "method": "The session compared the classes of each adopted record with the kinds of the descriptors of its adapter, in both directions. It read no outside page.",
+    "lists": [
+      "The source descriptors of the 17 adopted adapters of this repository"
+    ],
+    "queries": [],
+    "notes": [
+      "The Radar adapter reads the outage center and the traffic anomalies. Its record claimed the classes cyber.ddos, infra.internet.bgp and infra.internet.dns-cdn, and the adopted layers counted them. These classes go to the new planned record cloudflare-radar-bgp-attacks-dns, with the dimension internet-routing. AL-130 plans the adapter.",
+      "The Radar adapter gives infra.cloud.outage for an outage of a platform and for an anomaly of a cloud region. The record did not have the class, so it gets it.",
+      "The IPAWS adapter gives fire.wildfire for the code FRW (Fire Warning). The record of ipaws-open had no fire class, so it gets fire.wildfire.",
+      "A dimension counts adopted and planned sources in the same way. Thus a dimension with no measure of the adapter claims no delivery. The dimensions of the GCP, Firebase and USGS records stay.",
+      "A test of the descriptors holds the two directions: each class of an adopted record is a kind of its adapter, and each kind of the adapter has a class of the record."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 213,
+      "gaps": 108,
+      "cover": {
+        "adopted": 54,
+        "paths": 54,
+        "origins": 4
+      },
+      "total": {
+        "adopted": 146,
+        "paths": 146,
+        "origins": 67
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 8,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 21 corrects the adopted records: the Radar adapter does not give 3 of its classes, and it gives 1 class that the record did not have. IPAWS gets fire.wildfire. The adopted total goes from 148 to 146, the path total from 148 to 146 and the origin total from 69 to 67. The gaps stay at 108, because a planned record keeps the 3 classes live."
+    }
   }
 ]
