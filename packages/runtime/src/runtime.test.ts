@@ -713,6 +713,33 @@ describe("one pass of the runtime", () => {
     log.close();
   });
 
+  it("gives the hook each new report of a fetch one time, and a fault of the hook does not stop the pass (AL-132)", async () => {
+    let page = 0;
+    // Each fetch gives new observations. The second fetch gives the report w-1 again, in a new observation, and w-2.
+    const fetch = async (): Promise<FetchOutcome> => {
+      page += 1;
+      const warnings = page === 1 ? [{ key: "w-1", issued: T0 - MINUTE }] : [{ key: "w-1", issued: T0 - MINUTE }, { key: "w-2", issued: T0 }];
+      return { ok: true, observations: warnings.map((warning) => observation(API, `${warning.key}:${String(page)}`, T0, warning)), complete: true };
+    };
+    const got: string[][] = [];
+    const { clock, runtime, log } = open([scripted(API, fetch)], { onReports: (reports) => void got.push(reports.map((report) => report.key)) });
+    await runtime.pass();
+    await clock.advance(MINUTE);
+    await runtime.pass();
+    expect(got).toEqual([["w-1"], ["w-2"]]);
+    log.close();
+    page = 0;
+    const failing = open([scripted(API, fetch)], {
+      onReports: () => {
+        throw new Error("The meter failed.");
+      },
+    });
+    const pass = await failing.runtime.pass();
+    expect(pass.fetched).toEqual([API]);
+    expect(failing.runtime.state().merge.reports.filter((report) => report.source === API).map((report) => report.key)).toEqual(["w-1"]);
+    failing.log.close();
+  });
+
   it("gives a wake after the pass when a source comes due during the fetches of the pass, and fetches it in the next pass", async () => {
     const clock = fakeWallClock(T0);
     const fast = async (): Promise<FetchOutcome> => ({ ok: true, observations: [], complete: true });

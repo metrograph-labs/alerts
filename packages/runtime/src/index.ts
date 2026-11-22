@@ -25,6 +25,7 @@ export * from "./limit.ts";
 export * from "./log.ts";
 export * from "./loop.ts";
 export * from "./measured-start.ts";
+export * from "./metrics.ts";
 export * from "./outage.ts";
 export * from "./peers.ts";
 export * from "./replies.ts";

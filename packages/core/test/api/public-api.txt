@@ -677,6 +677,7 @@ kindOfNode: build/index.d.ts#kindOfNode
 kindPriorSchema: build/index.d.ts#kindPriorSchema
 kindSchema: build/index.d.ts#kindSchema
 knownKind: build/index.d.ts#knownKind
+knowsReport: build/index.d.ts#knowsReport
 lastRun: build/index.d.ts#lastRun
 lateSources: build/index.d.ts#lateSources
 lateness: build/index.d.ts#lateness
@@ -4724,6 +4725,9 @@ export declare const kindSchema: z.ZodType<Kind, Kind>;
 
 ### build/index.d.ts#knownKind
 export declare function knownKind(code: string): boolean;
+
+### build/index.d.ts#knowsReport
+export declare function knowsReport(state: MergeState, id: ReportId): boolean;
 
 ### build/index.d.ts#lastRun
 export declare function lastRun(runs: readonly DrillRun[], id: string): DrillRun | undefined;

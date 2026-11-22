@@ -101,6 +101,7 @@ import type { WorkerLoop } from "@mark1russell7/service";
 import type { Pace, QuotaStore, Transport } from "polite-crawler/api";
 import { DEFAULT_POLICY, HostScheduler, type PolitenessPolicy } from "polite-crawler/politeness";
 import type { RestTransport } from "@procedures/gh";
+import type { Meter } from "@opentelemetry/api";
 import type { UseRead } from "@mark1russell7/stack-spend";
 import { limitProblems, limitWatches, type LimitWatch } from "./use.ts";
 import { balanceWatch, SPEND_UNIT, spendEntryOf, spendGates, spendQuota, spendUnits, spendWatch, type BalanceWatch, type SpendGates, type SpendWatch } from "./balance.ts";
@@ -112,6 +113,7 @@ import { overdueLimit, type DeliveryOptions } from "./delivery.ts";
 import { copyDrills, watchedDrills } from "./drills.ts";
 import type { RuntimeLog } from "./log.ts";
 import { createLoop, loopTimes, shortestFetchLimit, type LoopTimes, type RuntimeLoop } from "./loop.ts";
+import { openIncidents, runtimeMetrics } from "./metrics.ts";
 import { outageDeploy, outageDeployWorker, outageSetup, type OutageDeployWorker } from "./outage.ts";
 import { exchangeLoop, exchangeWorker, type EntriesSource, type ExchangeCall, type ExchangeRound, type ExchangeWorker } from "./peers.ts";
 import { channelQuota } from "./quota.ts";
@@ -793,6 +795,11 @@ export interface InstanceOptions {
   /** The instance gives each read of the transit catalog to this function. */
   readonly onTransit?: (outcome: TransitOutcome) => void;
   /**
+   * The meter of the live metrics (AL-132): the counts of the new reports and the levels of the instance. The instruments
+   * have the names of the series of `capacity-app.json`. Without a meter, the instance has no metrics. The lab gives a meter.
+   */
+  readonly meter?: Meter;
+  /**
    * The instance starts this function one time, when a new copy of the transit catalog changes the feeds of the places. The
    * entry of the profile `daemon` stops the runtime, and the supervisor starts it again with the new feeds.
    */
@@ -1094,6 +1101,15 @@ export function openInstance(options: InstanceOptions): Instance {
   let latest: Pass | undefined;
   // The first pass of this start. The answer of the exchange tells that the copy is steady after `LOUD_STEADY` of passes (AL-108).
   let first: Pass | undefined;
+  // The live metrics (AL-132). Each collection reads the levels: the feeds of the start, the persons and the open incidents of the routes of the last pass.
+  const metrics =
+    options.meter === undefined
+      ? undefined
+      : runtimeMetrics(options.meter, () => ({
+          feeds: chosen.feeds.length,
+          persons: options.config.recipients.length,
+          incidents: openIncidents(latest?.delivery?.routes ?? []),
+        }));
   // The start of this instance. Each family of a store gets its first entry in its window after this time (AL-86).
   const startedAt = wall.now();
   // The wall time of the last write of the snapshot of the start. A start that read a snapshot counts from its start, thus it
@@ -1142,6 +1158,8 @@ export function openInstance(options: InstanceOptions): Instance {
     // The readings of each fetch go to their store, not to the log.
     ...(options.readings === undefined ? {} : { readings: options.readings }),
     ...(options.onReadingsFault === undefined ? {} : { onReadingsFault: options.onReadingsFault }),
+    // The new reports of each fetch go to the counters of the live metrics.
+    ...(metrics === undefined ? {} : { onReports: (reports) => metrics.reports(reports) }),
     ...(options.startSnapshot === undefined ? {} : { startSnapshot: options.startSnapshot }),
     // After each pass, the store of shapes gets the outlines that are due, and it ends before the next fetch from its host (AL-33).
     // The keeper of the transit catalog reads the catalog when its copy is due. The pass does not wait for the two.

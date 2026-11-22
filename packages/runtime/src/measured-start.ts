@@ -22,6 +22,7 @@ import { openShapeCache, SHAPES_FILE } from "@mark1russell7/alerts-shapes-nws";
 import { realClock, wallClock, type WallClock } from "@mark1russell7/algebra/clock";
 import { nodeHostPorts } from "@mark1russell7/service/host";
 import type { ChunkOptions, FoldKey, FoldMark, FoldRow, FoldSnapshot, MarkLog } from "@mark1russell7/sqlite";
+import type { Meter } from "@opentelemetry/api";
 import { SqliteHostStateStore } from "polite-crawler";
 import { fetchTransport, quotaGate, type Transport } from "polite-crawler/api";
 import { CONFIG_FILE, envSecrets } from "./config.ts";
@@ -133,6 +134,8 @@ export interface MeasuredOptions {
    * the capacity models gives the count of the feeds of its seed, to measure the cost of each polled source (AL-126).
    */
   readonly transitLimit?: number;
+  /** The option `meter` of `openInstance`: the meter of the live metrics (AL-132). The lab of the capacity models reads them. */
+  readonly meter?: Meter;
   /**
    * The base URLs of the fakes of the outside services (AL-131). Default: no fakes, and the start has no network. With `feeds`,
    * each fetch of a source goes to the fake of the feeds. With `channels`, each send of the Pushover channel goes to the fake
@@ -327,6 +330,7 @@ export async function openMeasuredRuntime(home: string, options: MeasuredOptions
       ...(store === undefined ? {} : { startSnapshot: store }),
       ...(options.snapshotFloor === undefined ? {} : { startSnapshotFloor: options.snapshotFloor }),
       ...(options.transitLimit === undefined ? {} : { transitLimit: options.transitLimit }),
+      ...(options.meter === undefined ? {} : { meter: options.meter }),
       onStartSnapshotFault: (error) => report(`A write of the snapshot of the start failed: ${error instanceof Error ? error.name : typeof error}.`),
       onError: (error, failures) => report(`A pass failed (${String(failures)} in sequence): ${error instanceof Error ? error.name : typeof error}.`),
     });

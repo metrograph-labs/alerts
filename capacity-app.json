@@ -115,5 +115,64 @@
       }
     }
   ],
-  "metrics": []
+  "metrics": [
+    {
+      "id": "alerts.reports.event",
+      "kind": "counter",
+      "unit": "{event}",
+      "of": {
+        "rate": "event"
+      }
+    },
+    {
+      "id": "alerts.reports.event.description",
+      "kind": "counter",
+      "unit": "B",
+      "of": {
+        "total": "eventBytes",
+        "class": "event"
+      }
+    },
+    {
+      "id": "alerts.reports.update",
+      "kind": "counter",
+      "unit": "{event}",
+      "of": {
+        "rate": "update"
+      }
+    },
+    {
+      "id": "alerts.reports.update.description",
+      "kind": "counter",
+      "unit": "B",
+      "of": {
+        "total": "eventBytes",
+        "class": "update"
+      }
+    },
+    {
+      "id": "alerts.feeds",
+      "kind": "gauge",
+      "unit": "{feed}",
+      "of": {
+        "level": "feeds"
+      }
+    },
+    {
+      "id": "alerts.persons",
+      "kind": "gauge",
+      "unit": "{person}",
+      "of": {
+        "level": "persons"
+      }
+    },
+    {
+      "id": "alerts.incidents.open",
+      "kind": "gauge",
+      "unit": "{incident}",
+      "of": {
+        "level": "incidents"
+      }
+    }
+  ]
 }

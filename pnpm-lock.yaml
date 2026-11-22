@@ -1810,6 +1810,9 @@ importers:
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
+      '@opentelemetry/sdk-metrics':
+        specifier: ^3.1.1
+        version: 3.1.1(@opentelemetry/api@1.10.0)
       '@procedures/json':
         specifier: ^0.68.0
         version: 0.68.0(@mark1russell7/otel-ts@0.8.4(@mark1russell7/lag@0.5.2(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
