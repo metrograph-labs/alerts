@@ -223,6 +223,7 @@ LIFELINE_LABELS: build/index.d.ts#LIFELINE_LABELS
 LIFE_SAFETY_KINDS: build/index.d.ts#LIFE_SAFETY_KINDS
 LIMITED_LEVELS: build/index.d.ts#LIMITED_LEVELS
 LIMIT_KIND: build/index.d.ts#LIMIT_KIND
+LIMIT_SUBJECT: build/index.d.ts#LIMIT_SUBJECT
 LOG_KIND: build/index.d.ts#LOG_KIND
 LOG_RECOVERY_WINDOW: build/index.d.ts#LOG_RECOVERY_WINDOW
 LOG_SUBJECT: build/index.d.ts#LOG_SUBJECT
@@ -238,6 +239,8 @@ Lifeline: build/index.d.ts#Lifeline
 LimitInput: build/index.d.ts#LimitInput
 LimitResult: build/index.d.ts#LimitResult
 LimitRule: build/index.d.ts#LimitRule
+LimitUse: build/index.d.ts#LimitUse
+LimitUseRead: build/index.d.ts#LimitUseRead
 LimitedLevel: build/index.d.ts#LimitedLevel
 LinkFamily: build/index.d.ts#LinkFamily
 LinkPolicy: build/index.d.ts#LinkPolicy
@@ -454,9 +457,12 @@ TryEnd: build/index.d.ts#TryEnd
 TryRecord: build/index.d.ts#TryRecord
 UNKNOWN_KIND: build/index.d.ts#UNKNOWN_KIND
 UNKNOWN_WEIGHT: build/index.d.ts#UNKNOWN_WEIGHT
+USE_KIND: build/index.d.ts#USE_KIND
+USE_STAGES: build/index.d.ts#USE_STAGES
 US_GALLON_L: build/index.d.ts#US_GALLON_L
 UnderPrior: build/index.d.ts#UnderPrior
 Urgency: build/index.d.ts#Urgency
+UseStage: build/index.d.ts#UseStage
 WHY_FULL_COVERAGE: build/index.d.ts#WHY_FULL_COVERAGE
 WHY_LIMITS: build/index.d.ts#WHY_LIMITS
 WORK_DEFAULTS: build/index.d.ts#WORK_DEFAULTS
@@ -856,6 +862,9 @@ tryChainSchema: build/index.d.ts#tryChainSchema
 underPriorSchema: build/index.d.ts#underPriorSchema
 unknownKinds: build/index.d.ts#unknownKinds
 urgencySchema: build/index.d.ts#urgencySchema
+useLevelsReached: build/index.d.ts#useLevelsReached
+useStages: build/index.d.ts#useStages
+useUnreadAt: build/index.d.ts#useUnreadAt
 watchSchema: build/index.d.ts#watchSchema
 watchedDrillMiss: build/index.d.ts#watchedDrillMiss
 watchedDrillReportAt: build/index.d.ts#watchedDrillReportAt
@@ -2444,6 +2453,9 @@ export declare const LIMITED_LEVELS: readonly LimitedLevel[];
 ### build/index.d.ts#LIMIT_KIND
 export declare const LIMIT_KIND = "system.limit";
 
+### build/index.d.ts#LIMIT_SUBJECT
+export declare const LIMIT_SUBJECT = "alerts.limit";
+
 ### build/index.d.ts#LOG_KIND
 export declare const LOG_KIND = "system.log";
 
@@ -2526,6 +2538,27 @@ export interface LimitResult {
 export interface LimitRule {
   readonly delay: (sample: readonly Duration[]) => Duration | undefined;
   readonly misses: (record: MissRecord) => number | undefined;
+}
+
+### build/index.d.ts#LimitUse
+export interface LimitUse {
+  readonly id: string;
+  readonly provider: string;
+  readonly title: string;
+  readonly levels: readonly number[];
+  readonly maxAge: Duration;
+  readonly since: Instant;
+  readonly read?: LimitUseRead;
+}
+
+### build/index.d.ts#LimitUseRead
+export interface LimitUseRead {
+  readonly month: string;
+  readonly used: number;
+  readonly limit: number;
+  readonly currency: string;
+  readonly level?: number;
+  readonly at: Instant;
 }
 
 ### build/index.d.ts#LimitedLevel
@@ -3788,6 +3821,7 @@ export interface SystemSnapshot {
   readonly lateness?: readonly Lateness[];
   readonly quotas?: readonly ChannelQuota[];
   readonly balances?: readonly ProviderBalance[];
+  readonly uses?: readonly LimitUse[];
   readonly copy?: string;
   readonly copies?: readonly CopyWatch[];
   readonly steps?: readonly ClockStep[];
@@ -3948,6 +3982,12 @@ export declare const UNKNOWN_KIND = "other.unknown";
 ### build/index.d.ts#UNKNOWN_WEIGHT
 export declare const UNKNOWN_WEIGHT: Estimate;
 
+### build/index.d.ts#USE_KIND
+export declare const USE_KIND = "system.use";
+
+### build/index.d.ts#USE_STAGES
+export declare const USE_STAGES: readonly UseStage[];
+
 ### build/index.d.ts#US_GALLON_L
 export declare const US_GALLON_L = 3.785411784;
 
@@ -3960,6 +4000,9 @@ export interface UnderPrior {
 
 ### build/index.d.ts#Urgency
 export type Urgency = "immediate" | "expected" | "future" | "past" | "unknown";
+
+### build/index.d.ts#UseStage
+export type UseStage = "level" | "unread";
 
 ### build/index.d.ts#WHY_FULL_COVERAGE
 export declare const WHY_FULL_COVERAGE = .99;
@@ -5194,6 +5237,15 @@ export declare function unknownKinds(codes: Iterable<string>): string[];
 
 ### build/index.d.ts#urgencySchema
 export declare const urgencySchema: z.ZodType<Urgency, Urgency>;
+
+### build/index.d.ts#useLevelsReached
+export declare function useLevelsReached(use: LimitUse): number[];
+
+### build/index.d.ts#useStages
+export declare function useStages(use: LimitUse, at: Instant): UseStage[];
+
+### build/index.d.ts#useUnreadAt
+export declare function useUnreadAt(use: LimitUse): Instant;
 
 ### build/index.d.ts#watchSchema
 export declare const watchSchema: z.ZodType<Watch, Watch>;

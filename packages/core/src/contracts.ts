@@ -968,6 +968,50 @@ export interface ProviderBalance {
 }
 
 /**
+ * The stages of the use of a hard limit of a provider account (AL-111). Each stage is a line of system reports:
+ *
+ * - `level`: the used share of the limit in the month reached a level. Each level that the share reached gives its own line.
+ * - `unread`: no read passed for the maximum age or longer. Then the watch cannot see a level.
+ */
+export type UseStage = "level" | "unread";
+
+/** One read of the use of a hard limit that passed. */
+export interface LimitUseRead {
+  /** The month of the use, as `YYYY-MM`. The used amount counts from the start of this month. */
+  readonly month: string;
+  /** The used amount of the month, in the currency of the limit. */
+  readonly used: number;
+  /** The hard limit of the month. The provider stops the paid use at this amount. A budget can change it in a month. */
+  readonly limit: number;
+  /** The currency of the amounts, as a code of ISO 4217: for example `USD`. */
+  readonly currency: string;
+  /**
+   * The largest level that the used share reached. It is absent when the share is below each level. The reader gives it,
+   * because the rule of the levels has its home outside the core.
+   */
+  readonly level?: number;
+  readonly at: Instant;
+}
+
+/** The watch of the use of one hard limit of a provider account, at one time (AL-111). */
+export interface LimitUse {
+  /** The id of the limit. It is unique in the watches, for example `github:<account>/actions`. */
+  readonly id: string;
+  /** The provider, as an id: for example `provider:github`. */
+  readonly provider: string;
+  /** The name of the limit in a text: for example `GitHub Actions`. */
+  readonly title: string;
+  /** The levels: shares of the limit, each one above 0. Each level that the share reached gives its own line `level`. */
+  readonly levels: readonly number[];
+  /** The longest time with no read that passed. After it, the stage is `unread`. */
+  readonly maxAge: Duration;
+  /** The start of the watch. With no read, the time of `unread` counts from it. */
+  readonly since: Instant;
+  /** The last read that passed. */
+  readonly read?: LimitUseRead;
+}
+
+/**
  * The result of a send. A failed send has one of these kinds:
  *
  * - `network`, `timeout` and `server`: the channel can have the message.
