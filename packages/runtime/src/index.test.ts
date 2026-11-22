@@ -185,7 +185,7 @@ describe("the lifecycle of the service", () => {
     // embeddedProcess() adds no signal handler and does not end the process of the test
     const loop = loopOf();
     let closes = 0;
-    // The shutdown ends the sessions of the sources first, then it closes the log, and last it releases the lock of the home folder.
+    // The shutdown ends the sessions of the sources first, then it closes the log and releases the lock of the home folder.
     const closed: string[] = [];
     const log = {
       close: () => {
@@ -205,6 +205,13 @@ describe("the lifecycle of the service", () => {
         return Promise.resolve();
       },
     };
+    // The context of the traces stops in the last stage, flush the output, after the lock of the home folder (AL-82).
+    const telemetry = {
+      shutdown: () => {
+        closed.push("telemetry");
+        return Promise.resolve();
+      },
+    };
     // A built page with one file. The path / gives it.
     const page = await mkdtemp(join(tmpdir(), "alerts-page-"));
     await writeFile(join(page, PAGE_INDEX), "<!doctype html><title>the map</title>");
@@ -214,7 +221,7 @@ describe("the lifecycle of the service", () => {
       asked.push(since);
       return historyOf(since);
     };
-    const life = await declare({ port, probePort, profile: localDev, loop, log, home, sources, map: () => EMPTY_MAP, health: () => EMPTY_HEALTH, history, interests: () => EMPTY_INTERESTS, page }).run({ process: embeddedProcess() });
+    const life = await declare({ port, probePort, profile: localDev, loop, log, home, sources, telemetry, map: () => EMPTY_MAP, health: () => EMPTY_HEALTH, history, interests: () => EMPTY_INTERESTS, page }).run({ process: embeddedProcess() });
     try {
       // The probe answers after the start of each transport. The worker starts the first pass at the start of the service.
       await waitUntil(() => answers(`http://127.0.0.1:${probePort}/readiness`), "the readiness probe");
@@ -263,6 +270,6 @@ describe("the lifecycle of the service", () => {
     expect(await life.done).toBe(0);
     expect(life.errors).toEqual([]);
     expect(closes).toBe(1);
-    expect(closed).toEqual(["sources", "log", "home"]);
+    expect(closed).toEqual(["sources", "log", "home", "telemetry"]);
   }, 3 * WAIT_LIMIT_MS);
 });
