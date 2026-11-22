@@ -1417,6 +1417,11 @@ The function `openInstance` makes the instance of the owner from the private con
 - The optional key `TWILIO_TEXT_FROM` adds the text channel. It holds the registered sender of texts: a phone of a 10DLC campaign or a verified toll-free phone.
 - The instance does not text from `TWILIO_FROM`. Without `TWILIO_TEXT_FROM`, the text channel and the texts of the outage call are off.
 - A spend entry of a provider of a channel gives the cap of the channel. The count of the cap is in `quotas.sqlite`.
+- The cap also keeps the own count: the cost of the sends of this copy alone. The reads of the spend of the provider do not change it (AL-91).
+- Each pass writes the use reads of the cap of Twilio into `use.json` when they change. The format is `UseRead` of `@mark1russell7/stack-spend`.
+  - The count read has the part `meter:twilio-<copy>` and the source `count`. Its amount is the own count, in US dollars.
+  - The provider read has the part `account:twilio` and the source `provider`. It is the last spend of the account that Twilio gave in the month.
+  - The date of each read is a date of the time zone of the cap.
 - The spend entry of Twilio also gives the watch of the balance: one read each day, and its floors.
 - Each entry of the field `limits` gives the watch of the use of one hard limit (AL-111). The section "The use report" tells its lines.
 - The watch of a limit of GitHub reads the usage report of the account one time each day. The first read comes 20 minutes after the start.
@@ -1442,7 +1447,7 @@ The instance does not start when it finds one of these problems:
 - a watch of a limit of a provider with no reader, or a limit of GitHub with no value for the key of its token
 - a place that no regional source covers. Usually the place does not have a code of each level: the zone, the county, SAME, the state and the country. A source with the coverage `global`, for example the SWPC, covers each place with no code. Thus the check does not count it.
 
-The environment gives `PORT` (8080), `PROBE_PORT` (9090) and `SERVICE_PROFILE` (`local`, `daemon` or `pod`). The folder `ALERTS_HOME` (`.alerts` in the home folder) holds the private files: `config.json`, `secrets.env`, the log `runtime.sqlite` and the outlines of the zones `shapes.sqlite`. It also holds the counts of the quotas, `quotas.sqlite`, and the copy of the transit catalog, `transit-catalog.json`. No repository holds them. A problem of `secrets.env` names its line and its key, and no value. The output of a failed pass shows no value of `secrets.env`.
+The environment gives `PORT` (8080), `PROBE_PORT` (9090) and `SERVICE_PROFILE` (`local`, `daemon` or `pod`). The folder `ALERTS_HOME` (`.alerts` in the home folder) holds the private files: `config.json`, `secrets.env`, the log `runtime.sqlite` and the outlines of the zones `shapes.sqlite`. It also holds the counts of the quotas, `quotas.sqlite`, the use reads of the caps, `use.json`, and the copy of the transit catalog, `transit-catalog.json`. No repository holds them. A problem of `secrets.env` names its line and its key, and no value. The output of a failed pass shows no value of `secrets.env`.
 
 Each runtime takes the lock `home.lock` of the folder at its start, before it reads or writes a file of the folder (AL-58). The lock is the instance lock of `@mark1russell7/service/host`:
 

@@ -101,8 +101,10 @@ import type { WorkerLoop } from "@mark1russell7/service";
 import type { Pace, QuotaStore, Transport } from "polite-crawler/api";
 import { DEFAULT_POLICY, HostScheduler, type PolitenessPolicy } from "polite-crawler/politeness";
 import type { RestTransport } from "@procedures/gh";
+import type { UseRead } from "@mark1russell7/stack-spend";
 import { limitProblems, limitWatches, type LimitWatch } from "./use.ts";
 import { balanceWatch, SPEND_UNIT, spendEntryOf, spendGates, spendQuota, spendUnits, spendWatch, type BalanceWatch, type SpendGates, type SpendWatch } from "./balance.ts";
+import { spendUseReads } from "./spend-use.ts";
 import { replyWatch, type ReplyWatch } from "./replies.ts";
 import { parseSecrets, requireKey, SECRETS_FILE, type FileText, type InstanceCheck } from "./config.ts";
 import { CLOCK_SKEW_LIMIT, COPY_FILE, COPY_TOKEN_KEY, EXCHANGE_EVERY, EXCHANGE_LIMIT } from "./copy.ts";
@@ -871,6 +873,11 @@ export interface Instance {
   /** The watch of the spend that Twilio reports for the month of the cap, when the configuration has a spend entry for Twilio. */
   readonly spend?: SpendWatch;
   /**
+   * This function gives the use reads of the cap of Twilio at the time of the call (AL-91). The reads are the cost of the
+   * sends of this copy and the last spend of the account that Twilio gave. A configuration with no spend entry for Twilio has none.
+   */
+  readonly useReads?: () => readonly UseRead[];
+  /**
    * This function gives the map payload of the last pass: the live incidents with the level of each person, the places and
    * the basemap. The first read after a change of the store simplifies the basemap of the watched states.
    */
@@ -1252,6 +1259,7 @@ export function openInstance(options: InstanceOptions): Instance {
     uses,
     ...(replies === undefined ? {} : { replies }),
     ...(spent === undefined ? {} : { spend: spent }),
+    ...(twilio?.useReads === undefined ? {} : { useReads: useReadsAt(twilio.useReads, options.wall) }),
     map,
     health,
     history,
@@ -1259,6 +1267,11 @@ export function openInstance(options: InstanceOptions): Instance {
     ...(outage === undefined ? {} : { outage }),
     ...(copies === undefined ? {} : { copies }),
   };
+}
+
+/** This function gives the use reads of the cap at the time of each call. */
+function useReadsAt(reads: (at: number) => readonly UseRead[], wall: WallClock): () => readonly UseRead[] {
+  return () => reads(wall.now());
 }
 
 /**
@@ -1296,6 +1309,8 @@ interface TwilioParts {
   readonly watch?: BalanceWatch;
   readonly replies?: ReplyWatch;
   readonly spend?: SpendWatch;
+  /** This function gives the use reads of the cap at an instant (AL-91). */
+  readonly useReads?: (at: number) => readonly UseRead[];
 }
 
 /**
@@ -1349,5 +1364,7 @@ function twilioChannel(options: InstanceOptions, spend: readonly SpendConfig[] |
   // The watch of the spend adds the other usage of the account to the count of the gates (AL-57).
   const spent = spendWatch({ provider: entry.provider, gates, timeZone: entry.timeZone, read: (start, signal) => readTwilioSpend({ credentials, fetch, from: start, to: now() }, signal) });
   const channel = createTwilioCallChannel({ credentials, from, fetch, now, spend: { ...gates, units: spendUnits(TWILIO_CALL_COST_USD) } });
-  return { channel, gates, watch, spend: spent, ...text(gates), ...watched };
+  // The gate of the own count gives the count read of this copy, and the watch of the spend gives the read of the account (AL-91).
+  const uses = { provider: entry.provider, copy: (options.copy ?? ONLY_COPY).id, timeZone: entry.timeZone, own: gates.own, spend: () => spent.spend() };
+  return { channel, gates, watch, spend: spent, useReads: (at) => spendUseReads(uses, at), ...text(gates), ...watched };
 }

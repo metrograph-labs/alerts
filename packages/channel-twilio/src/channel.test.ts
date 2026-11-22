@@ -179,6 +179,23 @@ describe("the cap of the spend", () => {
     expect(used(spend.gate)).toBe(8);
   });
 
+  it("counts each call in the own gate too, gives back its units with the cap, and makes the call when the own gate fails", async () => {
+    const store = memoryQuotaStore();
+    const own = quotaGate({ ...QUOTA, reserve: 0 }, { key: "twilio:account:own", store, now: () => AT });
+    const spend = { ...gatesOf(store), own };
+    const fake = server(accepted, { status: 429, body: { code: 20429, message: "Too Many Requests" } });
+    const channel = channelOf(fake, { spend });
+    const send = () => channel.send({ message: message("urgent"), address: ADDRESS });
+    expect(await send()).toMatchObject({ ok: true });
+    await send();
+    expect([used(spend.gate), used(own)]).toEqual([4, 4]);
+    const broken: QuotaGate = { ...own, take: () => {
+      throw new Error("The disk is full.");
+    } };
+    expect(await channelOf(server(accepted), { spend: { ...spend, own: broken } }).send({ message: message("urgent"), address: ADDRESS })).toMatchObject({ ok: true });
+    expect([used(spend.gate), used(own)]).toEqual([8, 4]);
+  });
+
   it("makes the call with no count when the store of the gate fails", async () => {
     const broken: QuotaGate = { ...gatesOf().gate, take: () => {
       throw new Error("The disk is full.");
