@@ -1,0 +1,122 @@
+# The measure of one merge add as the merge state grows (AL-87). Each run times the add of one report and of one delivery
+# against the full rebuild, at 1,000, 10,000 and 100,000 reports. Each child is a fresh process, and an A/A pair gives the
+# noise. Time on a shared computer tells nothing, thus the measure runs in CI only. Five runs give the spread.
+#
+# The gate: for each case, one add is at most MERGE_RATIO_LIMIT times a rebuild. The rebuild is the add before AL-75, and
+# the gate must see it as beyond the limit. Else the gate is no read. The limit is the worst of 5 runs plus their spread.
+# This file is a gate with paths (CI.md): the job changes gives the match, and the job Measure merge OK gives the result.
+name: Measure merge
+
+on:
+  # Each pull request starts the workflow. The job changes skips the measure when no file of the gate changes.
+  pull_request:
+  # A person starts a run with more rounds: gh workflow run measure-merge.yml -f rounds=10
+  workflow_dispatch:
+    inputs:
+      rounds:
+        description: The count of rounds of each run. Each round starts one process for each case.
+        default: "6"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: measure-merge-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    outputs:
+      match: ${{ steps.changes.outputs.match }}
+    steps:
+      - id: changes
+        uses: mark1russell7/template/.github/actions/changes@a456a3a088d2bf443f2bce9ac0dc0041e827a1de # main
+        with:
+          paths: |
+            packages/core/src/merge.ts
+            packages/testkit/scripts/merge-add.ts
+            pnpm-lock.yaml
+            .github/workflows/measure-merge.yml
+
+  measure:
+    needs: changes
+    if: needs.changes.outputs.match == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        run: [1, 2, 3, 4, 5]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Time the merge add at each size
+        working-directory: packages/testkit
+        env:
+          RUN: ${{ matrix.run }}
+          ROUNDS: ${{ inputs.rounds || '6' }}
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/merge"
+          node scripts/merge-add.ts measure "$RUN" "$ROUNDS" | tee "$GITHUB_WORKSPACE/merge/records.jsonl"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: measure-merge-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.run }}
+          path: merge/
+          if-no-files-found: error
+          retention-days: 90
+
+  verdict:
+    needs: [changes, measure]
+    if: needs.changes.outputs.match == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: measure-merge-${{ github.run_id }}-${{ github.run_attempt }}-*
+          path: merge/
+      - name: Read the ratio of each add over the five runs
+        working-directory: packages/testkit
+        env:
+          # The largest ratio of one add to one rebuild. Empty: the read only reports.
+          # Run 44996694405 (5 jobs, 6 rounds): the worst job bound was 0.0499, and the spread was 0.0097.
+          MERGE_RATIO_LIMIT: "0.0597"
+        run: node scripts/merge-add.ts verdict "$GITHUB_WORKSPACE/merge"
+
+  measure-ok:
+    name: Measure merge OK
+    if: ${{ !cancelled() }}
+    needs: [changes, measure, verdict]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - uses: mark1russell7/template/.github/actions/gate-summary@a456a3a088d2bf443f2bce9ac0dc0041e827a1de # main
+        with:
+          needs: ${{ toJSON(needs) }}

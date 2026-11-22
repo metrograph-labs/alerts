@@ -1774,6 +1774,9 @@ importers:
       '@mark1russell7/cue':
         specifier: ^2.0.0
         version: 2.1.4
+      '@mark1russell7/rigor-bench':
+        specifier: ^0.3.2
+        version: 0.3.2(esbuild@0.28.2)
       '@types/node':
         specifier: ^26.6.5
         version: 26.6.6
@@ -2099,6 +2102,16 @@ packages:
     resolution: {integrity: sha512-S28nfQFfRax40wbV9UTw711ZwnVB3rCW/SPpAuJtyKBh/zFbQx69+qnAeLF7u2B9GccaY75nIMZtN8mvgSRA1Q==}
     engines: {node: '>=22'}
 
+  '@mark1russell7/rigor-bench@0.3.2':
+    resolution: {integrity: sha512-wZ6YWq5974qhud6W+PNpBnO6xrZpGJCAbKcIw3ICfrEnTDWZRWHgn0vBKBlRJIPcJBn9o5SYNN5NKz+prp9/HA==}
+    engines: {node: '>=22'}
+    hasBin: true
+    peerDependencies:
+      esbuild: ^0.28.2
+    peerDependenciesMeta:
+      esbuild:
+        optional: true
+
   '@mark1russell7/rigor-chaos@0.3.3':
     resolution: {integrity: sha512-WTorL63sH1NK2chbDCHmYOEGSoeZBCxWBeDrqA531iFcf8gua/C4ZwFAhY57Y0J/OKFOhrRTGgECGA5Zj3kkIQ==}
     engines: {node: '>=22'}
@@ -2125,6 +2138,10 @@ packages:
 
   '@mark1russell7/rigor-statistics@0.2.16':
     resolution: {integrity: sha512-FCyXbHeORy7itn7Yp1TyIOjlsnkeJrZ3tqseXAB5ClymeB9zShjTWneUbLKpvasyQvY99zqGOAePdSmb7NOGQg==}
+    engines: {node: '>=22'}
+
+  '@mark1russell7/rigor-statistics@0.2.19':
+    resolution: {integrity: sha512-zMfirguRPEJin3H1q5Rl3kCl6b5M5QSg0ukd/damhZXPwLEUQ/oAYXoRAJA5sSZ7tHW4wZF9DhK8FidiMGsbbg==}
     engines: {node: '>=22'}
 
   '@mark1russell7/rigor-statistics@0.2.8':
@@ -4056,6 +4073,14 @@ snapshots:
 
   '@mark1russell7/rational@0.1.3': {}
 
+  '@mark1russell7/rigor-bench@0.3.2(esbuild@0.28.2)':
+    dependencies:
+      '@mark1russell7/rigor-generators': 0.2.0
+      '@mark1russell7/rigor-statistics': 0.2.19
+      '@mark1russell7/text': 0.0.17
+    optionalDependencies:
+      esbuild: 0.28.2
+
   '@mark1russell7/rigor-chaos@0.3.3':
     dependencies:
       '@mark1russell7/rigor-generators': 0.1.19
@@ -4081,6 +4106,10 @@ snapshots:
       '@mark1russell7/rigor-generators': 0.1.19
 
   '@mark1russell7/rigor-statistics@0.2.16':
+    dependencies:
+      '@mark1russell7/rigor-generators': 0.2.0
+
+  '@mark1russell7/rigor-statistics@0.2.19':
     dependencies:
       '@mark1russell7/rigor-generators': 0.2.0
 
