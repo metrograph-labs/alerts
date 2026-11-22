@@ -218,7 +218,7 @@ async function runWorld(seed: number, path: string, cutAt?: number, snapshot?: F
       continue;
     }
     passes.push(pass);
-    if (snapshot !== undefined && passes.length % SNAPSHOT_PASSES === 0) runtime.writeStartSnapshot();
+    if (snapshot !== undefined && passes.length % SNAPSHOT_PASSES === 0) await runtime.writeStartSnapshot();
     await clock.advance(Math.max(1, Math.min(pass.wakeAt ?? end, end) - clock.now()));
   }
   const events = [...log.read()];
@@ -300,7 +300,8 @@ describe("a restart from the snapshot of the start (AL-105)", () => {
       await first.pass();
       await clock.advance(MINUTE);
       await first.pass();
-      expect(first.writeStartSnapshot()).toBeGreaterThan(0);
+      expect(await first.writeStartSnapshot()).toBeGreaterThan(0);
+      expect(first.eventsAfterSnapshot()).toBe(0);
       const state = first.state();
       log.close();
 
@@ -319,10 +320,82 @@ describe("a restart from the snapshot of the start (AL-105)", () => {
       count = folded(log);
       const none = openRuntime(options(log, {}, false));
       expect(none.start).toEqual({ events: count });
-      expect(() => none.writeStartSnapshot()).toThrow("no store");
+      await expect(none.writeStartSnapshot()).rejects.toThrow("no store");
+      expect(none.eventsAfterSnapshot()).toBe(log.head());
       log.close();
     } finally {
       store.close();
+    }
+  });
+
+  it("writes one cut of the state when passes add events in the pauses of the write (AL-115)", async () => {
+    const place = folder();
+    const path = join(place, "runtime.sqlite");
+    const store = openFoldSnapshot(join(place, "snapshot.sqlite"));
+    const clock = fakeWallClock(T0);
+    const seed = SEEDS[0]!;
+    const sources = [worldSource(API, MINUTE, seed, warningsOf(seed), clock)];
+    const options = (log: RuntimeLog): RuntimeOptions => ({ log, clock, sources, watch: () => ({ places: [KANSAS], kinds: ["met"] }), view: VIEW, run: "run-0", startSnapshot: store });
+    try {
+      let log = openRuntimeLog(path);
+      const runtime = openRuntime(options(log));
+      for (let at = 0; at < 20; at += 1) {
+        await runtime.pass();
+        await clock.advance(MINUTE);
+      }
+      const head = log.head();
+      let pauses = 0;
+      // Each pause of the write does one more pass. Thus the log and the state change in the write.
+      const pause = async (): Promise<void> => {
+        pauses += 1;
+        await clock.advance(MINUTE);
+        await runtime.pass();
+      };
+      const writing = runtime.writeStartSnapshot({ rows: 3, pause });
+      // One write at a time: a second write in the write rejects, and the first write continues.
+      await expect(runtime.writeStartSnapshot()).rejects.toThrow("in progress");
+      expect(await writing).toBeGreaterThan(0);
+      expect(pauses).toBeGreaterThan(2);
+      expect(log.head()).toBeGreaterThan(head);
+      expect(runtime.eventsAfterSnapshot()).toBe(log.head() - head);
+      await runtime.close();
+      log.close();
+
+      // The snapshot has the mark at the start of the write. The next start folds the events after it, and it gets the state of the whole log.
+      log = openRuntimeLog(path);
+      const again = openRuntime(options(log));
+      expect(again.start.snapshot?.seq).toBe(head);
+      expect(again.start.events).toBeGreaterThan(0);
+      expect(again.state()).toEqual(rebuild(log.read(FOLD_TYPES), again.config));
+      await again.close();
+      log.close();
+    } finally {
+      store.close();
+    }
+  });
+
+  it("waits for a write of the snapshot in progress at its close (AL-115)", async () => {
+    const place = folder();
+    const log = openRuntimeLog(join(place, "runtime.sqlite"));
+    const store = openFoldSnapshot(join(place, "snapshot.sqlite"));
+    const clock = fakeWallClock(T0);
+    try {
+      const runtime = openRuntime({ log, clock, sources: [], watch: () => ({ places: [KANSAS], kinds: ["met"] }), view: VIEW, run: "run-0", startSnapshot: store });
+      await runtime.pass();
+      let release = (): void => undefined;
+      const held = new Promise<void>((resolve) => (release = resolve));
+      const writing = runtime.writeStartSnapshot({ rows: 1, pause: () => held });
+      let closed = false;
+      const closing = runtime.close().then(() => (closed = true));
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(closed).toBe(false);
+      release();
+      expect(await writing).toBeGreaterThan(0);
+      await closing;
+      expect(closed).toBe(true);
+    } finally {
+      store.close();
+      log.close();
     }
   });
 });

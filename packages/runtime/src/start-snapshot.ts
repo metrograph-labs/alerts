@@ -170,6 +170,12 @@ function put(root: Record<string, unknown>, path: string, value: unknown): void 
 /** The time between two writes of the snapshot of the start by the instance: 30 minutes of the wall clock. */
 export const START_SNAPSHOT_EVERY: Duration = 30 * 60_000;
 
+/**
+ * The least count of new events of the log since the last snapshot for a write of the instance (AL-115). In CI, a start
+ * folds 136924 events in 3.2 s to 4.8 s, thus it folds 500 events in less than 20 ms. The read of a snapshot takes 0.5 s to 0.8 s.
+ */
+export const START_SNAPSHOT_FLOOR = 500;
+
 /** The name of the file of the snapshot of the start in the home folder, next to the log. */
 export const START_SNAPSHOT_FILE = "snapshot.sqlite";
 

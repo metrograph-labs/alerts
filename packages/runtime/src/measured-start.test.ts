@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HomeHeld } from "./home-lock.ts";
 import { openRuntimeLog } from "./log.ts";
 import { openMeasuredRuntime, type MeasuredRuntime } from "./measured-start.ts";
-import { START_SNAPSHOT_EVERY } from "./start-snapshot.ts";
+import { START_SNAPSHOT_EVERY, START_SNAPSHOT_FLOOR } from "./start-snapshot.ts";
 
 const MINUTE = 60_000;
 const pushover = "pushover" as ChannelId;
@@ -83,10 +83,12 @@ describe("openMeasuredRuntime", { timeout: 30_000 }, () => {
   });
 
   it("times each write of the snapshot with the option timeSnapshot, and keeps no record without it", async () => {
-    const timed = await openMeasuredRuntime(home, { startSnapshot: true, timeSnapshot: true });
+    const timed = await openMeasuredRuntime(home, { startSnapshot: true, timeSnapshot: true, snapshotFloor: 1 });
     opened.push(timed);
-    // The first pass makes the start good. The next pass writes the snapshot.
+    // The first pass makes the start good. The next pass writes the snapshot, and the pass ends after the write.
     expect(timed.snapshotWrites).toEqual([]);
+    const before = timed.instance.runtime.eventsAfterSnapshot();
+    expect(before).toBeGreaterThan(0);
     await timed.pass();
     expect(timed.snapshotWrites).toHaveLength(1);
     const [write] = timed.snapshotWrites;
@@ -94,6 +96,11 @@ describe("openMeasuredRuntime", { timeout: 30_000 }, () => {
     expect(write!.chars).toBeGreaterThan(0);
     expect(write!.rowsMs).toBeGreaterThanOrEqual(0);
     expect(write!.writeMs).toBeGreaterThanOrEqual(0);
+    expect(write!.chunks).toBeGreaterThanOrEqual(1);
+    expect(write!.longestMs).toBeGreaterThan(0);
+    expect(write!.wallMs).toBeGreaterThanOrEqual(write!.longestMs);
+    // The mark of the write is the last event of the log at the cut.
+    expect(timed.instance.runtime.eventsAfterSnapshot()).toBeLessThan(before);
     // A pass in the same period of the snapshot does not write again.
     await timed.pass();
     expect(timed.snapshotWrites).toHaveLength(1);
@@ -106,13 +113,13 @@ describe("openMeasuredRuntime", { timeout: 30_000 }, () => {
   });
 
   it("writes no snapshot in the first period of a start that read a snapshot (AL-115)", async () => {
-    const first = await openMeasuredRuntime(home, { startSnapshot: true });
+    const first = await openMeasuredRuntime(home, { startSnapshot: true, snapshotFloor: 1 });
     opened.push(first);
     await first.pass();
     await first.close();
     const start = Date.now();
     const wall = fakeWallClock(start);
-    const again = await openMeasuredRuntime(home, { wall, startSnapshot: true, timeSnapshot: true });
+    const again = await openMeasuredRuntime(home, { wall, startSnapshot: true, timeSnapshot: true, snapshotFloor: 1 });
     opened.push(again);
     expect(again.instance.runtime.start.snapshot).toBeDefined();
     // The start read a fresh snapshot, thus its next passes in the period write no copy of it.
@@ -123,6 +130,16 @@ describe("openMeasuredRuntime", { timeout: 30_000 }, () => {
     wall.set(start + START_SNAPSHOT_EVERY);
     await again.pass();
     expect(again.snapshotWrites).toHaveLength(1);
+  });
+
+  it("writes no snapshot before the log has the floor of new events (AL-115)", async () => {
+    const measured = await openMeasuredRuntime(home, { startSnapshot: true, timeSnapshot: true });
+    opened.push(measured);
+    await measured.pass();
+    await measured.pass();
+    // A new home has fewer events than the default floor. The start of such a log takes no time, and it needs no snapshot.
+    expect(measured.instance.runtime.eventsAfterSnapshot()).toBeLessThan(START_SNAPSHOT_FLOOR);
+    expect(measured.snapshotWrites).toEqual([]);
   });
 
   it("stops when a runtime holds the home folder, and frees the lock at the close", async () => {

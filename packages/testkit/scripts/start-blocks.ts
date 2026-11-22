@@ -8,7 +8,8 @@
  *
  * Each start gives one JSON line. For each phase, the line has the wall time, the CPU time, the blocks of the event loop and
  * the pauses of the garbage collector. A phase is the open with its first pass, or one more pass. The line also has the time
- * of each write of the snapshot: the build of the rows apart from the write of SQLite.
+ * of each write of the snapshot: the build of the rows apart from the write of SQLite. It also has the longest part between two
+ * pauses of the write.
  */
 import { statSync, writeFileSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
@@ -143,9 +144,9 @@ for (const kind of ["full", "snapshot"] as const) {
   }
   const gc: Block[] = pauses.map((entry) => ({ start: entry.startTime, ms: entry.duration }));
   const writes = measured!.snapshotWrites;
-  // A block overlaps a write when the two intervals share a point. The longest block outside each write is the work of the
-  // pass apart from the snapshot.
-  const inWrite = (block: Block): boolean => writes.some((write) => block.start < write.at + write.rowsMs + write.writeMs && block.start + block.ms > write.at);
+  // A block overlaps a write when the two intervals share a point. The interval of a write has its pauses. The longest block
+  // outside each write is the work of the pass apart from the snapshot.
+  const inWrite = (block: Block): boolean => writes.some((write) => block.start < write.at + write.wallMs && block.start + block.ms > write.at);
   const record = {
     kind: "start",
     start: kind,
@@ -183,6 +184,9 @@ for (const kind of ["full", "snapshot"] as const) {
       rowsMs: round(write.rowsMs),
       writeMs: round(write.writeMs),
       cpuMs: round(write.cpuMs),
+      wallMs: round(write.wallMs),
+      longestMs: round(write.longestMs),
+      chunks: write.chunks,
     })),
     files: { snapshot: fileBytes(join(dir, START_SNAPSHOT_FILE)), wal: fileBytes(join(dir, `${START_SNAPSHOT_FILE}-wal`)) },
     reports: lines.length,

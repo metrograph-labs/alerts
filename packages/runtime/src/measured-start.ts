@@ -19,7 +19,7 @@ import { PUSHOVER_QUOTA, PUSHOVER_RESERVE_NOTICES, type PushoverChannelOptions }
 import { openShapeCache, SHAPES_FILE } from "@mark1russell7/alerts-shapes-nws";
 import { realClock, wallClock, type WallClock } from "@mark1russell7/algebra/clock";
 import { nodeHostPorts } from "@mark1russell7/service/host";
-import type { FoldKey, FoldMark, FoldRow, FoldSnapshot, MarkLog } from "@mark1russell7/sqlite";
+import type { ChunkOptions, FoldKey, FoldMark, FoldRow, FoldSnapshot, MarkLog } from "@mark1russell7/sqlite";
 import { SqliteHostStateStore } from "polite-crawler";
 import { quotaGate, type Transport } from "polite-crawler/api";
 import { CONFIG_FILE, envSecrets } from "./config.ts";
@@ -59,10 +59,12 @@ export interface MeasuredOptions {
    */
   readonly startSnapshot?: boolean;
   /**
-   * With `startSnapshot`, the measure times each write of the snapshot (AL-115). It builds all the rows first, and then it
-   * gives them to the store. Thus the record has the time of the rows apart from the time of SQLite. Default: false.
+   * With `startSnapshot`, the measure times each write of the snapshot (AL-115). The record has the time of the build of the
+   * rows apart from the time of SQLite. It also has the longest time between two pauses of the write. Default: false.
    */
   readonly timeSnapshot?: boolean;
+  /** The option `startSnapshotFloor` of `openInstance`. Default: `START_SNAPSHOT_FLOOR`. A measure with a small log gives 1. */
+  readonly snapshotFloor?: number;
 }
 
 /** The record of one write of the snapshot of the start, with the option `timeSnapshot`. */
@@ -75,10 +77,16 @@ export interface SnapshotWriteTime {
   readonly chars: number;
   /** The time of the build of the rows, in milliseconds. The build makes the JSON text of each row. */
   readonly rowsMs: number;
-  /** The time of the write of SQLite, in milliseconds: one transaction that replaces the old rows. */
+  /** The time of the store in the write apart from the build of the rows, in milliseconds, with no pause. Most of it is SQLite. */
   readonly writeMs: number;
-  /** The CPU time of the process in the whole write, user plus system, in milliseconds. */
+  /** The CPU time of the process from the start to the end of the write, user plus system, in milliseconds. Other work in the pauses adds to it. */
   readonly cpuMs: number;
+  /** The time from the start to the end of the write, with the pauses, in milliseconds. */
+  readonly wallMs: number;
+  /** The longest time between two pauses of the write, in milliseconds: the longest block of the event loop in the write. */
+  readonly longestMs: number;
+  /** The count of the parts of the write between two pauses. */
+  readonly chunks: number;
 }
 
 /** A runtime of a measured start. */
@@ -110,23 +118,63 @@ const offline: Transport = () => Promise.reject(new Error(NO_NETWORK));
 /** This fetch refuses each send of a channel. */
 const noSend: PushoverChannelOptions["fetch"] = () => Promise.reject(new TypeError(NO_NETWORK));
 
-// The store with a record of each write. The rows come from a generator of the runtime, thus the build of the rows is apart
-// from the transaction only in this store. The read and the clear do not change.
+// The default pause of `writeInChunks`: one timer of 0 ms.
+const oneTimer = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+
+// The store with a record of each write. The rows come from a generator of the runtime. This store times each step of the
+// generator, and each part of the write between two pauses. The read and the clear do not change.
 function timedSnapshot(store: FoldSnapshot, writes: SnapshotWriteTime[]): FoldSnapshot {
+  const timed = (rows: Iterable<FoldRow>, written: (record: Omit<SnapshotWriteTime, "at" | "cpuMs" | "wallMs">) => void, chunked: { readonly pause?: () => Promise<void> } = {}) => {
+    const counts = { rows: 0, chars: 0, rowsMs: 0, busyMs: 0, longestMs: 0, chunks: 1 };
+    let segment = performance.now();
+    function* each(): Generator<FoldRow> {
+      const iterator = rows[Symbol.iterator]();
+      for (;;) {
+        const before = performance.now();
+        const step = iterator.next();
+        counts.rowsMs += performance.now() - before;
+        if (step.done === true) return;
+        counts.rows += 1;
+        counts.chars += step.value.part.length + step.value.value.length;
+        yield step.value;
+      }
+    }
+    const end = (): void => {
+      const ms = performance.now() - segment;
+      counts.busyMs += ms;
+      counts.longestMs = Math.max(counts.longestMs, ms);
+    };
+    const pause = async (): Promise<void> => {
+      end();
+      await (chunked.pause ?? oneTimer)();
+      counts.chunks += 1;
+      segment = performance.now();
+    };
+    const done = (): void => {
+      end();
+      written({ rows: counts.rows, chars: counts.chars, rowsMs: counts.rowsMs, writeMs: counts.busyMs - counts.rowsMs, longestMs: counts.longestMs, chunks: counts.chunks });
+    };
+    return { rows: each(), pause, done };
+  };
+  const record = (at: number, cpu: NodeJS.CpuUsage) => (part: Omit<SnapshotWriteTime, "at" | "cpuMs" | "wallMs">): void => {
+    const used = process.cpuUsage(cpu);
+    writes.push({ at, ...part, cpuMs: (used.user + used.system) / 1000, wallMs: performance.now() - at });
+  };
   return {
     read<T>(key: FoldKey, log: MarkLog, work: (mark: FoldMark, rows: Iterable<FoldRow>) => T): T | undefined {
       return store.read(key, log, work);
     },
     clear: () => store.clear(),
     write(key, mark, rows) {
-      const at = performance.now();
-      const cpu = process.cpuUsage();
-      const list = [...rows];
-      const built = performance.now();
-      const count = store.write(key, mark, list);
-      const used = process.cpuUsage(cpu);
-      const chars = list.reduce((sum, row) => sum + row.part.length + row.value.length, 0);
-      writes.push({ at, rows: list.length, chars, rowsMs: built - at, writeMs: performance.now() - built, cpuMs: (used.user + used.system) / 1000 });
+      const one = timed(rows, record(performance.now(), process.cpuUsage()));
+      const count = store.write(key, mark, one.rows);
+      one.done();
+      return count;
+    },
+    async writeInChunks(key: FoldKey, mark: FoldMark, rows: Iterable<FoldRow>, options: ChunkOptions = {}): Promise<number> {
+      const one = timed(rows, record(performance.now(), process.cpuUsage()), options);
+      const count = await store.writeInChunks(key, mark, one.rows, { ...options, pause: one.pause });
+      one.done();
       return count;
     },
   };
@@ -181,6 +229,7 @@ export async function openMeasuredRuntime(home: string, options: MeasuredOptions
       transit,
       startGood: () => ready,
       ...(store === undefined ? {} : { startSnapshot: store }),
+      ...(options.snapshotFloor === undefined ? {} : { startSnapshotFloor: options.snapshotFloor }),
       onStartSnapshotFault: (error) => report(`A write of the snapshot of the start failed: ${error instanceof Error ? error.name : typeof error}.`),
       onError: (error, failures) => report(`A pass failed (${String(failures)} in sequence): ${error instanceof Error ? error.name : typeof error}.`),
     });

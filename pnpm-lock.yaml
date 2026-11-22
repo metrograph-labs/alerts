@@ -680,8 +680,8 @@ importers:
         specifier: ^0.11.6
         version: 0.11.6(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
       '@mark1russell7/sqlite':
-        specifier: ^0.4.1
-        version: 0.4.1
+        specifier: ^0.5.0
+        version: 0.5.0
       '@mark1russell7/stack-spend':
         specifier: ^0.1.12
         version: 0.1.12
@@ -753,8 +753,8 @@ importers:
         specifier: ^1.5.0
         version: 1.5.0
       '@mark1russell7/sqlite':
-        specifier: ^0.4.1
-        version: 0.4.1
+        specifier: ^0.5.0
+        version: 0.5.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -1753,8 +1753,8 @@ importers:
         specifier: ^0.11.6
         version: 0.11.6(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
       '@mark1russell7/sqlite':
-        specifier: ^0.4.1
-        version: 0.4.1
+        specifier: ^0.5.0
+        version: 0.5.0
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -2239,8 +2239,8 @@ packages:
     resolution: {integrity: sha512-LANgtuaGCvL1VGbU61F51sgd3ytmqrgMN3pSihPs5EdD1xq93te7rPllmyPV9mH7QetUabHlcVVUZsf+Ju98cA==}
     engines: {node: '>=22.13'}
 
-  '@mark1russell7/sqlite@0.4.1':
-    resolution: {integrity: sha512-+80XkXJvko5XQC/V0tP+gL2k9K9d6K9sOiiyDQzh9Oa5+cENgy71RcSfNy1IMR5ddzhUCc7h1RCpbleuQujjrA==}
+  '@mark1russell7/sqlite@0.5.0':
+    resolution: {integrity: sha512-Mzd+nIJJ8wBjMwAx9HH8P9gmgJMx4hsvcXs3+s4e7m8rlMiJFrqNRmsccNicZPFWyMJ8IOY3RIJiSCsZK3rPCw==}
     engines: {node: '>=22.13'}
 
   '@mark1russell7/stack-spend@0.1.12':
@@ -4139,7 +4139,7 @@ snapshots:
 
   '@mark1russell7/sqlite@0.3.12': {}
 
-  '@mark1russell7/sqlite@0.4.1': {}
+  '@mark1russell7/sqlite@0.5.0': {}
 
   '@mark1russell7/stack-spend@0.1.12':
     dependencies:

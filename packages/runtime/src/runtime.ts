@@ -6,7 +6,7 @@
  */
 import { isFrameClock, type WallClock } from "@mark1russell7/algebra/clock";
 import { channelDownPolicy, DEFAULT_SEND_LIMITS, downChannels, heldPersons, indicatorBreadth, limitShare, observeConditions, ONLY_COPY, type ChannelQuota, type ChannelSnapshot, type CopyWatch, type DrillWatch, type Duration, type EntryTimes, type Exhaustion, type FetchOutcome, type HeldPerson, type Incident, type IndicatorBreadth, type Instant, type LatenessFolds, type MergeState, type ObserveCondition, type ReportId, type SourceDescriptor, type SourceId, type StoreFill, type SourceProcedures, type Watch, type ZoneRegions } from "@mark1russell7/alerts";
-import type { FoldMark, FoldSnapshot } from "@mark1russell7/sqlite";
+import type { ChunkOptions, FoldMark, FoldSnapshot } from "@mark1russell7/sqlite";
 import { errorMessage } from "@mark1russell7/text";
 import type { BalanceWatch } from "./balance.ts";
 import type { LimitWatch } from "./use.ts";
@@ -210,11 +210,21 @@ export interface Runtime {
   /** The read of the log at the open: the snapshot that it read, and the count of the events that it folded (AL-105). */
   readonly start: StartRead;
   /**
-   * This function writes the snapshot of the state and of the entry index at the last event of the log, in one transaction
-   * (AL-105). It gives the count of the rows. It throws when the runtime has no store or the write fails. Then the old
-   * snapshot stays.
+   * This function writes the snapshot of the state and of the entry index at the last event of the log (AL-105). It gives
+   * the count of the rows. It takes the state, the index and the mark in one turn of the event loop. Then it writes the rows
+   * in short transactions with pauses (AL-115), thus a large snapshot does not block the loop. Events after the mark go to
+   * the log in the pauses, and the snapshot does not have them. The options `chunks` set the size of each transaction and
+   * the pause, as in `writeInChunks` of `@mark1russell7/sqlite`.
+   *
+   * The promise rejects when the runtime has no store, when a write is in progress, or when the write fails. Then the old
+   * snapshot stays. The close of the runtime waits for a write in progress.
    */
-  writeStartSnapshot(): number;
+  writeStartSnapshot(chunks?: ChunkOptions): Promise<number>;
+  /**
+   * This function gives the count of the events of the log after the mark of the last snapshot that this runtime read or
+   * wrote (AL-115). With no such snapshot, it gives the position of the last event of the log.
+   */
+  eventsAfterSnapshot(): number;
   /**
    * This function does one pass. It throws when a write to the log fails. Then the state is the state of
    * the log, and the next pass does the work again.
@@ -470,25 +480,43 @@ export function openRuntime(options: RuntimeOptions): Runtime {
 
   // The close of the sources, one time. A source that throws in its close does not stop the close of the other sources.
   let closed: Promise<void> | undefined;
+  // The mark of the last snapshot that this runtime read or wrote, and the write of the snapshot in progress (AL-115).
+  let snapshotMark: FoldMark | undefined = resumed.mark;
+  let snapshotWrite: Promise<number> | undefined;
+  // The close waits for a write of the snapshot in progress. Thus the entry closes the store of the snapshot after the write.
   const close = (): Promise<void> =>
-    (closed ??= Promise.allSettled(options.sources.map((source) => Promise.resolve().then(() => source.close?.()))).then(() => undefined));
+    (closed ??= Promise.allSettled([...options.sources.map((source) => Promise.resolve().then(() => source.close?.())), snapshotWrite]).then(() => undefined));
 
   return {
     config,
     state: () => state,
     skipped,
     start,
-    writeStartSnapshot() {
+    async writeStartSnapshot(chunks) {
       const store = options.startSnapshot;
       if (store === undefined) throw new Error("The runtime has no store of the snapshot.");
+      if (snapshotWrite !== undefined) throw new Error("A write of the snapshot is in progress.");
       // The mark is the last event of the log. Each write of the log goes through `append`, thus the state has each event up to it.
       const head = log.head();
       const last = [...log.entries({ after: head - 1, types: EVENT_TYPES, limit: 1 })][0];
       const first = firstEventId(log);
       if (last === undefined || last.seq !== head || first === undefined) throw new Error("The last event of the log has a type that this build does not know.");
       const key = snapshotKey(config, { first, recoveries: log.counts().get("recovered") ?? 0 });
-      return store.write(key, { seq: head, id: last.event.id }, snapshotRows({ state, entries: entries.snapshot() }));
+      // The cut: the mark, the state and a copy of the index, in this turn of the loop. A fold gives a new state and does not
+      // change the state before it, thus the rows of the cut do not change in the pauses of the write.
+      const mark: FoldMark = { seq: head, id: last.event.id };
+      const cut = { state, entries: entries.snapshot() };
+      const write = store.writeInChunks(key, mark, snapshotRows(cut), chunks);
+      snapshotWrite = write;
+      try {
+        const count = await write;
+        snapshotMark = mark;
+        return count;
+      } finally {
+        snapshotWrite = undefined;
+      }
     },
+    eventsAfterSnapshot: () => log.head() - (snapshotMark?.seq ?? 0),
     async pass(stop) {
       if (closed !== undefined) throw new Error("The runtime is closed: its sources have no session.");
       const stepped = followStep();

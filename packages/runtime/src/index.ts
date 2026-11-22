@@ -29,7 +29,7 @@ export * from "./outage.ts";
 export * from "./peers.ts";
 export * from "./replies.ts";
 export { RETIRE_EVERY, retention, retiredEvent, type RetentionOptions } from "./retention.ts";
-export { START_SNAPSHOT_EVERY, START_SNAPSHOT_FILE } from "./start-snapshot.ts";
+export { START_SNAPSHOT_EVERY, START_SNAPSHOT_FILE, START_SNAPSHOT_FLOOR } from "./start-snapshot.ts";
 export { openTransitCache, TRANSIT_FILE, TRANSIT_FORMAT, type TransitCache } from "./transit.ts";
 export * from "./runtime.ts";
 export * from "./schedule.ts";
