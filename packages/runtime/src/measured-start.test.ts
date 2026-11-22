@@ -169,16 +169,20 @@ describe("openMeasuredRuntime", { timeout: 30_000 }, () => {
     const start = Date.UTC(2020, 0, 1);
     const measured = await openMeasuredRuntime(home, { wall: wallClock({ start }), services: { feeds: "http://127.0.0.1:9/", channels: "http://localhost:9" } });
     opened.push(measured);
-    // The fake of the test refuses each request. The calls of the global fetch are the requests of the transport.
+    // The fake of the test refuses each request. The calls of the global fetch are the requests of the transport and of the
+    // channel. A start with no feed has incidents of the system, thus the first pass also sends to the fake of the channels.
     const calls = requests.mock.calls as unknown as [string, { readonly headers: Readonly<Record<string, string>> }][];
-    expect(calls.length).toBeGreaterThan(0);
-    for (const [url, init] of calls) {
-      expect(url.startsWith("http://127.0.0.1:9/")).toBe(true);
+    const feeds = calls.filter(([url]) => url.startsWith("http://127.0.0.1:9/"));
+    const channels = calls.filter(([url]) => url.startsWith("http://localhost:9/"));
+    expect(feeds.length).toBeGreaterThan(0);
+    expect(feeds.length + channels.length).toBe(calls.length);
+    for (const [url] of channels) expect(url.startsWith("http://localhost:9/api.pushover.net/")).toBe(true);
+    for (const [, init] of calls) {
       const now = Number(init.headers[MEASURE_NOW_HEADER]);
       expect(now).toBeGreaterThanOrEqual(start);
       expect(now).toBeLessThan(start + MINUTE);
     }
-    expect(calls.some(([url]) => url.startsWith("http://127.0.0.1:9/api.weather.gov/alerts"))).toBe(true);
+    expect(feeds.some(([url]) => url.startsWith("http://127.0.0.1:9/api.weather.gov/alerts"))).toBe(true);
   });
 
   it("gives the URL of a request at a fake, and refuses a fake that is not on this computer", async () => {
