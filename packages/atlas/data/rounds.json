@@ -1027,7 +1027,7 @@
     "notes": [
       "The new codes are civic.ai-collapse, civic.economy.collapse, security.nuclear-war, cbrne.nuclear-detonation, cbrne.emp, health.outbreak.pandemic, infra.power.grid-collapse, infra.supply-chain.food and cyber.infrastructure-attack.",
       "security.nuclear-war and infra.power.grid-collapse are siblings of security.armed-conflict and infra.power.outage. Adapters give those two codes as leaf codes, so they stay leaf codes.",
-      "A later round searches the sources of the 9 classes."
+      "A later round searches the sources of the 9 classes (AL-127)."
     ],
     "studies": [],
     "measures": {
