@@ -1,7 +1,7 @@
 import { addressProblems, channelDescriptorSchema, type Level, type Message, type PersonId, type ReportId } from "@mark1russell7/alerts";
 import { parseWebhookSecret, verifyWebhook, webhookSecretText, type WebhookFetch, type WebhookSecret } from "@procedures/notify/webhook";
 import { describe, expect, it } from "vitest";
-import { createWebhookChannel, parseWebhookSecrets, WEBHOOK_CHANNEL, WEBHOOK_EVENT, webhookAlertOf, webhookDescriptor } from "./index.ts";
+import { createWebhookChannel, parseWebhookSecrets, sendWebhookEvent, WEBHOOK_CHANNEL, WEBHOOK_EVENT, webhookAlertOf, webhookDescriptor } from "./index.ts";
 
 // Fake secrets: fixed bytes. No real secret is in this repository.
 const secretOf = (fill: number): WebhookSecret => {
@@ -133,6 +133,26 @@ describe("createWebhookChannel", () => {
     expect(await channel.status({ receipt: { status: "200" } })).toMatchObject({ state: "accepted", at: AT });
     await expect(channel.cancel({ receipt: { status: "200" } })).resolves.toBeUndefined();
     await expect(channel.cancel({ copy: "copy-a-1" })).resolves.toBeUndefined();
+  });
+});
+
+describe("sendWebhookEvent", () => {
+  it("sends one signed event of each type with its id and data", async () => {
+    const { fetch, calls } = receiver({ status: 204 });
+    const event = { url: URL_OF, type: "runtime.restarts", id: "a".repeat(32), data: { copy: "copy-a-1", stops: 3 } };
+    expect(await sendWebhookEvent({ secrets: [SECRET], fetch, userAgent: AGENT, now: () => AT }, event)).toEqual({ ok: true, receipt: { status: "204" }, accepted: AT });
+    const call = calls[0]!;
+    expect(await verifyWebhook(incoming(call), [SECRET], AT)).toEqual({ ok: true, id: "a".repeat(32), timestampMs: AT });
+    expect(JSON.parse(call.body)).toEqual({ type: "runtime.restarts", timestamp: new Date(AT).toISOString(), data: { copy: "copy-a-1", stops: 3 } });
+  });
+
+  it("sends nothing with no secret, to a plain URL of another host or with a bad id", async () => {
+    const { fetch, calls } = receiver();
+    const event = { url: URL_OF, type: "runtime.ready", id: "a".repeat(32), data: {} };
+    expect(await sendWebhookEvent({ secrets: [], fetch, now: () => AT }, event)).toMatchObject({ ok: false, kind: "auth" });
+    expect(await sendWebhookEvent({ secrets: [SECRET], fetch, now: () => AT }, { ...event, url: "http://hooks.example.test/x" })).toMatchObject({ ok: false, kind: "refused" });
+    expect(await sendWebhookEvent({ secrets: [SECRET], fetch, now: () => AT }, { ...event, id: "an id" })).toMatchObject({ ok: false, kind: "refused" });
+    expect(calls).toHaveLength(0);
   });
 });
 

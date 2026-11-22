@@ -33,6 +33,9 @@ export const WEBHOOK_LIMITS = { title: 250, body: 4000 } as const;
  */
 export const WEBHOOK_URL = String.raw`(https://[^\s/?#]+|http://(127\.0\.0\.1|localhost|\[::1\])(:[0-9]{1,5})?)([/?#]\S*)?`;
 
+// The pattern of the URL of a receiver, for one whole text.
+const WEBHOOK_URL_EXACT = new RegExp(`^(?:${WEBHOOK_URL})$`, "u");
+
 /** The fields of the address of a receiver on the channel: only its URL. */
 export const WEBHOOK_ADDRESS: readonly AddressField[] = [{ name: "url", required: true, pattern: WEBHOOK_URL, form: "an https URL, or an http URL of the loopback host" }];
 
@@ -146,6 +149,45 @@ export function webhookFailureOf(failure: WebhookFailure): Extract<SendOutcome, 
   }
 }
 
+/** One event of Standard Webhooks for a receiver: its URL, its type, its id and its data. */
+export interface WebhookEvent {
+  /** The URL of the receiver: an https URL, or an http URL of the loopback host. */
+  readonly url: string;
+  /** The type of the event, for example `alert.message`. */
+  readonly type: string;
+  /** The id of the event. A send again of the same event has the same id, thus the receiver keeps one of them. */
+  readonly id: string;
+  /** The data of the event. */
+  readonly data: Readonly<Record<string, unknown>>;
+}
+
+/**
+ * This function sends one event as one signed request, and it does not throw. The webhook channel sends each alert
+ * with it. The supervisor sends the events of the runtime with it.
+ *
+ * - A missing secret gives `auth`. A URL that is not https, and not http to the loopback host, gives `refused`.
+ * - An id with a full stop or a space gives `refused`, because the spec does not permit it.
+ * - The other failures come from `webhookFailureOf`.
+ */
+export async function sendWebhookEvent(options: WebhookChannelOptions, event: WebhookEvent): Promise<SendOutcome> {
+  const now = options.now ?? Date.now;
+  if (options.secrets.length === 0) return { ok: false, kind: "auth", message: "The channel has no secret to sign the request." };
+  // The load of the configuration examines each address. This check keeps a plain request off the network.
+  if (!WEBHOOK_URL_EXACT.test(event.url)) return { ok: false, kind: "refused", message: "The address has no https URL, and no http URL of the loopback host." };
+  const at = now();
+  const headers = options.userAgent === undefined ? undefined : { "user-agent": options.userAgent };
+  const body = webhookBody(event.type, at, event.data);
+  let result: Awaited<ReturnType<typeof sendWebhook>>;
+  try {
+    result = await sendWebhook(options.fetch, { url: event.url, id: event.id, timestampMs: at, body, headers }, options.secrets, { timeoutMs: options.timeoutMs ?? WEBHOOK_SEND_TIMEOUT_MS, now });
+  } catch (error) {
+    // The request builder throws only for a bad id.
+    return { ok: false, kind: "refused", message: error instanceof Error ? error.message : "The request breaks a rule of the spec." };
+  }
+  if (!result.ok) return webhookFailureOf(result);
+  return { ok: true, receipt: { status: String(result.status) }, accepted: at };
+}
+
 /**
  * This function makes the procedures of the webhook channel.
  *
@@ -156,32 +198,16 @@ export function webhookFailureOf(failure: WebhookFailure): Extract<SendOutcome, 
  */
 export function createWebhookChannel(options: WebhookChannelOptions): ChannelProcedures {
   const now = options.now ?? Date.now;
-  const timeoutMs = options.timeoutMs ?? WEBHOOK_SEND_TIMEOUT_MS;
   const descriptor = webhookDescriptor();
-  const headers = options.userAgent === undefined ? undefined : { "user-agent": options.userAgent };
-  const url = new RegExp(`^(?:${WEBHOOK_URL})$`, "u");
 
   return {
     describe: () => descriptor,
 
     async send({ message, address, copy }): Promise<SendOutcome> {
       if (copy !== undefined && !COPY_ID.test(copy)) return { ok: false, kind: "refused", message: `The copy id "${copy}" has a character that the path of a stop cannot have.` };
-      if (options.secrets.length === 0) return { ok: false, kind: "auth", message: "The channel has no secret to sign the request." };
-      const to = address["url"];
-      // The load of the configuration examines each address. This check keeps a plain request off the network.
-      if (to === undefined || !url.test(to)) return { ok: false, kind: "refused", message: "The address has no https URL, and no http URL of the loopback host." };
-      const at = now();
-      if (message.expires !== undefined && message.expires <= at) return { ok: false, kind: "expired", message: "The message expired before the send." };
-      const body = webhookBody(WEBHOOK_EVENT, at, webhookAlertOf(message, copy));
-      let result: Awaited<ReturnType<typeof sendWebhook>>;
-      try {
-        result = await sendWebhook(options.fetch, { url: to, id: message.key, timestampMs: at, body, headers }, options.secrets, { timeoutMs, now });
-      } catch (error) {
-        // The request builder throws only for a bad id: the delivery key has no full stop and no space.
-        return { ok: false, kind: "refused", message: error instanceof Error ? error.message : "The request breaks a rule of the spec." };
-      }
-      if (!result.ok) return webhookFailureOf(result);
-      return { ok: true, receipt: { status: String(result.status) }, accepted: at };
+      if (message.expires !== undefined && message.expires <= now()) return { ok: false, kind: "expired", message: "The message expired before the send." };
+      // The id is the delivery key: it has no full stop and no space.
+      return sendWebhookEvent(options, { url: address["url"] ?? "", type: WEBHOOK_EVENT, id: message.key, data: webhookAlertOf(message, copy) });
     },
 
     status: () => Promise.resolve({ state: "accepted", at: now(), reason: "A receiver of a webhook tells no state after its answer." }),
