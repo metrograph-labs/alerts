@@ -1,12 +1,22 @@
 /**
- * The words and the panel of the shadow score (AL-31). The shadow score operates next to the table of the levels, and it
- * does not decide a level. The card of each incident tells its score. The panel tells each pair where the table and the
- * score disagree.
+ * The words and the panel of the shadow score (AL-31). The shadow score operates next to the table of the levels. It
+ * decides a level only through the score rule of a person. The card of each incident tells its score. The panel tells
+ * each pair where the table and the score disagree.
  *
  * The data functions are pure. The draw functions make the elements of that data.
  */
 
-import { shadowDifferences, type AlertArea, type AssessedLevel, type Estimate, type MapIncident, type MapView, type ScoreFactor, type ShadowScore } from "@mark1russell7/alerts";
+import {
+  shadowDifferences,
+  type AlertArea,
+  type AssessedLevel,
+  type Estimate,
+  type MapIncident,
+  type MapView,
+  type ScoreFactor,
+  type ScoreRuleReason,
+  type ShadowScore,
+} from "@mark1russell7/alerts";
 import { h } from "@mark1russell7/site-pages/chrome";
 import { countOf } from "@mark1russell7/text/english";
 import { LEVEL_WORDS, levelChip } from "./draw.ts";
@@ -51,6 +61,21 @@ export function shadowText(score: ShadowScore): string {
       : `The deaths come from the measures of "${deaths.from.key}", and the injuries from "${injuries.from.key}".`;
   const product = `The expected harm is the probability times each count: ${estimateText(expected.deaths)} deaths and ${estimateText(expected.injuries)} injuries.`;
   return `The shadow score does not decide the level. The probability of the event is ${estimateText(probability.estimate)}, from ${probabilitySource(probability)}. ${harm} ${keys} ${product}`;
+}
+
+/**
+ * This function gives the text of the score rule of a person. The rule raises a level to `life-safety` when the expected
+ * deaths reach its risk value. It does not lower a level.
+ */
+export function scoreRuleText(reason: ScoreRuleReason): string {
+  const risk = String(reason.risk);
+  if (reason.score === undefined) return `The score rule of the person has the risk value ${risk}. The policy has no priors, so the table decides the level.`;
+  if (!reason.score.read) return `The score rule of the person has the risk value ${risk}. The score has no value, so the table decides the level.`;
+  const deaths = estimateText(reason.score.expected.deaths);
+  if (reason.raised) return `The score rule of the person sets the level life-safety: the expected deaths, ${deaths}, reach the risk value ${risk}.`;
+  return reason.score.expected.deaths.value >= reason.risk
+    ? `The expected deaths, ${deaths}, reach the risk value ${risk} of the score rule, and the table gives life-safety.`
+    : `The expected deaths, ${deaths}, are below the risk value ${risk} of the score rule, so the table decides the level.`;
 }
 
 // The expected harm of a score, or the words of a score with no value.

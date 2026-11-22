@@ -1276,7 +1276,7 @@ Each assessment has its reasons: the gate that stopped it, the class, the two lo
 
 The table becomes the calculation of AL-31. The calculation multiplies the probability that the event is real and the harm of the event. It compares the result with the cost to interrupt the person at that time. Each factor comes from a public measure, not from a value that a person sets.
 
-The shadow score (`shadowScore`) is the first step. It operates next to the table, and it does not decide a level:
+The shadow score (`shadowScore`) is the first step. It operates next to the table. It decides a level only through the score rule of a person (step 4, below):
 
 - The priors (`ScorePriors`, format `alerts-priors/2`) are data. For each prefix of a kind, they give the verified share of its warnings and the deaths and injuries of one event. For each CAP certainty value, they give a probability.
 - Format 2 adds the harm in one area under one active alert of a kind, for each significance (`KindPrior.under`). The measure counts each event under an alert, so it holds the probability of the event.
@@ -1288,7 +1288,7 @@ The shadow score (`shadowScore`) is the first step. It operates next to the tabl
 - The expected harm (`expectedOf`) is the probability times the deaths, and the probability times the injuries. `mul` of `@mark1russell7/interval` rounds each interval outward. Thus the interval holds each exact product.
 - Each count of the priors is from 0 to `Number.MAX_SAFE_INTEGER`. Thus each product has a finite interval.
 - A factor that the priors do not give makes a score with no read. The score names each missing factor. It does not take 0 or a default value.
-- `assessWithShadow` adds the score as the last reason of an assessment with a reason of the table. The level and the other reasons stay those of `assess`. A seeded gate test holds this.
+- `assessWithShadow` adds the score as the last reason of an assessment with a reason of the table. The level and the other reasons stay those of `assess`. A seeded gate test holds this. An assessment whose reason `score` holds the score gets no second score.
 
 The priors come from the base rates of the package `rates` (`priorsOf`). The file `packages/rates/data/priors.json` holds them. A test holds it equal to the priors of `data/rates.json`:
 
@@ -1342,6 +1342,16 @@ The runtime reads the committed priors at its start (`committedPriors` of the pa
 - The map route gives the score of each incident that reaches a person (the field `shadow` of each incident of the view).
 - The log keeps the score at the start of each escalation (the field `shadow` of the event `escalation`). Thus a later study can compare each decision of the table with its score. A score of a log line from before the basis `alert` has no field `basis`. Its basis is `event`.
 - `shadowDifferences` gives each pair of incidents where the table and the score disagree. The table gives one incident the higher level. The score gives the other more expected deaths and more expected injuries, and the intervals do not overlap. Thus the rule needs no weight between a death and an injury.
+
+The score rule of a person (`PersonWatch.score`, step 4 of AL-31) lets the score decide a level, with the rule of the replay:
+
+- The rule has a risk value above 0. An incident gets `life-safety` when the expected deaths of its score are at the risk value or higher. Thus the risk value of the replay curve gives the sends of the rule.
+- The table stays the floor. The rule raises the level of the incident and of each line. It does not lower a level, and the rules of the person still lower the raised level.
+- The list `except` holds the prefixes of the kinds that the rule does not examine. For these kinds, the table decides. An example is the kinds of the beach (`met.rip-current`, `met.surf`, `met.beach-hazards`): they hurt swimmers, not a person who sleeps.
+- The quiet table of the sources of other copies (AL-76) is not raised.
+- The reason `score` follows the reason `table`. It gives the risk value, the score and the field `raised`. A score with no read does not raise.
+- The rule reads the priors in the policy (`AssessPolicy.priors`). The runtime adds the committed priors to the policy only when a person has a score rule (`policyWithPriors`). With no priors, the reason has no score, and the table decides.
+- A person with no rule gets each assessment of the table. A seeded gate test holds this. The value of each person goes in the private configuration.
 
 ## The service
 
