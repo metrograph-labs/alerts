@@ -1031,7 +1031,9 @@ export function openInstance(options: InstanceOptions): Instance {
   let first: Pass | undefined;
   // The start of this instance. Each family of a store gets its first entry in its window after this time (AL-86).
   const startedAt = wall.now();
-  // The wall time of the last write of the snapshot of the start, or undefined before the first write.
+  // The wall time of the last write of the snapshot of the start. A start that read a snapshot counts from its start, thus it
+  // writes no copy of the snapshot that it read at its first passes, when the other work of the start is due (AL-115). Before
+  // the first write of a start with no snapshot, it is undefined.
   let snapshotAt: Instant | undefined;
   const runtime: Runtime = openRuntime({
     log: options.log,
@@ -1095,6 +1097,7 @@ export function openInstance(options: InstanceOptions): Instance {
     },
     fetchLimit: options.fetchLimit ?? INSTANCE_FETCH_LIMIT,
   });
+  if (runtime.start.snapshot !== undefined) snapshotAt = startedAt;
   const loop = createLoop({
     pass: (stop) => runtime.pass(stop),
     clock,

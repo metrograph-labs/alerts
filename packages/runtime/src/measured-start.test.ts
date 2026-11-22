@@ -2,11 +2,12 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CONFIG_FORMAT, type AlertConfig, type ChannelId, type EscalationPolicy, type PersonId, type PlaceId } from "@mark1russell7/alerts";
-import { wallClock } from "@mark1russell7/algebra/clock";
+import { fakeWallClock, wallClock } from "@mark1russell7/algebra/clock";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HomeHeld } from "./home-lock.ts";
 import { openRuntimeLog } from "./log.ts";
 import { openMeasuredRuntime, type MeasuredRuntime } from "./measured-start.ts";
+import { START_SNAPSHOT_EVERY } from "./start-snapshot.ts";
 
 const MINUTE = 60_000;
 const pushover = "pushover" as ChannelId;
@@ -102,6 +103,26 @@ describe("openMeasuredRuntime", { timeout: 30_000 }, () => {
     opened.push(plain);
     await plain.pass();
     expect(plain.snapshotWrites).toEqual([]);
+  });
+
+  it("writes no snapshot in the first period of a start that read a snapshot (AL-115)", async () => {
+    const first = await openMeasuredRuntime(home, { startSnapshot: true });
+    opened.push(first);
+    await first.pass();
+    await first.close();
+    const start = Date.now();
+    const wall = fakeWallClock(start);
+    const again = await openMeasuredRuntime(home, { wall, startSnapshot: true, timeSnapshot: true });
+    opened.push(again);
+    expect(again.instance.runtime.start.snapshot).toBeDefined();
+    // The start read a fresh snapshot, thus its next passes in the period write no copy of it.
+    await again.pass();
+    await again.pass();
+    expect(again.snapshotWrites).toEqual([]);
+    // After one period from the start, the next pass writes the snapshot.
+    wall.set(start + START_SNAPSHOT_EVERY);
+    await again.pass();
+    expect(again.snapshotWrites).toHaveLength(1);
   });
 
   it("stops when a runtime holds the home folder, and frees the lock at the close", async () => {
