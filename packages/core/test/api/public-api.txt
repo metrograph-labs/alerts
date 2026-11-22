@@ -1566,6 +1566,9 @@ export declare const DIMENSIONS: readonly [{
   readonly id: "internet-routing";
   readonly title: "Internet routing and latency";
 }, {
+  readonly id: "internet-censorship";
+  readonly title: "Internet censorship";
+}, {
   readonly id: "online-service-status";
   readonly title: "Online service status";
 }, {
@@ -1581,11 +1584,20 @@ export declare const DIMENSIONS: readonly [{
   readonly id: "fuel-prices";
   readonly title: "Fuel prices and stock";
 }, {
+  readonly id: "gas-storage";
+  readonly title: "Natural gas storage";
+}, {
   readonly id: "radiation";
   readonly title: "Ambient radiation";
 }, {
   readonly id: "river-levels";
   readonly title: "River levels and flow";
+}, {
+  readonly id: "reservoir-storage";
+  readonly title: "Reservoir storage";
+}, {
+  readonly id: "snowpack";
+  readonly title: "Snowpack";
 }, {
   readonly id: "sea-level";
   readonly title: "Sea level";
@@ -1593,8 +1605,14 @@ export declare const DIMENSIONS: readonly [{
   readonly id: "public-health";
   readonly title: "Public health signals";
 }, {
+  readonly id: "hospital-occupancy";
+  readonly title: "Hospital bed occupancy";
+}, {
   readonly id: "outbreak-reports";
   readonly title: "Official outbreak reports";
+}, {
+  readonly id: "drug-shortages";
+  readonly title: "Medicine shortages";
 }, {
   readonly id: "online-attention";
   readonly title: "Online attention";
@@ -1607,6 +1625,9 @@ export declare const DIMENSIONS: readonly [{
 }, {
   readonly id: "active-fires";
   readonly title: "Active fires";
+}, {
+  readonly id: "lightning-activity";
+  readonly title: "Lightning strokes";
 }, {
   readonly id: "night-lights";
   readonly title: "Night lights";
@@ -1631,6 +1652,9 @@ export declare const DIMENSIONS: readonly [{
 }, {
   readonly id: "financial-markets";
   readonly title: "Financial markets";
+}, {
+  readonly id: "jobless-claims";
+  readonly title: "Jobless claims";
 }, {
   readonly id: "disaster-mapping";
   readonly title: "Satellite disaster mapping";

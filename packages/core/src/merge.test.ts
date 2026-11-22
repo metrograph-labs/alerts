@@ -1,9 +1,22 @@
 import { canonicalJson, random, seedsFrom, type Random } from "@mark1russell7/rigor-generators";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Acknowledgment, ChannelId, Delivery, EndMark, Incident, MergeState, ObservationId, PersonId, Report, Severity, SourceId, Status } from "./contracts.ts";
 import { reportId } from "./ids.ts";
 import { areasWithoutBlocks } from "./shapes.ts";
 import { EMPTY_STATE, acknowledgedLevel, add, endedReports, incidents, join, normalize, sentLevel, type IncidentOptions, type LinkRule, type MergeParts } from "./merge.ts";
+
+// The count of canonical JSON texts. The mock gives the real text, thus each test reads the same values.
+const texts = vi.hoisted(() => ({ count: 0 }));
+vi.mock("@mark1russell7/rigor-generators", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@mark1russell7/rigor-generators")>();
+  return {
+    ...real,
+    canonicalJson: (...args: Parameters<typeof real.canonicalJson>) => {
+      texts.count += 1;
+      return real.canonicalJson(...args);
+    },
+  };
+});
 
 const SEEDS = seedsFrom(process.env["SEED"], [1, 2, 3, 4, 5, 6, 7, 8]);
 const HOUR = 3_600_000;
@@ -737,5 +750,40 @@ describe("the audience of the reports (AL-92)", () => {
     expect(found([report({ key: "k1", addresses: [person] }), report({ key: "k1", sent: later, addresses: [other] })])).toHaveLength(2);
     const list = found([report({ key: "k1", addresses: [other, person] }), report({ key: "k1", sent: later, addresses: [person, other, person] })]);
     expect(audiences(list)).toEqual([[person, other]]);
+  });
+});
+
+describe("the order of two contents of one id (AL-114)", () => {
+  // Two contents of one id: the same report with another headline. The join keeps the content with the smaller canonical JSON.
+  const pair = (): [Report, Report] => {
+    const a = report({ key: "k1", headline: "Tornado Warning A" });
+    return [a, { ...a, headline: "Tornado Warning B" }];
+  };
+
+  it("a second join of the same two contents builds no canonical JSON", () => {
+    const [a, b] = pair();
+    const first = join(normalize({ reports: [a] }), normalize({ reports: [b] }));
+    const before = texts.count;
+    const second = join(normalize({ reports: [a] }), normalize({ reports: [b] }));
+    const reverse = join(normalize({ reports: [b] }), normalize({ reports: [a] }));
+    const again = normalize({ reports: [b, a] });
+    expect(texts.count - before).toBe(0);
+    for (const state of [second, reverse, again]) expect(state.reports).toEqual(first.reports);
+  });
+
+  it("the kept content is the content with the smaller canonical JSON, in each order of the parts", () => {
+    const [a, b] = pair();
+    const smaller = canonicalJson(a, { form: "json" }) < canonicalJson(b, { form: "json" }) ? a : b;
+    expect(normalize({ reports: [a, b] }).reports).toEqual([smaller]);
+    expect(normalize({ reports: [b, a] }).reports).toEqual([smaller]);
+    expect(add(normalize({ reports: [a] }), { reports: [b] }).reports).toEqual([smaller]);
+    expect(add(normalize({ reports: [b] }), { reports: [a] }).reports).toEqual([smaller]);
+  });
+
+  it("two equal contents in two objects keep the content that the state has", () => {
+    const [a] = pair();
+    const copy = { ...a };
+    expect(add(normalize({ reports: [a] }), { reports: [copy] }).reports[0]).toBe(a);
+    expect(add(normalize({ reports: [copy] }), { reports: [a] }).reports[0]).toBe(copy);
   });
 });

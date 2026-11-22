@@ -68,9 +68,9 @@ function readingOf(measure: MeasureDeclaration, value = 4): Reading {
 }
 
 describe("the dimensions", () => {
-  it("are 36 with unique ids in the form of a measure id, and DIMENSION_IDS keeps their order", () => {
-    expect(DIMENSIONS).toHaveLength(36);
-    expect(new Set(DIMENSION_IDS).size).toBe(36);
+  it("are 44 with unique ids in the form of a measure id, and DIMENSION_IDS keeps their order", () => {
+    expect(DIMENSIONS).toHaveLength(44);
+    expect(new Set(DIMENSION_IDS).size).toBe(44);
     expect(DIMENSION_IDS).toEqual(DIMENSIONS.map((dimension) => dimension.id));
     for (const id of DIMENSION_IDS) expect(id).toMatch(MEASURE_ID);
     expect(isDimensionId("rail")).toBe(true);
