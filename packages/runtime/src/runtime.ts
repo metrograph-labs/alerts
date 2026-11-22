@@ -216,8 +216,8 @@ export interface Runtime {
    * the log in the pauses, and the snapshot does not have them. The options `chunks` set the size of each transaction and
    * the pause, as in `writeInChunks` of `@mark1russell7/sqlite`.
    *
-   * The promise rejects when the runtime has no store, when a write is in progress, or when the write fails. Then the old
-   * snapshot stays. The close of the runtime waits for a write in progress.
+   * The promise rejects when the runtime has no store, when the runtime is closed, when a write is in progress, or when
+   * the write fails. Then the old snapshot stays. The close of the runtime waits for a write in progress.
    */
   writeStartSnapshot(chunks?: ChunkOptions): Promise<number>;
   /**
@@ -495,6 +495,8 @@ export function openRuntime(options: RuntimeOptions): Runtime {
     async writeStartSnapshot(chunks) {
       const store = options.startSnapshot;
       if (store === undefined) throw new Error("The runtime has no store of the snapshot.");
+      // After the close, the entry closes the store of the snapshot. Thus a write that starts then has no store.
+      if (closed !== undefined) throw new Error("The runtime is closed: it writes no snapshot.");
       if (snapshotWrite !== undefined) throw new Error("A write of the snapshot is in progress.");
       // The mark is the last event of the log. Each write of the log goes through `append`, thus the state has each event up to it.
       const head = log.head();

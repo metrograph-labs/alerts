@@ -393,6 +393,8 @@ describe("a restart from the snapshot of the start (AL-105)", () => {
       expect(await writing).toBeGreaterThan(0);
       await closing;
       expect(closed).toBe(true);
+      // A write after the close has no store, thus it rejects.
+      await expect(runtime.writeStartSnapshot()).rejects.toThrow("closed");
     } finally {
       store.close();
       log.close();

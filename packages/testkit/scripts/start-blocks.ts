@@ -4,7 +4,8 @@
  * second start reads the snapshot that the first start wrote. Time on a shared computer tells nothing, thus the workflow
  * `measure-blocks.yml` starts it in CI.
  *
- * Usage: node scripts/start-blocks.ts <folder> [size in MB] [passes].
+ * Usage: node scripts/start-blocks.ts <folder> [size in MB] [passes] [machine]. The machine is a label of the record, for
+ * example `small` for a run with the limits of a small cloud machine. The default is `host`.
  *
  * Each start gives one JSON line. For each phase, the line has the wall time, the CPU time, the blocks of the event loop and
  * the pauses of the garbage collector. A phase is the open with its first pass, or one more pass. The line also has the time
@@ -21,7 +22,7 @@ import { wallClock } from "@mark1russell7/algebra/clock";
 import { LIVE_FILES } from "../src/seed-files.ts";
 import { seedStore } from "../src/seed-store.ts";
 
-const [folder, sizeText = "192", passesText = "4"] = process.argv.slice(2);
+const [folder, sizeText = "192", passesText = "4", machine = "host"] = process.argv.slice(2);
 if (folder === undefined) throw new Error("Give a scratch folder.");
 const size = Number(sizeText);
 const passes = Number(passesText);
@@ -150,6 +151,7 @@ for (const kind of ["full", "snapshot"] as const) {
   const record = {
     kind: "start",
     start: kind,
+    machine,
     size,
     events: seeded.events,
     days: Number(((seeded.end - seeded.start) / 86_400_000).toFixed(2)),
