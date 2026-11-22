@@ -192,6 +192,16 @@ export interface ClockEvent extends Envelope<"clock"> {
 }
 
 /**
+ * The event loop of the runtime was blocked for `size` ms from `time` (AL-88). The watch of the loop gives each block of
+ * `LOOP_BLOCK_LIMIT` or longer. The fold keeps the blocks of `LOOP_BLOCK_WINDOW` before the last block, and a system report
+ * tells them. The event stays in its copy: it is a fact of this runtime.
+ */
+export interface LoopEvent extends Envelope<"loop"> {
+  /** The length of the block in milliseconds. */
+  readonly size: Duration;
+}
+
+/**
  * At the boot, the log file was broken. The runtime moved it into a quarantine folder, and it started a new file with
  * each event that the salvage read. This event comes after the salvaged events. Its fold gives a system report.
  */
@@ -321,7 +331,8 @@ export type RuntimeEvent =
   | ExchangeEvent
   | RetiredEvent
   | DrillEvent
-  | ModeEvent;
+  | ModeEvent
+  | LoopEvent;
 
 /** The types of the events. */
 export const EVENT_TYPES: readonly RuntimeEvent["type"][] = [
@@ -348,6 +359,7 @@ export const EVENT_TYPES: readonly RuntimeEvent["type"][] = [
   "retired",
   "drill",
   "mode",
+  "loop",
 ];
 
 /**

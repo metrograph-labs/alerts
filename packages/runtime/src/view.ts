@@ -16,12 +16,14 @@ import {
   sharedHandoverAt,
   sourceClearAt,
   LOG_RECOVERY_WINDOW,
+  LOOP_BLOCK_WINDOW,
   coverage,
   incidents,
   latenessStep,
   lateSources,
   limitRule,
   linkRule,
+  recentBlocks,
   recentRecovery,
   recentStep,
   startHealth,
@@ -176,7 +178,7 @@ export function systemView(state: RuntimeState, config: ViewConfig, at: Instant,
   const checks = carriages(state.merge, found, config.expectations);
   const { lateness: late, folds: next } = latenessStep(checks, config.expectations, at, ruleOf(config.delay), folds);
   const covered = coverage({ sources: config.sources, health, late: lateSources(late), places: config.places, kinds: config.kinds, containing: containingCodes }, config.coverage);
-  const step = systemReports(state.lines, { sources: config.sources, health, coverage: covered, threats: threats(found, config.places), lateness: late, ...(quotas === undefined ? {} : { quotas }), ...(balances === undefined ? {} : { balances }), ...(uses === undefined ? {} : { uses }), ...(copies === undefined ? {} : { copies }), ...(copy === undefined ? {} : { copy }), ...(drills === undefined ? {} : { drills }), ...(drillWatches === undefined ? {} : { drillWatches }), ...(exhausted === undefined ? {} : { exhausted }), ...(held === undefined ? {} : { held }), ...(channels === undefined ? {} : { channels }), ...(observing === undefined ? {} : { observing }), ...(stores === undefined ? {} : { stores }), ...(config.channelDown === undefined ? {} : { channelDown: config.channelDown }), ...(config.sourceClear === undefined ? {} : { sourceClear: config.sourceClear }), steps: state.steps, recoveries: state.recoveries }, at);
+  const step = systemReports(state.lines, { sources: config.sources, health, coverage: covered, threats: threats(found, config.places), lateness: late, ...(quotas === undefined ? {} : { quotas }), ...(balances === undefined ? {} : { balances }), ...(uses === undefined ? {} : { uses }), ...(copies === undefined ? {} : { copies }), ...(copy === undefined ? {} : { copy }), ...(drills === undefined ? {} : { drills }), ...(drillWatches === undefined ? {} : { drillWatches }), ...(exhausted === undefined ? {} : { exhausted }), ...(held === undefined ? {} : { held }), ...(channels === undefined ? {} : { channels }), ...(observing === undefined ? {} : { observing }), ...(stores === undefined ? {} : { stores }), ...(config.channelDown === undefined ? {} : { channelDown: config.channelDown }), ...(config.sourceClear === undefined ? {} : { sourceClear: config.sourceClear }), steps: state.steps, recoveries: state.recoveries, blocks: state.blocks }, at);
   // An incident that expires changes the threats, thus its end is a timer too.
   const ends = found.flatMap((incident) => (incident.live && incident.expires !== undefined && incident.expires > at ? [incident.expires] : []));
   // The handover of the facts of a shared account is a timer too, because this copy then reports a low balance.
@@ -184,9 +186,11 @@ export function systemView(state: RuntimeState, config: ViewConfig, at: Instant,
   const unread = [...(balances ?? []).map(balanceUnreadAt), ...(uses ?? []).map(useUnreadAt), ...(copies ?? []).map(copyUnreadAt), ...(copies ?? []).flatMap((watch) => copyUnsteadyAt(watch) ?? []), ...(stores ?? []).filter((fill) => fill.entries === 0).map(storeEmptyAt), ...(held ?? []).map((entry) => entry.until), ...(drillWatches ?? []).flatMap((watch) => drillWatchAt(step.lines, watch, copies ?? []) ?? []), ...(handover === undefined ? [] : [handover])].filter((time) => time > at);
   const stepped = recentStep(state.steps, at);
   const recovered = recentRecovery(state.recoveries, at);
+  // Each block leaves the window at its end. The line of the blocks ends at the end of the window of the last block.
+  const blocked = recentBlocks(state.blocks, at).map((block) => block.at + LOOP_BLOCK_WINDOW);
   // The end of the clear time of each source that is up with an open line is a timer too (AL-75).
   const cleared = sourceClearAt(step.lines, { sources: config.sources, health, ...(config.sourceClear === undefined ? {} : { sourceClear: config.sourceClear }) }, at);
-  const wakeAt = earliest([...steps.map((entry) => entry.wakeAt), ...late.map((entry) => entry.wakeAt), ...ends, ...unread, ...cleared, stepped === undefined ? undefined : stepped.at + CLOCK_STEP_WINDOW, recovered === undefined ? undefined : recovered.at + LOG_RECOVERY_WINDOW]);
+  const wakeAt = earliest([...steps.map((entry) => entry.wakeAt), ...late.map((entry) => entry.wakeAt), ...ends, ...unread, ...cleared, ...blocked, stepped === undefined ? undefined : stepped.at + CLOCK_STEP_WINDOW, recovered === undefined ? undefined : recovered.at + LOG_RECOVERY_WINDOW]);
   return { at, health, incidents: found, lateness: late, coverage: covered, step, ...(wakeAt === undefined ? {} : { wakeAt }), folds: next };
 }
 
