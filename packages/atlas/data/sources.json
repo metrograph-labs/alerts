@@ -4859,18 +4859,15 @@
     "id": "cloudflare-radar-api",
     "name": "Cloudflare Radar API",
     "classes": [
-      "cyber.ddos",
       "infra.internet.outage",
       "infra.internet.shutdown",
-      "infra.internet.bgp",
-      "infra.internet.dns-cdn",
+      "infra.cloud.outage",
       "infra.power.grid-collapse"
     ],
     "dimensions": [
-      "internet-connectivity",
-      "internet-routing"
+      "internet-connectivity"
     ],
-    "url": "https://developers.cloudflare.com/radar/investigate/bgp-anomalies/",
+    "url": "https://developers.cloudflare.com/api/operations/radar-get-annotations-outages",
     "access": "api",
     "auth": "key",
     "terms": {
@@ -4884,7 +4881,7 @@
     "history": "unknown",
     "rateLimit": "The header ratelimit-policy gave 1200 requests in each 300 seconds. The adapter asks for each of its two lists once each 10 minutes.",
     "calibration": null,
-    "coverage": "World: BGP origin hijacks and route leaks with confidence scores; outage and attack data not verified in round 1.",
+    "coverage": "World: the verified outages of the outage center, and the traffic anomalies of countries, regions, networks and cloud regions.",
     "origins": [
       "cloudflare"
     ],
@@ -4908,7 +4905,53 @@
       "https://blog.cloudflare.com/traffic-anomalies-notifications-radar/",
       "https://developers.cloudflare.com/radar/get-started/first-request/"
     ],
-    "round": 14
+    "round": 21
+  },
+  {
+    "id": "cloudflare-radar-bgp-attacks-dns",
+    "name": "Cloudflare Radar API: BGP, attacks and DNS",
+    "classes": [
+      "cyber.ddos",
+      "infra.internet.bgp",
+      "infra.internet.dns-cdn"
+    ],
+    "dimensions": [
+      "internet-routing"
+    ],
+    "url": "https://developers.cloudflare.com/radar/investigate/bgp-anomalies/",
+    "access": "api",
+    "auth": "key",
+    "terms": {
+      "url": "https://developers.cloudflare.com/radar/",
+      "automated": "allowed",
+      "redistribution": "limited",
+      "note": "A token with the permission Account:Radar. A free account gives it, as the guide tells. The data of the API is under CC BY-NC 4.0: no commercial use."
+    },
+    "cost": "free-tier",
+    "delay": "unknown",
+    "history": "unknown",
+    "rateLimit": "The header ratelimit-policy gave 1200 requests in each 300 seconds. The token of the outage lists has the same limit.",
+    "calibration": null,
+    "coverage": "World: BGP origin hijacks and route leaks with confidence scores. The research did not verify the attack and DNS data.",
+    "origins": [
+      "cloudflare"
+    ],
+    "path": [
+      "api.cloudflare.com"
+    ],
+    "subjectIds": [
+      "asn",
+      "iso3166"
+    ],
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "The adapter of cloudflare-radar-api reads only the outage center and the traffic anomalies. The same host and token give these lists, so AL-130 plans to read them in that adapter.",
+    "evidence": [
+      "https://developers.cloudflare.com/radar/investigate/bgp-anomalies/",
+      "https://developers.cloudflare.com/radar/"
+    ],
+    "round": 21
   },
   {
     "id": "cnnvd",
@@ -11651,7 +11694,8 @@
       "safety.civil-danger",
       "safety.local-emergency",
       "safety.national-emergency",
-      "security.missing-person"
+      "security.missing-person",
+      "fire.wildfire"
     ],
     "url": "https://www.fema.gov/emergency-managers/practitioners/integrated-public-alert-warning-system/technology-developers/all-hazards-information-feed",
     "access": "feed",
@@ -11695,7 +11739,7 @@
       "https://www.weather.gov/nwr/eventcodes",
       "https://github.com/metrograph-labs/alerts/blob/main/packages/source-ipaws/src/fetch.ts"
     ],
-    "round": 1
+    "round": 21
   },
   {
     "id": "ipc-api",

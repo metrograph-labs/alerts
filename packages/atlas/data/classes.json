@@ -424,7 +424,7 @@
     "references": [
       "UNDRR-ISC HIPs 2025: TL Denial of Service"
     ],
-    "gap": "Round 15 found 8 more candidates: attack maps and reports. None has an open API with clear terms. Cloudflare Radar is the one adopted source.",
+    "gap": "Round 15 found 8 more candidates: attack maps and reports. None has an open API with clear terms. The attack data of Cloudflare Radar is the one live source, and AL-130 plans its adapter.",
     "round": 1
   },
   {

@@ -1,4 +1,4 @@
-import type { SourceDescriptor } from "@mark1russell7/alerts";
+import { hasKind, type SourceDescriptor } from "@mark1russell7/alerts";
 import { AWS_DESCRIPTOR } from "@mark1russell7/alerts-source-aws";
 import { AZURE_DESCRIPTOR } from "@mark1russell7/alerts-source-azure";
 import { BOM_SWS_DESCRIPTOR } from "@mark1russell7/alerts-source-bom-sws";
@@ -52,6 +52,29 @@ describe("the paths of the atlas and the descriptors of the adapters", () => {
   it("has the descriptors of each adopted adapter", () => {
     // Two sources can share one adapter, for example the two dashboards of Google.
     expect([...new Set(adopted.map((source) => source.adapter))].sort()).toEqual(Object.keys(DESCRIPTORS).sort());
+  });
+
+  // The adopted layers of the coverage count each class of an adopted source as a class that an adapter delivers.
+  it("gives each class of an adopted source in the kinds of a descriptor of its adapter", () => {
+    const missing = adopted.flatMap((source) => {
+      const kinds = (DESCRIPTORS[source.adapter ?? ""] ?? []).flatMap((descriptor) => descriptor.kinds);
+      return source.classes
+        .filter((name) => !hasKind(kinds, name))
+        .map((name) => `no descriptor of ${source.adapter ?? "(none)"} gives the class ${name} of ${source.id}`);
+    });
+    expect(missing).toEqual([]);
+  });
+
+  // A kind of an adapter with no class in its records is a delivery that the coverage does not count.
+  it("gives each kind of a descriptor a class of each adopted source of its adapter", () => {
+    const missing = adopted.flatMap((source) =>
+      (DESCRIPTORS[source.adapter ?? ""] ?? []).flatMap((descriptor) =>
+        descriptor.kinds
+          .filter((kind) => !source.classes.some((name) => hasKind([kind], name) || hasKind([name], kind)))
+          .map((kind) => `the classes of ${source.id} lack the kind ${kind} of ${descriptor.id}`),
+      ),
+    );
+    expect(missing).toEqual([]);
   });
 
   // A shared CDN or carrier is a common fault of two sources. When one list lacks it, the coverage counts two sources as apart.
