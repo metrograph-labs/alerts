@@ -13,8 +13,8 @@
  * `ALERTS_HOME` (the folder `.alerts` in the home folder). The value in parentheses is the value
  * without the variable. An empty value counts as no value, and a relative path starts at the working
  * folder. The folder holds the private files of the instance: `config.json`,
- * `secrets.env`, the log `runtime.sqlite`, the outlines `shapes.sqlite` and the counts of the quotas
- * `quotas.sqlite`. No repository holds them.
+ * `secrets.env`, the log `runtime.sqlite`, the outlines `shapes.sqlite`, the counts of the quotas
+ * `quotas.sqlite` and the use reads of the caps `use.json` (AL-91). No repository holds them.
  *
  * The key `HEALTHCHECKS_PING_URL` of `secrets.env` gives the outside heartbeat (`heartbeat.ts`). The
  * profile `daemon` of the live instance does not start without it. Another profile starts with a warning.
@@ -67,6 +67,7 @@ import { holdHome } from "./home-lock.ts";
 import { quotaNote } from "./quota.ts";
 import { replyNotes } from "./replies.ts";
 import { spendNotes } from "./balance.ts";
+import { USE_FILE, useFile } from "./spend-use.ts";
 import { PROFILES, declare } from "./index.ts";
 import { daemonCheck, instanceCheck, LOUD_PING_URL_KEY, openInstance, pingKeyOf, pingTargets, userAgent } from "./instance.ts";
 import { openCheckedRuntimeLog } from "./log.ts";
@@ -155,6 +156,11 @@ async function runtime(): Promise<ServiceBuilder> {
 
   // The count of the Pushover messages of the month. The file keeps it across a restart. The key names the application, not its token.
   const quotas = new SqliteHostStateStore(join(home, "quotas.sqlite"));
+  // The file of the use reads holds amounts of the account. Thus only the user of the folder reads it.
+  const uses = useFile({
+    write: (text) => writeFileAtomic(join(home, USE_FILE), text, { mode: 0o600 }),
+    onError: (error) => out.error(`A write of ${USE_FILE} failed: ${error instanceof Error ? error.name : typeof error}.`),
+  });
   const pushoverQuota = quotaGate(PUSHOVER_QUOTA, { key: "pushover:app", store: quotas, now: () => wall.now() });
   const pushoverReserveNotices = quotaGate(PUSHOVER_RESERVE_NOTICES, { key: "pushover:reserve-notices", store: quotas, now: () => wall.now() });
 
@@ -233,6 +239,8 @@ async function runtime(): Promise<ServiceBuilder> {
   const onPass = (pass: PassSummary): void => {
     for (const beat of beats) beat(pass);
     reload?.onPass();
+    // The use reads of the cap of Twilio go into the private folder when they change (AL-91).
+    if (instance.useReads !== undefined) uses.update(instance.useReads());
     if (marked || service.lifecycle?.state !== "running") return;
     marked = true;
     // Each block of 1 s or more goes to the output at once, and the next pass writes it into the log. Thus a stop after a

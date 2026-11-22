@@ -1214,6 +1214,8 @@ describe("the Twilio call channel of the instance", () => {
     expect(instance.quotas()).toContainEqual({ channel: call, limit: 1_000, reserve: 300, used: 4, unit: "cents", resetAt: expect.any(Number) });
     expect(twilio.calls.filter((entry) => entry.method === "GET" && entry.url.endsWith("/Balance.json"))).toHaveLength(1);
     expect(instance.balances.map((watch) => [watch.provider, watch.balance()?.read?.balance, watch.balance()?.floors])).toEqual([["provider:twilio", 12.5, [5]]]);
+    // The use reads have the cost of the call of this copy (AL-91). The fake server gives no usage, thus the account has no read.
+    expect(instance.useReads?.()).toEqual([{ part: "meter:twilio-only", source: "count", amount: 0.04, date: "2026-11-14" }]);
   });
 
   it("calls from a copy with rank 1 one rank floor after its push, also with no rank delay at the level (AL-15)", async () => {
@@ -1287,6 +1289,8 @@ describe("the Twilio call channel of the instance", () => {
       expect(instance.quotas()).toContainEqual({ channel: call, limit: 1_000, reserve: 300, used: 4, unit: "cents", resetAt: expect.any(Number) });
       expect(instance.quotas().map((quota) => quota.channel)).not.toContain(text);
       expect(instance.balances.map((watch) => watch.provider)).toEqual(["provider:twilio"]);
+      // The own count of the copy has the text too (AL-91).
+      expect(instance.useReads?.().map((read) => [read.part, read.amount])).toEqual([["meter:twilio-only", 0.04]]);
     });
 
     it("does not start with a text step and no number of the texts, a number of a bad form, a number with no keys, no cap, or no opt-in", () => {
