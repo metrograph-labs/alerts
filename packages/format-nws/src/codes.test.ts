@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
-import { containingCodes, countyUgcOfSame, FIRE_ZONE_PHENOMENA, isSameCode, isUgcCode, parseSameLocation, sameOfCountyUgc, STATE_FIPS, STATE_POSTAL, stateCode, stateOfCode, stateOfSame, stateOfUgc, ugcRegionCodes } from "./codes.ts";
+import { STATE_FIPS, STATE_POSTAL } from "@mark1russell7/alerts";
+import { containingCodes, countyUgcOfSame, FIRE_ZONE_PHENOMENA, isSameCode, isUgcCode, parseSameLocation, sameOfCountyUgc, stateCode, stateOfCode, stateOfSame, stateOfUgc, ugcRegionCodes } from "./codes.ts";
 
 describe("isUgcCode", () => {
   it.each(["KSZ001", "TXC123", "GMZ250", "PKZ414"])("accepts %s", (code) => {

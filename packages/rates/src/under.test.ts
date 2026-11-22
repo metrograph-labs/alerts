@@ -1,4 +1,4 @@
-import { STATE_POSTAL } from "@mark1russell7/alerts-format-nws";
+import { STATE_POSTAL } from "@mark1russell7/alerts";
 import { describe, expect, it } from "vitest";
 
 import type { HarmRow, YearHarm } from "./ncei.ts";

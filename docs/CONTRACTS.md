@@ -1910,6 +1910,10 @@ The core matches the area of a report to a place with one rule for each source. 
 - A place with no position matches by the codes of each block.
 - `@mark1russell7/geo` can refuse a shape, for example a ring with fewer than 4 positions. When it refuses each shape of a block, the codes of that block decide. This error is on the safe side. The match has `shapeRefused: true`, and the view tells it.
 - A fire zone code (`ugc-fire`) covers only a fire zone code of a place. A place with no fire zone code of a state uses its forecast zone code (`ugc`) with the same code. This is on the safe side. The match has `zoneFallback: true`, and the view tells it.
+- In a block with zone codes of a state, the county codes of that state do not widen the match (AL-69). The county codes are the UGC county codes, the SAME codes and the FIPS codes of a county.
+  - A county code of a place does not decide when the place has a zone code of the same kind and state as a zone code of the block. Then the zone codes decide for that place.
+  - A place with no zone code of that kind and that state keeps the match of its county. Thus no place loses an alert that it got without a zone code.
+  - For example, a Red Flag Warning names 2 to 26 counties and no shape. A place with a fire zone code matches only when the warning names that fire zone.
 - One block that matches is enough.
 - The areas with no block key keep the union rule. Their codes are the floor of the match, and a shape adds a place in its buffer. A shape that geo refuses adds no place.
 - A position in a shape has the distance 0. The reason `place` of the assessment has `distanceKm` when the distance is in the buffer. A match by a shape only has no codes.
