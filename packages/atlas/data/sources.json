@@ -633,6 +633,45 @@
     "round": 10
   },
   {
+    "id": "aemo-market-notices",
+    "name": "AEMO NEMWeb market notices",
+    "classes": [
+      "infra.power.grid-emergency",
+      "infra.power.load-shedding"
+    ],
+    "url": "https://nemweb.com.au/Reports/Current/Market_Notice/",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.aemo.com.au/privacy-and-legal-notices/copyright-permissions",
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The copyright permissions page returned 403 to the fetch tool. The terms were not read."
+    },
+    "cost": "free",
+    "delay": "The directory read at 00:25 UTC on 2026-11-22 had a notice from 04:06 AM on 22 November 2026 (market time).",
+    "history": "The current directory held 1,196 notice files.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "National Electricity Market of Australia (Queensland, New South Wales, Victoria, South Australia, Tasmania).",
+    "origins": [
+      "aemo"
+    ],
+    "path": [
+      "nemweb.com.au"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "Plain text notices of the market operator with a type field. A sample of 40 had contingency reclassifications for lightning, residue and price notices, but no reserve notice. The terms are unread.",
+    "evidence": [
+      "https://nemweb.com.au/Reports/Current/Market_Notice/",
+      "https://www.aemo.com.au/privacy-and-legal-notices/copyright-permissions"
+    ],
+    "round": 18
+  },
+  {
     "id": "afir-access-points",
     "name": "AFIR national access points for charging data (EU)",
     "classes": [],
@@ -1539,6 +1578,9 @@
     "classes": [
       "health.drug-shortage"
     ],
+    "dimensions": [
+      "drug-shortages"
+    ],
     "url": "https://www.ashp.org/drug-shortages/current-shortages",
     "access": "page",
     "auth": "none",
@@ -1807,6 +1849,46 @@
       "https://aviationweather.gov/data/api/"
     ],
     "round": 1
+  },
+  {
+    "id": "awattar-marketdata",
+    "name": "aWATTar market data API",
+    "classes": [],
+    "dimensions": [
+      "power-supply"
+    ],
+    "url": "https://api.awattar.de/v1/marketdata",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.awattar.de/services/api",
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The API page redirects to energy.tado.com, which gave no text to the fetch tool. The terms were not read."
+    },
+    "cost": "free",
+    "delay": "unknown (the read gave hourly prices from the current hour on)",
+    "history": "By the start and end parameters.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "Germany (api.awattar.de) and Austria (api.awattar.at), hourly day-ahead market prices in EUR/MWh.",
+    "origins": [
+      "awattar"
+    ],
+    "path": [
+      "api.awattar.de"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "A free JSON API of hourly day-ahead prices with no key, but the terms page moved to a new owner and was not readable.",
+    "evidence": [
+      "https://api.awattar.de/v1/marketdata",
+      "https://www.awattar.de/services/api",
+      "https://energy.tado.com/services/api"
+    ],
+    "round": 18
   },
   {
     "id": "aws-health-rss",
@@ -3082,6 +3164,48 @@
       "https://www.cdc.gov/han/index.html"
     ],
     "round": 1
+  },
+  {
+    "id": "cdc-nhsn-hrd",
+    "name": "CDC NHSN Weekly Hospital Respiratory Data (HRD) by jurisdiction",
+    "classes": [
+      "health.hospital-capacity"
+    ],
+    "dimensions": [
+      "hospital-occupancy"
+    ],
+    "url": "https://data.cdc.gov/Public-Health-Surveillance/Weekly-Hospital-Respiratory-Data-HRD-Metrics-by-Ju/ua7e-t2fy",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.usa.gov/government-works",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The dataset metadata gives the licence Public Domain U.S. Government."
+    },
+    "cost": "free",
+    "delay": "Weekly. The rows were updated on 2026-11-20 at the read.",
+    "history": "Since August 2020. Reporting has been mandated since 1 November 2024.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "United States: national, region and each state or territory, with 322 columns (beds, occupied beds, ICU beds, and COVID-19, influenza and RSV patients).",
+    "origins": [
+      "cdc"
+    ],
+    "path": [
+      "data.cdc.gov"
+    ],
+    "subjectIds": [
+      "state"
+    ],
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "The national weekly count of occupied inpatient and ICU beds by state in the public domain, the first source for health.hospital-capacity.",
+    "evidence": [
+      "https://data.cdc.gov/api/views/ua7e-t2fy.json"
+    ],
+    "round": 18
   },
   {
     "id": "cdc-nssp",
@@ -4613,6 +4737,47 @@
     ]
   },
   {
+    "id": "citybikes-api",
+    "name": "CityBikes API",
+    "classes": [],
+    "dimensions": [
+      "micromobility"
+    ],
+    "url": "https://api.citybik.es/v2/networks",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://api.citybik.es/v2/",
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The page says the service is free and asks each project to credit it with a link. It also says the data is not exactly open data, because some is collected by scraping."
+    },
+    "cost": "free",
+    "delay": "unknown",
+    "history": "unknown (current station states)",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "World: 815 bike share networks at the read, each with a city, a country and often a GBFS link.",
+    "origins": [
+      "gbfs-operators"
+    ],
+    "path": [
+      "api.citybik.es"
+    ],
+    "subjectIds": [
+      "point"
+    ],
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "One free API for station states of 815 bike share networks, but the data has no licence and part of it comes from scraping.",
+    "evidence": [
+      "https://api.citybik.es/v2/",
+      "https://api.citybik.es/v2/networks"
+    ],
+    "round": 18
+  },
+  {
     "id": "cloudflare-radar-api",
     "name": "Cloudflare Radar API",
     "classes": [
@@ -5895,6 +6060,48 @@
     ]
   },
   {
+    "id": "digitraffic-aton-faults",
+    "name": "Digitraffic marine: faults of aids to navigation",
+    "classes": [
+      "transport.sea.navigational-warning"
+    ],
+    "url": "https://meri.digitraffic.fi/api/aton/v1/faults",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.digitraffic.fi/en/terms-of-service/",
+      "automated": "limited",
+      "redistribution": "allowed",
+      "note": "Terms as read for the record digitraffic-road: CC BY 4.0 with the credit of Fintraffic, a Digitraffic-User header, gzip, and 60 requests per minute per IP. The marine OpenAPI document names Fintraffic as the operator."
+    },
+    "cost": "free",
+    "delay": "One read at 00:18 UTC on 2026-11-22 had lastUpdated 00:09 UTC.",
+    "history": "The parameter fixed_in_hours gives faults fixed in the last 0 to 2400 hours (default 7 days).",
+    "rateLimit": "60 requests per minute per IP (Digitraffic terms).",
+    "calibration": null,
+    "coverage": "Finnish fairways and sea areas. One read had 83 open faults (unlit lights, buoys off position and others) with fairway and sea area.",
+    "origins": [
+      "fintraffic"
+    ],
+    "path": [
+      "meri.digitraffic.fi"
+    ],
+    "subjectIds": [
+      "point"
+    ],
+    "risks": [
+      "The nautical-warning v1 path returned 404 and is not in the current marine OpenAPI document."
+    ],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "Open GeoJSON of faulty lights and marks on fairways, the main subject of local navigational warnings, under CC BY 4.0 with no key.",
+    "evidence": [
+      "https://meri.digitraffic.fi/swagger/openapi.json",
+      "https://meri.digitraffic.fi/api/aton/v1/faults"
+    ],
+    "round": 18
+  },
+  {
     "id": "digitraffic-marine",
     "name": "Digitraffic marine (Fintraffic)",
     "classes": [],
@@ -5932,6 +6139,47 @@
       "https://www.digitraffic.fi/en/terms-of-service/"
     ],
     "round": 10
+  },
+  {
+    "id": "digitraffic-port-calls",
+    "name": "Digitraffic marine: port calls and visits",
+    "classes": [],
+    "dimensions": [
+      "port-activity"
+    ],
+    "url": "https://meri.digitraffic.fi/api/port-call/v2/visits",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.digitraffic.fi/en/terms-of-service/",
+      "automated": "limited",
+      "redistribution": "allowed",
+      "note": "Terms as read for the record digitraffic-road: CC BY 4.0 with the credit of Fintraffic, a Digitraffic-User header, gzip, and 60 requests per minute per IP. The marine OpenAPI document names Fintraffic as the operator."
+    },
+    "cost": "free",
+    "delay": "The read on 2026-11-22 gave visits with update times from the Portnet system.",
+    "history": "unknown",
+    "rateLimit": "60 requests per minute per IP (Digitraffic terms).",
+    "calibration": null,
+    "coverage": "Ports of Finland: each visit with vessel, port code, ETA, ETD and status (one read had 137 visits).",
+    "origins": [
+      "fintraffic"
+    ],
+    "path": [
+      "meri.digitraffic.fi"
+    ],
+    "subjectIds": [
+      "topic"
+    ],
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "Open port visits with arrival and departure times and cancellations, under CC BY 4.0 with no key, a second port activity source.",
+    "evidence": [
+      "https://meri.digitraffic.fi/swagger/openapi.json",
+      "https://meri.digitraffic.fi/api/port-call/v2/visits"
+    ],
+    "round": 18
   },
   {
     "id": "digitraffic-rail",
@@ -6061,6 +6309,46 @@
     ]
   },
   {
+    "id": "dol-ui-weekly-claims",
+    "name": "US Department of Labor weekly unemployment insurance claims",
+    "classes": [],
+    "dimensions": [
+      "jobless-claims"
+    ],
+    "url": "https://oui.doleta.gov/unemploy/claims.asp",
+    "access": "page",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The page states no terms."
+    },
+    "cost": "free",
+    "delay": "Weekly (release day not seen).",
+    "history": "unknown",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "United States: initial and continued claims, national and by state.",
+    "origins": [
+      "us-dol"
+    ],
+    "path": [
+      "oui.doleta.gov"
+    ],
+    "subjectIds": null,
+    "risks": [
+      "The page showed a database connection error at the read on 2026-11-22."
+    ],
+    "decision": "later",
+    "adapter": null,
+    "reason": "The official source of weekly initial claims, but the page failed at the read and no format was seen.",
+    "evidence": [
+      "https://oui.doleta.gov/unemploy/claims.asp"
+    ],
+    "round": 18
+  },
+  {
     "id": "dotnet-announcements-security",
     "name": ".NET security announcements (GitHub issues)",
     "classes": [
@@ -6182,6 +6470,84 @@
       "https://www.drupal.org/terms"
     ],
     "round": 15
+  },
+  {
+    "id": "dwd-pollen-index",
+    "name": "DWD pollen hazard index (Pollenflug-Gefahrenindex)",
+    "classes": [
+      "env.pollen"
+    ],
+    "url": "https://opendata.dwd.de/climate_environment/health/alerts/s31fg.json",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.dwd.de/EN/service/legal_notice/legal_notice_node.html",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The DWD legal notice puts open spatial data and other DWD content under CC BY 4.0 with acknowledgement of the source. It says nothing on automated download. A Terms_of_use.pdf on opendata.dwd.de answered HTTP 200 but was not read."
+    },
+    "cost": "free",
+    "delay": "Daily. The file read on 2026-11-21 had last_update 11:00 and next_update 11:00 of the next day (local time).",
+    "history": "Only the current forecast: today, tomorrow and the day after.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "Germany, 27 forecast regions, with 8 pollen types (hazel, alder, birch, ash, grasses, rye, mugwort, ragweed).",
+    "origins": [
+      "dwd"
+    ],
+    "path": [
+      "opendata.dwd.de"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "A small official JSON file with a level for each pollen type and region for three days, under CC BY 4.0 with no key.",
+    "evidence": [
+      "https://opendata.dwd.de/climate_environment/health/alerts/",
+      "https://opendata.dwd.de/climate_environment/health/alerts/s31fg.json",
+      "https://www.dwd.de/EN/service/legal_notice/legal_notice_node.html"
+    ],
+    "round": 18
+  },
+  {
+    "id": "dwd-uv-index",
+    "name": "DWD UV hazard index (UV-Gefahrenindex)",
+    "classes": [
+      "env.uv"
+    ],
+    "url": "https://opendata.dwd.de/climate_environment/health/alerts/uvi.json",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.dwd.de/EN/service/legal_notice/legal_notice_node.html",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The DWD legal notice puts open spatial data and other DWD content under CC BY 4.0 with acknowledgement of the source. It says nothing on automated download."
+    },
+    "cost": "free",
+    "delay": "Daily. The file read on 2026-11-21 had last_update 07:30 and next_update 07:30 of the next day.",
+    "history": "Only the current forecast: today, tomorrow and the day after.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "38 cities in Germany and nearby places, with the UV index for three days.",
+    "origins": [
+      "dwd"
+    ],
+    "path": [
+      "opendata.dwd.de"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "A small official JSON file with a forecast UV index for each city for three days, under CC BY 4.0 with no key.",
+    "evidence": [
+      "https://opendata.dwd.de/climate_environment/health/alerts/",
+      "https://opendata.dwd.de/climate_environment/health/alerts/uvi.json",
+      "https://www.dwd.de/EN/service/legal_notice/legal_notice_node.html"
+    ],
+    "round": 18
   },
   {
     "id": "ea-flood-monitoring",
@@ -6423,6 +6789,49 @@
     "round": 10
   },
   {
+    "id": "ecdc-cdtr-rss",
+    "name": "ECDC Communicable Disease Threats Report RSS",
+    "classes": [
+      "health.outbreak"
+    ],
+    "dimensions": [
+      "outbreak-reports"
+    ],
+    "url": "https://www.ecdc.europa.eu/en/taxonomy/term/1505/feed",
+    "access": "feed",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.ecdc.europa.eu/en/legal-notice",
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The legal notice links copyright and limited reproduction notices. Their text did not come through in the fetch."
+    },
+    "cost": "free",
+    "delay": "Weekly in principle. The newest item at the read on 2026-11-21 was the report for week 42 (16 October 2026).",
+    "history": "The feed held the reports of weeks 40 to 42.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "Europe and world threats that ECDC follows, one report each week.",
+    "origins": [
+      "ecdc"
+    ],
+    "path": [
+      "www.ecdc.europa.eu"
+    ],
+    "subjectIds": null,
+    "risks": [
+      "The newest report in the feed was five weeks old at the read."
+    ],
+    "decision": "later",
+    "adapter": null,
+    "reason": "A weekly list of the communicable disease threats that ECDC monitors, a second outbreak report source, but the feed lagged five weeks.",
+    "evidence": [
+      "https://www.ecdc.europa.eu/en/rss-feeds",
+      "https://www.ecdc.europa.eu/en/taxonomy/term/1505/feed"
+    ],
+    "round": 18
+  },
+  {
     "id": "ecdc-erviss",
     "name": "ECDC ERVISS weekly respiratory virus data",
     "classes": [],
@@ -6635,7 +7044,8 @@
     ],
     "dimensions": [
       "power-supply",
-      "fuel-prices"
+      "fuel-prices",
+      "gas-storage"
     ],
     "url": "https://www.eia.gov/opendata/",
     "access": "api",
@@ -6671,6 +7081,88 @@
       "https://docs.catalyst.coop/pudl/en/stable/data_sources/eia930.html"
     ],
     "round": 14
+  },
+  {
+    "id": "eia-wngsr-json",
+    "name": "EIA Weekly Natural Gas Storage Report (JSON)",
+    "classes": [],
+    "dimensions": [
+      "gas-storage"
+    ],
+    "url": "https://ir.eia.gov/ngs/wngsr.json",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.eia.gov/opendata/register.php",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "Terms as read for the record eia-api in an earlier round: use with a rate limit and a credit with the date of the data."
+    },
+    "cost": "free",
+    "delay": "Weekly. The file read on 2026-11-22 was the release of 2026-11-19 for the week to 2026-11-13.",
+    "history": "The week before, the year before and the five-year average (2021-2025) in each release.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "United States: the lower 48 states and their storage regions.",
+    "origins": [
+      "eia"
+    ],
+    "path": [
+      "ir.eia.gov",
+      "cdn:cloudfront"
+    ],
+    "subjectIds": null,
+    "risks": [
+      "The URL redirects to a signed URL with an expiry time, so the adapter follows the redirect at each read."
+    ],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "The official weekly storage figures with the net change and the five-year average in one JSON file, with no key.",
+    "evidence": [
+      "https://ir.eia.gov/ngs/wngsr.json"
+    ],
+    "round": 18
+  },
+  {
+    "id": "ema-shortages-table",
+    "name": "EMA medicine supply shortages data table",
+    "classes": [
+      "health.drug-shortage"
+    ],
+    "dimensions": [
+      "drug-shortages"
+    ],
+    "url": "https://www.ema.europa.eu/en/documents/report/medicines-output-shortages-report_en.xlsx",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.ema.europa.eu/en/about-us/about-website/legal-notice",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The legal notice says EMA content can be reproduced and distributed for non-commercial and commercial purposes with EMA named as the source in each copy. Third-party content is excluded."
+    },
+    "cost": "free",
+    "delay": "The file had Last-Modified 2026-11-21 17:00 GMT at the read.",
+    "history": "unknown",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "European Union: the shortages that EMA assesses, with links to each shortage notice.",
+    "origins": [
+      "ema"
+    ],
+    "path": [
+      "www.ema.europa.eu"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "An official spreadsheet of medicine shortages that changed the same day, with clear reuse terms and no key.",
+    "evidence": [
+      "https://www.ema.europa.eu/en/medicines/download-medicine-data",
+      "https://www.ema.europa.eu/en/about-us/about-website/legal-notice"
+    ],
+    "round": 18
   },
   {
     "id": "emerging-threats-compromised-ips",
@@ -8055,6 +8547,46 @@
     "round": 1
   },
   {
+    "id": "find-case-law-atom",
+    "name": "Find Case Law (The National Archives) Atom feed",
+    "classes": [
+      "civic.court-ruling"
+    ],
+    "url": "https://caselaw.nationalarchives.gov.uk/atom.xml",
+    "access": "feed",
+    "auth": "none",
+    "terms": {
+      "url": "https://caselaw.nationalarchives.gov.uk/open-justice-licence",
+      "automated": "limited",
+      "redistribution": "limited",
+      "note": "Open Justice Licence v2.0: reuse and publication with a set attribution statement. Computational analysis, with indexing by search engines, is outside the licence and needs a separate licence. Withdrawn documents must be removed."
+    },
+    "cost": "free",
+    "delay": "The feed read on 2026-11-22 had updated 2026-11-20T15:57Z. Entries carry the publication date of the court.",
+    "history": "8,348 pages of entries, newest first. The feed links an OpenAPI document of the public API.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "Judgments and decisions of the courts and tribunals of England and Wales and of the UK Supreme Court.",
+    "origins": [
+      "uk-courts"
+    ],
+    "path": [
+      "caselaw.nationalarchives.gov.uk"
+    ],
+    "subjectIds": null,
+    "risks": [
+      "Entries name the parties. Strip names from fixtures and logs."
+    ],
+    "decision": "later",
+    "adapter": null,
+    "reason": "An official Atom feed of new judgments, but the licence puts computational analysis outside its scope, so an adapter needs a separate licence first.",
+    "evidence": [
+      "https://caselaw.nationalarchives.gov.uk/atom.xml",
+      "https://caselaw.nationalarchives.gov.uk/open-justice-licence"
+    ],
+    "round": 18
+  },
+  {
     "id": "first-epss-api",
     "name": "FIRST Exploit Prediction Scoring System (EPSS) API",
     "classes": [
@@ -8130,6 +8662,49 @@
       "https://github.com/fkie-cad/nvd-json-data-feeds"
     ],
     "round": 15
+  },
+  {
+    "id": "fmi-lightning-wfs",
+    "name": "FMI open data lightning observations (WFS)",
+    "classes": [
+      "met.lightning"
+    ],
+    "dimensions": [
+      "lightning-activity"
+    ],
+    "url": "https://opendata.fmi.fi/wfs?service=WFS&version=2.0.0&request=getFeature&storedquery_id=fmi::observations::lightning::simple",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://en.ilmatieteenlaitos.fi/open-data-licence",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The FMI open data sets are under CC BY 4.0. The page states no request limit."
+    },
+    "cost": "free",
+    "delay": "unknown (one read gave the strokes of the day before)",
+    "history": "By the starttime and endtime parameters.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "Finland and nearby seas and countries (the first stroke of one read was over the Baltic Sea).",
+    "origins": [
+      "fmi"
+    ],
+    "path": [
+      "opendata.fmi.fi"
+    ],
+    "subjectIds": [
+      "point"
+    ],
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "Open lightning strokes with time and place under CC BY 4.0 with no key. One read gave 28 strokes for 2026-11-20.",
+    "evidence": [
+      "https://opendata.fmi.fi/wfs?service=WFS&version=2.0.0&request=getFeature&storedquery_id=fmi::observations::lightning::simple&starttime=2026-11-20T00:00:00Z&endtime=2026-11-21T00:00:00Z",
+      "https://en.ilmatieteenlaitos.fi/open-data-licence"
+    ],
+    "round": 18
   },
   {
     "id": "fortiguard-outbreak-alerts-rss",
@@ -8345,7 +8920,8 @@
       "market.indicator.recession"
     ],
     "dimensions": [
-      "financial-markets"
+      "financial-markets",
+      "jobless-claims"
     ],
     "url": "https://fred.stlouisfed.org/docs/api/terms_of_use.html",
     "access": "api",
@@ -9071,6 +9647,46 @@
     "round": 11
   },
   {
+    "id": "gie-agsi",
+    "name": "GIE AGSI+ gas storage transparency API",
+    "classes": [],
+    "dimensions": [
+      "gas-storage"
+    ],
+    "url": "https://agsi.gie.eu/",
+    "access": "api",
+    "auth": "key",
+    "terms": {
+      "url": "https://agsi.gie.eu/account",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The API is free but needs a personal key from a registration. All data can be used or repackaged with GIE (AGSI or ALSI) named as the source. GIE can turn off a key with no credit."
+    },
+    "cost": "free",
+    "delay": "unknown (the page read gives no update time)",
+    "history": "unknown",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "Europe: gas storage of each country and operator. ALSI gives LNG terminals.",
+    "origins": [
+      "gie"
+    ],
+    "path": [
+      "agsi.gie.eu"
+    ],
+    "subjectIds": [
+      "iso3166"
+    ],
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "The European reference for gas storage fill levels, free with clear reuse terms, but it needs a registration key.",
+    "evidence": [
+      "https://agsi.gie.eu/account"
+    ],
+    "round": 18
+  },
+  {
     "id": "github-advisories-api",
     "name": "GitHub global security advisories REST API",
     "classes": [
@@ -9364,6 +9980,44 @@
       "https://developers.google.com/search/blog/2025/07/trends-api"
     ],
     "round": 10
+  },
+  {
+    "id": "govuk-bank-holidays",
+    "name": "GOV.UK bank holidays JSON",
+    "classes": [
+      "civic.public-holiday"
+    ],
+    "url": "https://www.gov.uk/bank-holidays.json",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The page footer says all content is under the Open Government Licence v3.0, except where otherwise stated."
+    },
+    "cost": "free",
+    "delay": "published ahead",
+    "history": "The file had 83 to 103 events for each division, with dates to 2028-12-26.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "United Kingdom: England and Wales, Scotland, Northern Ireland.",
+    "origins": [
+      "uk-government"
+    ],
+    "path": [
+      "www.gov.uk"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "The official bank holidays of the three UK divisions in one small JSON file under OGL v3, with extra days added by proclamation.",
+    "evidence": [
+      "https://www.gov.uk/bank-holidays.json",
+      "https://www.gov.uk/bank-holidays"
+    ],
+    "round": 18
   },
   {
     "id": "gpsjam",
@@ -9748,6 +10402,44 @@
     ]
   },
   {
+    "id": "hot-tasking-manager-api",
+    "name": "HOT Tasking Manager projects API",
+    "classes": [],
+    "dimensions": [
+      "disaster-mapping"
+    ],
+    "url": "https://tasking-manager-production-api.hotosm.org/api/v2/projects/",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "No terms page was opened. The map data goes to OpenStreetMap under ODbL, but the terms of the project API were not seen."
+    },
+    "cost": "free",
+    "delay": "The projects of one read on 2026-11-22 had lastUpdated times within the same hour.",
+    "history": "842 projects in the default list (61 pages).",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "World: humanitarian mapping projects with priority, organisation and area.",
+    "origins": [
+      "hot-osm"
+    ],
+    "path": [
+      "tasking-manager-production-api.hotosm.org"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "The count and priority of active mapping projects rise after a disaster, but the API terms are unread.",
+    "evidence": [
+      "https://tasking-manager-production-api.hotosm.org/api/v2/projects/?orderBy=last_updated&orderByType=DESC&page=1"
+    ],
+    "round": 18
+  },
+  {
     "id": "hp-security-bulletins",
     "name": "HP Inc security bulletins",
     "classes": [
@@ -10066,6 +10758,84 @@
       "https://github.com/metrograph-labs/alerts/blob/main/packages/source-iem/src/fetch.ts"
     ],
     "round": 1
+  },
+  {
+    "id": "iers-bulletin-c",
+    "name": "IERS Bulletin C and leap-seconds.list",
+    "classes": [
+      "infra.timekeeping"
+    ],
+    "url": "https://hpiers.obspm.fr/iers/bul/bulc/ntp/leap-seconds.list",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "No terms page was opened. The files carry no licence statement in the lines read."
+    },
+    "cost": "free",
+    "delay": "Twice a year. Bulletin C 72 is dated 6 July 2026.",
+    "history": "The leap-seconds.list file holds each leap second since 1972 and an expiry date.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "World: the official notice of each leap second in UTC.",
+    "origins": [
+      "iers"
+    ],
+    "path": [
+      "hpiers.obspm.fr"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "The authority for leap seconds in a standard NTP file format. Bulletin C 72 says no leap second at the end of December 2026. Its terms are unclear.",
+    "evidence": [
+      "https://hpiers.obspm.fr/iers/bul/bulc/ntp/leap-seconds.list",
+      "https://hpiers.obspm.fr/iers/bul/bulc/bulletinc.dat"
+    ],
+    "round": 18
+  },
+  {
+    "id": "ifrc-go-appeals",
+    "name": "IFRC GO API: emergency appeals and DREF operations",
+    "classes": [
+      "rescue.disaster-assistance"
+    ],
+    "url": "https://goadmin.ifrc.org/api/v2/appeal/",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://go.ifrc.org/terms",
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The terms page is a script page and gave no text to the fetch tool."
+    },
+    "cost": "free",
+    "delay": "The newest appeal read on 2026-11-22 started 2026-11-18 and was created the same day.",
+    "history": "4,258 appeals in the API, with type, status, disaster type, beneficiaries and amounts.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "World: the appeals and DREF operations of the Red Cross and Red Crescent societies.",
+    "origins": [
+      "ifrc"
+    ],
+    "path": [
+      "goadmin.ifrc.org"
+    ],
+    "subjectIds": [
+      "iso3166"
+    ],
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "A public JSON API of new international disaster relief operations with no key. The terms are unread.",
+    "evidence": [
+      "https://goadmin.ifrc.org/api/v2/appeal/?limit=2&ordering=-start_date",
+      "https://go.ifrc.org/terms"
+    ],
+    "round": 18
   },
   {
     "id": "ihr",
@@ -11619,6 +12389,44 @@
       "https://ll.thespacedevs.com/2.3.0/launches/upcoming/?limit=1&mode=list"
     ],
     "round": 12
+  },
+  {
+    "id": "legislation-gov-uk-feeds",
+    "name": "legislation.gov.uk new legislation Atom feeds",
+    "classes": [
+      "civic.regulation"
+    ],
+    "url": "https://www.legislation.gov.uk/new/data.feed",
+    "access": "feed",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.legislation.gov.uk/developer/uris/feeds",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The site footer says all content is under the Open Government Licence v3.0, except where otherwise stated. A fair use policy is linked but was not read."
+    },
+    "cost": "free",
+    "delay": "The feed read at 00:20 UTC on 2026-11-22 had updated 2026-11-21T23:45Z.",
+    "history": "Paged search results with facets by type (71,621 UK Statutory Instruments in the facet count). A CSV form is linked from each feed.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "United Kingdom: Acts, statutory instruments of the UK, Scotland, Wales and Northern Ireland, and other types.",
+    "origins": [
+      "uk-national-archives"
+    ],
+    "path": [
+      "www.legislation.gov.uk"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "An official Atom feed of new laws and statutory instruments, the UK form of new regulations, under OGL v3 with no key.",
+    "evidence": [
+      "https://www.legislation.gov.uk/new/data.feed",
+      "https://www.legislation.gov.uk/developer/uris/feeds"
+    ],
+    "round": 18
   },
   {
     "id": "lenovo-product-security",
@@ -13345,6 +14153,9 @@
     "classes": [
       "met.lightning"
     ],
+    "dimensions": [
+      "lightning-activity"
+    ],
     "url": "https://catalog.data.gov/dataset/noaa-goes-r-series-geostationary-lightning-mapper-glm-level-2-lightning-detection-events-g",
     "access": "file",
     "auth": "none",
@@ -13736,6 +14547,46 @@
       "https://nrc.uscg.mil/"
     ],
     "round": 1
+  },
+  {
+    "id": "nrcs-awdb-rest",
+    "name": "USDA NRCS Air and Water Database REST API (SNOTEL)",
+    "classes": [],
+    "dimensions": [
+      "snowpack"
+    ],
+    "url": "https://wcc.sc.egov.usda.gov/awdbRestApi/services/v1/data",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "No terms page was opened this round."
+    },
+    "cost": "free",
+    "delay": "Daily. A read on 2026-11-21 gave values for 2026-11-19 and 2026-11-20.",
+    "history": "Station records since the start of each station (one began in 1994).",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "Western United States and Alaska: SNOTEL stations (140 in Utah answered one query).",
+    "origins": [
+      "usda-nrcs"
+    ],
+    "path": [
+      "wcc.sc.egov.usda.gov"
+    ],
+    "subjectIds": [
+      "point"
+    ],
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "A free JSON API of daily snow water equivalent for each station with no key. The terms are unread.",
+    "evidence": [
+      "https://wcc.sc.egov.usda.gov/awdbRestApi/services/v1/data?stationTriplets=*:UT:SNTL&elements=WTEQ&duration=DAILY&beginDate=2026-11-19&endDate=2026-11-21"
+    ],
+    "round": 18
   },
   {
     "id": "nsm-ncsc-norway-warnings",
@@ -14486,6 +15337,46 @@
     "round": 3
   },
   {
+    "id": "oecd-cli-sdmx",
+    "name": "OECD Composite Leading Indicators (SDMX API)",
+    "classes": [
+      "market.indicator.recession"
+    ],
+    "url": "https://sdmx.oecd.org/public/rest/data/OECD.SDD.STES,DSD_STES@DF_CLI,4.1/",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.oecd.org/en/about/terms-conditions.html",
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The terms page returned 403 to the fetch tool. The terms were not read."
+    },
+    "cost": "free",
+    "delay": "Monthly. A read on 2026-11-22 had values to 2026-10 for the USA and the G20.",
+    "history": "unknown (lastNObservations=2 was asked)",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "OECD members, G20 and other areas, as a monthly amplitude-adjusted index (100 is the long-term trend).",
+    "origins": [
+      "oecd"
+    ],
+    "path": [
+      "sdmx.oecd.org"
+    ],
+    "subjectIds": [
+      "iso3166"
+    ],
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "A monthly leading index for turning points of the business cycle in many countries, as CSV with no key. The terms page refused the fetch.",
+    "evidence": [
+      "https://sdmx.oecd.org/public/rest/data/OECD.SDD.STES,DSD_STES@DF_CLI,4.1/USA+G20.M.LI...AA...H?lastNObservations=2",
+      "https://www.oecd.org/en/about/terms-conditions.html"
+    ],
+    "round": 18
+  },
+  {
     "id": "ofac-recent-actions",
     "name": "OFAC recent actions (page and email)",
     "classes": [
@@ -14604,6 +15495,48 @@
       "cve-cnas",
       "first-teams"
     ]
+  },
+  {
+    "id": "ooni-api",
+    "name": "OONI API (measurement aggregation)",
+    "classes": [],
+    "dimensions": [
+      "internet-censorship"
+    ],
+    "url": "https://api.ooni.io/api/v1/aggregation",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://github.com/ooni/license/tree/master/data",
+      "automated": "unclear",
+      "redistribution": "limited",
+      "note": "The data licence folder of OONI holds the file CC4.0-BY-NC-SA.md, so the data is under CC BY-NC-SA 4.0. No rate limit was seen."
+    },
+    "cost": "free",
+    "delay": "A read on 2026-11-21 had hourly counts for 2026-11-19.",
+    "history": "Since 2012 (OONI archive).",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "World: tests by volunteers in each country, with counts of ok, anomaly, confirmed blocks and failures.",
+    "origins": [
+      "ooni"
+    ],
+    "path": [
+      "api.ooni.io"
+    ],
+    "subjectIds": [
+      "iso3166"
+    ],
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "A free API that gives counts of confirmed blocks and anomalies for each country and hour, with no key, under a non-commercial licence.",
+    "evidence": [
+      "https://ooni.org/data/",
+      "https://api.ooni.io/api/v1/aggregation?probe_cc=IR&test_name=web_connectivity&since=2026-11-19&until=2026-11-21&axis_x=measurement_start_day",
+      "https://api.github.com/repos/ooni/license/contents/data"
+    ],
+    "round": 18
   },
   {
     "id": "open-xchange-csaf",
@@ -14864,6 +15797,9 @@
     "classes": [
       "health.drug-shortage"
     ],
+    "dimensions": [
+      "drug-shortages"
+    ],
     "url": "https://open.fda.gov/apis/drug/drugshortages/",
     "access": "api",
     "auth": "key",
@@ -14976,6 +15912,46 @@
       "https://www.fema.gov/about/openfema/api"
     ],
     "round": 1
+  },
+  {
+    "id": "openholidays-api",
+    "name": "OpenHolidays API",
+    "classes": [
+      "civic.public-holiday"
+    ],
+    "url": "https://openholidaysapi.org/",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://github.com/openpotato/openholidaysapi.data/blob/main/LICENSE",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The OpenAPI document names the Open Database License (ODbL) for the data. The licence file was not opened. Nothing on rate limits was seen."
+    },
+    "cost": "free",
+    "delay": "published ahead",
+    "history": "Past and future dates by the validFrom and validTo parameters.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "Public and school holidays for the countries and subdivisions in its /Countries and /Subdivisions lists (not counted this round). A test for Germany in December 2026 gave 25 and 26 December as nationwide.",
+    "origins": [
+      "openholidays"
+    ],
+    "path": [
+      "openholidaysapi.org"
+    ],
+    "subjectIds": [
+      "iso3166"
+    ],
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "A free JSON API of public and school holidays with regional scope and no key, a second source next to Nager.Date.",
+    "evidence": [
+      "https://openholidaysapi.org/swagger/v1/swagger.json",
+      "https://openholidaysapi.org/PublicHolidays?countryIsoCode=DE&languageIsoCode=EN&validFrom=2026-12-01&validTo=2026-12-31"
+    ],
+    "round": 18
   },
   {
     "id": "openphish-community",
@@ -15941,6 +16917,47 @@
       "https://github.com/nomi-sec/PoC-in-GitHub"
     ],
     "round": 15
+  },
+  {
+    "id": "police-uk-api",
+    "name": "data.police.uk street crime API",
+    "classes": [
+      "security.crime"
+    ],
+    "url": "https://data.police.uk/docs/",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.police.uk/about/",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The information page of the site puts the data under the Open Government Licence v3.0. It states no rate limit and no rule on automated use."
+    },
+    "cost": "free",
+    "delay": "Monthly. On 2026-11-22 the API gave 2026-09 as the newest month.",
+    "history": "Monthly snapshots for each force. Outcomes can change for crimes of many months ago.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "England, Wales and Northern Ireland: the 43 geographic forces of England and Wales, British Transport Police and the Police Service of Northern Ireland.",
+    "origins": [
+      "uk-police-forces"
+    ],
+    "path": [
+      "data.police.uk"
+    ],
+    "subjectIds": [
+      "point"
+    ],
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "A national open API of street crime with approximate points, but the data comes two months late, so it gives trends and not alerts.",
+    "evidence": [
+      "https://data.police.uk/about/",
+      "https://data.police.uk/api/crimes-street-dates",
+      "https://data.police.uk/api/crime-last-updated"
+    ],
+    "round": 18
   },
   {
     "id": "polymarket-clob-api",
@@ -19544,6 +20561,45 @@
     "round": 10
   },
   {
+    "id": "transport-canada-vehicle-recalls",
+    "name": "Transport Canada Vehicle Recalls Database (last 60 days)",
+    "classes": [
+      "safety.recall.vehicle"
+    ],
+    "url": "https://opendatatc.tc.canada.ca/vrdb_60days_daily.csv",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://open.canada.ca/en/open-government-licence-canada",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The portal record has the licence ca-ogl-lgo (Open Government Licence - Canada). The licence text was read for the record cbsa-bwt in an earlier round."
+    },
+    "cost": "free",
+    "delay": "Daily (frequency P1D in the portal record).",
+    "history": "60 days in the daily file. A full monthly file and a JSON API (data.tc.gc.ca v1.3) hold the rest.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "Canada: recalls of vehicles, tires, child seats and equipment, with make, model, year, units and system.",
+    "origins": [
+      "transport-canada"
+    ],
+    "path": [
+      "opendatatc.tc.canada.ca"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "An official daily CSV of new recalls in Canada under the Open Government Licence, a second source next to NHTSA.",
+    "evidence": [
+      "https://open.canada.ca/data/api/action/package_search?q=motor%20vehicle%20safety%20recalls%20database&rows=3",
+      "https://opendatatc.tc.canada.ca/vrdb_60days_daily.csv",
+      "https://data.tc.gc.ca/v1.3/api/eng/vehicle-recall-database/recall/make-name/toyota/year-range/2025-2026"
+    ],
+    "round": 18
+  },
+  {
     "id": "treasury-fiscal-data-api",
     "name": "Treasury Fiscal Data API",
     "classes": [
@@ -20077,6 +21133,46 @@
     "reason": "The primary source of the reports of attacks on ships near the Middle East. Its pages refuse automated reads with a bot check.",
     "evidence": [],
     "round": 12
+  },
+  {
+    "id": "usbr-rise-api",
+    "name": "Bureau of Reclamation RISE API",
+    "classes": [],
+    "dimensions": [
+      "reservoir-storage"
+    ],
+    "url": "https://data.usbr.gov/rise/api/catalog-item",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "No terms page was opened. Each catalog item has a disclaimer that the data is provisional and subject to revision."
+    },
+    "cost": "free",
+    "delay": "Daily. One item read on 2026-11-22 had data to 2026-11-20.",
+    "history": "Long records (one item starts in 1952).",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "Western United States: Reclamation reservoirs and dams, with storage, elevation, inflow and release series.",
+    "origins": [
+      "usbr"
+    ],
+    "path": [
+      "data.usbr.gov"
+    ],
+    "subjectIds": [
+      "point"
+    ],
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "A free JSON:API catalog with 8,925 items for the word storage and daily time series, but the terms are unread.",
+    "evidence": [
+      "https://data.usbr.gov/rise/api/catalog-item?page=1&itemsPerPage=1&search=storage"
+    ],
+    "round": 18
   },
   {
     "id": "uscg-navcen",
@@ -20803,6 +21899,47 @@
     "families": [
       "cve-cnas"
     ]
+  },
+  {
+    "id": "water-uk-storm-overflow-hub",
+    "name": "Water UK National Storm Overflow Hub (Stream), live storm overflow activity",
+    "classes": [
+      "env.water.sewage-overflow"
+    ],
+    "url": "https://www.streamwaterdata.co.uk/api/search/v1/collections/dataset/items?q=storm%20overflow%20activity",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The hub catalog gives CC-BY-4.0 as the licence of each company layer of storm overflow activity. No terms page on automated use was read."
+    },
+    "cost": "free",
+    "delay": "One read of the United Utilities layer at 00:18 UTC on 2026-11-22 had LastUpdated 00:02 UTC.",
+    "history": "Each outfall has its latest event start and end only. Yearly and monthly EDM layers in the same catalog hold the totals.",
+    "rateLimit": "unknown (ArcGIS Online)",
+    "calibration": null,
+    "coverage": "England: one ArcGIS FeatureServer for each water and sewerage company (8 company layers seen: United Utilities, Yorkshire, Anglian, Northumbrian, Wessex, Thames, South West, Severn Trent).",
+    "origins": [
+      "uk-water-companies"
+    ],
+    "path": [
+      "www.streamwaterdata.co.uk",
+      "provider:arcgis-online"
+    ],
+    "subjectIds": [
+      "point"
+    ],
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "Each outfall has a live status (discharging or not), the start of that status and the receiving water, in one schema for all companies under CC BY 4.0.",
+    "evidence": [
+      "https://www.streamwaterdata.co.uk/api/search/v1/collections/dataset/items?q=storm%20overflow%20activity&limit=20",
+      "https://services5.arcgis.com/5eoLvR0f8HKb7HWP/arcgis/rest/services/United_Utilities_Storm_Overflow_Activity/FeatureServer/0/query?where=1%3D1&outFields=*&resultRecordCount=2&f=json"
+    ],
+    "round": 18
   },
   {
     "id": "waze-for-cities",

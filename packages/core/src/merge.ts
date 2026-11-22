@@ -62,8 +62,14 @@ export function normalize(parts: MergeParts): MergeState {
     const held = reports.get(report.id);
     if (held === undefined) reports.set(report.id, { report });
     else if (held.report !== report) {
+      const known = knownOrder(report, held.report);
+      if (known !== undefined) {
+        if (known < 0) reports.set(report.id, { report });
+        continue;
+      }
       const heldText = held.text ?? reportText(held.report);
       const text = reportText(report);
+      remember(report, held.report, textOrder(text, heldText));
       reports.set(report.id, text < heldText ? { report, text } : { report: held.report, text: heldText });
     }
   }
@@ -120,7 +126,7 @@ export function add(state: MergeState, parts: MergeParts): MergeState {
   }
   const kept = (report: ReportId): boolean => indexIn(state.retired, report, tombstoneKey) < 0;
   // For two contents of one id, the content with the smaller canonical JSON. A tie keeps the content that the state has.
-  const smaller = (held: Report, report: Report): Report => (held === report || reportText(report) >= reportText(held) ? held : report);
+  const smaller = (held: Report, report: Report): Report => (held === report || contentOrder(report, held) >= 0 ? held : report);
   const first = <T>(held: T): T => held;
   const reports = insertSorted(state.reports, (parts.reports ?? []).filter((report) => kept(report.id)), reportKey, smaller);
   const deliveries = insertSorted(state.deliveries, (parts.deliveries ?? []).filter((delivery) => kept(delivery.incident)), canonical, first);
@@ -567,6 +573,38 @@ function highest(parts: readonly { readonly level: Level }[]): Level | undefined
  */
 function reportText(report: Report): string {
   return canonicalJson(report, { form: "json" });
+}
+
+/**
+ * The order of the canonical JSON of two contents of one id, for the life of the two objects. The join of the two sides
+ * of a copy compares the same pairs at each step of the retirement (AL-114). The cache keeps a number for each pair, and
+ * no text. Thus it keeps no second copy of a report.
+ */
+const orders = new WeakMap<Report, WeakMap<Report, number>>();
+
+// The order of two texts: below 0 when the first is smaller, 0 when they are equal.
+const textOrder = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+
+// The order of two contents that a comparison already found, or undefined.
+const knownOrder = (a: Report, b: Report): number | undefined => orders.get(a)?.get(b);
+
+// This function keeps the order of two contents, in the two directions.
+function remember(a: Report, b: Report, order: number): void {
+  let ofA = orders.get(a);
+  if (ofA === undefined) orders.set(a, (ofA = new WeakMap()));
+  ofA.set(b, order);
+  let ofB = orders.get(b);
+  if (ofB === undefined) orders.set(b, (ofB = new WeakMap()));
+  ofB.set(a, order === 0 ? 0 : -order);
+}
+
+// The order of the canonical JSON of two contents of one id: below 0 when `a` is smaller.
+function contentOrder(a: Report, b: Report): number {
+  const known = knownOrder(a, b);
+  if (known !== undefined) return known;
+  const order = textOrder(reportText(a), reportText(b));
+  remember(a, b, order);
+  return order;
 }
 
 // The canonical JSON of each small object (a delivery, an acknowledgment, an end mark, a line), kept for the life of the object.

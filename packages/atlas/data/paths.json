@@ -48,6 +48,12 @@
     "note": "The host of the feed of vermont-ag-breach-notices."
   },
   {
+    "id": "agsi.gie.eu",
+    "name": "agsi.gie.eu",
+    "kind": "host",
+    "note": "The host of the feed of gie-agsi."
+  },
+  {
     "id": "alas.aws.amazon.com",
     "name": "alas.aws.amazon.com",
     "kind": "host",
@@ -96,6 +102,12 @@
     "note": "The host of the feed of avalanche-org-api."
   },
   {
+    "id": "api.awattar.de",
+    "name": "api.awattar.de",
+    "kind": "host",
+    "note": "The host of the feed of awattar-marketdata."
+  },
+  {
     "id": "api.binance.com",
     "name": "api.binance.com",
     "kind": "host",
@@ -112,6 +124,12 @@
     "name": "api.carbonintensity.org.uk",
     "kind": "host",
     "note": "The host of the data of carbon-intensity-gb."
+  },
+  {
+    "id": "api.citybik.es",
+    "name": "api.citybik.es",
+    "kind": "host",
+    "note": "The host of the feed of citybikes-api."
   },
   {
     "id": "api.cloudflare.com",
@@ -220,6 +238,12 @@
     "name": "api.nhtsa.gov",
     "kind": "host",
     "note": "The host of the feed of nhtsa-recalls-api."
+  },
+  {
+    "id": "api.ooni.io",
+    "name": "api.ooni.io",
+    "kind": "host",
+    "note": "The host of the feed of ooni-api."
   },
   {
     "id": "api.openaq.org",
@@ -424,6 +448,12 @@
     "name": "The central limit order book of Polymarket",
     "kind": "carrier",
     "note": "The CLOB API and the market websocket give the data of one order book."
+  },
+  {
+    "id": "caselaw.nationalarchives.gov.uk",
+    "name": "caselaw.nationalarchives.gov.uk",
+    "kind": "host",
+    "note": "The host of the feed of find-case-law-atom."
   },
   {
     "id": "ccb.belgium.be",
@@ -642,10 +672,22 @@
     "note": "The host of the feed of phishtank."
   },
   {
+    "id": "data.police.uk",
+    "name": "data.police.uk",
+    "kind": "host",
+    "note": "The host of the feed of police-uk-api."
+  },
+  {
     "id": "data.sensor.community",
     "name": "data.sensor.community",
     "kind": "host",
     "note": "The host of the data of sensor-community."
+  },
+  {
+    "id": "data.usbr.gov",
+    "name": "data.usbr.gov",
+    "kind": "host",
+    "note": "The host of the feed of usbr-rise-api."
   },
   {
     "id": "data.wa.gov",
@@ -894,6 +936,12 @@
     "note": "The host of the feed of exploitdb-git."
   },
   {
+    "id": "goadmin.ifrc.org",
+    "name": "goadmin.ifrc.org",
+    "kind": "host",
+    "note": "The host of the feed of ifrc-go-appeals."
+  },
+  {
     "id": "gpsjam.org",
     "name": "gpsjam.org",
     "kind": "host",
@@ -922,6 +970,12 @@
     "name": "horizon.netscout.com",
     "kind": "host",
     "note": "The host of the feed of netscout-horizon."
+  },
+  {
+    "id": "hpiers.obspm.fr",
+    "name": "hpiers.obspm.fr",
+    "kind": "host",
+    "note": "The host of the feed of iers-bulletin-c."
   },
   {
     "id": "hubeau.eaufrance.fr",
@@ -964,6 +1018,12 @@
     "name": "inthewild.io",
     "kind": "host",
     "note": "The host of the feed of inthewild-io."
+  },
+  {
+    "id": "ir.eia.gov",
+    "name": "ir.eia.gov",
+    "kind": "host",
+    "note": "The host of the feed of eia-wngsr-json."
   },
   {
     "id": "isc.sans.edu",
@@ -1050,6 +1110,12 @@
     "note": "The host of the feed of abusech-malwarebazaar."
   },
   {
+    "id": "meri.digitraffic.fi",
+    "name": "meri.digitraffic.fi",
+    "kind": "host",
+    "note": "The host of the feed of digitraffic-aton-faults, digitraffic-port-calls."
+  },
+  {
     "id": "mesonet.agron.iastate.edu",
     "name": "mesonet.agron.iastate.edu",
     "kind": "host",
@@ -1084,6 +1150,12 @@
     "name": "nasstatus.faa.gov",
     "kind": "host",
     "note": "The host of the feed of faa-nas-status."
+  },
+  {
+    "id": "nemweb.com.au",
+    "name": "nemweb.com.au",
+    "kind": "host",
+    "note": "The host of the feed of aemo-market-notices."
   },
   {
     "id": "neo.ssa.esa.int",
@@ -1158,10 +1230,34 @@
     "note": "The host of the feed of ofac-recent-actions, ofac-sanctions-list-service."
   },
   {
+    "id": "opendata.dwd.de",
+    "name": "opendata.dwd.de",
+    "kind": "host",
+    "note": "The host of the feed of dwd-pollen-index, dwd-uv-index."
+  },
+  {
+    "id": "opendata.fmi.fi",
+    "name": "opendata.fmi.fi",
+    "kind": "host",
+    "note": "The host of the feed of fmi-lightning-wfs."
+  },
+  {
     "id": "opendata.ndw.nu",
     "name": "opendata.ndw.nu",
     "kind": "host",
     "note": "The host of the data of ndw-open-data."
+  },
+  {
+    "id": "opendatatc.tc.canada.ca",
+    "name": "opendatatc.tc.canada.ca",
+    "kind": "host",
+    "note": "The host of the feed of transport-canada-vehicle-recalls."
+  },
+  {
+    "id": "openholidaysapi.org",
+    "name": "openholidaysapi.org",
+    "kind": "host",
+    "note": "The host of the feed of openholidays-api."
   },
   {
     "id": "ossindex.sonatype.org",
@@ -1174,6 +1270,12 @@
     "name": "otx.alienvault.com",
     "kind": "host",
     "note": "The host of the feed of alienvault-otx."
+  },
+  {
+    "id": "oui.doleta.gov",
+    "name": "oui.doleta.gov",
+    "kind": "host",
+    "note": "The host of the feed of dol-ui-weekly-claims."
   },
   {
     "id": "packages.broadcom.com",
@@ -1392,6 +1494,12 @@
     "note": "The host of the feed of samsik-dk-cyber-news."
   },
   {
+    "id": "sdmx.oecd.org",
+    "name": "sdmx.oecd.org",
+    "kind": "host",
+    "note": "The host of the feed of oecd-cli-sdmx."
+  },
+  {
     "id": "sec.cloudapps.cisco.com",
     "name": "sec.cloudapps.cisco.com",
     "kind": "host",
@@ -1596,6 +1704,12 @@
     "note": "The host of bom-sws-api. A DNS lookup on 2026-11-16 gave the canonical name prd.bom.sws.edgekey.net, a name of Akamai."
   },
   {
+    "id": "tasking-manager-production-api.hotosm.org",
+    "name": "tasking-manager-production-api.hotosm.org",
+    "kind": "host",
+    "note": "The host of the feed of hot-tasking-manager-api."
+  },
+  {
     "id": "threatfox-api.abuse.ch",
     "name": "threatfox-api.abuse.ch",
     "kind": "host",
@@ -1702,6 +1816,12 @@
     "name": "vuxml.freebsd.org",
     "kind": "host",
     "note": "The host of the feed of freebsd-vuxml."
+  },
+  {
+    "id": "wcc.sc.egov.usda.gov",
+    "name": "wcc.sc.egov.usda.gov",
+    "kind": "host",
+    "note": "The host of the feed of nrcs-awdb-rest."
   },
   {
     "id": "webtris.nationalhighways.co.uk",
@@ -1986,6 +2106,12 @@
     "note": "The host of the feed of ecdc-threats."
   },
   {
+    "id": "www.ema.europa.eu",
+    "name": "www.ema.europa.eu",
+    "kind": "host",
+    "note": "The host of the feed of ema-shortages-table."
+  },
+  {
     "id": "www.epa.gov",
     "name": "www.epa.gov",
     "kind": "host",
@@ -2194,6 +2320,12 @@
     "name": "www.kyberturvallisuuskeskus.fi",
     "kind": "host",
     "note": "The host of the feed of ncsc-fi-daily-vulnerability-digest, ncsc-fi-vulnerabilities-rss."
+  },
+  {
+    "id": "www.legislation.gov.uk",
+    "name": "www.legislation.gov.uk",
+    "kind": "host",
+    "note": "The host of the feed of legislation-gov-uk-feeds."
   },
   {
     "id": "www.maine.gov",
@@ -2434,6 +2566,12 @@
     "name": "www.spamhaus.org",
     "kind": "host",
     "note": "The host of the feed of spamhaus-drop."
+  },
+  {
+    "id": "www.streamwaterdata.co.uk",
+    "name": "www.streamwaterdata.co.uk",
+    "kind": "host",
+    "note": "The host of the feed of water-uk-storm-overflow-hub."
   },
   {
     "id": "www.synology.com",
