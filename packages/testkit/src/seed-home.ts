@@ -89,6 +89,18 @@ export async function seedHome(dir: string, options: SeedHomeOptions): Promise<S
   return seeded;
 }
 
+/** The last line of the seed script: the event, the seed record and the bytes of each store variable. */
+export interface SeededLine extends SeedRecord {
+  readonly ev: "seeded";
+  /** The bytes that the seed wrote for each store variable of `capacity-app.json`. This is the seed protocol of `capacity-app/1`. */
+  readonly amounts: { readonly log: number };
+}
+
+/** This function gives the last line of the seed script. The lab of the capacity models reads the size of a point from `amounts`. */
+export function seededLine(record: SeedRecord): SeededLine {
+  return { ev: "seeded", ...record, amounts: { log: record.bytes } };
+}
+
 /**
  * This function reads the seed record of a home folder.
  *

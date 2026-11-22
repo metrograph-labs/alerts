@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { CONFIG_FILE, openMeasuredRuntime } from "@mark1russell7/alerts-runtime";
 import { wallClock } from "@mark1russell7/algebra/clock";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { LAB_READY, MEASURE_CONFIG, readSeedRecord, SEED_RECORD_FILE, seedHome } from "./seed-home.ts";
+import { LAB_READY, MEASURE_CONFIG, readSeedRecord, SEED_RECORD_FILE, seededLine, seedHome } from "./seed-home.ts";
 import type { SeedStoreResult } from "./seed-store.ts";
 
 // A small home: approximately 1 hour of the live mix, with small cache files.
@@ -65,6 +65,14 @@ describe("capacity-app.json", () => {
   it("names the seed and the run scripts of this package", () => {
     for (const command of [app.start.seed, app.start.run]) {
       expect(existsSync(join(ROOT, command.cwd, command.argv[1] ?? ""))).toBe(true);
+    }
+  });
+
+  it("gives the bytes that the seed wrote for each store variable in the field amounts of the seed line", () => {
+    const line = seededLine(readSeedRecord(join(dir, "home")));
+    expect(line).toMatchObject({ ev: "seeded", seed: "al-124", amounts: { log: seeded.bytes } });
+    for (const variable of app.variables.filter((each) => each.kind === "store")) {
+      expect(line.amounts, variable.id).toHaveProperty(variable.id);
     }
   });
 
