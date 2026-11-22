@@ -680,8 +680,8 @@ importers:
         specifier: ^0.2.8
         version: 0.2.8
       '@mark1russell7/service':
-        specifier: ^0.11.6
-        version: 0.11.6(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
+        specifier: ^0.11.7
+        version: 0.11.7(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
       '@mark1russell7/sqlite':
         specifier: ^0.6.0
         version: 0.6.0
@@ -702,7 +702,7 @@ importers:
         version: 0.68.1(@opentelemetry/api@1.10.0)(ws@8.23.0)
       '@procedures/peer':
         specifier: ^0.68.0
-        version: 0.68.0(@mark1russell7/service@0.11.6(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7))
+        version: 0.68.0(@mark1russell7/service@0.11.7(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7))
       '@procedures/shell':
         specifier: ^0.68.0
         version: 0.68.0
@@ -1471,8 +1471,8 @@ importers:
         specifier: ^0.9.9
         version: 0.9.9(zod@4.6.7)
       '@mark1russell7/service':
-        specifier: ^0.11.6
-        version: 0.11.6(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
+        specifier: ^0.11.7
+        version: 0.11.7(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -1753,8 +1753,8 @@ importers:
         specifier: ^0.1.20
         version: 0.1.20(@mark1russell7/rigor-chaos@0.3.3)(@mark1russell7/rigor-generators@0.1.19)(@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7))(@opentelemetry/api@1.10.0)(fast-check@4.10.2)(ltx@3.1.2)
       '@mark1russell7/service':
-        specifier: ^0.11.6
-        version: 0.11.6(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
+        specifier: ^0.11.7
+        version: 0.11.7(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
       '@mark1russell7/sqlite':
         specifier: ^0.6.0
         version: 0.6.0
@@ -2014,6 +2014,15 @@ packages:
       zod:
         optional: true
 
+  '@mark1russell7/algebra@0.9.10':
+    resolution: {integrity: sha512-PRLI84T/sJhOdddwAyTKJR8Mv3r1ux57xXIEH2zg+K7CUHTDRkuPuYT9byPy1KGfbR1dNviRHNgDM7OmesHbWw==}
+    engines: {node: '>=22.19'}
+    peerDependencies:
+      zod: ^4.1.0
+    peerDependenciesMeta:
+      zod:
+        optional: true
+
   '@mark1russell7/algebra@0.9.9':
     resolution: {integrity: sha512-OV6ntCDh5eW9jbuwVixMjBv2OL8bTiVGm4f3TxqN4FlepfEd7hAoNLE03mvYYV7sdChL/pYz4HOOfEejgFwU3Q==}
     engines: {node: '>=22.19'}
@@ -2198,8 +2207,8 @@ packages:
       ltx:
         optional: true
 
-  '@mark1russell7/service@0.11.6':
-    resolution: {integrity: sha512-K1N8tJKVEdLNOrM5Iq3Tn1Htzd0sosOss2MhvmreI1USRkiGek+6xF4cJDiY9ypq9oUAIG1LR90GkFTOntFqBw==}
+  '@mark1russell7/service@0.11.7':
+    resolution: {integrity: sha512-9+jUuJMr57+gxqgcuuRnJdwzFXMwabR/K+orRgWrtFWvBL1URXsWF/Xxf4GT3qAqIKnSlFvY1e4QjMHhMpPIcQ==}
     engines: {node: '>=22.19'}
     peerDependencies:
       '@grpc/grpc-js': ^1.14.6
@@ -4004,6 +4013,13 @@ snapshots:
     optionalDependencies:
       zod: 4.6.7
 
+  '@mark1russell7/algebra@0.9.10(zod@4.6.7)':
+    dependencies:
+      '@mark1russell7/quantity': 0.4.3(zod@4.6.7)
+      '@mark1russell7/rigor-statistics': 0.2.19
+    optionalDependencies:
+      zod: 4.6.7
+
   '@mark1russell7/algebra@0.9.9(zod@4.6.7)':
     dependencies:
       '@mark1russell7/quantity': 0.4.3(zod@4.6.7)
@@ -4158,9 +4174,9 @@ snapshots:
       ltx: 3.1.2
     optional: true
 
-  '@mark1russell7/service@0.11.6(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)':
+  '@mark1russell7/service@0.11.7(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)':
     dependencies:
-      '@mark1russell7/algebra': 0.9.9(zod@4.6.7)
+      '@mark1russell7/algebra': 0.9.10(zod@4.6.7)
       '@mark1russell7/collections': 0.11.2(zod@4.6.7)
       '@mark1russell7/files': 0.0.3
       '@mark1russell7/quantity': 0.4.3(zod@4.6.7)
@@ -4277,7 +4293,7 @@ snapshots:
       '@mark1russell7/collections': 0.10.2(zod@4.6.7)
       '@mark1russell7/quantity': 0.4.3(zod@4.6.7)
       '@mark1russell7/rigor-generators': 0.2.0
-      '@mark1russell7/service': 0.11.6(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
+      '@mark1russell7/service': 0.11.7(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
       '@opentelemetry/api': 1.10.0
       '@types/ws': 8.18.2
       ws: 8.23.0
@@ -4299,7 +4315,7 @@ snapshots:
       '@mark1russell7/collections': 0.10.2(zod@4.6.7)
       '@mark1russell7/quantity': 0.4.3(zod@4.6.7)
       '@mark1russell7/rigor-generators': 0.2.0
-      '@mark1russell7/service': 0.11.6(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
+      '@mark1russell7/service': 0.11.7(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
       '@opentelemetry/api': 1.10.0
       '@types/ws': 8.18.2
       ws: 8.23.0
@@ -4350,7 +4366,7 @@ snapshots:
 
   '@procedures/gh@0.68.1(@opentelemetry/api@1.10.0)(ws@8.23.0)':
     dependencies:
-      '@mark1russell7/service': 0.11.6(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
+      '@mark1russell7/service': 0.11.7(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
       '@procedures/client': 0.68.1
       '@procedures/http': 0.68.1
       '@procedures/shell': 0.68.1
@@ -4437,10 +4453,10 @@ snapshots:
       - pg
       - utf-8-validate
 
-  '@procedures/peer@0.68.0(@mark1russell7/service@0.11.6(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7))':
+  '@procedures/peer@0.68.0(@mark1russell7/service@0.11.7(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7))':
     dependencies:
       '@mark1russell7/files': 0.0.4
-      '@mark1russell7/service': 0.11.6(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
+      '@mark1russell7/service': 0.11.7(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
       '@procedures/client': 0.68.0
       zod: 4.6.7
     transitivePeerDependencies:
