@@ -13,8 +13,8 @@
  * `ALERTS_HOME` (the folder `.alerts` in the home folder). The value in parentheses is the value
  * without the variable. An empty value counts as no value, and a relative path starts at the working
  * folder. The folder holds the private files of the instance: `config.json`,
- * `secrets.env`, the log `runtime.sqlite`, the outlines `shapes.sqlite`, the counts of the quotas
- * `quotas.sqlite` and the use reads of the caps `use.json` (AL-91). No repository holds them.
+ * `secrets.env`, the log `runtime.sqlite`, the outlines `shapes.sqlite` and the counts of the quotas
+ * `quotas.sqlite`. It also holds the use reads of the caps, `use.json` (AL-91). No repository holds them.
  *
  * The key `HEALTHCHECKS_PING_URL` of `secrets.env` gives the outside heartbeat (`heartbeat.ts`). The
  * profile `daemon` of the live instance does not start without it. Another profile starts with a warning.
