@@ -41,8 +41,10 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
+import { performance } from "node:perf_hooks";
 import { fileURLToPath } from "node:url";
-import { configHash } from "@mark1russell7/alerts";
+import { configHash, LOOP_BLOCK_LIMIT } from "@mark1russell7/alerts";
+import { watchEventLoop } from "@mark1russell7/lag/node";
 import { PUSHOVER_QUOTA, PUSHOVER_RESERVE_NOTICES } from "@mark1russell7/alerts-channel-pushover";
 import { OUTAGE_BUNDLE_FILE } from "@mark1russell7/alerts-channel-twilio";
 import { openShapeCache, SHAPES_FILE } from "@mark1russell7/alerts-shapes-nws";
@@ -68,6 +70,7 @@ import { spendNotes } from "./balance.ts";
 import { PROFILES, declare } from "./index.ts";
 import { daemonCheck, instanceCheck, LOUD_PING_URL_KEY, openInstance, pingKeyOf, pingTargets, userAgent } from "./instance.ts";
 import { openCheckedRuntimeLog } from "./log.ts";
+import { blockLine, startLoopWatch, type LoopWatch } from "./loop-watch.ts";
 import { fileBundleStore } from "./outage.ts";
 import type { ExchangeRound } from "./peers.ts";
 import { loadPriors } from "./priors.ts";
@@ -228,11 +231,24 @@ async function runtime(): Promise<ServiceBuilder> {
   // The start is good after the startup of the service and one pass. Then the start writes the last good set, and it removes the
   // start marker. A stop before that point gives way to the last good set at the next start with the same files.
   let marked = false;
+  // The watch of the event loop starts at the good start (AL-88). A start folds the log in one block, and the start times measure it.
+  let loopWatch: LoopWatch | undefined;
   const onPass = (pass: PassSummary): void => {
     for (const beat of beats) beat(pass);
     reload?.onPass();
     if (marked || service.lifecycle?.state !== "running") return;
     marked = true;
+    // Each block of 1 s or more goes to the output at once, and the next pass writes it into the log. Thus a stop after a
+    // block has its cause on file.
+    loopWatch = startLoopWatch({
+      watch: watchEventLoop({ limitMs: LOOP_BLOCK_LIMIT }),
+      mono: () => performance.now(),
+      wall: () => wall.now(),
+      onBlock: (block) => {
+        console.error(blockLine(block));
+        instance.loop.wake();
+      },
+    });
     // The deploy of the outage call waits for the good start and its steady wait (AL-112).
     instance.outage?.steady();
     // The time from the start of the process to this pass is one measured start of the host. The supervisor sets its ready window from these times.
@@ -322,6 +338,7 @@ async function runtime(): Promise<ServiceBuilder> {
     onTransitFeeds: () => restart("A new copy of the transit catalog changes the transit feeds of the places.", "The transit feeds changed."),
     // The worker of the outage call deploys its Functions 10 minutes after the good start, then once in each day. A failed deploy goes again after a backoff.
     onOutageLog: (line) => console.log(line),
+    loopBlocks: () => loopWatch?.blocks() ?? [],
     onOutageError: (error, failures) => console.error(`A deploy of the outage call failed (${failures} in sequence): ${redactSecrets(errorMessage(error), values)}`),
   });
   if (instance.zones !== undefined) console.log(zoneCodesText(instance.zones));

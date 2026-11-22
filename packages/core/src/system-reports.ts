@@ -10,7 +10,7 @@
 import { canonicalJson } from "@mark1russell7/rigor-generators";
 import { countOf } from "@mark1russell7/text/english";
 import { compareCodeUnits } from "@mark1russell7/text/order";
-import { BALANCE_KIND, CHANNEL_KIND, CLOCK_KIND, CONTEXT_KINDS, COPY_KIND, COVERAGE_KIND, DRILL_KIND, ESCALATION_KIND, hasKind, HEALTH_KIND, LIMIT_KIND, LOG_KIND, matchPlaces, PERSON_SUBJECT, QUOTA_KIND, STORE_KIND, USE_KIND } from "./assess.ts";
+import { BALANCE_KIND, CHANNEL_KIND, CLOCK_KIND, CONTEXT_KINDS, COPY_KIND, COVERAGE_KIND, DRILL_KIND, ESCALATION_KIND, hasKind, HEALTH_KIND, LIMIT_KIND, LOG_KIND, LOOP_KIND, matchPlaces, PERSON_SUBJECT, QUOTA_KIND, STORE_KIND, USE_KIND } from "./assess.ts";
 import { isPrivate } from "./audience.ts";
 import type {
   Area,
@@ -67,7 +67,10 @@ export const CLOCK_SUBJECT = "alerts.clock";
 /** The system of the subject of the log reports. The id of the subject is `runtime`: the log file of the runtime. */
 export const LOG_SUBJECT = "alerts.log";
 
-/** The subject system of another copy of the system. The id of a subject is the id of the copy. */
+/**
+ * The subject system of a copy of the system. The id of a subject is the id of the copy. A report of another copy is about
+ * that copy. A block of the event loop is about this copy (AL-88).
+ */
 export const COPY_SUBJECT = "alerts.copy";
 
 /** The system of the subjects of the drill reports. The id of a subject is the id of a drill. */
@@ -198,6 +201,49 @@ export const LOG_RECOVERY_WINDOW: Duration = 24 * 60 * 60 * 1000;
 export const CLOCK_STEP_WINDOW: Duration = 24 * 60 * 60 * 1000;
 
 /**
+ * One block of the event loop of the runtime (AL-88). During a block, the runtime starts no timer, sends no alert and
+ * answers no probe.
+ */
+export interface LoopBlock {
+  /** The start of the block on the wall clock. A later step of the wall clock moves it. */
+  readonly at: Instant;
+  /** The length of the block in milliseconds. */
+  readonly size: Duration;
+}
+
+/** The shortest block of the event loop that is a condition (AL-88). The runtime records only blocks of this length or longer. */
+export const LOOP_BLOCK_LIMIT: Duration = 1_000;
+
+/** The time after a block during which its system report stays open. A longer block in the window gives an update. */
+export const LOOP_BLOCK_WINDOW: Duration = 60 * 60 * 1000;
+
+/**
+ * The lower bounds of the classes of the length of a block, in milliseconds. A block of a higher class than the longest
+ * block of an open line gives an update. A block of the same class or a lower class gives no update.
+ */
+export const LOOP_BLOCK_CLASSES: readonly Duration[] = [1_000, 2_000, 5_000, 10_000, 20_000, 60_000];
+
+/**
+ * This function gives the blocks at `at` or before it, in `LOOP_BLOCK_WINDOW` before `at`, in their order. A block
+ * shorter than `LOOP_BLOCK_LIMIT` is not in the list.
+ */
+export function recentBlocks(blocks: readonly LoopBlock[], at: Instant): readonly LoopBlock[] {
+  return blocks.filter((block) => block.size >= LOOP_BLOCK_LIMIT && block.at <= at && at - block.at < LOOP_BLOCK_WINDOW);
+}
+
+/** This function gives the class of the length of a block: the highest bound of `LOOP_BLOCK_CLASSES` at the length or under it, or 0. */
+export function blockClass(size: Duration): Duration {
+  let found = 0;
+  for (const bound of LOOP_BLOCK_CLASSES) if (size >= bound) found = bound;
+  return found;
+}
+
+/** This function gives the length of a block in a text: tenths of a second under 10 s, and else whole seconds. 1840 ms is `1.8 s`. */
+export function blockSizeText(size: Duration): string {
+  return size < 10_000 ? `${(Math.round(size / 100) / 10).toFixed(1)} s` : `${String(Math.round(size / 1000))} s`;
+}
+
+/**
  * The fill of one family of a store of the runtime (AL-86), as the fire zones of the store of shapes. A store fills after each
  * start. A family with no entry at the end of its window is a condition.
  */
@@ -321,6 +367,8 @@ export interface SystemSnapshot {
   readonly steps?: readonly ClockStep[];
   /** The recoveries of the log. The latest recovery in `LOG_RECOVERY_WINDOW` before the time of the snapshot is a condition. */
   readonly recoveries?: readonly LogRecovery[];
+  /** The blocks of the event loop of this copy (AL-88). The blocks in `LOOP_BLOCK_WINDOW` before the time of the snapshot are one condition. */
+  readonly blocks?: readonly LoopBlock[];
   /**
    * The fills of the families of the stores (AL-86). A family with no entry at `storeEmptyAt` is a condition. An open line
    * stays a condition while its family has no entry, also after a restart. With no list, each open line of a store stays open.
@@ -625,6 +673,8 @@ export function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: 
   if (step !== undefined) conditions.set(CLOCK_LINE, clockCondition(step));
   const recovery = recentRecovery(snapshot.recoveries ?? [], at);
   if (recovery !== undefined) conditions.set(LOG_LINE, logCondition(recovery));
+  const blocks = recentBlocks(snapshot.blocks ?? [], at);
+  if (blocks.length > 0) conditions.set(LOOP_LINE, loopCondition(blocks, snapshot.copy, lineClass(lines.open[LOOP_LINE])));
   for (const entry of snapshot.drills ?? []) {
     const { copy, drill, run } = entry;
     if (entry.noStart === true) conditions.set(`${drillName(copy, drill.id)}/no-start`, drillNoStartCondition(copy, drill));
@@ -818,6 +868,9 @@ const CLOCK_LINE = "clock";
 
 // The name of the line of the recoveries of the log. A second recovery in the window of an open line gives an update.
 const LOG_LINE = "log";
+
+// The name of the line of the blocks of the event loop. A block of a higher class in the window of an open line gives an update.
+const LOOP_LINE = "loop";
 
 // The start of the name of each line of a store. The store and the family follow it.
 const STORE_LINE = "store/";
@@ -1440,6 +1493,35 @@ function logCondition(recovery: LogRecovery): Condition {
     description: `The alert system moved the broken file into the quarantine folder ${recovery.quarantine}, and it started a new log. ${kept}`,
     instruction: "Examine the disk of the computer. Keep the quarantine folder until you know the cause.",
     parameters: { quarantine: [recovery.quarantine], kept: [String(recovery.kept)], lost: [String(recovery.lost)], whole: [String(recovery.whole)] },
+  };
+}
+
+// The class of an open line of the blocks of the event loop, or 0 for no line.
+function lineClass(line: SystemLine | undefined): Duration {
+  if (line === undefined) return 0;
+  const { class: found } = JSON.parse(line.facts) as { readonly class?: unknown };
+  return typeof found === "number" ? found : 0;
+}
+
+// A block delays each send of the runtime, and a longer block can stop the runtime. Thus it gets `notice` (AL-88). Only the
+// class of the longest block is a fact. Thus a second block of the same class in the window gives no update. The class of an
+// open line does not fall when its longest block leaves the window. Thus only a longer block gives an update.
+function loopCondition(blocks: readonly LoopBlock[], copy: string | undefined, held: Duration): Condition {
+  const code = `${LOOP_KIND}.block`;
+  const longest = blocks.reduce((found, block) => (block.size > found.size ? block : found));
+  return {
+    facts: { class: Math.max(held, blockClass(longest.size)) },
+    kind: { code, label: kindLabel(code) },
+    severity: "moderate",
+    urgency: "expected",
+    response: ["assess"],
+    onset: blocks[0]?.at ?? longest.at,
+    areas: [],
+    about: [{ system: COPY_SUBJECT, id: copy ?? "this", label: copy === undefined ? "This copy" : `Copy ${copy}` }],
+    headline: `The event loop of the runtime was blocked for ${blockSizeText(longest.size)}.`,
+    description: `In the last hour, the event loop of the runtime was blocked ${countOf(blocks.length, "time")} for 1 s or more. During a block, the runtime sends no alert and answers no probe.`,
+    instruction: "Examine the memory, the disk and the processor load of the computer. A longer block can stop the runtime.",
+    parameters: { longest: [String(longest.size)], at: [String(longest.at)], count: [String(blocks.length)] },
   };
 }
 

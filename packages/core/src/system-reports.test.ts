@@ -14,6 +14,8 @@ import {
   balanceStages,
   balanceFloorsBelow,
   balanceUnreadAt,
+  blockClass,
+  blockSizeText,
   CHANNEL_SUBJECT,
   contextSource,
   DEFAULT_SOURCE_CLEAR,
@@ -33,8 +35,11 @@ import {
   LOG_RECOVERY_WINDOW,
   LIMIT_SUBJECT,
   LOG_SUBJECT,
+  LOOP_BLOCK_LIMIT,
+  LOOP_BLOCK_WINDOW,
   NO_SYSTEM_LINES,
   quotaStages,
+  recentBlocks,
   recentRecovery,
   recentStep,
   reportsShared,
@@ -970,6 +975,76 @@ describe("the clock reports", () => {
     const step = systemReports(NO_SYSTEM_LINES, snapshot({ steps: [{ at: START, size: HOUR }] }), START);
     expect(levels(step.reports, WATCHER, START)).toEqual(["digest"]);
     expect(levels(step.reports, OPERATOR, START)).toEqual(["none"]);
+  });
+});
+
+describe("the loop reports", () => {
+  const START = Date.UTC(2026, 10, 22, 12);
+  const WATCHER: PersonWatch = { ...NEIGHBOR, subjects: [{ system: COPY_SUBJECT }] };
+  const codes = (reports: readonly Report[]) => reports.map((report) => [report.op, report.kind.code]);
+
+  it("names the length of a block, and gives its class", () => {
+    expect(blockSizeText(1_840)).toBe("1.8 s");
+    expect(blockSizeText(1_000)).toBe("1.0 s");
+    expect(blockSizeText(9_940)).toBe("9.9 s");
+    expect(blockSizeText(12_400)).toBe("12 s");
+    expect([999, 1_000, 1_999, 2_000, 4_999, 5_000, 25_000, 90_000].map(blockClass)).toEqual([0, 1_000, 1_000, 2_000, 2_000, 5_000, 20_000, 60_000]);
+    expect(unknownKinds(["system.loop", "system.loop.block"])).toEqual([]);
+  });
+
+  it("finds the blocks at the time or before it, in the window, and skips a block under the limit", () => {
+    const blocks = [
+      { at: START, size: 1_200 },
+      { at: START + 1_000, size: LOOP_BLOCK_LIMIT - 1 },
+      { at: START + 60_000, size: 3_000 },
+    ];
+    expect(recentBlocks(blocks, START - 1)).toEqual([]);
+    expect(recentBlocks(blocks, START + 60_000)).toEqual([blocks[0], blocks[2]]);
+    expect(recentBlocks(blocks, START + LOOP_BLOCK_WINDOW)).toEqual([blocks[2]]);
+    expect(recentBlocks(blocks, START + 60_000 + LOOP_BLOCK_WINDOW)).toEqual([]);
+  });
+
+  it("gives an alert for a block, an update only for a block of a higher class, and a cancel at the end of the window", () => {
+    const first = [{ at: START, size: 1_400 }];
+    const opened = systemReports(NO_SYSTEM_LINES, snapshot({ blocks: first, copy: "cloud" }), START + 5_000);
+    expect(opened.reports).toMatchObject([
+      {
+        op: "alert",
+        status: "system",
+        kind: { code: "system.loop.block", label: "Block of the event loop" },
+        severity: "moderate",
+        urgency: "expected",
+        onset: START,
+        areas: [],
+        about: [{ system: COPY_SUBJECT, id: "cloud" }],
+        headline: "The event loop of the runtime was blocked for 1.4 s.",
+        parameters: { longest: ["1400"], at: [String(START)], count: ["1"] },
+      },
+    ]);
+    expect(Object.keys(opened.lines.open)).toEqual(["loop"]);
+    // A second block of the same class gives no update.
+    const same = [...first, { at: START + 60_000, size: 1_900 }];
+    expect(systemReports(opened.lines, snapshot({ blocks: same, copy: "cloud" }), START + 65_000).reports).toEqual([]);
+    const longer = [...same, { at: START + 120_000, size: 6_000 }];
+    const updated = systemReports(opened.lines, snapshot({ blocks: longer, copy: "cloud" }), START + 125_000);
+    expect(updated.reports).toMatchObject([{ op: "update", references: [opened.reports[0]!.key], headline: "The event loop of the runtime was blocked for 6.0 s." }]);
+    // The longest block leaves the window, and a short block keeps the line open: the class does not fall, thus no update.
+    const late = [...longer, { at: START + 120_000 + LOOP_BLOCK_WINDOW - 1_000, size: 1_200 }];
+    const kept = systemReports(updated.lines, snapshot({ blocks: late, copy: "cloud" }), START + 120_000 + LOOP_BLOCK_WINDOW);
+    expect(kept.reports).toEqual([]);
+    const end = START + 120_000 + 2 * LOOP_BLOCK_WINDOW - 1_000;
+    expect(codes(systemReports(kept.lines, snapshot({ blocks: late, copy: "cloud" }), end).reports)).toEqual([["cancel", "system.loop.block"]]);
+  });
+
+  it("names this copy when the snapshot has no copy", () => {
+    const opened = systemReports(NO_SYSTEM_LINES, snapshot({ blocks: [{ at: START, size: 2_000 }] }), START);
+    expect(opened.reports).toMatchObject([{ about: [{ system: COPY_SUBJECT, id: "this", label: "This copy" }] }]);
+  });
+
+  it("goes as a notice to the person who watches the copies, and to no other person", () => {
+    const opened = systemReports(NO_SYSTEM_LINES, snapshot({ blocks: [{ at: START, size: 2_500 }], copy: "home" }), START);
+    expect(levels(opened.reports, WATCHER, START)).toEqual(["notice"]);
+    expect(levels(opened.reports, OPERATOR, START)).toEqual(["none"]);
   });
 });
 

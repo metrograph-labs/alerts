@@ -24,7 +24,7 @@ import { withJoins, type FoldContext, type RuntimeState } from "./state.ts";
  * index. Then a start ignores each snapshot of the old fold, and it folds the whole log. The gate test of the digests fails
  * until the change raises the version.
  */
-export const FOLD_VERSION = 1;
+export const FOLD_VERSION = 2;
 
 /** The content of a snapshot: the state and the entry index at the position of its mark. */
 export interface StartSnapshot {

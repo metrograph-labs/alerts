@@ -228,6 +228,10 @@ LIMIT_SUBJECT: build/index.d.ts#LIMIT_SUBJECT
 LOG_KIND: build/index.d.ts#LOG_KIND
 LOG_RECOVERY_WINDOW: build/index.d.ts#LOG_RECOVERY_WINDOW
 LOG_SUBJECT: build/index.d.ts#LOG_SUBJECT
+LOOP_BLOCK_CLASSES: build/index.d.ts#LOOP_BLOCK_CLASSES
+LOOP_BLOCK_LIMIT: build/index.d.ts#LOOP_BLOCK_LIMIT
+LOOP_BLOCK_WINDOW: build/index.d.ts#LOOP_BLOCK_WINDOW
+LOOP_KIND: build/index.d.ts#LOOP_KIND
 Lateness: build/index.d.ts#Lateness
 LatenessFolds: build/index.d.ts#LatenessFolds
 LatenessLimit: build/index.d.ts#LatenessLimit
@@ -251,6 +255,7 @@ LinkRule: build/index.d.ts#LinkRule
 LoadedConfig: build/index.d.ts#LoadedConfig
 LocateOutcome: build/index.d.ts#LocateOutcome
 LogRecovery: build/index.d.ts#LogRecovery
+LoopBlock: build/index.d.ts#LoopBlock
 MAGNITUDE_PARAMETER: build/index.d.ts#MAGNITUDE_PARAMETER
 MAP_FORMAT: build/index.d.ts#MAP_FORMAT
 MAP_VIEW: build/index.d.ts#MAP_VIEW
@@ -514,6 +519,8 @@ balanceStageSchema: build/index.d.ts#balanceStageSchema
 balanceStages: build/index.d.ts#balanceStages
 balanceUnreadAt: build/index.d.ts#balanceUnreadAt
 basemapToleranceKm: build/index.d.ts#basemapToleranceKm
+blockClass: build/index.d.ts#blockClass
+blockSizeText: build/index.d.ts#blockSizeText
 breadthOf: build/index.d.ts#breadthOf
 canReach: build/index.d.ts#canReach
 canaryResultSchema: build/index.d.ts#canaryResultSchema
@@ -775,6 +782,7 @@ readSeries: build/index.d.ts#readSeries
 readingProblems: build/index.d.ts#readingProblems
 readingSchema: build/index.d.ts#readingSchema
 receiptSchema: build/index.d.ts#receiptSchema
+recentBlocks: build/index.d.ts#recentBlocks
 recentRecovery: build/index.d.ts#recentRecovery
 recentStep: build/index.d.ts#recentStep
 recipientProblems: build/index.d.ts#recipientProblems
@@ -2476,6 +2484,18 @@ export declare const LOG_RECOVERY_WINDOW: Duration;
 ### build/index.d.ts#LOG_SUBJECT
 export declare const LOG_SUBJECT = "alerts.log";
 
+### build/index.d.ts#LOOP_BLOCK_CLASSES
+export declare const LOOP_BLOCK_CLASSES: readonly Duration[];
+
+### build/index.d.ts#LOOP_BLOCK_LIMIT
+export declare const LOOP_BLOCK_LIMIT: Duration;
+
+### build/index.d.ts#LOOP_BLOCK_WINDOW
+export declare const LOOP_BLOCK_WINDOW: Duration;
+
+### build/index.d.ts#LOOP_KIND
+export declare const LOOP_KIND = "system.loop";
+
 ### build/index.d.ts#Lateness
 export interface Lateness {
   readonly expectation: string;
@@ -2634,6 +2654,12 @@ export interface LogRecovery {
   readonly kept: number;
   readonly lost: number;
   readonly whole: boolean;
+}
+
+### build/index.d.ts#LoopBlock
+export interface LoopBlock {
+  readonly at: Instant;
+  readonly size: Duration;
 }
 
 ### build/index.d.ts#MAGNITUDE_PARAMETER
@@ -3860,6 +3886,7 @@ export interface SystemSnapshot {
   readonly copies?: readonly CopyWatch[];
   readonly steps?: readonly ClockStep[];
   readonly recoveries?: readonly LogRecovery[];
+  readonly blocks?: readonly LoopBlock[];
   readonly stores?: readonly StoreFill[];
   readonly drills?: readonly DrillSnapshot[];
   readonly drillWatches?: readonly DrillWatch[];
@@ -4201,6 +4228,12 @@ export declare function balanceUnreadAt(balance: ProviderBalance): Instant;
 
 ### build/index.d.ts#basemapToleranceKm
 export declare function basemapToleranceKm(regions: readonly MapRegion[]): number | undefined;
+
+### build/index.d.ts#blockClass
+export declare function blockClass(size: Duration): Duration;
+
+### build/index.d.ts#blockSizeText
+export declare function blockSizeText(size: Duration): string;
 
 ### build/index.d.ts#breadthOf
 export declare function breadthOf(series: readonly SeriesSignal[]): Breadth;
@@ -4995,6 +5028,9 @@ export declare const readingSchema: z.ZodType<Reading, Reading>;
 
 ### build/index.d.ts#receiptSchema
 export declare const receiptSchema: z.ZodType<Receipt, Receipt>;
+
+### build/index.d.ts#recentBlocks
+export declare function recentBlocks(blocks: readonly LoopBlock[], at: Instant): readonly LoopBlock[];
 
 ### build/index.d.ts#recentRecovery
 export declare function recentRecovery(recoveries: readonly LogRecovery[], at: Instant): LogRecovery | undefined;

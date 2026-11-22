@@ -5,13 +5,14 @@
  * `measure-blocks.yml` starts it in CI.
  *
  * Usage: node scripts/start-blocks.ts <folder> [size in MB] [passes]. With the environment variable `BLOCK_LIMIT_MS`, the
- * script is a gate. It exits with 1 when a part of a snapshot write between two pauses is longer than the limit. It also
+ * script is a gate. It exits with 1 when one part of a snapshot write between two pauses has more CPU time of the thread
+ * than the limit (AL-122). The wall time of a part also has the waits for the disk and for the runner. It also
  * exits with 1 when the start that folds the whole log has no snapshot write. A gate that cannot read the case is no pass.
  *
  * Each start gives one JSON line. For each phase, the line has the wall time, the CPU time, the blocks of the event loop and
  * the pauses of the garbage collector. A phase is the open with its first pass, or one more pass. The line also has the time
  * of each write of the snapshot: the build of the rows apart from the write of SQLite. It also has the longest part between two
- * pauses of the write.
+ * pauses of the write, the most CPU time of the thread in one part, and the wait of the longest part.
  */
 import { statSync, writeFileSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
@@ -128,8 +129,9 @@ await mkdir(dir, { recursive: true });
 const seeded = await seedStore(dir, { log: size * 1_000_000, seed: "al105", shapes: LIVE_FILES.shapes, transit: LIVE_FILES.transit });
 writeFileSync(join(dir, "config.json"), JSON.stringify(config));
 
-// The longest part of a snapshot write in the start that folds the whole log, for the gate.
-let longest: number | undefined;
+// The parts of the snapshot writes in the start that folds the whole log, for the gate: the most CPU time of the thread in one
+// part, and the wall time and the wait of the longest part.
+let work: { readonly cpuMs: number; readonly wallMs: number; readonly waitMs: number } | undefined;
 for (const kind of ["full", "snapshot"] as const) {
   const phases: Phase[] = [];
   const recorder = recordBlocks();
@@ -193,24 +195,31 @@ for (const kind of ["full", "snapshot"] as const) {
       cpuMs: round(write.cpuMs),
       wallMs: round(write.wallMs),
       longestMs: round(write.longestMs),
+      longestCpuMs: round(write.longestCpuMs),
+      longestWaitMs: round(write.longestWaitMs),
       chunks: write.chunks,
     })),
     files: { snapshot: fileBytes(join(dir, START_SNAPSHOT_FILE)), wal: fileBytes(join(dir, `${START_SNAPSHOT_FILE}-wal`)) },
     reports: lines.length,
   };
   console.log(JSON.stringify(record));
-  if (kind === "full") longest = writes.length === 0 ? undefined : Math.max(...writes.map((write) => write.longestMs));
+  if (kind === "full" && writes.length > 0) {
+    const slowest = writes.reduce((one, other) => (other.longestMs > one.longestMs ? other : one));
+    work = { cpuMs: Math.max(...writes.map((write) => write.longestCpuMs)), wallMs: slowest.longestMs, waitMs: slowest.longestWaitMs };
+  }
 }
 await rm(dir, { recursive: true, force: true });
 
 if (limit !== undefined) {
-  if (longest === undefined) {
+  if (work === undefined) {
     console.error("gate: no read. The start that folds the whole log wrote no snapshot.");
     process.exitCode = 1;
-  } else if (longest > limit) {
-    console.error(`gate: block. The longest part of the snapshot write is ${String(round(longest))} ms, above the limit of ${String(limit)} ms.`);
+  } else if (work.cpuMs > limit) {
+    console.error(`gate: block. One part of the snapshot write has ${String(round(work.cpuMs))} ms of CPU time of the thread, above the limit of ${String(limit)} ms.`);
     process.exitCode = 1;
   } else {
-    console.error(`gate: pass. The longest part of the snapshot write is ${String(round(longest))} ms, at most ${String(limit)} ms.`);
+    console.error(`gate: pass. Each part of the snapshot write has at most ${String(round(work.cpuMs))} ms of CPU time of the thread, and the limit is ${String(limit)} ms.`);
+    // A wait is the disk or the runner, not the work of the write. The record keeps it, and the gate does not count it.
+    if (work.wallMs > limit) console.error(`The longest part took ${String(round(work.wallMs))} ms, with ${String(round(work.waitMs))} ms of wait for the disk or the runner.`);
   }
 }

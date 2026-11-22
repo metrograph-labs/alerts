@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fakeWallClock, type WallClock } from "@mark1russell7/algebra/clock";
-import { reportId, type ChannelId, type ChannelProcedures, type ChannelQuota, type Expectation, type FetchOutcome, type FetchSignal, type Observation, type ObservationId, type PlaceId, type Report, type SourceDescriptor, type SourceId, type SourceProcedures, type Watch, type WatchedPlace } from "@mark1russell7/alerts";
+import { reportId, type ChannelId, type ChannelProcedures, type ChannelQuota, type Expectation, LOOP_BLOCK_WINDOW, type LoopBlock, type FetchOutcome, type FetchSignal, type Observation, type ObservationId, type PlaceId, type Report, type SourceDescriptor, type SourceId, type SourceProcedures, type Watch, type WatchedPlace } from "@mark1russell7/alerts";
 import { random, seedsFrom } from "@mark1russell7/rigor-generators";
 import { openFoldSnapshot, type FoldSnapshot } from "@mark1russell7/sqlite";
 import { afterEach, describe, expect, it } from "vitest";
@@ -439,6 +439,34 @@ describe("one pass of the runtime", () => {
       ["cancel", "system.quota.low"],
       ["cancel", "system.quota.reserve"],
     ]);
+    log.close();
+  });
+
+  it("writes each new block of the event loop into the log, opens its line, and wakes at the end of its window (AL-88)", async () => {
+    let blocks: readonly LoopBlock[] = [];
+    const loopReports = (pass: Pass) => pass.view.step.reports.filter((report) => report.kind.code === "system.loop.block").map((report) => report.op);
+    const { clock, runtime, log } = open([], { blocks: () => blocks });
+    expect(loopReports(await runtime.pass())).toEqual([]);
+    blocks = [{ at: clock.now() - 3_000, size: 2_400 }];
+    const first = await runtime.pass();
+    expect(loopReports(first)).toEqual(["alert"]);
+    expect(first.view.step.reports.find((report) => report.kind.code === "system.loop.block")?.headline).toBe("The event loop of the runtime was blocked for 2.4 s.");
+    expect(runtime.state().blocks).toEqual(blocks);
+    expect(first.wakeAt).toBeLessThanOrEqual(blocks[0]!.at + LOOP_BLOCK_WINDOW);
+    // The next pass gets the same block again. The log has it, thus the pass writes nothing.
+    expect(loopReports(await runtime.pass())).toEqual([]);
+    expect([...log.read(["loop"])].map((event) => event.time)).toEqual([blocks[0]!.at]);
+    // A read that throws writes no block, and the pass goes on.
+    blocks = [];
+    const failing = (): readonly LoopBlock[] => {
+      throw new Error("The watch stopped.");
+    };
+    const second = open([], { blocks: failing });
+    expect(loopReports(await second.runtime.pass())).toEqual([]);
+    second.log.close();
+    await clock.advance(LOOP_BLOCK_WINDOW);
+    expect(loopReports(await runtime.pass())).toEqual(["cancel"]);
+    expect(rebuild(log.read(), { sources: [] }).blocks).toEqual(runtime.state().blocks);
     log.close();
   });
 

@@ -169,6 +169,12 @@ export const LOG_KIND = "system.log";
 export const COPY_KIND = "system.copy";
 
 /**
+ * The prefix of the kinds of the event-loop reports of the core: `system.loop.block`, a block of the event loop of the
+ * runtime (AL-88). An adapter does not map a message to this prefix.
+ */
+export const LOOP_KIND = "system.loop";
+
+/**
  * The prefix of the kinds of the drill reports of the core. `system.drill.run` is a run that waits for its
  * acknowledgment, and `system.drill.failed` is a failed run. An adapter does not map a message to this prefix.
  */
@@ -280,7 +286,7 @@ export const DEFAULT_ASSESS_POLICY: AssessPolicy = {
     { id: "system-escalation", kinds: [ESCALATION_KIND], statuses: ["system"], ...LOUD_SYSTEM_TABLE },
     // A message of the operator reaches only the persons of its addresses (AL-92). An urgent `needs-you` reaches `urgent`.
     { id: "system-tell", kinds: [TELL_KIND], statuses: ["system"], ...TELL_TABLE },
-    { id: "system", kinds: [HEALTH_KIND, COVERAGE_KIND, QUOTA_KIND, BALANCE_KIND, CLOCK_KIND, LOG_KIND, COPY_KIND, DRILL_KIND, CHANNEL_KIND, STORE_KIND, LIMIT_KIND, USE_KIND], statuses: ["system"], ...SYSTEM_TABLE },
+    { id: "system", kinds: [HEALTH_KIND, COVERAGE_KIND, QUOTA_KIND, BALANCE_KIND, CLOCK_KIND, LOG_KIND, COPY_KIND, LOOP_KIND, DRILL_KIND, CHANNEL_KIND, STORE_KIND, LIMIT_KIND, USE_KIND], statuses: ["system"], ...SYSTEM_TABLE },
     // The service alerts of public transit are context. Their counts are indicator readings.
     { id: "context", kinds: CONTEXT_KINDS, ...CONTEXT_TABLE },
   ],
