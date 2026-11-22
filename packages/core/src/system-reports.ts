@@ -587,6 +587,8 @@ export function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: 
     }
   }
   // A level is a fact of the account, and one copy reports it. The stage unread is a fact of this copy.
+  // A use with no read keeps its open levels: after a restart, the first read comes later. Thus a restart sends nothing.
+  const unreadUses = (snapshot.uses ?? []).filter((use) => use.read === undefined).map((use) => `${USE_LINE}${encodeURIComponent(use.id)}/level/`);
   for (const use of snapshot.uses ?? []) {
     for (const stage of useStages(use, at)) {
       if (stage === "unread") conditions.set(useName(use.id, stage), useCondition(use, stage, at));
@@ -656,6 +658,7 @@ export function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: 
     if (condition === undefined && snapshot.quotas === undefined && name.startsWith(QUOTA_LINE)) continue;
     if (condition === undefined && snapshot.balances === undefined && name.startsWith(BALANCE_LINE)) continue;
     if (condition === undefined && snapshot.uses === undefined && name.startsWith(USE_LINE)) continue;
+    if (condition === undefined && unreadUses.some((prefix) => name.startsWith(prefix))) continue;
     if (condition === undefined && snapshot.copies === undefined && name.startsWith(COPY_LINE)) continue;
     if (condition === undefined && snapshot.drills === undefined && name.startsWith(DRILL_LINE)) continue;
     if (condition === undefined && snapshot.drillWatches === undefined && name.startsWith(DRILL_WATCH_LINE)) continue;

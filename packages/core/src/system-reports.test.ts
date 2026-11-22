@@ -647,6 +647,20 @@ describe("the use reports (AL-111)", () => {
     expect(codes(systemReports(half.lines, snapshot({ uses: [] }), START + 1).reports)).toEqual([["cancel", "system.use.level"]]);
   });
 
+  it("keeps the open levels of a use with no read, thus a restart sends nothing", () => {
+    const full = systemReports(NO_SYSTEM_LINES, snapshot({ uses: [use({ used: 9, level: 0.8 })] }), START);
+    // After a restart, the watch has no read until its first read. The levels stay open, and no report goes.
+    const restarted = systemReports(full.lines, snapshot({ uses: [use(undefined, { since: START + DAY })] }), START + DAY);
+    expect(restarted.reports).toEqual([]);
+    expect(restarted.lines.open).toEqual(full.lines.open);
+    // The first read at the same levels gives no new fact. A read below each level ends each line.
+    expect(systemReports(restarted.lines, snapshot({ uses: [use({ used: 9, level: 0.8, at: START + DAY })] }), START + DAY).reports).toEqual([]);
+    expect(codes(systemReports(restarted.lines, snapshot({ uses: [use({ used: 1, at: START + DAY })] }), START + DAY).reports)).toEqual([
+      ["cancel", "system.use.level"],
+      ["cancel", "system.use.level"],
+    ]);
+  });
+
   it("gives the levels in one copy and the unread line in each copy", () => {
     const half = [use({ used: 5, level: 0.5 })];
     const first = systemReports(NO_SYSTEM_LINES, snapshot({ uses: half, copy: "copy-a", copies: [copyWatch("copy-b", START)] }), START);
