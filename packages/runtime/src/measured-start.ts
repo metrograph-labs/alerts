@@ -19,6 +19,7 @@ import { PUSHOVER_QUOTA, PUSHOVER_RESERVE_NOTICES, type PushoverChannelOptions }
 import { openShapeCache, SHAPES_FILE } from "@mark1russell7/alerts-shapes-nws";
 import { realClock, wallClock, type WallClock } from "@mark1russell7/algebra/clock";
 import { nodeHostPorts } from "@mark1russell7/service/host";
+import type { FoldKey, FoldMark, FoldRow, FoldSnapshot, MarkLog } from "@mark1russell7/sqlite";
 import { SqliteHostStateStore } from "polite-crawler";
 import { quotaGate, type Transport } from "polite-crawler/api";
 import { CONFIG_FILE, envSecrets } from "./config.ts";
@@ -57,6 +58,27 @@ export interface MeasuredOptions {
    * Then the start folds the whole log, and it writes no snapshot.
    */
   readonly startSnapshot?: boolean;
+  /**
+   * With `startSnapshot`, the measure times each write of the snapshot (AL-115). It builds all the rows first, and then it
+   * gives them to the store. Thus the record has the time of the rows apart from the time of SQLite. Default: false.
+   */
+  readonly timeSnapshot?: boolean;
+}
+
+/** The record of one write of the snapshot of the start, with the option `timeSnapshot`. */
+export interface SnapshotWriteTime {
+  /** The value of `performance.now()` at the start of the write, in milliseconds. */
+  readonly at: number;
+  /** The count of rows. */
+  readonly rows: number;
+  /** The count of UTF-16 code units in the parts and the values of the rows. */
+  readonly chars: number;
+  /** The time of the build of the rows, in milliseconds. The build makes the JSON text of each row. */
+  readonly rowsMs: number;
+  /** The time of the write of SQLite, in milliseconds: one transaction that replaces the old rows. */
+  readonly writeMs: number;
+  /** The CPU time of the process in the whole write, user plus system, in milliseconds. */
+  readonly cpuMs: number;
 }
 
 /** A runtime of a measured start. */
@@ -74,6 +96,8 @@ export interface MeasuredRuntime {
    * The file `host/start-times.json` holds the time to this point, not the time to `opened`.
    */
   readonly first: Pass;
+  /** The record of each write of the snapshot, in order. It is empty without the options `startSnapshot` and `timeSnapshot`. */
+  readonly snapshotWrites: readonly SnapshotWriteTime[];
   /** This function does one more pass, as the loop of a live runtime does after the start. */
   pass(): Promise<Pass>;
   /** This function closes the runtime, the stores and the log, and then it frees the lock of the home folder. */
@@ -85,6 +109,28 @@ const offline: Transport = () => Promise.reject(new Error(NO_NETWORK));
 
 /** This fetch refuses each send of a channel. */
 const noSend: PushoverChannelOptions["fetch"] = () => Promise.reject(new TypeError(NO_NETWORK));
+
+// The store with a record of each write. The rows come from a generator of the runtime, thus the build of the rows is apart
+// from the transaction only in this store. The read and the clear do not change.
+function timedSnapshot(store: FoldSnapshot, writes: SnapshotWriteTime[]): FoldSnapshot {
+  return {
+    read<T>(key: FoldKey, log: MarkLog, work: (mark: FoldMark, rows: Iterable<FoldRow>) => T): T | undefined {
+      return store.read(key, log, work);
+    },
+    clear: () => store.clear(),
+    write(key, mark, rows) {
+      const at = performance.now();
+      const cpu = process.cpuUsage();
+      const list = [...rows];
+      const built = performance.now();
+      const count = store.write(key, mark, list);
+      const used = process.cpuUsage(cpu);
+      const chars = list.reduce((sum, row) => sum + row.part.length + row.value.length, 0);
+      writes.push({ at, rows: list.length, chars, rowsMs: built - at, writeMs: performance.now() - built, cpuMs: (used.user + used.system) / 1000 });
+      return count;
+    },
+  };
+}
 
 /**
  * This function opens the runtime of the home folder `home` with no network and no key, and it resolves after the first
@@ -116,6 +162,8 @@ export async function openMeasuredRuntime(home: string, options: MeasuredOptions
     const priors = loadPriors(report);
     // The stores of shapes and of the transit catalog start their work after the first pass, as in a live start.
     let ready = false;
+    const snapshotWrites: SnapshotWriteTime[] = [];
+    const store = snapshot.store === undefined || options.timeSnapshot !== true ? snapshot.store : timedSnapshot(snapshot.store, snapshotWrites);
     const instance = openInstance({
       config: checked.value.parsed,
       secret: envSecrets(checked.value.keys),
@@ -132,7 +180,7 @@ export async function openMeasuredRuntime(home: string, options: MeasuredOptions
       readings,
       transit,
       startGood: () => ready,
-      ...(snapshot.store === undefined ? {} : { startSnapshot: snapshot.store }),
+      ...(store === undefined ? {} : { startSnapshot: store }),
       onStartSnapshotFault: (error) => report(`A write of the snapshot of the start failed: ${error instanceof Error ? error.name : typeof error}.`),
       onError: (error, failures) => report(`A pass failed (${String(failures)} in sequence): ${error instanceof Error ? error.name : typeof error}.`),
     });
@@ -145,6 +193,7 @@ export async function openMeasuredRuntime(home: string, options: MeasuredOptions
       instance,
       opened,
       first,
+      snapshotWrites,
       pass: () => instance.runtime.pass(),
       async close() {
         if (closed) return;
