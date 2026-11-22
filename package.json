@@ -25,10 +25,9 @@
           "measure.yml",
           "measure-wea.yml",
           "measure-state.yml",
-          "measure-fold.yml",
-          "measure-blocks.yml"
+          "measure-fold.yml"
         ],
-        "reason": "measure.yml and measure-wea.yml are measures of outside servers. measure-state.yml is a measure of the state for each quiet horizon, measure-fold.yml is a CPU profile of a start, and measure-blocks.yml has the blocks of the event loop of a start. They are not gates. A pull request that changes a measure gets a smoke run, and no other pull request starts it."
+        "reason": "measure.yml and measure-wea.yml are measures of outside servers. measure-state.yml is a measure of the state for each quiet horizon, and measure-fold.yml is a CPU profile of a start. They are not gates. A pull request that changes a measure gets a smoke run, and no other pull request starts it."
       }
     }
   },

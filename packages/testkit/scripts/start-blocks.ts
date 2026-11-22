@@ -4,8 +4,9 @@
  * second start reads the snapshot that the first start wrote. Time on a shared computer tells nothing, thus the workflow
  * `measure-blocks.yml` starts it in CI.
  *
- * Usage: node scripts/start-blocks.ts <folder> [size in MB] [passes] [machine]. The machine is a label of the record, for
- * example `small` for a run with the limits of a small cloud machine. The default is `host`.
+ * Usage: node scripts/start-blocks.ts <folder> [size in MB] [passes]. With the environment variable `BLOCK_LIMIT_MS`, the
+ * script is a gate. It exits with 1 when a part of a snapshot write between two pauses is longer than the limit. It also
+ * exits with 1 when the start that folds the whole log has no snapshot write. A gate that cannot read the case is no pass.
  *
  * Each start gives one JSON line. For each phase, the line has the wall time, the CPU time, the blocks of the event loop and
  * the pauses of the garbage collector. A phase is the open with its first pass, or one more pass. The line also has the time
@@ -22,7 +23,10 @@ import { wallClock } from "@mark1russell7/algebra/clock";
 import { LIVE_FILES } from "../src/seed-files.ts";
 import { seedStore } from "../src/seed-store.ts";
 
-const [folder, sizeText = "192", passesText = "4", machine = "host"] = process.argv.slice(2);
+const [folder, sizeText = "192", passesText = "4"] = process.argv.slice(2);
+const limitText = process.env["BLOCK_LIMIT_MS"];
+const limit = limitText === undefined || limitText === "" ? undefined : Number(limitText);
+if (limit !== undefined && !(limit > 0)) throw new RangeError("BLOCK_LIMIT_MS must be a number of milliseconds above 0.");
 if (folder === undefined) throw new Error("Give a scratch folder.");
 const size = Number(sizeText);
 const passes = Number(passesText);
@@ -124,6 +128,8 @@ await mkdir(dir, { recursive: true });
 const seeded = await seedStore(dir, { log: size * 1_000_000, seed: "al105", shapes: LIVE_FILES.shapes, transit: LIVE_FILES.transit });
 writeFileSync(join(dir, "config.json"), JSON.stringify(config));
 
+// The longest part of a snapshot write in the start that folds the whole log, for the gate.
+let longest: number | undefined;
 for (const kind of ["full", "snapshot"] as const) {
   const phases: Phase[] = [];
   const recorder = recordBlocks();
@@ -151,7 +157,6 @@ for (const kind of ["full", "snapshot"] as const) {
   const record = {
     kind: "start",
     start: kind,
-    machine,
     size,
     events: seeded.events,
     days: Number(((seeded.end - seeded.start) / 86_400_000).toFixed(2)),
@@ -194,5 +199,18 @@ for (const kind of ["full", "snapshot"] as const) {
     reports: lines.length,
   };
   console.log(JSON.stringify(record));
+  if (kind === "full") longest = writes.length === 0 ? undefined : Math.max(...writes.map((write) => write.longestMs));
 }
 await rm(dir, { recursive: true, force: true });
+
+if (limit !== undefined) {
+  if (longest === undefined) {
+    console.error("gate: no read. The start that folds the whole log wrote no snapshot.");
+    process.exitCode = 1;
+  } else if (longest > limit) {
+    console.error(`gate: block. The longest part of the snapshot write is ${String(round(longest))} ms, above the limit of ${String(limit)} ms.`);
+    process.exitCode = 1;
+  } else {
+    console.error(`gate: pass. The longest part of the snapshot write is ${String(round(longest))} ms, at most ${String(limit)} ms.`);
+  }
+}

@@ -1,22 +1,17 @@
 # The measure of the blocks of the event loop in a start and in its next passes (AL-115). Each run seeds one log with the
 # live cache files. Then it opens the home two times: one start folds the whole log, and the next start reads the snapshot.
 # The records give the blocks of each phase, and the time of each write of the snapshot: the rows apart from SQLite. Time on
-# the time of each write of the snapshot: the rows apart from SQLite. Time on
-# a shared computer tells nothing, thus the measure runs in CI only. Five runs give the spread. It is a measure, not a gate.
+# a shared computer tells nothing, thus the measure runs in CI only. Five runs give the spread.
 #
-# The machine `small` runs the measure in a systemd scope with the limits of a small cloud machine: 2 CPUs, 1011425280 B
-# of memory, 2 GiB of swap, and a disk of 5767168 B/s and 100 operations/s for reads and for writes. The disk limits are
-# the mean of a study of a start on such a machine. The machine `host` has no limits.
+# The gate: in the start that folds the whole log, the longest part of each snapshot write between two pauses is at most
+# BLOCK_LIMIT_MS. The limit is the worst of 5 runs plus their spread. The liveness probe has a time-out of 2000 ms.
+# A study of the start on a small cloud machine is outside this workflow.
+# This file is a gate with paths (CI.md): the job changes gives the match, and the job Measure blocks OK gives the result.
 name: Measure blocks
 
 on:
-  # A pull request that changes the measure gets a run of the default size.
+  # Each pull request starts the workflow. The job changes skips the measure when no file of the gate changes.
   pull_request:
-    paths:
-      - packages/testkit/scripts/start-blocks.ts
-      - packages/runtime/src/measured-start.ts
-      - packages/runtime/src/runtime.ts
-      - .github/workflows/measure-blocks.yml
   # A person starts a run of another size: gh workflow run measure-blocks.yml -f size=96 -f passes=4
   workflow_dispatch:
     inputs:
@@ -39,14 +34,33 @@ defaults:
     shell: bash
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    outputs:
+      match: ${{ steps.changes.outputs.match }}
+    steps:
+      - id: changes
+        uses: mark1russell7/template/.github/actions/changes@a456a3a088d2bf443f2bce9ac0dc0041e827a1de # main
+        with:
+          paths: |
+            packages/runtime/src/**
+            packages/testkit/scripts/start-blocks.ts
+            packages/testkit/src/seed-*.ts
+            pnpm-lock.yaml
+            .github/workflows/measure-blocks.yml
+
   measure:
+    needs: changes
+    if: needs.changes.outputs.match == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
       fail-fast: false
       max-parallel: 3
       matrix:
-        machine: [host, small]
         run: [1, 2, 3, 4, 5]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -58,38 +72,33 @@ jobs:
           node-version: 26
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # A full start holds more than the memory of the small machine, thus the scope needs the swap of that machine.
-      - name: Give the runner 2 GiB of swap
-        if: matrix.machine == 'small'
-        run: |
-          have=$(swapon --noheadings --bytes --show=SIZE | awk '{ total += $1 } END { print total + 0 }')
-          if [ "$have" -lt 2147483648 ]; then
-            sudo fallocate -l 2G /measure-swap
-            sudo chmod 600 /measure-swap
-            sudo mkswap /measure-swap
-            sudo swapon /measure-swap
-          fi
-          swapon --show
       - name: Measure the blocks of two starts
         working-directory: packages/testkit
         env:
           SIZE: ${{ inputs.size || '192' }}
           PASSES: ${{ inputs.passes || '4' }}
-          MACHINE: ${{ matrix.machine }}
+          # The longest part of a snapshot write between two pauses, in ms. The script exits with 1 above it, and with 1
+          # when the start that folds the whole log has no snapshot write. A run with no record is no read, not a pass.
+          BLOCK_LIMIT_MS: ""
         run: |
           mkdir -p "$GITHUB_WORKSPACE/blocks" "$RUNNER_TEMP/seed"
-          run=(node scripts/start-blocks.ts "$RUNNER_TEMP/seed" "$SIZE" "$PASSES" "$MACHINE")
-          if [ "$MACHINE" = small ]; then
-            disk="$RUNNER_TEMP/seed"
-            # The scope prints its limits to the log before the measure. Thus the log shows that the limits apply.
-            sudo systemd-run --scope --quiet --uid="$(id -u)" --gid="$(id -g)"               -p CPUQuota=200% -p MemoryAccounting=yes -p MemoryMax=1011425280 -p MemorySwapMax=2147483648               -p "IOReadBandwidthMax=$disk 5767168" -p "IOWriteBandwidthMax=$disk 5767168"               -p "IOReadIOPSMax=$disk 100" -p "IOWriteIOPSMax=$disk 100"               --setenv=PATH="$PATH" --setenv=HOME="$HOME"               -- sh -c 'group="/sys/fs/cgroup$(cut -d: -f3 /proc/self/cgroup)"; for file in cpu.max memory.max memory.swap.max io.max; do echo "$file: $(cat "$group/$file")" >&2; done; exec "$@"' sh "${run[@]}"               | tee "$GITHUB_WORKSPACE/blocks/records.jsonl"
-          else
-            "${run[@]}" | tee "$GITHUB_WORKSPACE/blocks/records.jsonl"
-          fi
+          node scripts/start-blocks.ts "$RUNNER_TEMP/seed" "$SIZE" "$PASSES" | tee "$GITHUB_WORKSPACE/blocks/records.jsonl"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: measure-blocks-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.machine }}-${{ matrix.run }}
+          name: measure-blocks-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.run }}
           path: blocks/
           if-no-files-found: error
           retention-days: 90
+
+  measure-ok:
+    name: Measure blocks OK
+    if: ${{ !cancelled() }}
+    needs: [changes, measure]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - uses: mark1russell7/template/.github/actions/gate-summary@a456a3a088d2bf443f2bce9ac0dc0041e827a1de # main
+        with:
+          needs: ${{ toJSON(needs) }}
