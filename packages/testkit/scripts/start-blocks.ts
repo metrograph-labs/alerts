@@ -92,7 +92,11 @@ async function phase(name: string, phases: Phase[], work: () => Promise<unknown>
   const cpu = process.cpuUsage();
   await work();
   const used = process.cpuUsage(cpu);
-  phases.push({ name, start, end: performance.now(), cpuMs: (used.user + used.system) / 1000 });
+  const end = performance.now();
+  // A pass can end with no turn of the timers, because its promises settle as microtasks. The wait gives the recorder one
+  // tick, thus it keeps a block at the end of the phase.
+  await new Promise((resolve) => setTimeout(resolve, 2 * TICK_MS));
+  phases.push({ name, start, end, cpuMs: (used.user + used.system) / 1000 });
 }
 
 // The tick before a block often comes before the start of its phase, because a phase starts its work with no wait. Thus a
