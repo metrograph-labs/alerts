@@ -295,6 +295,7 @@ NodeKey: build/index.d.ts#NodeKey
 OBSERVE_DIGEST_PER_DAY: build/index.d.ts#OBSERVE_DIGEST_PER_DAY
 OBSERVE_WINDOW: build/index.d.ts#OBSERVE_WINDOW
 ONLY_COPY: build/index.d.ts#ONLY_COPY
+OPERATOR_SYSTEMS: build/index.d.ts#OPERATOR_SYSTEMS
 OPT_IN_WAYS: build/index.d.ts#OPT_IN_WAYS
 OPT_IN_WORDS: build/index.d.ts#OPT_IN_WORDS
 ORIGIN_RANK: build/index.d.ts#ORIGIN_RANK
@@ -348,6 +349,7 @@ QuietWindow: build/index.d.ts#QuietWindow
 QuotaHealth: build/index.d.ts#QuotaHealth
 QuotaStage: build/index.d.ts#QuotaStage
 RANK_DELAY_LIMIT: build/index.d.ts#RANK_DELAY_LIMIT
+REPORT_SYSTEMS: build/index.d.ts#REPORT_SYSTEMS
 RETENTION_HORIZON: build/index.d.ts#RETENTION_HORIZON
 RULED_STATUSES: build/index.d.ts#RULED_STATUSES
 RankDelays: build/index.d.ts#RankDelays
@@ -869,6 +871,7 @@ urgencySchema: build/index.d.ts#urgencySchema
 useLevelsReached: build/index.d.ts#useLevelsReached
 useStages: build/index.d.ts#useStages
 useUnreadAt: build/index.d.ts#useUnreadAt
+watchProblems: build/index.d.ts#watchProblems
 watchSchema: build/index.d.ts#watchSchema
 watchedDrillMiss: build/index.d.ts#watchedDrillMiss
 watchedDrillReportAt: build/index.d.ts#watchedDrillReportAt
@@ -2906,6 +2909,9 @@ export declare const OBSERVE_WINDOW: Duration;
 ### build/index.d.ts#ONLY_COPY
 export declare const ONLY_COPY: CopySettings;
 
+### build/index.d.ts#OPERATOR_SYSTEMS
+export declare const OPERATOR_SYSTEMS: readonly string[];
+
 ### build/index.d.ts#OPT_IN_WAYS
 export declare const OPT_IN_WAYS: readonly ["written", "spoken"];
 
@@ -3240,6 +3246,9 @@ export type QuotaStage = "low" | "reserve" | "spent";
 
 ### build/index.d.ts#RANK_DELAY_LIMIT
 export declare const RANK_DELAY_LIMIT: Duration;
+
+### build/index.d.ts#REPORT_SYSTEMS
+export declare const REPORT_SYSTEMS: readonly string[];
 
 ### build/index.d.ts#RETENTION_HORIZON
 export declare const RETENTION_HORIZON: Duration;
@@ -5274,6 +5283,9 @@ export declare function useStages(use: LimitUse, at: Instant): UseStage[];
 
 ### build/index.d.ts#useUnreadAt
 export declare function useUnreadAt(use: LimitUse): Instant;
+
+### build/index.d.ts#watchProblems
+export declare function watchProblems(watches: readonly PersonWatch[]): string[];
 
 ### build/index.d.ts#watchSchema
 export declare const watchSchema: z.ZodType<Watch, Watch>;

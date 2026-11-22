@@ -15,7 +15,7 @@ import { DRILL_PROBES, drillProblems, nextDrillAt, type DrillConfig } from "./dr
 import { composeInterests, deliveryLayer, placesLayer, servicesLayer, workLayer, type InterestRow } from "./interest-defaults.ts";
 import { incidents, normalize } from "./merge.ts";
 import { optInFields, resolveOptIn, type OptInConfig, type OptInRecord } from "./opt-in.ts";
-import { CHANNEL_SUBJECT, DRILL_SUBJECT, NO_SYSTEM_LINES, systemReports, type SourceClearConfig } from "./system-reports.ts";
+import { CHANNEL_SUBJECT, DRILL_SUBJECT, NO_SYSTEM_LINES, OPERATOR_SYSTEMS, REPORT_SYSTEMS, systemReports, type SourceClearConfig } from "./system-reports.ts";
 import type { TryChain } from "./chain.ts";
 import type { Expectation } from "./lateness.ts";
 import { rankDelayProblems, rankFloorProblems, type RankDelays } from "./escalation.ts";
@@ -434,6 +434,29 @@ const ALL_INTERFACES: ReadonlySet<string> = new Set(["0.0.0.0", "::", "[::]", "*
  * - A copy with other copies has the address `listen`, and the address is not an address of all interfaces.
  * - The field `configFrom` names a copy of `peers`.
  */
+/**
+ * This function gives the problems of the watches of the system subjects (AL-121). Each system of `OPERATOR_SYSTEMS`
+ * needs a person who watches it, because a report reaches a person only by a watch of its system. A watch with an id
+ * counts too. A watch of a system `alerts.*` that no report has matches nothing, as a wrong name.
+ *
+ * The start of the runtime does not refuse these problems, because a start with no reader of one report is better than
+ * no start. The check of a file (`check.ts`) refuses them. Thus a writer does not write a file with such a watch.
+ */
+export function watchProblems(watches: readonly PersonWatch[]): string[] {
+  const watched = new Set(watches.flatMap((watch) => (watch.subjects ?? []).map((subject) => subject.system)));
+  const problems = OPERATOR_SYSTEMS.filter((system) => !watched.has(system)).map(
+    (system) => `No person watches the system ${system}, thus its reports reach no person. Add { "system": "${system}" } to the subjects of the person who operates the system.`,
+  );
+  const known = new Set(REPORT_SYSTEMS);
+  const unknown = new Set<string>();
+  for (const watch of watches) {
+    for (const { system } of watch.subjects ?? []) {
+      if (system.startsWith("alerts.") && !known.has(system)) unknown.add(`The person ${watch.person} watches the system ${system}, and no report has it. The watch matches nothing.`);
+    }
+  }
+  return [...problems, ...unknown];
+}
+
 export function copyProblems(settings: CopySettings): string[] {
   const problems: string[] = [];
   const peers = settings.peers ?? [];

@@ -82,6 +82,16 @@ export const LIMIT_SUBJECT = "alerts.limit";
 /** The subject system of an incident. The id of a subject is a report of the incident: an exhausted escalation links its warning. */
 export const INCIDENT_SUBJECT = "alerts.incident";
 
+/**
+ * These systems hold the subjects of the reports about the system itself (AL-121). A report of one of them reaches a
+ * person only when the person watches its system in `PersonWatch.subjects`. Thus each system needs a person who watches it.
+ * The drill reports, the person reports and the incident reports have their own routes, and they are not in the list.
+ */
+export const OPERATOR_SYSTEMS: readonly string[] = [SOURCE_SUBJECT, CHANNEL_SUBJECT, CLOCK_SUBJECT, LOG_SUBJECT, COPY_SUBJECT, STORE_SUBJECT, LIMIT_SUBJECT];
+
+/** These systems are each system of the subjects of a report. A watch of another system `alerts.*` matches no report. */
+export const REPORT_SYSTEMS: readonly string[] = [...OPERATOR_SYSTEMS, DRILL_SUBJECT, INCIDENT_SUBJECT, PERSON_SUBJECT];
+
 /** The stages of a quota, from the first to the last. */
 export const QUOTA_STAGES: readonly QuotaStage[] = ["low", "reserve", "spent"];
 

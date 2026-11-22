@@ -1867,6 +1867,8 @@ A writer of the configuration does these steps, thus the live instance does not 
 
 The output of the check gives the count of the places, the people, the contacts and the policies, or the problems. It holds no value and no path.
 
+The check also refuses a file in which a system of `OPERATOR_SYSTEMS` has no watch (AL-121). A report of such a system reaches no person, thus nobody reads the check of that part of the system. The start of the runtime accepts such a file, because a start with one report that nobody reads is better than no start. A watch of an unknown system `alerts.*` is also a problem, because it matches no report.
+
 A writer of a part does these steps. The check reads `config.json` and the other parts, thus it finds an entry that is in two files.
 
 1. Write the new part in the folder `ALERTS_HOME`, not in the folder `parts`.
