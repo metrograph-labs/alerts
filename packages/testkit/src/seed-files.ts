@@ -9,6 +9,7 @@
  *   `ZZ`, `ZY` and the next codes. No state has a code that starts with `Z` or `Y`.
  * - The catalog has 27 columns, with rows of approximately 380 bytes. A quarter of the rows are realtime feeds, and a
  *   quarter of these have service alerts. The URLs are on `example.test`, and the contact column is empty.
+ * - The option `near` of `seedTransit` adds realtime feeds whose boxes hold one point (AL-126). Each feed has its own host.
  *
  * The draws come from one seed. The same seed and the same size give the same file.
  */
@@ -36,6 +37,23 @@ export interface SeedFileOptions {
   readonly fetched?: Instant;
 }
 
+/** The feeds of `seedTransit` near one point (AL-126). */
+export interface NearFeeds {
+  /** The point. The box of each feed holds it. */
+  readonly at: Position;
+  /** The count of the feeds: a whole number, 0 or more. */
+  readonly feeds: number;
+}
+
+/** The options of `seedTransit`. */
+export interface SeedTransitOptions extends SeedFileOptions {
+  /**
+   * The realtime feeds with service alerts near one point. They come before the other rows, and the file holds them also
+   * past the byte size. Each feed has its own host, thus the pace of the sources gives each feed its own place.
+   */
+  readonly near?: NearFeeds;
+}
+
 /** The result of `seedShapes`. */
 export interface SeedShapesResult {
   /** The path of `shapes.sqlite`. */
@@ -56,6 +74,8 @@ export interface SeedTransitResult {
   readonly bytes: number;
   /** The count of rows of the catalog. */
   readonly rows: number;
+  /** The count of rows near the point of the option `near`. The reader of the catalog takes each of them. */
+  readonly near: number;
   /** The count of rows of realtime feeds with service alerts. */
   readonly alerts: number;
 }
@@ -153,9 +173,14 @@ export async function seedShapes(dir: string, options: SeedFileOptions): Promise
  * inactive status, no box or a redirect.
  *
  * @throws Error when `bytes` is not a finite number above 0.
+ * @throws RangeError when the count of the feeds of `near` is not a whole number, 0 or more.
  */
-export async function seedTransit(dir: string, options: SeedFileOptions): Promise<SeedTransitResult> {
+export async function seedTransit(dir: string, options: SeedTransitOptions): Promise<SeedTransitResult> {
   checkBytes(options.bytes);
+  const { near } = options;
+  if (near !== undefined && !(Number.isInteger(near.feeds) && near.feeds >= 0)) {
+    throw new RangeError(`The count of the feeds near the point is ${String(near.feeds)}, not a whole number, 0 or more.`);
+  }
   await mkdir(dir, { recursive: true });
   const path = join(dir, TRANSIT_FILE);
   const r = random(seedOf(`transit:${String(options.seed)}`));
@@ -163,19 +188,25 @@ export async function seedTransit(dir: string, options: SeedFileOptions): Promis
   const lines = [stringifyCsv([TRANSIT_COLUMNS])];
   // The JSON text of the file holds the CSV text in a string: a line break gives 2 bytes, and the frame is approximately 150 bytes.
   let size = 200 + jsonBytes(lines[0]!);
-  let rows = 0;
   let alerts = 0;
-  while (size < options.bytes) {
-    rows += 1;
-    const row = rowOf(r, rows, fetched);
+  const add = (row: { readonly cells: readonly string[]; readonly alert: boolean }): void => {
     if (row.alert) alerts += 1;
     const line = stringifyCsv([row.cells]);
     lines.push(line);
     size += jsonBytes(line);
+  };
+  // The feeds near the point have draws of their own. Thus the other rows are the rows of a seed with no feed near the point.
+  const nearDraws = random(seedOf(`transit-near:${String(options.seed)}`));
+  const nearRows = near?.feeds ?? 0;
+  for (let index = 1; index <= nearRows; index += 1) add(rowOf(nearDraws, index, fetched, near?.at));
+  let others = 0;
+  while (size < options.bytes) {
+    others += 1;
+    add(rowOf(r, others, fetched));
   }
   const text = lines.join("");
   openTransitCache(path).write({ text, fetched, condition: { digest: sha256Hex(text) } });
-  return { path, bytes: statSync(path).size, rows, alerts };
+  return { path, bytes: statSync(path).size, rows: nearRows + others, near: nearRows, alerts };
 }
 
 function checkBytes(bytes: number): void {
@@ -200,17 +231,17 @@ function shapesOf(r: Random, center: Position): MapShape[] {
 }
 
 // One row of the catalog. The data types have the shares of the live catalog: 16 percent bikes, 59 percent schedules and
-// 25 percent realtime feeds. A quarter of the realtime feeds have service alerts.
-function rowOf(r: Random, index: number, fetched: Instant): { readonly cells: readonly string[]; readonly alert: boolean } {
-  const type = choose(r, [["gbfs", 16], ["gtfs", 59], ["gtfs_rt", 25]]);
-  const entity = type === "gtfs_rt" ? choose(r, [["sa", 9], ["tu|vp|sa", 17], ["tu", 30], ["vp", 30], ["tu|vp", 14]]) : "";
+// 25 percent realtime feeds. A quarter of the realtime feeds have service alerts. A row near a point is a realtime feed
+// with service alerts that the reader takes. Its box holds the point, and its host is its own.
+function rowOf(r: Random, index: number, fetched: Instant, near?: Position): { readonly cells: readonly string[]; readonly alert: boolean } {
+  const type = near === undefined ? choose(r, [["gbfs", 16], ["gtfs", 59], ["gtfs_rt", 25]]) : "gtfs_rt";
+  const entity = near !== undefined ? "sa" : type === "gtfs_rt" ? choose(r, [["sa", 9], ["tu|vp|sa", 17], ["tu", 30], ["vp", 30], ["tu|vp", 14]]) : "";
   const alert = entity.split("|").includes("sa");
-  const skip = alert ? choose(r, [["none", 71], ["key", 10], ["inactive", 10], ["box", 5], ["redirect", 4]]) : "none";
-  const id = `seed-${String(index)}`;
+  const skip = alert && near === undefined ? choose(r, [["none", 71], ["key", 10], ["inactive", 10], ["box", 5], ["redirect", 4]]) : "none";
+  const id = near === undefined ? `seed-${String(index)}` : `seed-near-${String(index)}`;
+  const host = near === undefined ? "transit.example.test" : `near-${String(index)}.transit.example.test`;
   const provider = `Seed Transit ${String(r.int(1, 2_000))}`;
-  const west = r.range(-170, 168);
-  const south = r.range(-50, 68);
-  const box = skip === "box" ? ["", "", "", ""] : [south, south + r.range(0.05, 2), west, west + r.range(0.05, 2)].map((value) => value.toFixed(6));
+  const box = boxOf(r, skip === "box", near);
   const cells: Record<string, string> = {
     id,
     data_type: type,
@@ -224,7 +255,7 @@ function rowOf(r: Random, index: number, fetched: Instant): { readonly cells: re
     note: "",
     feed_contact_email: "",
     static_reference: type === "gtfs_rt" ? `seed-${String(r.int(1, index))}` : "",
-    "urls.direct_download": `https://transit.example.test/${id}/${type === "gtfs_rt" ? "alerts.pb" : "feed.zip"}`,
+    "urls.direct_download": `https://${host}/${id}/${type === "gtfs_rt" ? "alerts.pb" : "feed.zip"}`,
     "urls.authentication_type": skip === "key" ? "2" : "0",
     "urls.authentication_info": skip === "key" ? "https://transit.example.test/keys" : "",
     "urls.api_key_parameter_name": skip === "key" ? "key" : "",
@@ -244,6 +275,17 @@ function rowOf(r: Random, index: number, fetched: Instant): { readonly cells: re
   const room = Math.round(ROW_BYTES * r.range(0.6, 1.4)) - Object.values(cells).reduce((sum, cell) => sum + cell.length + 1, 0);
   if (room > 0) cells["note"] = textOf(r, room);
   return { cells: TRANSIT_COLUMNS.map((column) => cells[column] ?? ""), alert };
+}
+
+// The box of a row: south, north, west and east, with 6 decimals. A box near a point holds the point. The other boxes keep
+// the order of the draws of a row before AL-126, thus a seed gives the same rows.
+function boxOf(r: Random, empty: boolean, near: Position | undefined): readonly string[] {
+  if (near !== undefined) {
+    return [near[1] - r.range(0.01, 0.5), near[1] + r.range(0.01, 0.5), near[0] - r.range(0.01, 0.5), near[0] + r.range(0.01, 0.5)].map((value) => value.toFixed(6));
+  }
+  const west = r.range(-170, 168);
+  const south = r.range(-50, 68);
+  return empty ? ["", "", "", ""] : [south, south + r.range(0.05, 2), west, west + r.range(0.05, 2)].map((value) => value.toFixed(6));
 }
 
 function round6(value: number): number {

@@ -12,6 +12,33 @@
       "min": 2000000,
       "max": 400000000,
       "scale": "log"
+    },
+    {
+      "id": "feeds",
+      "title": "The transit feeds near the place: each one is a polled source of the start",
+      "kind": "level",
+      "unit": "{feed}",
+      "min": 1,
+      "max": 10000,
+      "scale": "log"
+    },
+    {
+      "id": "persons",
+      "title": "The persons of the configuration that watch the place",
+      "kind": "level",
+      "unit": "{person}",
+      "min": 1,
+      "max": 10000,
+      "scale": "log"
+    },
+    {
+      "id": "incidents",
+      "title": "The incidents that are open at the place at the start",
+      "kind": "level",
+      "unit": "{incident}",
+      "min": 0,
+      "max": 1000,
+      "scale": "linear"
     }
   ],
   "classes": [],
@@ -22,7 +49,7 @@
       "env": {}
     },
     "seed": {
-      "argv": ["node", "scripts/seed-home.ts", "{store}", "{variable.log}"],
+      "argv": ["node", "scripts/seed-home.ts", "{store}", "{variable.log}", "{variable.feeds}", "{variable.persons}", "{variable.incidents}"],
       "cwd": "packages/testkit",
       "env": {}
     },
