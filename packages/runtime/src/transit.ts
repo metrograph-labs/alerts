@@ -85,7 +85,7 @@ export function openTransitCache(path: string, onBad?: (problem: string) => void
 export interface ChosenFeeds {
   /** The feeds that the instance reads, in the order of their ids. */
   readonly feeds: readonly GtfsFeed[];
-  /** The feeds that meet a place but are past `MAX_TRANSIT_FEEDS`, in the order of their ids. */
+  /** The feeds that meet a place but are past the limit of the choice (`MAX_TRANSIT_FEEDS` by default), in the order of their ids. */
   readonly cut: readonly GtfsFeed[];
   /** The problems of the catalog. A copy with a problem gives no feed. */
   readonly problems: readonly string[];
@@ -142,10 +142,10 @@ export interface InstanceTransit extends TransitKeeper {
  * This function gives the line of the start about the transit feeds. It has counts and problems of the catalog, and no name
  * of a feed or a place.
  */
-export function transitText(chosen: ChosenFeeds, copy: boolean): string {
+export function transitText(chosen: ChosenFeeds, copy: boolean, limit: number = MAX_TRANSIT_FEEDS): string {
   if (!copy) return "The private folder has no copy of the transit catalog. The runtime reads the catalog after its first pass.";
   if (chosen.problems.length > 0) return `The copy of the transit catalog has problems, and the runtime reads no transit feed: ${chosen.problems.join(", ")}.`;
-  const cut = chosen.cut.length === 0 ? "" : ` ${String(chosen.cut.length)} more feeds meet a place, but the limit is ${String(MAX_TRANSIT_FEEDS)}.`;
+  const cut = chosen.cut.length === 0 ? "" : ` ${String(chosen.cut.length)} more feeds meet a place, but the limit is ${String(limit)}.`;
   return `The runtime reads ${String(chosen.feeds.length)} transit feeds near the places.${cut}`;
 }
 
@@ -171,6 +171,8 @@ export interface TransitKeeperOptions {
   readonly places: readonly WatchedPlace[];
   /** The key of the feeds at the open of the instance (`feedsKey`). */
   readonly opened: string;
+  /** The most feeds of the choice. The default is `MAX_TRANSIT_FEEDS`. */
+  readonly limit?: number | undefined;
   /** The keeper starts this function one time, when a new copy changes the chosen feeds. */
   readonly onFeeds?: (() => void) | undefined;
   /** The keeper gives the outcome of each read to this function. */
@@ -221,7 +223,7 @@ export function keepTransit(options: TransitKeeperOptions): TransitKeeper {
     }
     copy = result.copy;
     failedAt = undefined;
-    const chosen = chooseFeeds(copy, options.places);
+    const chosen = chooseFeeds(copy, options.places, options.limit);
     report({ ok: true, changed: result.changed, feeds: chosen.feeds.length, cut: chosen.cut.length });
     if (told || feedsKey(chosen.feeds) === options.opened) return;
     told = true;

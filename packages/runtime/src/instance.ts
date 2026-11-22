@@ -750,6 +750,11 @@ export interface InstanceOptions {
    * it, the instance reads no transit feed and no catalog. The instance reads each feed of the copy whose box meets a place.
    */
   readonly transit?: TransitCache;
+  /**
+   * The most transit feeds of the instance. The default is `MAX_TRANSIT_FEEDS`. A measure of the capacity models gives a
+   * higher limit. Thus it measures the cost of each polled source past the limit of a live copy (AL-126).
+   */
+  readonly transitLimit?: number;
   /** The instance gives each read of the transit catalog to this function. */
   readonly onTransit?: (outcome: TransitOutcome) => void;
   /**
@@ -891,7 +896,7 @@ export function openInstance(options: InstanceOptions): Instance {
   const radarToken = options.secret(CLOUDFLARE_RADAR_KEY) ?? "";
   // The transit feeds come from the copy of the catalog. Only this choice reads the positions of the places, and no request holds them.
   const transitCopy = options.transit?.read();
-  const chosen = chooseFeeds(transitCopy, localPlaces(options.config.config));
+  const chosen = chooseFeeds(transitCopy, localPlaces(options.config.config), options.transitLimit);
   const factories = [
     createNwsSource,
     createIpawsSource,
@@ -977,6 +982,7 @@ export function openInstance(options: InstanceOptions): Instance {
             now: () => wall.now(),
             places,
             opened: feedsKey(chosen.feeds),
+            limit: options.transitLimit,
             onFeeds: options.onTransitFeeds,
             onTransit: options.onTransit,
           }),

@@ -65,6 +65,11 @@ export interface MeasuredOptions {
   readonly timeSnapshot?: boolean;
   /** The option `startSnapshotFloor` of `openInstance`. Default: `START_SNAPSHOT_FLOOR`. A measure with a small log gives 1. */
   readonly snapshotFloor?: number;
+  /**
+   * The option `transitLimit` of `openInstance`: the most transit feeds of the start. Default: `MAX_TRANSIT_FEEDS`. The lab of
+   * the capacity models gives the count of the feeds of its seed, to measure the cost of each polled source (AL-126).
+   */
+  readonly transitLimit?: number;
 }
 
 /** The record of one write of the snapshot of the start, with the option `timeSnapshot`. */
@@ -245,6 +250,7 @@ export async function openMeasuredRuntime(home: string, options: MeasuredOptions
       startGood: () => ready,
       ...(store === undefined ? {} : { startSnapshot: store }),
       ...(options.snapshotFloor === undefined ? {} : { startSnapshotFloor: options.snapshotFloor }),
+      ...(options.transitLimit === undefined ? {} : { transitLimit: options.transitLimit }),
       onStartSnapshotFault: (error) => report(`A write of the snapshot of the start failed: ${error instanceof Error ? error.name : typeof error}.`),
       onError: (error, failures) => report(`A pass failed (${String(failures)} in sequence): ${error instanceof Error ? error.name : typeof error}.`),
     });
