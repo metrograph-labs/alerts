@@ -1,6 +1,6 @@
 import { random, seedsFrom, type Random } from "@mark1russell7/rigor-generators";
 import { describe, expect, it } from "vitest";
-import { assess, LIFE_SAFETY_KINDS } from "./assess.ts";
+import { assess, assessWithShadow, LIFE_SAFETY_KINDS } from "./assess.ts";
 import type {
   Area,
   AssessedLevel,
@@ -25,7 +25,7 @@ import type {
 } from "./contracts.ts";
 import { ASSESSED_LEVELS } from "./contracts.ts";
 import { assessmentSchema, scorePriorsSchema, shadowScoreSchema } from "./schemas.ts";
-import { assessWithShadow, expectedOf, PRIORS_FORMAT, shadowDifferences, shadowScore } from "./score.ts";
+import { expectedOf, PRIORS_FORMAT, shadowDifferences, shadowScore } from "./score.ts";
 
 const SEEDS = seedsFrom(process.env["SEED"], [1, 2, 3, 4, 5, 6, 7, 8]);
 

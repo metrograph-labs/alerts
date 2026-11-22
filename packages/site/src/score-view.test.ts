@@ -1,7 +1,7 @@
 import { PRIORS_FORMAT, shadowScore, type MapIncident, type MapView, type ScorePriors } from "@mark1russell7/alerts";
 import { describe, expect, it } from "vitest";
 import { ANCHORS, EMPTY_FIXTURE, MAP_FIXTURE } from "./map-view.fixture.ts";
-import { differencePanel, estimateText, NO_REACH_TEXT, NO_SCORE_TEXT, scoreLine, shadowText } from "./score-view.ts";
+import { differencePanel, estimateText, NO_REACH_TEXT, NO_SCORE_TEXT, scoreLine, scoreRuleText, shadowText } from "./score-view.ts";
 
 // Made-up priors. They are not the public measures.
 const PRIORS: ScorePriors = {
@@ -26,6 +26,28 @@ const byAnchor = (view: MapView, anchor: string): MapIncident => {
   if (incident === undefined) throw new Error(`no incident ${anchor}`);
   return incident;
 };
+
+describe("the words of the score rule of a person", () => {
+  const tornado = shadowScore({ kind: { code: "met.tornado", label: "Tornado" }, certainty: "observed" }, PRIORS);
+
+  it("tells the raise, the floor of the table, a score below the risk and a rule with no read", () => {
+    expect(scoreRuleText({ kind: "score", risk: 0.03, raised: true, score: tornado })).toBe(
+      "The score rule of the person sets the level life-safety: the expected deaths, 0.04 (0.03 to 0.06), reach the risk value 0.03.",
+    );
+    expect(scoreRuleText({ kind: "score", risk: 0.03, raised: false, score: tornado })).toBe(
+      "The expected deaths, 0.04 (0.03 to 0.06), reach the risk value 0.03 of the score rule, and the table gives life-safety.",
+    );
+    expect(scoreRuleText({ kind: "score", risk: 0.1, raised: false, score: tornado })).toBe(
+      "The expected deaths, 0.04 (0.03 to 0.06), are below the risk value 0.1 of the score rule, so the table decides the level.",
+    );
+    expect(scoreRuleText({ kind: "score", risk: 0.003, raised: false })).toBe(
+      "The score rule of the person has the risk value 0.003. The policy has no priors, so the table decides the level.",
+    );
+    expect(scoreRuleText({ kind: "score", risk: 0.003, raised: false, score: { read: false, missing: ["deaths"] } })).toBe(
+      "The score rule of the person has the risk value 0.003. The score has no value, so the table decides the level.",
+    );
+  });
+});
 
 describe("the words of the shadow score", () => {
   it("gives an estimate with two significant digits and its interval", () => {

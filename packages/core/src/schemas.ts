@@ -96,6 +96,7 @@ import {
   type ResponseType,
   type ScoreFactor,
   type ScorePriors,
+  type ScoreRule,
   type SendOutcome,
   type Severity,
   type ShadowScore,
@@ -979,8 +980,15 @@ export const assessPolicySchema: z.ZodType<AssessPolicy, AssessPolicy> = schemaO
       otherwise: levelTableSchema,
       // The schema of the relevance policy comes later in this file.
       relevance: z.lazy(() => relevancePolicySchema).exactOptional(),
+      // The schema of the priors comes later in this file.
+      priors: z.lazy(() => scorePriorsSchema).exactOptional(),
     })
     .readonly(),
+);
+
+/** This schema checks the score rule of a person (AL-31). The risk is a number above 0, and each prefix is a code of the taxonomy. */
+export const scoreRuleSchema: z.ZodType<ScoreRule, ScoreRule> = schemaOf<ScoreRule>()(
+  z.strictObject({ risk: z.number().positive(), except: z.array(kindCodeSchema).readonly().exactOptional() }).readonly(),
 );
 
 /** This schema checks the kind of a subject. */
@@ -1055,6 +1063,7 @@ export const personWatchSchema: z.ZodType<PersonWatch, PersonWatch> = schemaOf<P
         .refine((rules) => new Set(rules.map((rule) => rule.place)).size === rules.length, "A place has one rule of the life-safety warnings at most.")
         .readonly()
         .exactOptional(),
+      score: scoreRuleSchema.exactOptional(),
     })
     .readonly(),
 );
@@ -1363,6 +1372,7 @@ export const assessReasonSchema: z.ZodType<AssessReason, AssessReason> = schemaO
       }),
       z.strictObject({ kind: z.literal("rule"), place: placeIdSchema.exactOptional(), index: count(), max: assessedLevelSchema }),
       z.strictObject({ kind: z.literal("shadow"), score: shadowScoreSchema }),
+      z.strictObject({ kind: z.literal("score"), risk: z.number().positive(), raised: z.boolean(), score: shadowScoreSchema.exactOptional() }),
       z.strictObject({
         kind: z.literal("reach"),
         reach: probabilitySchema,

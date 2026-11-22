@@ -233,7 +233,7 @@ export function swapRefusal(facts: SwapFacts): string | undefined {
 }
 
 /** The files of the supervisor, from the checkout. The supervisor loads them only at its own start. */
-export const SUPERVISOR_FILES = ["packages/runtime/src/supervise.ts", "packages/runtime/src/host.ts", "packages/runtime/src/start-times.ts"] as const;
+export const SUPERVISOR_FILES = ["packages/runtime/src/supervise.ts", "packages/runtime/src/host.ts"] as const;
 
 /** The name of the service package. Its version is a part of the supervisor too. */
 export const SERVICE_PACKAGE = "@mark1russell7/service";

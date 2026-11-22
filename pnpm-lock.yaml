@@ -1489,8 +1489,8 @@ importers:
         specifier: ^0.9.9
         version: 0.9.9(zod@4.6.7)
       '@mark1russell7/service':
-        specifier: ^0.11.7
-        version: 0.11.7(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
+        specifier: ^0.11.8
+        version: 0.11.9(@mark1russell7/otel-ts@0.8.4(@mark1russell7/lag@0.5.2(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -1769,10 +1769,10 @@ importers:
         version: 0.3.2(zod@4.6.7)
       '@mark1russell7/rigor-testkit':
         specifier: ^0.1.20
-        version: 0.1.20(@mark1russell7/rigor-chaos@0.3.3)(@mark1russell7/rigor-generators@0.1.19)(@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7))(@opentelemetry/api@1.10.0)(fast-check@4.10.2)(ltx@3.1.2)
+        version: 0.1.20(@mark1russell7/rigor-chaos@0.3.3)(@mark1russell7/rigor-generators@0.1.19)(@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7))(@opentelemetry/api-logs@0.223.2)(@opentelemetry/api@1.10.0)(@opentelemetry/sdk-logs@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@3.1.1(@opentelemetry/api@1.10.0))(fast-check@4.10.2)(ltx@3.1.2)
       '@mark1russell7/service':
-        specifier: ^0.11.7
-        version: 0.11.7(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
+        specifier: ^0.11.8
+        version: 0.11.9(@mark1russell7/otel-ts@0.8.4(@mark1russell7/lag@0.5.2(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
       '@mark1russell7/sqlite':
         specifier: ^0.6.0
         version: 0.6.0
@@ -1781,10 +1781,10 @@ importers:
         version: 0.0.17
       '@procedures/json':
         specifier: ^0.68.0
-        version: 0.68.0
+        version: 0.68.0(@mark1russell7/otel-ts@0.8.4(@mark1russell7/lag@0.5.2(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
       '@procedures/notify':
         specifier: ^0.68.0
-        version: 0.68.0(@mark1russell7/rigor-testkit@0.1.20(@mark1russell7/rigor-chaos@0.3.3)(@mark1russell7/rigor-generators@0.1.19)(@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7))(@opentelemetry/api@1.10.0)(fast-check@4.10.2)(ltx@3.1.2))
+        version: 0.68.0(@mark1russell7/otel-ts@0.8.4(@mark1russell7/lag@0.5.2(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@mark1russell7/rigor-testkit@0.1.20(@mark1russell7/rigor-chaos@0.3.3)(@mark1russell7/rigor-generators@0.1.19)(@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7))(@opentelemetry/api-logs@0.223.2)(@opentelemetry/api@1.10.0)(@opentelemetry/sdk-logs@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@3.1.1(@opentelemetry/api@1.10.0))(fast-check@4.10.2)(ltx@3.1.2))
       ltx:
         specifier: ^3.1.2
         version: 3.1.2
@@ -2385,39 +2385,6 @@ packages:
       fast-check:
         optional: true
       ltx:
-        optional: true
-
-  '@mark1russell7/service@0.11.7':
-    resolution: {integrity: sha512-9+jUuJMr57+gxqgcuuRnJdwzFXMwabR/K+orRgWrtFWvBL1URXsWF/Xxf4GT3qAqIKnSlFvY1e4QjMHhMpPIcQ==}
-    engines: {node: '>=22.19'}
-    peerDependencies:
-      '@grpc/grpc-js': ^1.14.6
-      '@mark1russell7/otel-ts': ^0.7.6
-      '@opentelemetry/api': ^1.9.0
-      amqplib: ^2.2.0
-      ioredis: ^6.0.0
-      mongodb: ^7.7.0
-      pg: ^8.23.1
-      ws: ^8.22.0
-      zod: ^4.1.0
-    peerDependenciesMeta:
-      '@grpc/grpc-js':
-        optional: true
-      '@mark1russell7/otel-ts':
-        optional: true
-      '@opentelemetry/api':
-        optional: true
-      amqplib:
-        optional: true
-      ioredis:
-        optional: true
-      mongodb:
-        optional: true
-      pg:
-        optional: true
-      ws:
-        optional: true
-      zod:
         optional: true
 
   '@mark1russell7/service@0.11.9':
@@ -4858,15 +4825,6 @@ snapshots:
       fast-check: 4.10.2
       ltx: 3.1.2
 
-  '@mark1russell7/rigor-testkit@0.1.20(@mark1russell7/rigor-chaos@0.3.3)(@mark1russell7/rigor-generators@0.1.19)(@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7))(@opentelemetry/api@1.10.0)(fast-check@4.10.2)(ltx@3.1.2)':
-    optionalDependencies:
-      '@mark1russell7/rigor-chaos': 0.3.3
-      '@mark1russell7/rigor-generators': 0.1.19
-      '@mark1russell7/rigor-proxy': 0.3.2(zod@4.6.7)
-      '@opentelemetry/api': 1.10.0
-      fast-check: 4.10.2
-      ltx: 3.1.2
-
   '@mark1russell7/rigor-testkit@0.1.20(@mark1russell7/rigor-chaos@0.3.3)(@mark1russell7/rigor-generators@0.2.0)(@opentelemetry/api-logs@0.223.2)(@opentelemetry/api@1.10.0)(@opentelemetry/sdk-logs@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@3.1.1(@opentelemetry/api@1.10.0))(fast-check@4.10.2)(ltx@3.1.2)':
     optionalDependencies:
       '@mark1russell7/rigor-chaos': 0.3.3
@@ -4890,20 +4848,6 @@ snapshots:
       '@opentelemetry/sdk-trace': 3.1.1(@opentelemetry/api@1.10.0)
       fast-check: 4.10.2
       ltx: 3.1.2
-
-  '@mark1russell7/service@0.11.7(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)':
-    dependencies:
-      '@mark1russell7/algebra': 0.9.10(zod@4.6.7)
-      '@mark1russell7/collections': 0.11.2(zod@4.6.7)
-      '@mark1russell7/files': 0.0.3
-      '@mark1russell7/quantity': 0.4.3(zod@4.6.7)
-      '@mark1russell7/rational': 0.1.3
-      '@mark1russell7/rigor-generators': 0.1.19
-      '@mark1russell7/text': 0.0.6
-    optionalDependencies:
-      '@opentelemetry/api': 1.10.0
-      ws: 8.23.0
-      zod: 4.6.7
 
   '@mark1russell7/service@0.11.9(@mark1russell7/otel-ts@0.8.4(@mark1russell7/lag@0.5.2(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)':
     dependencies:
@@ -5242,28 +5186,6 @@ snapshots:
 
   '@oxc-project/types@0.159.0': {}
 
-  '@procedures/client@0.68.0':
-    dependencies:
-      '@mark1russell7/algebra': 0.9.9(zod@4.6.7)
-      '@mark1russell7/coeval': 0.38.1(zod@4.6.7)
-      '@mark1russell7/collections': 0.10.2(zod@4.6.7)
-      '@mark1russell7/quantity': 0.4.3(zod@4.6.7)
-      '@mark1russell7/rigor-generators': 0.2.0
-      '@mark1russell7/service': 0.11.7(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
-      '@opentelemetry/api': 1.10.0
-      '@types/ws': 8.18.2
-      ws: 8.23.0
-      zod: 4.6.7
-    transitivePeerDependencies:
-      - '@grpc/grpc-js'
-      - '@mark1russell7/otel-ts'
-      - amqplib
-      - bufferutil
-      - ioredis
-      - mongodb
-      - pg
-      - utf-8-validate
-
   '@procedures/client@0.68.0(@mark1russell7/otel-ts@0.8.4(@mark1russell7/lag@0.5.2(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))':
     dependencies:
       '@mark1russell7/algebra': 0.9.9(zod@4.6.7)
@@ -5303,23 +5225,6 @@ snapshots:
       - '@mark1russell7/otel-ts'
       - amqplib
       - bufferutil
-      - ioredis
-      - mongodb
-      - pg
-      - utf-8-validate
-
-  '@procedures/compiler@0.68.0':
-    dependencies:
-      '@cfworker/json-schema': 4.1.6
-      '@mark1russell7/coeval': 0.38.1(zod@4.6.7)
-      '@procedures/client': 0.68.0
-      zod: 4.6.7
-    transitivePeerDependencies:
-      - '@grpc/grpc-js'
-      - '@mark1russell7/otel-ts'
-      - amqplib
-      - bufferutil
-      - express
       - ioredis
       - mongodb
       - pg
@@ -5394,24 +5299,6 @@ snapshots:
       - pg
       - utf-8-validate
 
-  '@procedures/json@0.68.0':
-    dependencies:
-      '@procedures/client': 0.68.0
-      '@procedures/compiler': 0.68.0
-      yaml: 2.9.1
-      zod: 4.6.7
-    transitivePeerDependencies:
-      - '@grpc/grpc-js'
-      - '@mark1russell7/otel-ts'
-      - amqplib
-      - bufferutil
-      - express
-      - ioredis
-      - mongodb
-      - pg
-      - typescript-api
-      - utf-8-validate
-
   '@procedures/json@0.68.0(@mark1russell7/otel-ts@0.8.4(@mark1russell7/lag@0.5.2(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))':
     dependencies:
       '@procedures/client': 0.68.0(@mark1russell7/otel-ts@0.8.4(@mark1russell7/lag@0.5.2(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
@@ -5437,24 +5324,6 @@ snapshots:
       zod: 4.6.7
     optionalDependencies:
       '@mark1russell7/rigor-testkit': 0.1.20(@mark1russell7/rigor-chaos@0.3.3)(@mark1russell7/rigor-generators@0.1.19)(@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7))(@opentelemetry/api-logs@0.223.2)(@opentelemetry/api@1.10.0)(@opentelemetry/sdk-logs@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@3.1.1(@opentelemetry/api@1.10.0))(fast-check@4.10.2)(ltx@3.1.2)
-    transitivePeerDependencies:
-      - '@grpc/grpc-js'
-      - '@mark1russell7/otel-ts'
-      - amqplib
-      - bufferutil
-      - express
-      - ioredis
-      - mongodb
-      - pg
-      - utf-8-validate
-
-  '@procedures/notify@0.68.0(@mark1russell7/rigor-testkit@0.1.20(@mark1russell7/rigor-chaos@0.3.3)(@mark1russell7/rigor-generators@0.1.19)(@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7))(@opentelemetry/api@1.10.0)(fast-check@4.10.2)(ltx@3.1.2))':
-    dependencies:
-      '@mark1russell7/text': 0.0.6
-      '@procedures/client': 0.68.0
-      zod: 4.6.7
-    optionalDependencies:
-      '@mark1russell7/rigor-testkit': 0.1.20(@mark1russell7/rigor-chaos@0.3.3)(@mark1russell7/rigor-generators@0.1.19)(@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7))(@opentelemetry/api@1.10.0)(fast-check@4.10.2)(ltx@3.1.2)
     transitivePeerDependencies:
       - '@grpc/grpc-js'
       - '@mark1russell7/otel-ts'
