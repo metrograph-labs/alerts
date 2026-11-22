@@ -16,6 +16,11 @@ export interface TwilioSpendGates {
   readonly lifeSafety: QuotaGate;
   /** The units of one send in the quota: for example 4 cents. */
   readonly units: number;
+  /**
+   * The gate of the own count. It counts each send of the channels, and it gets no read of the provider. Thus its count
+   * is the cost of the sends of this copy alone. Without it, the channels keep no own count.
+   */
+  readonly own?: QuotaGate | undefined;
 }
 
 /** The result of a take: a refusal of the gate, or the function that gives the units back. */
@@ -27,6 +32,7 @@ export type SpendTake = { readonly ok: false; readonly refusal: Extract<SendOutc
  * - A refusal of the gate stops the send. A full cap gives `rate-limited`, and a cap in its reserve gives `reserved`.
  * - A fault of the store of the gate does not stop the send. The send goes with no count.
  * - `giveBack` gives back the units of a send that did not start. With no cap or no count, it does nothing.
+ * - The own gate also counts each send, and `giveBack` gives its units back. Its fault or refusal changes no outcome.
  */
 export function takeSpend(spend: TwilioSpendGates | undefined, level: Level, at: Instant): SpendTake {
   if (spend === undefined) return { ok: true, giveBack: () => undefined };
@@ -38,7 +44,25 @@ export function takeSpend(spend: TwilioSpendGates | undefined, level: Level, at:
     if (isQuotaError(error)) return { ok: false, refusal: spendRefusal(gate, error, spend, at) };
   }
   const takenAt = taken?.at;
-  return { ok: true, giveBack: () => (takenAt === undefined ? undefined : giveBack(gate, spend.units, takenAt)) };
+  const { own } = spend;
+  const ownAt = own === undefined ? undefined : takeOwn(own, spend.units);
+  return {
+    ok: true,
+    giveBack: () => {
+      if (takenAt !== undefined) giveBack(gate, spend.units, takenAt);
+      if (own !== undefined && ownAt !== undefined) giveBack(own, spend.units, ownAt);
+    },
+  };
+}
+
+/** This function counts one send in the own gate, and gives the time of its units. A fault or a refusal gives no time. */
+function takeOwn(own: QuotaGate, units: number): number | undefined {
+  try {
+    return own.take(units).at;
+  } catch {
+    // The own count misses this send. The cap counts it.
+    return undefined;
+  }
 }
 
 /**

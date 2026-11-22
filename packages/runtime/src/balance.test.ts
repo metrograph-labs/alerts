@@ -141,6 +141,18 @@ describe("the spend watch", () => {
     return { clock, gates, watch, froms, reads: () => reads };
   }
 
+  it("keeps the own count apart: the gate of the own count gets no read of the provider, and its store keeps it (AL-91)", async () => {
+    const store = memoryQuotaStore();
+    const { clock, gates, watch } = setup([spent(3.2105)], { store });
+    gates.gate.take(4);
+    gates.own.take(4);
+    await watch.check(clock);
+    expect([gates.gate.state().used, gates.own.state().used]).toEqual([322, 4]);
+    expect(gates.own.quota.reserve).toBe(0);
+    const again = spendGates(quota, { key: "twilio:account", store, now: () => clock.now() });
+    expect([again.gate.state().used, again.own.state().used]).toEqual([322, 4]);
+  });
+
   it("gives its health with no amount and no message", async () => {
     const { clock, watch } = setup([spent(3.2105), { ok: false, message: "Twilio did not give the usage totalprice (server)." }]);
     expect(watch.health()).toEqual({ what: "spend of provider:twilio", at: null, failed: false, next: null });
