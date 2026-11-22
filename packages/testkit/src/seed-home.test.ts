@@ -104,8 +104,7 @@ describe("seedHome with levels", { timeout: 30_000 }, () => {
     } finally {
       await measured.close();
     }
-    // A full start of the runtime takes about 5 s on a CI runner, thus the test has its own time limit.
-  }, 60_000);
+  });
 });
 
 describe("capacity-app.json", () => {
