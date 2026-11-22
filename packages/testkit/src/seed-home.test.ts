@@ -31,7 +31,8 @@ afterAll(async () => {
   await rm(dir, { recursive: true, force: true });
 });
 
-describe("seedHome", () => {
+// A measured start takes approximately 4 to 5 s in CI. Thus these tests get the limit of the tests of `openMeasuredRuntime`.
+describe("seedHome", { timeout: 30_000 }, () => {
   it("writes the log, the configuration and the seed record", () => {
     const home = join(dir, "home");
     expect(JSON.parse(readFileSync(join(home, CONFIG_FILE), "utf8"))).toEqual(MEASURE_CONFIG);
@@ -65,7 +66,7 @@ describe("seedHome", () => {
   });
 });
 
-describe("seedHome with levels", () => {
+describe("seedHome with levels", { timeout: 30_000 }, () => {
   it("writes the levels in the seed record, and a person for each level of the persons", () => {
     const home = join(dir, "levels");
     expect(readSeedRecord(home).levels).toEqual(LEVELS);
