@@ -40,6 +40,7 @@ import type { MapShape } from "./map.ts";
 import { DEFAULT_ENTRY_MAX, DEFAULT_RELEVANCE_POLICY, canReach, relevance, topicEntry } from "./relevance.ts";
 import { shadowScore } from "./score.ts";
 import { isShape, shapeDistanceKm } from "./shapes.ts";
+import { STATE_POSTAL } from "./state-codes.ts";
 import { kindOfNode, nodesOverlap, placeNode, subjectNode } from "./why.ts";
 
 export { hasKind } from "./kind-prefix.ts";
@@ -488,6 +489,9 @@ export interface PlaceMatch {
  * - A fire zone code (`ugc-fire`) covers only a fire zone code of a place. A place with no fire zone code of
  *   a state uses the forecast zone code (`ugc`) with the same code. This is on the safe side, and the match
  *   tells it with `zoneFallback`.
+ * - In a block with zone codes of a state, the county codes of that state do not widen the match (AL-69). The
+ *   county codes are SAME, FIPS and UGC county codes. They decide only for a place with no zone code of that kind
+ *   and that state. Thus a place with no zone code keeps the match of its county.
  */
 export function matchPlaces(incident: Pick<Incident, "areas">, places: readonly WatchedPlace[]): PlaceMatch[] {
   const ids = new Set(incident.areas.flatMap((area) => (area.type === "place" ? [area.place] : [])));
@@ -506,6 +510,7 @@ export function matchPlaces(incident: Pick<Incident, "areas">, places: readonly 
     const direct = new Set<RegionCode>();
     const fallback = new Set<RegionCode>();
     const fireStates = new Set(place.codes.flatMap((code) => (code.system === "ugc-fire" ? [code.code.slice(0, 2)] : [])));
+    const placeZones = zoneKeys(place.codes);
     for (const [block, areas] of groups) {
       const shapes = areas.filter(isShape);
       const distance = place.at === undefined || shapes.length === 0 ? undefined : nearestShape(shapes, place.at);
@@ -513,8 +518,10 @@ export function matchPlaces(incident: Pick<Incident, "areas">, places: readonly 
       // A block decides by its shapes when geo reads one of them. The areas with no block always give their codes.
       if (block !== undefined && distance !== undefined) continue;
       const codeAreas = areas.filter((area) => area.type === "code");
+      const zoned = block === undefined ? new Set<string>() : zoneKeys(codeAreas);
       const byBlock: RegionCode[] = [];
       for (const code of place.codes) {
+        if (zoned.size > 0 && zonedCounty(code, zoned, placeZones)) continue;
         if (codeAreas.some((area) => regionCovers(area, code))) {
           direct.add(code);
           byBlock.push(code);
@@ -546,6 +553,33 @@ export function matchPlaces(incident: Pick<Incident, "areas">, places: readonly 
 // The caller uses it only for a place with no fire zone code of the state of that code.
 function zoneFallbackCovers(area: RegionCode, place: RegionCode): boolean {
   return area.system === "ugc-fire" && place.system === "ugc" && area.code === place.code;
+}
+
+// The kind and the state of each zone code, as `<system>:<state>`. A zone code is a fire zone code, or a UGC code with the
+// letter Z (a forecast zone).
+function zoneKeys(codes: readonly RegionCode[]): Set<string> {
+  return new Set(codes.flatMap((code) => (isZoneCode(code) ? [`${code.system}:${code.code.slice(0, 2)}`] : [])));
+}
+
+function isZoneCode(code: RegionCode): boolean {
+  return code.system === "ugc-fire" || (code.system === "ugc" && code.code.charAt(2) === "Z");
+}
+
+// The postal code of the state of a county code: a UGC code with the letter C, a SAME code or a FIPS code. A SAME code of the
+// full state or of the full country, and each other code, give `undefined`.
+function countyState(code: RegionCode): string | undefined {
+  if (code.system === "ugc") return code.code.charAt(2) === "C" ? code.code.slice(0, 2) : undefined;
+  if (code.system === "same") return SAME.test(code.code) && code.code.slice(3) !== "000" ? STATE_POSTAL[code.code.slice(1, 3)] : undefined;
+  if (code.system === "fips") return /^\d{5}$/.test(code.code) && code.code.slice(2) !== "000" ? STATE_POSTAL[code.code.slice(0, 2)] : undefined;
+  return undefined;
+}
+
+// A county code of a place that a block with zone codes does not use: the block and the place have a zone code of one kind
+// in the state of the county code. Then the zone codes decide for that place.
+function zonedCounty(code: RegionCode, zoned: ReadonlySet<string>, placeZones: ReadonlySet<string>): boolean {
+  const state = countyState(code);
+  if (state === undefined) return false;
+  return ["ugc", "ugc-fire"].some((system) => zoned.has(`${system}:${state}`) && placeZones.has(`${system}:${state}`));
 }
 
 // The distance to the nearest shape that geo reads, or `undefined` when geo refuses each shape.

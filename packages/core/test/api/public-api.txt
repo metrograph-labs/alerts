@@ -383,6 +383,8 @@ SERIES_VERSION: build/index.d.ts#SERIES_VERSION
 SEVERITY_ORDER: build/index.d.ts#SEVERITY_ORDER
 SHARED_HANDOVER: build/index.d.ts#SHARED_HANDOVER
 SOURCE_SUBJECT: build/index.d.ts#SOURCE_SUBJECT
+STATE_FIPS: build/index.d.ts#STATE_FIPS
+STATE_POSTAL: build/index.d.ts#STATE_POSTAL
 STORE_FILL_WINDOW: build/index.d.ts#STORE_FILL_WINDOW
 STORE_KIND: build/index.d.ts#STORE_KIND
 STORE_SUBJECT: build/index.d.ts#STORE_SUBJECT
@@ -3518,6 +3520,12 @@ export declare const SHARED_HANDOVER: Duration;
 
 ### build/index.d.ts#SOURCE_SUBJECT
 export declare const SOURCE_SUBJECT = "alerts.source";
+
+### build/index.d.ts#STATE_FIPS
+export declare const STATE_FIPS: Readonly<Record<string, string>>;
+
+### build/index.d.ts#STATE_POSTAL
+export declare const STATE_POSTAL: Readonly<Record<string, string>>;
 
 ### build/index.d.ts#STORE_FILL_WINDOW
 export declare const STORE_FILL_WINDOW: Duration;
