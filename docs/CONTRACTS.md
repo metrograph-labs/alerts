@@ -852,6 +852,7 @@ The mirror does these steps before each read of the reload hook (`config-sync.ts
 - `install.ts` also installs the host on Linux: a systemd unit starts the supervisor at the boot, and again after a stop.
 - systemd stops the supervisor with SIGTERM. The supervisor sends the message `shutdown` to the runtime, as on Windows.
 - A cloud copy runs far from the places. Thus one storm or one power cut does not stop the two copies.
+- A change of the supervisor needs a restart of the unit. The section "The deploy of new code" tells the steps.
 
 ## The taxonomy
 
@@ -1503,6 +1504,44 @@ The module `host.ts` gives the host of the live instance as data. A boot task st
 - The host keeps its files in the folder `host` of `ALERTS_HOME`: the task file, the locks, the discovery files and the logs of the runtime.
 
 A lock keeps one runtime on the computer. The live instance runs from a checkout of its own, not from a working copy. Thus a change of branch does not change the code that runs.
+
+### The deploy of new code (AL-89)
+
+The live path of the checkout is a link to one of two checkouts, the slots `<live>-a` and `<live>-b` (`slots.ts`). `deploy.ts` changes the live code through them. Its header tells each command.
+
+- `deploy.ts adopt` makes the checkout at the live path slot `a`, and the live path a link to it. Start it one time.
+- `deploy.ts stage <commit>` checks out the commit in the slot that the link does not name. Then it installs and checks the code there.
+- A stage checks four things: the install, the file of the outage bundles, the private files and the load of the code.
+- On Linux, the heavy steps of a stage operate in a scope of the user manager. The scope has a memory limit and a low weight of the processor.
+- `deploy.ts swap` points the link at the staged slot in one step. A second `swap` goes back to the old slot.
+- On Windows the link is a junction. The swap removes it and makes a new one. A start in that short gap fails, and the supervisor starts the runtime again.
+- A swap stops no process. The runtime takes the new code at its next start. `node src/install.ts restart` from the live path starts it at once.
+- A swap back to older code is a rollback. Do it only when the new code wrote no new kind of event to the log.
+
+The two slots keep each start on the code of one commit:
+
+- A checkout and an install in the live tree do not stop the runtime. The runtime keeps its code until its next start.
+- A start during that install loads the files of the tree at that time, some old and some new. Then the runtime can fail, or it can operate with a mix of code.
+- Thus a deploy does not check out or install in the live tree. It uses `stage` and `swap`.
+
+The supervisor keeps the code of its own start:
+
+- The supervisor loads its own files only at its start. A swap and a restart of the runtime do not change them.
+- The parts of the supervisor are the files of `SUPERVISOR_FILES` (`supervise.ts`, `host.ts` and `start-times.ts`) and the version of `@mark1russell7/service`.
+- `start-times.ts` gives the ready window. Thus a change of the ready window is a change of the supervisor.
+- `stage` and `swap` compare these parts in the two slots. Each of them prints the parts that change, or one line that tells no change.
+- A change of a part needs a restart of the boot task. On Linux, the boot task is a user unit of systemd.
+- The restart of the boot task is a step of the operator. Until that restart, the old supervisor starts each runtime with its old ready window.
+
+A deploy has these steps, in this order:
+
+1. `deploy.ts stage <commit>`. Read its line about the supervisor.
+2. `deploy.ts swap`.
+3. With no change of the supervisor, `node src/install.ts restart` from the live path.
+4. With a change of the supervisor, the operator restarts the boot task. This restart also starts the runtime on the new code.
+5. `node src/install.ts status` after the ready wait.
+
+The plan of a deploy names step 4 when the stage tells a change of the supervisor. Without step 4, the new code operates under the old supervisor.
 
 ### The outside heartbeat
 
