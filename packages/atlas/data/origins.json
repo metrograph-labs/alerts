@@ -48,6 +48,12 @@
     "note": "The record of adobe-security-bulletins names this issuer."
   },
   {
+    "id": "aemo",
+    "name": "AEMO (the Australian Energy Market Operator)",
+    "issues": null,
+    "note": "The records of aemo-market-notices name this issuer."
+  },
+  {
     "id": "aikido",
     "name": "Aikido Security",
     "issues": null,
@@ -124,6 +130,12 @@
     "name": "Aviation Safety Network (Flight Safety Foundation)",
     "issues": null,
     "note": "The records of aviation-safety-net name this issuer."
+  },
+  {
+    "id": "awattar",
+    "name": "aWATTar",
+    "issues": null,
+    "note": "The records of awattar-marketdata name this issuer."
   },
   {
     "id": "aws",
@@ -516,6 +528,12 @@
     "note": "The record of drupal-security-advisories-api names this issuer."
   },
   {
+    "id": "dwd",
+    "name": "DWD (Deutscher Wetterdienst, the weather service of Germany)",
+    "issues": null,
+    "note": "The records of dwd-pollen-index, dwd-uv-index name this issuer."
+  },
+  {
     "id": "easa",
     "name": "EASA (the European Union Aviation Safety Agency)",
     "issues": null,
@@ -556,6 +574,12 @@
     "name": "US Energy Information Administration",
     "issues": null,
     "note": "The records of eia-api name this issuer."
+  },
+  {
+    "id": "ema",
+    "name": "EMA (the European Medicines Agency)",
+    "issues": null,
+    "note": "The records of ema-shortages-table name this issuer."
   },
   {
     "id": "emsc",
@@ -684,6 +708,12 @@
     "note": "The records of first-epss-api name this issuer."
   },
   {
+    "id": "fmi",
+    "name": "FMI (the Finnish Meteorological Institute)",
+    "issues": null,
+    "note": "The records of fmi-lightning-wfs name this issuer."
+  },
+  {
     "id": "fortinet",
     "name": "Fortinet",
     "issues": null,
@@ -756,6 +786,12 @@
     "note": "The records of gfz-kp-hpo name this issuer. Its Kp comes from 13 observatories, and some of them are observatories of the USGS that the SWPC also reads."
   },
   {
+    "id": "gie",
+    "name": "GIE (Gas Infrastructure Europe)",
+    "issues": null,
+    "note": "The records of gie-agsi name this issuer."
+  },
+  {
     "id": "github",
     "name": "GitHub, and its curators of advisories",
     "issues": null,
@@ -822,6 +858,12 @@
     "note": "The record of honeywell-product-security names this issuer."
   },
   {
+    "id": "hot-osm",
+    "name": "HOT (the Humanitarian OpenStreetMap Team)",
+    "issues": null,
+    "note": "The records of hot-tasking-manager-api name this issuer."
+  },
+  {
     "id": "hp-inc",
     "name": "HP Inc.",
     "issues": null,
@@ -850,6 +892,18 @@
     "name": "IBM",
     "issues": null,
     "note": "The record of ibm-security-bulletins names this issuer."
+  },
+  {
+    "id": "iers",
+    "name": "IERS (the International Earth Rotation and Reference Systems Service)",
+    "issues": null,
+    "note": "The records of iers-bulletin-c name this issuer."
+  },
+  {
+    "id": "ifrc",
+    "name": "IFRC (the International Federation of Red Cross and Red Crescent Societies)",
+    "issues": null,
+    "note": "The records of ifrc-go-appeals name this issuer."
   },
   {
     "id": "imf",
@@ -1259,6 +1313,12 @@
     "note": "The record of ocaml-security-advisories names this issuer."
   },
   {
+    "id": "oecd",
+    "name": "OECD (the Organisation for Economic Co-operation and Development)",
+    "issues": null,
+    "note": "The records of oecd-cli-sdmx name this issuer."
+  },
+  {
     "id": "ofac",
     "name": "OFAC (the Office of Foreign Assets Control, US Treasury)",
     "issues": null,
@@ -1269,6 +1329,12 @@
     "name": "Okta",
     "issues": null,
     "note": "The record of okta-security-advisories-rss names this issuer."
+  },
+  {
+    "id": "ooni",
+    "name": "OONI (the Open Observatory of Network Interference)",
+    "issues": null,
+    "note": "The records of ooni-api name this issuer."
   },
   {
     "id": "open-source-vulnerability-databases",
@@ -1293,6 +1359,12 @@
     "name": "openEuler",
     "issues": null,
     "note": "The record of openeuler-csaf names this issuer."
+  },
+  {
+    "id": "openholidays",
+    "name": "OpenHolidays (the openpotato project)",
+    "issues": null,
+    "note": "The records of openholidays-api name this issuer."
   },
   {
     "id": "openphish",
@@ -1709,6 +1781,12 @@
     "note": "The records of gtfs-rt-alerts name this issuer."
   },
   {
+    "id": "transport-canada",
+    "name": "Transport Canada",
+    "issues": null,
+    "note": "The records of transport-canada-vehicle-recalls name this issuer."
+  },
+  {
     "id": "trickest",
     "name": "Trickest",
     "issues": null,
@@ -1739,16 +1817,46 @@
     "note": "The records of ucdp-api name this issuer."
   },
   {
+    "id": "uk-courts",
+    "name": "The courts and tribunals of England and Wales, and the UK Supreme Court",
+    "issues": null,
+    "note": "The records of find-case-law-atom name this issuer."
+  },
+  {
     "id": "uk-fcdo",
     "name": "The Foreign, Commonwealth and Development Office of the United Kingdom",
     "issues": null,
     "note": "The records of fcdo-travel-advice-api name this issuer."
   },
   {
+    "id": "uk-government",
+    "name": "The UK Government (GOV.UK)",
+    "issues": null,
+    "note": "The records of govuk-bank-holidays name this issuer."
+  },
+  {
     "id": "uk-ico",
     "name": "The UK Information Commissioner (ICO)",
     "issues": null,
     "note": "The record of uk-ico-incident-trends names this issuer."
+  },
+  {
+    "id": "uk-national-archives",
+    "name": "The National Archives of the UK",
+    "issues": null,
+    "note": "The records of legislation-gov-uk-feeds name this issuer."
+  },
+  {
+    "id": "uk-police-forces",
+    "name": "The police forces of England, Wales and Northern Ireland",
+    "issues": null,
+    "note": "The records of police-uk-api name this issuer."
+  },
+  {
+    "id": "uk-water-companies",
+    "name": "The water and sewerage companies of England",
+    "issues": null,
+    "note": "The records of water-uk-storm-overflow-hub name this issuer."
   },
   {
     "id": "ukmto",
@@ -1808,6 +1916,12 @@
     "note": "The records of courtlistener-api name this issuer."
   },
   {
+    "id": "us-dol",
+    "name": "US Department of Labor",
+    "issues": null,
+    "note": "The records of dol-ui-weekly-claims name this issuer."
+  },
+  {
     "id": "us-drought-monitor",
     "name": "The US Drought Monitor (NDMC, USDA and NOAA)",
     "issues": null,
@@ -1856,6 +1970,12 @@
     "note": "The records of inciweb-rss, nifc-wfigs name this issuer."
   },
   {
+    "id": "usbr",
+    "name": "USBR (the US Bureau of Reclamation)",
+    "issues": null,
+    "note": "The records of usbr-rise-api name this issuer."
+  },
+  {
     "id": "uscg",
     "name": "US Coast Guard (NAVCEN and the National Response Center)",
     "issues": null,
@@ -1872,6 +1992,12 @@
     "name": "USDA FSIS (the Food Safety and Inspection Service)",
     "issues": null,
     "note": "The records of fsis-recall-api name this issuer."
+  },
+  {
+    "id": "usda-nrcs",
+    "name": "USDA NRCS (the Natural Resources Conservation Service)",
+    "issues": null,
+    "note": "The records of nrcs-awdb-rest name this issuer."
   },
   {
     "id": "usgs",

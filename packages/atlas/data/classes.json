@@ -96,7 +96,7 @@
     "references": [
       "No hazard list names this class."
     ],
-    "gap": "The CourtListener page redirected; not read.",
+    "gap": "Find Case Law has Atom feeds, but its terms put computational analysis outside the open licence. CourtListener was not read.",
     "round": 1
   },
   {
@@ -245,7 +245,7 @@
     "references": [
       "No hazard list names this class."
     ],
-    "gap": "The API page redirected; not read.",
+    "gap": null,
     "round": 1
   },
   {
@@ -259,7 +259,7 @@
     "references": [
       "No hazard list names this class."
     ],
-    "gap": "The Federal Register page redirected to a bot check. Congress and regulations.gov were not opened.",
+    "gap": "legislation.gov.uk gives Atom feeds of new law. The Federal Register API is later, because a bot check stopped its read.",
     "round": 1
   },
   {
@@ -525,7 +525,7 @@
     "references": [
       "None of the lists names it. Found by search for health signals."
     ],
-    "gap": "Only one machine source was confirmed (Google Pollen API, a commercial cloud API). Official pollen counts come from local stations with no open feed found.",
+    "gap": "DWD gives a pollen index for Germany. The Google Pollen API is a commercial API. No second open source was found.",
     "round": 1
   },
   {
@@ -573,7 +573,7 @@
     "references": [
       "UNDRR-ISC HIPs 2025: ET0202 UV Radiation"
     ],
-    "gap": "Only the EPA UV forecast was confirmed (US, by ZIP or city). Global UV sources were not opened in round 1.",
+    "gap": null,
     "round": 1
   },
   {
@@ -638,7 +638,7 @@
       "FEMA lifelines: Water Systems > Wastewater Management",
       "UNDRR-ISC HIPs 2025: TL0503 Wastewater, TL0214 Drain and Sewer Flooding"
     ],
-    "gap": "No confirmed feed in round 1. England has storm overflow data (page did not render). US utilities publish CSO notices locally.",
+    "gap": "The storm overflow hub of Water UK gives the overflows of England. No second source was found.",
     "round": 1
   },
   {
@@ -1023,7 +1023,7 @@
       "FEMA lifelines: Health and Medical > Medical Supply Chain",
       "CISA sectors: Healthcare and Public Health"
     ],
-    "gap": "Round 1 found 1 adopted or planned source with no risk: openfda-drug-shortages. ashp-drug-shortages is later: see the reason of each.",
+    "gap": null,
     "round": 1
   },
   {
@@ -1055,7 +1055,7 @@
       "FEMA Lifelines: Health and Medical > Medical Care, Patient Movement",
       "CISA sectors: Healthcare and Public Health"
     ],
-    "gap": "No public feed was found in round 1. Diversion status is shared among hospitals and agencies.",
+    "gap": "The NHSN hospital data of the CDC gives the beds in use each week in the US. No second source was found.",
     "round": 1
   },
   {
@@ -1347,7 +1347,7 @@
       "CISA sectors: Energy",
       "FEMA Lifelines: Energy > Power Grid"
     ],
-    "gap": "ERCOT notices come by email, text and app, not a feed. EIA hourly demand shows stress but not the notices. Other ISO notices are for round 2.",
+    "gap": "The AEMO market notices are later, because its terms page refused the read. ERCOT notices come by email, text and app, not a feed.",
     "round": 1
   },
   {
@@ -1361,7 +1361,7 @@
     "references": [
       "No reference list names this class. Found by the search for missing classes."
     ],
-    "gap": "One candidate. Its page showed only a title, so no facts were seen.",
+    "gap": "The AEMO market notices are later, because its terms page refused the read. No other source was found.",
     "round": 1
   },
   {
@@ -1495,7 +1495,7 @@
     "references": [
       "No reference list names this class. Found by the search for missing classes."
     ],
-    "gap": "One source. Its page did not confirm the announcement list.",
+    "gap": "IERS Bulletin C is later, because no terms page was found.",
     "round": 1
   },
   {
@@ -1793,7 +1793,7 @@
       "https://fred.stlouisfed.org/docs/api/terms_of_use.html",
       "WEF Global Risks: economic downturn (not opened)"
     ],
-    "gap": "Only FRED; specific indicator series were not checked.",
+    "gap": "FRED is the only live source. The OECD leading indicators are later, because its terms page refused the read.",
     "round": 1
   },
   {
@@ -2578,7 +2578,7 @@
       "CAP 1.2: Rescue",
       "FEMA Lifelines: Food, Hydration, Shelter"
     ],
-    "gap": "The OpenFEMA page did not name recovery center datasets. Check the dataset list in round 2.",
+    "gap": "The IFRC GO appeals are later, because its terms page gave no text. OpenFEMA is the only live source.",
     "round": 1
   },
   {
@@ -2805,7 +2805,7 @@
       "CAP 1.2: Safety",
       "CISA sectors: Transportation Systems"
     ],
-    "gap": "One source. The Transport Canada recall page returned 404, and the Canadian recall site did not list vehicles.",
+    "gap": null,
     "round": 1
   },
   {
@@ -2962,7 +2962,7 @@
       "Crisis24: crime risk",
       "Riskline: crime"
     ],
-    "gap": "Round 1 found 0 adopted or planned sources with no risk. Round 1 found no other source.",
+    "gap": "The police.uk API is later, because its terms are not clear. No other source was found.",
     "round": 1
   },
   {
@@ -3246,7 +3246,7 @@
       "CAP 1.2: Transport",
       "FEMA Lifelines: Transportation > Maritime"
     ],
-    "gap": "NGA MSI returned 503.",
+    "gap": "The Digitraffic faults of aids to navigation have a risk: they are a partial fit. NGA MSI returned 503 in round 1.",
     "round": 1
   },
   {
