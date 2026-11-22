@@ -136,6 +136,16 @@ export function add(state: MergeState, parts: MergeParts): MergeState {
   return normal({ reports, deliveries, acks, ends, retired: state.retired });
 }
 
+/**
+ * This function tells if a report id is not new to a state: the state has a report or a tombstone with the id. Thus an
+ * add of a report with that id gives no new report. A state in the one form gets two searches of its sorted lists.
+ * Another state gets a read of each report and each tombstone.
+ */
+export function knowsReport(state: MergeState, id: ReportId): boolean {
+  if (normalStates.has(state)) return indexIn(state.reports, id, reportKey) >= 0 || indexIn(state.retired, id, tombstoneKey) >= 0;
+  return state.reports.some((report) => report.id === id) || state.retired.some((tombstone) => tombstone.report === id);
+}
+
 const reportKey = (report: Report): string => report.id;
 const tombstoneKey = (tombstone: Tombstone): string => tombstone.report;
 
