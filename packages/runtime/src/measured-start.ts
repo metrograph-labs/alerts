@@ -85,6 +85,13 @@ export interface SnapshotWriteTime {
   readonly wallMs: number;
   /** The longest time between two pauses of the write, in milliseconds: the longest block of the event loop in the write. */
   readonly longestMs: number;
+  /**
+   * The most CPU time of the thread of the event loop in one part of the write, in milliseconds (AL-122). This is the work of
+   * the part. A wait of the thread for the disk or for the computer does not add to it. Linux gives the time in microseconds.
+   */
+  readonly longestCpuMs: number;
+  /** The wait of the longest part, in milliseconds: its time with no CPU time of the thread. The thread waits for the disk or for the computer. */
+  readonly longestWaitMs: number;
   /** The count of the parts of the write between two pauses. */
   readonly chunks: number;
 }
@@ -125,8 +132,9 @@ const oneTimer = (): Promise<void> => new Promise((resolve) => setTimeout(resolv
 // generator, and each part of the write between two pauses. The read and the clear do not change.
 function timedSnapshot(store: FoldSnapshot, writes: SnapshotWriteTime[]): FoldSnapshot {
   const timed = (rows: Iterable<FoldRow>, written: (record: Omit<SnapshotWriteTime, "at" | "cpuMs" | "wallMs">) => void, chunked: { readonly pause?: () => Promise<void> } = {}) => {
-    const counts = { rows: 0, chars: 0, rowsMs: 0, busyMs: 0, longestMs: 0, chunks: 1 };
+    const counts = { rows: 0, chars: 0, rowsMs: 0, busyMs: 0, longestMs: 0, longestCpuMs: 0, longestWaitMs: 0, chunks: 1 };
     let segment = performance.now();
+    let segmentCpu = process.threadCpuUsage();
     function* each(): Generator<FoldRow> {
       const iterator = rows[Symbol.iterator]();
       for (;;) {
@@ -141,18 +149,25 @@ function timedSnapshot(store: FoldSnapshot, writes: SnapshotWriteTime[]): FoldSn
     }
     const end = (): void => {
       const ms = performance.now() - segment;
+      const used = process.threadCpuUsage(segmentCpu);
+      const cpuMs = (used.user + used.system) / 1000;
       counts.busyMs += ms;
-      counts.longestMs = Math.max(counts.longestMs, ms);
+      if (ms > counts.longestMs) {
+        counts.longestMs = ms;
+        counts.longestWaitMs = Math.max(0, ms - cpuMs);
+      }
+      counts.longestCpuMs = Math.max(counts.longestCpuMs, cpuMs);
     };
     const pause = async (): Promise<void> => {
       end();
       await (chunked.pause ?? oneTimer)();
       counts.chunks += 1;
       segment = performance.now();
+      segmentCpu = process.threadCpuUsage();
     };
     const done = (): void => {
       end();
-      written({ rows: counts.rows, chars: counts.chars, rowsMs: counts.rowsMs, writeMs: counts.busyMs - counts.rowsMs, longestMs: counts.longestMs, chunks: counts.chunks });
+      written({ rows: counts.rows, chars: counts.chars, rowsMs: counts.rowsMs, writeMs: counts.busyMs - counts.rowsMs, longestMs: counts.longestMs, longestCpuMs: counts.longestCpuMs, longestWaitMs: counts.longestWaitMs, chunks: counts.chunks });
     };
     return { rows: each(), pause, done };
   };
