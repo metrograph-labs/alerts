@@ -1014,5 +1014,41 @@
       "members": 1757,
       "cause": "Round 18 adds planned and later sources to the thin classes and to the dimensions. The gaps go from 107 to 103, because 4 classes get a second source. The dimensions with two live sources go from 5 to 7. No source is adopted, so the cover and the totals do not change."
     }
+  },
+  {
+    "round": 19,
+    "date": "2026-11-22",
+    "by": "One session, for the new hazard cases of the package stack-hazards (AL-125).",
+    "method": "No web search. The round adds 9 classes for new codes of the taxonomy, with their gaps. The codes are new cases of a hazard list.",
+    "lists": [
+      "The hazard cases of @mark1russell7/stack-hazards: https://www.npmjs.com/package/@mark1russell7/stack-hazards"
+    ],
+    "queries": [],
+    "notes": [
+      "The new codes are civic.ai-collapse, civic.economy.collapse, security.nuclear-war, cbrne.nuclear-detonation, cbrne.emp, health.outbreak.pandemic, infra.power.grid-collapse, infra.supply-chain.food and cyber.infrastructure-attack.",
+      "security.nuclear-war and infra.power.grid-collapse are siblings of security.armed-conflict and infra.power.outage. Adapters give those two codes as leaf codes, so they stay leaf codes.",
+      "A later round searches the sources of the 9 classes."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 213,
+      "gaps": 112,
+      "cover": {
+        "adopted": 54,
+        "paths": 54,
+        "origins": 4
+      },
+      "total": {
+        "adopted": 146,
+        "paths": 146,
+        "origins": 67
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 7,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 19 adds 9 classes for new codes of the taxonomy, with gaps. The classes go from 204 to 213, and the gaps from 103 to 112. No source changes."
+    }
   }
 ]

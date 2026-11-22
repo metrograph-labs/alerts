@@ -15,6 +15,21 @@
     "round": 1
   },
   {
+    "id": "cbrne.emp",
+    "subjectKinds": [
+      "place"
+    ],
+    "examples": [
+      "The pulse of a nuclear test high in the atmosphere damages street lights far from the test"
+    ],
+    "references": [
+      "CAP 1.2: CBRNE",
+      "CISA sectors: Energy"
+    ],
+    "gap": "Round 19 added the class for a new hazard case. It searched no source for the class.",
+    "round": 19
+  },
+  {
     "id": "cbrne.explosion",
     "subjectKinds": [
       "place",
@@ -48,6 +63,20 @@
     ],
     "gap": null,
     "round": 1
+  },
+  {
+    "id": "cbrne.nuclear-detonation",
+    "subjectKinds": [
+      "place"
+    ],
+    "examples": [
+      "A seismic event that a monitoring body names as a nuclear test"
+    ],
+    "references": [
+      "CAP 1.2: CBRNE"
+    ],
+    "gap": "Round 19 added the class for a new hazard case. It searched no source for the class.",
+    "round": 19
   },
   {
     "id": "cbrne.nuclear-plant",
@@ -85,6 +114,19 @@
     "round": 1
   },
   {
+    "id": "civic.ai-collapse",
+    "subjectKinds": [
+      "topic",
+      "place"
+    ],
+    "examples": [],
+    "references": [
+      "No hazard list names this class."
+    ],
+    "gap": "Round 19 added the class for a new hazard case. It searched no source for the class.",
+    "round": 19
+  },
+  {
     "id": "civic.court-ruling",
     "subjectKinds": [
       "entity",
@@ -114,6 +156,21 @@
     ],
     "gap": null,
     "round": 1
+  },
+  {
+    "id": "civic.economy.collapse",
+    "subjectKinds": [
+      "place",
+      "topic"
+    ],
+    "examples": [
+      "A bank holiday stops the withdrawals in a country"
+    ],
+    "references": [
+      "CISA sectors: Financial Services"
+    ],
+    "gap": "Round 19 added the class for a new hazard case. It searched no source for the class.",
+    "round": 19
   },
   {
     "id": "civic.economy.enforcement",
@@ -369,6 +426,22 @@
     ],
     "gap": "Round 15 found 8 more candidates: attack maps and reports. None has an open API with clear terms. Cloudflare Radar is the one adopted source.",
     "round": 1
+  },
+  {
+    "id": "cyber.infrastructure-attack",
+    "subjectKinds": [
+      "entity",
+      "place"
+    ],
+    "examples": [
+      "A joint advisory on an attack on the control systems of a water utility"
+    ],
+    "references": [
+      "CISA sectors: Water and Wastewater Systems",
+      "CISA sectors: Energy"
+    ],
+    "gap": "Round 19 added the class for a new hazard case. It searched no source for the class.",
+    "round": 19
   },
   {
     "id": "cyber.ransomware.victim",
@@ -1116,6 +1189,22 @@
     "round": 1
   },
   {
+    "id": "health.outbreak.pandemic",
+    "subjectKinds": [
+      "place",
+      "topic"
+    ],
+    "examples": [
+      "The WHO declares a public health emergency of international concern"
+    ],
+    "references": [
+      "CAP 1.2: Health",
+      "CISA sectors: Healthcare and Public Health"
+    ],
+    "gap": "Round 19 added the class for a new hazard case. It searched no source for the class.",
+    "round": 19
+  },
+  {
     "id": "health.travel-notice",
     "subjectKinds": [
       "place"
@@ -1334,6 +1423,21 @@
     "round": 1
   },
   {
+    "id": "infra.power.grid-collapse",
+    "subjectKinds": [
+      "place"
+    ],
+    "examples": [
+      "A national blackout after a cascade of grid failures"
+    ],
+    "references": [
+      "CAP 1.2: Infra",
+      "CISA sectors: Energy"
+    ],
+    "gap": "Round 19 added the class for a new hazard case. It searched no source for the class.",
+    "round": 19
+  },
+  {
     "id": "infra.power.grid-emergency",
     "subjectKinds": [
       "place",
@@ -1449,6 +1553,22 @@
     ],
     "gap": "PortWatch page showed only its title. No other source was opened.",
     "round": 1
+  },
+  {
+    "id": "infra.supply-chain.food",
+    "subjectKinds": [
+      "place",
+      "topic"
+    ],
+    "examples": [
+      "Food stores of a region run out of stock after a stop of transport"
+    ],
+    "references": [
+      "CAP 1.2: Infra",
+      "CISA sectors: Food and Agriculture"
+    ],
+    "gap": "Round 19 added the class for a new hazard case. It searched no source for the class.",
+    "round": 19
   },
   {
     "id": "infra.telecom.911-outage",
@@ -3055,6 +3175,21 @@
     ],
     "gap": "Round 1 found 0 adopted or planned sources with no risk. ipaws-open has a risk, so the gate does not count it: see the risks of the record. Round 1 found no other source.",
     "round": 1
+  },
+  {
+    "id": "security.nuclear-war",
+    "subjectKinds": [
+      "place",
+      "topic"
+    ],
+    "examples": [
+      "An official warning of a nuclear attack on a country"
+    ],
+    "references": [
+      "CAP 1.2: Security"
+    ],
+    "gap": "Round 19 added the class for a new hazard case. It searched no source for the class.",
+    "round": 19
   },
   {
     "id": "security.terrorism",
