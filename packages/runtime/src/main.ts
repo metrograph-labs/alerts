@@ -82,6 +82,7 @@ import { signalWarning } from "./host.ts";
 import { openStartSnapshot, START_SNAPSHOT_FILE, startReadText } from "./start-snapshot.ts";
 import { supervisor } from "./supervise.ts";
 import { outputOf, timedLogger } from "./output.ts";
+import { runtimeVersion, startTelemetry } from "./telemetry.ts";
 
 // Each line of the runtime starts with the time of the wall clock: the log file of the runtime has no other time (AL-120).
 const out = outputOf(timedLogger());
@@ -117,6 +118,8 @@ async function runtime(): Promise<ServiceBuilder> {
   for (const note of loaded.notes) out.error(note);
   // The settings of this copy of the system, from the files of the start.
   const copy = loaded.copy;
+  // The context of the traces, with the resource of this copy (AL-82). No span leaves the process. The service stops it.
+  const telemetry = startTelemetry({ version: await runtimeVersion(), copy: copy.id });
   const peers = copy.peers ?? [];
   if (peers.length > 0) out.log(`This runtime is the copy ${copy.id} with rank ${String(copy.rank)}. The other copies: ${peers.map((peer) => peer.id).join(", ")}.`);
   const keys = loaded.keys;
@@ -373,6 +376,7 @@ async function runtime(): Promise<ServiceBuilder> {
     exchange,
     ...(tell === undefined ? {} : { tell }),
     home: held.lock,
+    telemetry,
   });
   return service;
 }

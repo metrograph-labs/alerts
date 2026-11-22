@@ -6,6 +6,7 @@ import { findFilesAsync } from "@mark1russell7/files";
 import type { ServiceBuilder } from "@mark1russell7/service";
 import { handle, httpTransport } from "@mark1russell7/service/http";
 import { folderHandler } from "@mark1russell7/service/http-folder";
+import { callContext } from "@mark1russell7/service/otel";
 import type { RuntimeLoop } from "./loop.ts";
 import type { ModeStatus } from "./observe.ts";
 import type { OutageDeployState } from "./outage.ts";
@@ -191,10 +192,11 @@ const s = (value: number) => ({ value, unit: "s" });
  */
 export const attachApi = (svc: ServiceBuilder, options: ApiOptions): ServiceBuilder => {
   // The transport has no defaults: the idle close, the sweep of idle connections and the Retry-After of each 503.
+  // Each handler operates in the scope of its request, with the trace of its traceparent header (AL-82). The baggage drops.
   const http = httpTransport(
     createServer(),
     { server_idle_close: s(65), server_idle_sweep_interval: s(1), server_retry_after: s(1) },
-    { listen: { port: options.port, host: LOOPBACK } },
+    { listen: { port: options.port, host: LOOPBACK }, callContext },
   );
   // Each request of a route goes through the service. Thus the drain waits for it, and the shutdown can cut it.
   http.mount(handle("api", "GET /status", () => statusOf(options.loop, options.outage, options.start)));
