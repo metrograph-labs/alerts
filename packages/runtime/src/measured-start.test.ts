@@ -99,6 +99,10 @@ describe("openMeasuredRuntime", { timeout: 30_000 }, () => {
     expect(write!.chunks).toBeGreaterThanOrEqual(1);
     expect(write!.longestMs).toBeGreaterThan(0);
     expect(write!.wallMs).toBeGreaterThanOrEqual(write!.longestMs);
+    // The CPU time of a part is the work of the thread. Windows counts it in steps of approximately 16 ms, thus only the wait has a bound.
+    expect(write!.longestCpuMs).toBeGreaterThanOrEqual(0);
+    expect(write!.longestWaitMs).toBeGreaterThanOrEqual(0);
+    expect(write!.longestWaitMs).toBeLessThanOrEqual(write!.longestMs);
     // The mark of the write is the last event of the log at the cut.
     expect(timed.instance.runtime.eventsAfterSnapshot()).toBeLessThan(before);
     // A pass in the same period of the snapshot does not write again.
