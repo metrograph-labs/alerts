@@ -419,6 +419,22 @@ A balance report has no area. Its subjects are `{ system: "alerts.channel", id: 
 - The runtime gives `balanceWatch` for each account. Each pass checks each watch, and a watch reads once a day. A failed read tries again after one hour.
 - The time of the next read and the time of `unread` are timers of the pass.
 
+A use report (AL-111) tells the use of a hard limit of a paid provider account in a month. An example is a budget that stops the paid minutes of a CI provider. A use report has no area. Its subject is `{ system: "alerts.limit", id: <limit id> }` (`LIMIT_SUBJECT`). Its kind is `system.use.<stage>`, and it gets `notice` at most. `useStages` gives the stages of a `LimitUse` at a time:
+
+| Stage | Condition | Severity, urgency |
+| --- | --- | --- |
+| `level` | The used share of the last read reached a level. Each level is its own line. | `moderate`, `expected` |
+| `unread` | No read passed for the maximum age or longer (`useUnreadAt`) | `moderate`, `expected` |
+
+- The reader gives the level of a read (`LimitUseRead.level`). The rule of the levels has its home outside the core.
+- Each level up to the level of the read gives one line: `use/<limit>/level/<level>/<month>`. `useLevelsReached` gives them.
+- Thus each level gives one alert in a month. A larger amount at the same level gives no update.
+- The month is in the name of a line. Thus a level of the next month is a new alert, also when no read saw the start of the month.
+- A read below each level ends each line `level`. A read that passes ends `unread`.
+- A snapshot with no uses keeps each open line of a use.
+- With two copies, only one copy reports `level` (see "The facts of a shared account"). Each copy reports its own `unread`.
+- A person gets the use reports only when the person watches `{ system: "alerts.limit" }`.
+
 A clock report has no area. Its subject is `{ system: "alerts.clock", id: "wall" }`. Its kind is `system.clock.step`, with the severity `minor` and the urgency `past`. Thus it gets `digest` at most:
 
 - The condition is the latest step of the wall clock in `CLOCK_STEP_WINDOW` (24 hours) before the time of the snapshot (`recentStep`).

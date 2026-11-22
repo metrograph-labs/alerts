@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { assess, PERSON_SUBJECT } from "./assess.ts";
 import { CONFIG_FORMAT } from "./config.ts";
 import { messageOf } from "./delivery.ts";
-import type { ChannelId, ChannelQuota, CopyRead, CopyWatch, Coverage, HealthState, Incident, Observation, PersonId, PersonWatch, PlaceId, ProviderBalance, Report, ReportId, SourceDescriptor, SourceHealth, SourceId, WatchedPlace } from "./contracts.ts";
+import type { ChannelId, ChannelQuota, CopyRead, CopyWatch, Coverage, HealthState, Incident, Observation, PersonId, PersonWatch, PlaceId, LimitUse, ProviderBalance, Report, ReportId, SourceDescriptor, SourceHealth, SourceId, WatchedPlace } from "./contracts.ts";
 import { SYSTEM_SOURCE } from "./contracts.ts";
 import { DRILL_WATCH_GRACE, type DrillConfig, type DrillRun, type DrillWatch } from "./drill.ts";
 import type { Lateness } from "./lateness.ts";
@@ -31,6 +31,7 @@ import {
   heldText,
   latestIn,
   LOG_RECOVERY_WINDOW,
+  LIMIT_SUBJECT,
   LOG_SUBJECT,
   NO_SYSTEM_LINES,
   quotaStages,
@@ -49,6 +50,9 @@ import {
   stepSizeText,
   systemReports,
   threats,
+  useLevelsReached,
+  useStages,
+  useUnreadAt,
   type LogRecovery,
   type StoreFill,
   type SystemLines,
@@ -541,6 +545,123 @@ describe("the balance reports", () => {
     expect(levels(step.reports, WATCHER, START)).toEqual(["notice", "notice"]);
     expect(levels(step.reports, OPERATOR, START)).toEqual(["none", "none"]);
     expect(addSystemReports(NO_SYSTEM_LINES, step.reports, step.observations)).toEqual(step.lines);
+  });
+});
+
+describe("the use reports (AL-111)", () => {
+  const DAY = 86_400_000;
+  const START = Date.UTC(2026, 10, 15, 12);
+  const WATCHER: PersonWatch = { ...NEIGHBOR, subjects: [{ system: LIMIT_SUBJECT }] };
+  const codes = (reports: readonly Report[]) => reports.map((report) => [report.op, report.kind.code]);
+  const use = (read?: { readonly used: number; readonly level?: number; readonly month?: string; readonly at?: number }, fields: Partial<LimitUse> = {}): LimitUse => ({
+    id: "github:example/actions",
+    provider: "provider:github",
+    title: "GitHub Actions",
+    limit: 10,
+    currency: "USD",
+    levels: [0.5, 0.8, 1],
+    maxAge: 2 * DAY,
+    since: START,
+    ...(read === undefined
+      ? {}
+      : { read: { month: read.month ?? "2026-11", used: read.used, ...(read.level === undefined ? {} : { level: read.level }), at: read.at ?? START } }),
+    ...fields,
+  });
+  const copyWatch = (copy: string, read: number): CopyWatch => ({ copy, skewLimit: 2_000, maxAge: 60_000, since: START, read: { at: read, skew: 0, sameConfig: true } });
+
+  it("reaches level at each level up to the level of the read, and unread at the maximum age", () => {
+    expect(useStages(use({ used: 4 }), START)).toEqual([]);
+    expect(useStages(use({ used: 5, level: 0.5 }), START)).toEqual(["level"]);
+    expect(useLevelsReached(use({ used: 5, level: 0.5 }))).toEqual([0.5]);
+    expect(useLevelsReached(use({ used: 9, level: 0.8 }))).toEqual([0.5, 0.8]);
+    expect(useLevelsReached(use({ used: 12, level: 1 }, { levels: [1, 0.5, 0.8, 0.5] }))).toEqual([0.5, 0.8, 1]);
+    expect(useLevelsReached(use())).toEqual([]);
+    // The age counts from the last read, or from the start of the watch with no read. An old read keeps its level.
+    expect(useStages(use({ used: 1 }), START + 2 * DAY - 1)).toEqual([]);
+    expect(useStages(use({ used: 1 }), START + 2 * DAY)).toEqual(["unread"]);
+    expect(useStages(use({ used: 8, level: 0.8 }), START + 3 * DAY)).toEqual(["level", "unread"]);
+    expect(useStages(use(), START + 2 * DAY)).toEqual(["unread"]);
+    expect(useUnreadAt(use({ used: 1, at: START + DAY }))).toBe(START + 3 * DAY);
+    expect(unknownKinds(["system.use", "system.use.level", "system.use.unread"])).toEqual([]);
+  });
+
+  it("gives one alert for each level, no update for a new amount, and a cancel at the next month", () => {
+    const half = systemReports(NO_SYSTEM_LINES, snapshot({ uses: [use({ used: 5.123, level: 0.5 })] }), START);
+    expect(half.reports).toMatchObject([
+      {
+        op: "alert",
+        status: "system",
+        kind: { code: "system.use.level", label: "Use of a hard limit at a level" },
+        severity: "moderate",
+        urgency: "expected",
+        areas: [],
+        about: [{ system: LIMIT_SUBJECT, id: "github:example/actions" }],
+        headline: "GitHub Actions: the use of 2026-11 reached 50 % of the limit of 10.00 USD.",
+        description: "The used amount is 5.12 USD. At the limit, the provider stops the paid use until the next month.",
+        parameters: { level: ["0.5"], provider: ["provider:github"] },
+      },
+    ]);
+    expect(Object.keys(half.lines.open)).toEqual(["use/github%3Aexample%2Factions/level/0.5/2026-11"]);
+    // A larger amount at the same level is no new fact.
+    expect(systemReports(half.lines, snapshot({ uses: [use({ used: 6, level: 0.5, at: START + DAY })] }), START + DAY).reports).toEqual([]);
+    const full = systemReports(half.lines, snapshot({ uses: [use({ used: 10.5, level: 1, at: START + DAY })] }), START + DAY);
+    expect(full.reports.map((report) => [report.op, report.parameters["level"]])).toEqual([
+      ["alert", ["0.8"]],
+      ["alert", ["1"]],
+    ]);
+    expect(full.reports[1]).toMatchObject({ headline: "GitHub Actions: the use of 2026-11 reached 100 % of the limit of 10.00 USD.", description: expect.stringContaining("stops the paid use") });
+    const rebuilt = addSystemReports(NO_SYSTEM_LINES, [...half.reports, ...full.reports], [...half.observations, ...full.observations]);
+    expect(rebuilt.open).toEqual(full.lines.open);
+    // The next month starts below each level: each line ends.
+    const next = systemReports(full.lines, snapshot({ uses: [use({ used: 0.2, month: "2026-12", at: START + 20 * DAY })] }), START + 20 * DAY);
+    expect(codes(next.reports)).toEqual([
+      ["cancel", "system.use.level"],
+      ["cancel", "system.use.level"],
+      ["cancel", "system.use.level"],
+    ]);
+    expect(next.lines.open).toEqual({});
+  });
+
+  it("gives a new alert for a level of the next month, also when no read saw the start of the month", () => {
+    const november = systemReports(NO_SYSTEM_LINES, snapshot({ uses: [use({ used: 5, level: 0.5 })] }), START);
+    const december = systemReports(november.lines, snapshot({ uses: [use({ used: 6, level: 0.5, month: "2026-12", at: START + 30 * DAY })] }), START + 30 * DAY);
+    expect(codes(december.reports).sort()).toEqual([
+      ["alert", "system.use.level"],
+      ["cancel", "system.use.level"],
+    ]);
+    expect(Object.keys(december.lines.open)).toEqual(["use/github%3Aexample%2Factions/level/0.5/2026-12"]);
+  });
+
+  it("gives the unread line when no read passes, ends it at the next read, and keeps the open lines with no list", () => {
+    const unread = systemReports(NO_SYSTEM_LINES, snapshot({ uses: [use()] }), START + 2 * DAY);
+    expect(unread.reports).toMatchObject([
+      {
+        op: "alert",
+        kind: { code: "system.use.unread" },
+        headline: `The use of GitHub Actions has no read since the start of the watch at ${new Date(START).toISOString()}.`,
+        parameters: { level: ["0.5", "0.8", "1"] },
+      },
+    ]);
+    const read = systemReports(unread.lines, snapshot({ uses: [use({ used: 1, at: START + 2 * DAY })] }), START + 2 * DAY);
+    expect(codes(read.reports)).toEqual([["cancel", "system.use.unread"]]);
+    const half = systemReports(NO_SYSTEM_LINES, snapshot({ uses: [use({ used: 5, level: 0.5 })] }), START);
+    expect(systemReports(half.lines, snapshot(), START + 1).reports).toEqual([]);
+    expect(codes(systemReports(half.lines, snapshot({ uses: [] }), START + 1).reports)).toEqual([["cancel", "system.use.level"]]);
+  });
+
+  it("gives the levels in one copy and the unread line in each copy", () => {
+    const half = [use({ used: 5, level: 0.5 })];
+    const first = systemReports(NO_SYSTEM_LINES, snapshot({ uses: half, copy: "copy-a", copies: [copyWatch("copy-b", START)] }), START);
+    expect(codes(first.reports)).toEqual([["alert", "system.use.level"]]);
+    expect(systemReports(NO_SYSTEM_LINES, snapshot({ uses: half, copy: "copy-b", copies: [copyWatch("copy-a", START)] }), START).reports).toEqual([]);
+    const unread = systemReports(NO_SYSTEM_LINES, snapshot({ uses: [use()], copy: "copy-b", copies: [copyWatch("copy-a", START + 2 * DAY)] }), START + 2 * DAY);
+    expect(codes(unread.reports)).toEqual([["alert", "system.use.unread"]]);
+  });
+
+  it("goes at notice at most to the person who watches the limits", () => {
+    const full = systemReports(NO_SYSTEM_LINES, snapshot({ uses: [use({ used: 11, level: 1 })] }), START);
+    expect(levels(full.reports, WATCHER, START)).toEqual(["notice", "notice", "notice"]);
+    expect(levels(full.reports, OPERATOR, START)).toEqual(["none", "none", "none"]);
   });
 });
 

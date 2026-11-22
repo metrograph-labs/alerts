@@ -10,7 +10,7 @@
 import { canonicalJson } from "@mark1russell7/rigor-generators";
 import { countOf } from "@mark1russell7/text/english";
 import { compareCodeUnits } from "@mark1russell7/text/order";
-import { BALANCE_KIND, CHANNEL_KIND, CLOCK_KIND, CONTEXT_KINDS, COPY_KIND, COVERAGE_KIND, DRILL_KIND, ESCALATION_KIND, hasKind, HEALTH_KIND, LIMIT_KIND, LOG_KIND, matchPlaces, PERSON_SUBJECT, QUOTA_KIND, STORE_KIND } from "./assess.ts";
+import { BALANCE_KIND, CHANNEL_KIND, CLOCK_KIND, CONTEXT_KINDS, COPY_KIND, COVERAGE_KIND, DRILL_KIND, ESCALATION_KIND, hasKind, HEALTH_KIND, LIMIT_KIND, LOG_KIND, matchPlaces, PERSON_SUBJECT, QUOTA_KIND, STORE_KIND, USE_KIND } from "./assess.ts";
 import { isPrivate } from "./audience.ts";
 import type {
   Area,
@@ -25,6 +25,7 @@ import type {
   Incident,
   Instant,
   Kind,
+  LimitUse,
   Observation,
   Operation,
   PersonId,
@@ -38,6 +39,7 @@ import type {
   SourceDescriptor,
   SourceHealth,
   SourceId,
+  UseStage,
   Subject,
   Urgency,
   WatchedPlace,
@@ -74,6 +76,9 @@ export const DRILL_SUBJECT = "alerts.drill";
 /** The system of the subjects of the store reports (AL-86). The id of a subject is the store and the family, as `shapes/fire`. */
 export const STORE_SUBJECT = "alerts.store";
 
+/** The system of the subjects of the use reports (AL-111). The id of a subject is the id of a hard limit, as `github:<account>/actions`. */
+export const LIMIT_SUBJECT = "alerts.limit";
+
 /** The subject system of an incident. The id of a subject is a report of the incident: an exhausted escalation links its warning. */
 export const INCIDENT_SUBJECT = "alerts.incident";
 
@@ -82,6 +87,9 @@ export const QUOTA_STAGES: readonly QuotaStage[] = ["low", "reserve", "spent"];
 
 /** The stages of a balance. `empty` holds `low`. `unread` comes from the time of the last read. */
 export const BALANCE_STAGES: readonly BalanceStage[] = ["low", "empty", "unread"];
+
+/** The stages of the use of a hard limit (AL-111). `level` comes from the last read that passed. `unread` comes from its time. */
+export const USE_STAGES: readonly UseStage[] = ["level", "unread"];
 
 /**
  * The stages of another copy. `skew` and `config` come from the last read that passed. `unread` comes from its time.
@@ -287,6 +295,11 @@ export interface SystemSnapshot {
    * balances, each open line of a balance stays open. Only one copy reports the stages `low` and `empty` (`reportsShared`).
    */
   readonly balances?: readonly ProviderBalance[];
+  /**
+   * The watches of the use of the hard limits of the provider accounts (AL-111). Each stage that `useStages` gives is a
+   * condition. With no list, each open line of a use stays open. Only one copy reports the stage `level` (`reportsShared`).
+   */
+  readonly uses?: readonly LimitUse[];
   /** The id of this copy. With the watches of the other copies, it chooses the copy that reports the facts of a shared account. */
   readonly copy?: string;
   /**
@@ -406,6 +419,32 @@ export function balanceFloorsBelow(balance: ProviderBalance): number[] {
 }
 
 /**
+ * This function gives the stages of the use of a hard limit at the time `at`, in the order of `USE_STAGES`.
+ *
+ * - `level` comes from the last read that passed, also when the read is old. A read with no level gives no stage `level`.
+ * - `unread` starts at `useUnreadAt`. A read that passes ends it.
+ */
+export function useStages(use: LimitUse, at: Instant): UseStage[] {
+  const reached: Readonly<Record<UseStage, boolean>> = { level: useLevelsReached(use).length > 0, unread: at >= useUnreadAt(use) };
+  return USE_STAGES.filter((stage) => reached[stage]);
+}
+
+/** This function gives the time of the stage `unread` of a use: the maximum age after the last read. With no read, the age counts from the start. */
+export function useUnreadAt(use: LimitUse): Instant {
+  return (use.read?.at ?? use.since) + use.maxAge;
+}
+
+/**
+ * This function gives the levels of the watch that the last read reached, from the lowest to the highest, each one time.
+ * A level is reached when it is the level of the read or lower. With no read, or a read with no level, the list is empty.
+ */
+export function useLevelsReached(use: LimitUse): number[] {
+  const level = use.read?.level;
+  if (level === undefined) return [];
+  return [...new Set(use.levels)].filter((one) => one <= level).sort((a, b) => a - b);
+}
+
+/**
  * This function gives the stages of another copy at the time `at`, in the order of `COPY_STAGES`.
  *
  * - `skew` and `config` come from the last read that passed, also when the read is old.
@@ -501,6 +540,7 @@ export function gapGrade(entry: Coverage, threatened: boolean): { readonly sever
  *   up stays a condition for the clear time of the source (`sourceClearTime`).
  * - Each stage of a quota, each stage of a balance and each stage of another copy. Only one copy reports the stages
  *   `low` and `empty` of a balance (`reportsShared`). The stage `unread` is a fact of each copy.
+ * - Each level that the use of a hard limit reached, and the stage `unread` of its watch. Only one copy reports a level (`reportsShared`).
  * - The latest step of the wall clock in `CLOCK_STEP_WINDOW` before `at`.
  * - The latest recovery of the log in `LOG_RECOVERY_WINDOW` before `at`.
  * - Each run of a drill that waits for its acknowledgment, and each drill whose last run failed.
@@ -544,6 +584,17 @@ export function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: 
       if (stage !== "low") conditions.set(balanceName(balance.provider, stage), balanceCondition(balance, stage, at));
       // Each floor that the balance is below is its own line. Thus each floor gives its own alert.
       else for (const floor of balanceFloorsBelow(balance)) conditions.set(balanceName(balance.provider, stage, floor), balanceCondition(balance, stage, at, floor));
+    }
+  }
+  // A level is a fact of the account, and one copy reports it. The stage unread is a fact of this copy.
+  for (const use of snapshot.uses ?? []) {
+    for (const stage of useStages(use, at)) {
+      if (stage === "unread") conditions.set(useName(use.id, stage), useCondition(use, stage, at));
+      // Each level that the share reached is its own line. Thus each level gives its own alert, and one time in a month.
+      else if (shared && use.read !== undefined) {
+        const month = use.read.month;
+        for (const level of useLevelsReached(use)) conditions.set(useName(use.id, stage, { level, month }), useCondition(use, stage, at, level));
+      }
     }
   }
   for (const watch of snapshot.copies ?? []) {
@@ -604,6 +655,7 @@ export function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: 
     const condition = conditions.get(name);
     if (condition === undefined && snapshot.quotas === undefined && name.startsWith(QUOTA_LINE)) continue;
     if (condition === undefined && snapshot.balances === undefined && name.startsWith(BALANCE_LINE)) continue;
+    if (condition === undefined && snapshot.uses === undefined && name.startsWith(USE_LINE)) continue;
     if (condition === undefined && snapshot.copies === undefined && name.startsWith(COPY_LINE)) continue;
     if (condition === undefined && snapshot.drills === undefined && name.startsWith(DRILL_LINE)) continue;
     if (condition === undefined && snapshot.drillWatches === undefined && name.startsWith(DRILL_WATCH_LINE)) continue;
@@ -701,6 +753,15 @@ const BALANCE_LINE = "balance/";
 function balanceName(provider: string, stage: BalanceStage, floor?: number): string {
   const name = `${BALANCE_LINE}${encodeURIComponent(provider)}/${stage}`;
   return floor === undefined ? name : `${name}/${String(floor)}`;
+}
+
+// The start of the name of each line of the use of a hard limit (AL-111).
+const USE_LINE = "use/";
+
+// The name of a line of a use. A line `level` also has the level and the month. Thus a level of the next month is a new line.
+function useName(id: string, stage: UseStage, level?: { readonly level: number; readonly month: string }): string {
+  const name = `${USE_LINE}${encodeURIComponent(id)}/${stage}`;
+  return level === undefined ? name : `${name}/${String(level.level)}/${level.month}`;
 }
 
 // The start of the name of each line of another copy.
@@ -1233,6 +1294,52 @@ function balanceCondition(balance: ProviderBalance, stage: BalanceStage, at: Ins
       floor: floor === undefined ? floors.map(String) : [String(floor)],
       ...(read === undefined ? {} : { balance: [String(read.balance)], currency: [read.currency] }),
       age: [String(at - (read?.at ?? balance.since))],
+    },
+  };
+}
+
+// The text of a share of a limit, as a whole percent: for example `80 %`.
+function percent(share: number): string {
+  return `${String(Math.round(share * 100))} %`;
+}
+
+// The condition of one stage of the use of a hard limit. A line `level` has its level. The stage `unread` has no level.
+function useCondition(use: LimitUse, stage: UseStage, at: Instant, level?: number): Condition {
+  const { id, provider, title, limit, currency, levels, read } = use;
+  const limitText = `${limit.toFixed(2)} ${currency}`;
+  const last = read === undefined ? `the start of the watch at ${new Date(use.since).toISOString()}` : new Date(read.at).toISOString();
+  const text: Readonly<Record<UseStage, { readonly headline: string; readonly description: string }>> = {
+    level: {
+      headline: `${title}: the use of ${read?.month ?? "the month"} reached ${percent(level ?? 0)} of the limit of ${limitText}.`,
+      description:
+        (level ?? 0) >= 1
+          ? "The provider stops the paid use until the next month. Raise the limit only if the use is necessary."
+          : `The used amount is ${(read?.used ?? 0).toFixed(2)} ${currency}. At the limit, the provider stops the paid use until the next month.`,
+    },
+    unread: {
+      headline: `The use of ${title} has no read since ${last}.`,
+      description: "The watch cannot see a level of the limit. Examine the key of the account and the network.",
+    },
+  };
+  const code = `${USE_KIND}.${stage}`;
+  return {
+    // A new used amount is not a fact. Thus each level gives one alert in a month, and no update.
+    facts: { id, stage, ...(level === undefined ? {} : { level, ...(read === undefined ? {} : { month: read.month }) }) },
+    kind: { code, label: kindLabel(code) },
+    severity: "moderate",
+    urgency: "expected",
+    response: ["assess"],
+    areas: [],
+    about: [{ system: LIMIT_SUBJECT, id, label: title }],
+    ...text[stage],
+    parameters: {
+      stage: [stage],
+      provider: [provider],
+      level: level === undefined ? levels.map(String) : [String(level)],
+      limit: [String(limit)],
+      currency: [currency],
+      ...(read === undefined ? {} : { used: [String(read.used)], month: [read.month] }),
+      age: [String(at - (read?.at ?? use.since))],
     },
   };
 }
