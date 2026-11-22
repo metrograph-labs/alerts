@@ -116,6 +116,11 @@ export interface Options {
   readonly exchange?: ServiceExchange;
   /** The procedures host of the intake of the messages of the operator (`tellHost`, AL-92). It declares its server on the service. */
   readonly tell?: { declare(svc: ServiceBuilder): ServiceBuilder };
+  /**
+   * The context of the traces (`startTelemetry`, AL-82). The service stops it in the last stage, `flush the output`. Thus each
+   * span ends before the process exits. The profile `pod` has no such stage, thus its stop does not stop the context (AL-133).
+   */
+  readonly telemetry?: { shutdown(): Promise<void> };
 }
 
 /**
@@ -145,6 +150,10 @@ export const holdingPasses = (profile: Profile, passLimit: Duration): Profile =>
 const withOutage = (svc: ServiceBuilder, outage: OutageDeployWorker | undefined): ServiceBuilder =>
   outage === undefined ? svc : svc.worker("outage", outage.worker.knobs, outage.worker);
 
+// The context of the traces stops in the last stage, after the log and the servers close.
+const withTelemetry = (svc: ServiceBuilder, telemetry: Options["telemetry"]): ServiceBuilder =>
+  telemetry === undefined ? svc : svc.onPhase("flush the output", () => telemetry.shutdown());
+
 /**
  * This function declares the one service of the process. It starts nothing. `describe()` gives the
  * declaration as data, and `lint()` examines it. Only the entry (`main.ts`) uses `run()`.
@@ -155,7 +164,7 @@ export const declare = (options: Options): ServiceBuilder => {
   // The worker of the exchange stops before the log closes, because the service closes each worker before its dependencies.
   const withWorker = exchange?.loop === undefined ? svc : svc.worker(EXCHANGE_WORKER, exchange.loop.knobs, exchange.loop);
   const withHost = exchange?.host === undefined ? withWorker : exchange.host.declare(withWorker);
-  return options.tell === undefined ? withHost : options.tell.declare(withHost);
+  return withTelemetry(options.tell === undefined ? withHost : options.tell.declare(withHost), options.telemetry);
 };
 
 // The parts of the service of each runtime: the API, the dependencies, the workers of the passes and of the outage call, the checks and the policies.
