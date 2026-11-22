@@ -26,7 +26,7 @@ function scripted(answers: readonly (UseReading | Error)[]) {
   return { read, reads: () => reads };
 }
 
-const reading = (used: number, level?: number): UseReading => ({ ok: true, month: "2026-11", used, limit: 10, currency: "USD", levels: [0.5, 0.8, 1], ...(level === undefined ? {} : { level }) });
+const reading = (used: number, level?: number): Extract<UseReading, { readonly ok: true }> => ({ ok: true, month: "2026-11", used, limit: 10, currency: "USD", levels: [0.5, 0.8, 1], ...(level === undefined ? {} : { level }) });
 
 describe("the watch of the use of a limit", () => {
   it("reads first after the delay, then once a day, and gives the watch as data of the core", async () => {
