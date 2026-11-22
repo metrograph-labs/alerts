@@ -4863,7 +4863,8 @@
       "infra.internet.outage",
       "infra.internet.shutdown",
       "infra.internet.bgp",
-      "infra.internet.dns-cdn"
+      "infra.internet.dns-cdn",
+      "infra.power.grid-collapse"
     ],
     "dimensions": [
       "internet-connectivity",
@@ -21644,7 +21645,8 @@
     "id": "usgs-comcat-geojson",
     "name": "USGS earthquake GeoJSON summary feeds",
     "classes": [
-      "geo.earthquake"
+      "geo.earthquake",
+      "cbrne.nuclear-detonation"
     ],
     "dimensions": [
       "felt-reports"

@@ -12,7 +12,7 @@ import { mapObservation } from "./map.ts";
 export { USGS_DESCRIPTOR } from "./descriptor.ts";
 export { createUsgsFetch, eventBody, eventFields, FEED_PATH, isFeedEvent, readAnswer, USGS_BASE_URL } from "./fetch.ts";
 export type { UsgsFetchInput, UsgsFetchOptions } from "./fetch.ts";
-export { EARTHQUAKE_KIND, EVENT_FIELDS, EVENT_SYSTEM, eventIds, mapObservation, REPORT_LIFE_MS, SOURCE_ID, USGS_ORIGIN } from "./map.ts";
+export { EARTHQUAKE_KIND, EVENT_FIELDS, EVENT_SYSTEM, eventIds, mapObservation, NUCLEAR_KIND, NUCLEAR_TYPE, REPORT_LIFE_MS, SOURCE_ID, USGS_ORIGIN } from "./map.ts";
 
 /**
  * This function makes the procedures of the USGS source: `describe`, `fetch` and `map`. The source has

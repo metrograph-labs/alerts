@@ -4,7 +4,7 @@ import { ACTIVE_LAW, bandDiscs, FELT_INTENSITY, intensityAt, lawAt } from "@mark
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { eventBody, readAnswer } from "./fetch.ts";
-import { EARTHQUAKE_KIND, EVENT_SYSTEM, eventIds, mapObservation, REPORT_LIFE_MS, SOURCE_ID, USGS_ORIGIN } from "./map.ts";
+import { EARTHQUAKE_KIND, EVENT_SYSTEM, eventIds, mapObservation, NUCLEAR_KIND, REPORT_LIFE_MS, SOURCE_ID, USGS_ORIGIN } from "./map.ts";
 
 const fixture = (name: string): string => readFileSync(new URL(`../fixtures/${name}`, import.meta.url), "utf8");
 const featuresOf = (text: string): Record<string, unknown>[] => (JSON.parse(text) as { features: Record<string, unknown>[] }).features;
@@ -49,6 +49,8 @@ const PHILIPPINES = featureOf(FEATURES, "us7000tyek");
 const ALASKA = featureOf(FEATURES, "aka2026wqrlbd");
 /** The M7.8 event in Turkey on 2023-02-06, depth 10 km, from the event query of the USGS. Its intensity map gives MMI 9.537. */
 const PAZARCIK = featureOf(featuresOf(fixture("query-us6000jllz.geojson")), "us6000jllz");
+/** The M6.3 nuclear test in North Korea on 2017-09-03, depth 0 km, from the event query of the USGS. Its intensity map gives MMI 5.85. */
+const NUCLEAR_TEST = featureOf(featuresOf(fixture("query-us2000aert.geojson")), "us2000aert");
 
 describe("mapObservation", () => {
   it("maps each event of the real feed to one valid report for each band, with nested discs and no problem", () => {
@@ -162,6 +164,36 @@ describe("mapObservation", () => {
     for (const properties of [{ type: "quarry blast" }, { type: "explosion" }, { status: "deleted" }]) {
       expect(mapObservation(observationOf(withProperties(ALASKA, properties)))).toEqual({ reports: [], problems: [] });
     }
+  });
+
+  it("maps a nuclear test to one extreme report of a nuclear detonation, with the felt disc as its area", () => {
+    const properties = NUCLEAR_TEST["properties"] as Record<string, unknown>;
+    const [lon, lat, depth] = pointOf(NUCLEAR_TEST);
+    const law = lawAt([lon, lat]);
+    const discs = bandDiscs(law, 6.3, depth, 5.85 - intensityAt(law, 6.3, depth));
+    const reports = mapAll(NUCLEAR_TEST);
+    expect(reports).toHaveLength(1);
+    const report = reports[0] as Report;
+    expect(report).toMatchObject({
+      key: `us2000aert@${observationOf(NUCLEAR_TEST).id}/nuclear`,
+      kind: { code: NUCLEAR_KIND },
+      severity: "extreme",
+      urgency: "immediate",
+      certainty: "observed",
+      headline: properties["title"],
+      areaText: properties["place"],
+    });
+    expect(knownKind(report.kind.code)).toBe(true);
+    expect(radiusOf(report)).toBe(Math.max(...discs.map((disc) => disc.radiusKm)));
+    expect(reportSchema.parse(report)).toEqual(report);
+  });
+
+  it("joins the earthquake version and the nuclear version of one event in one incident of a nuclear detonation", () => {
+    const earthquake = mapAll(withProperties(NUCLEAR_TEST, { type: "earthquake", status: "automatic" }));
+    expect(new Set(earthquake.map((report) => report.kind.code))).toEqual(new Set([EARTHQUAKE_KIND]));
+    const found = incidents(normalize({ reports: [...earthquake, ...mapAll(NUCLEAR_TEST)] }), FETCHED);
+    expect(found).toHaveLength(1);
+    expect(found[0]?.kind.code).toBe(NUCLEAR_KIND);
   });
 
   it("gives a fatal problem and no report for an event with no time, magnitude, point or title", () => {
