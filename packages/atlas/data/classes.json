@@ -75,7 +75,7 @@
     "references": [
       "CAP 1.2: CBRNE"
     ],
-    "gap": "INGV names a nuclear test with the event type nuclear explosion. The USGS catalog does too, but its adapter maps each event to an earthquake (AL-128). ISC is later.",
+    "gap": null,
     "round": 19
   },
   {

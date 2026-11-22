@@ -11,9 +11,14 @@
  * The feed is a snapshot: it holds the events of the past day. An event that the USGS deletes leaves the
  * feed with no cancel. A new version of an event, for example a new magnitude, is a new body. Thus the
  * key of a report holds the id of its observation, and the ids of the event join the versions in one incident.
+ *
+ * The catalog gives the type `nuclear explosion` to a nuclear test. Such an event gives one report of a nuclear
+ * detonation, with the felt disc of the shaking as its area. The feed gives no yield and no wind, so the map draws no
+ * zone of fallout. A person who watches the topic of the kind gets each test at each distance. The type often comes
+ * after a review, so the first version can be an earthquake. The ids of the event join the two versions in one incident.
  */
 
-import { categoryOf, Problems, reportId, type Area, type Certainty, type MapResult, type Observation, type Report, type SourceId } from "@mark1russell7/alerts";
+import { categoryOf, kindLabel, Problems, reportId, type Area, type Certainty, type MapResult, type Observation, type Report, type SourceId } from "@mark1russell7/alerts";
 import { bandDiscs, FELT_INTENSITY, intensityAt, lawAt, type BandDisc } from "@mark1russell7/alerts-quake";
 import { isRecord, type Fields } from "@mark1russell7/optional/read";
 import { errorMessage } from "@mark1russell7/text";
@@ -29,6 +34,12 @@ export const EVENT_SYSTEM = "usgs-event";
 
 /** The kind code of an earthquake. */
 export const EARTHQUAKE_KIND = "geo.earthquake";
+
+/** The kind code of a nuclear detonation. */
+export const NUCLEAR_KIND = "cbrne.nuclear-detonation";
+
+/** The event type of a nuclear test in the catalog of the USGS. */
+export const NUCLEAR_TYPE = "nuclear explosion";
 
 /**
  * The fields of an event that the fetch keeps in the body of an observation, in this order. Each one is
@@ -82,8 +93,9 @@ export function eventIds(text: string): string[] {
 
 /** This function maps the fields of one event to one report for each band, and can throw. `mapObservation` catches each error. */
 function mapEvent(fields: Fields, observation: Observation, problems: Problems): Report[] {
-  // The feed also holds quarry blasts, explosions and other events. Only an earthquake gives a report.
-  if (fields["type"] !== "earthquake") return [];
+  // The feed also holds quarry blasts, explosions and other events. Only an earthquake and a nuclear test give a report.
+  const nuclear = fields["type"] === NUCLEAR_TYPE;
+  if (fields["type"] !== "earthquake" && !nuclear) return [];
   // A deleted event leaves the feed, but a deleted solution can show for a short time.
   if (fields["status"] === "deleted") return [];
   const id = textField(fields, "id", /^[a-z0-9]+$/, "an event id", problems);
@@ -115,8 +127,11 @@ function mapEvent(fields: Fields, observation: Observation, problems: Problems):
   const alert = text("alert");
   const magnitudeType = text("magType");
   const net = text("net") ?? "us";
-  return bands.map((band): Report => {
-    const key = `${id}@${observation.id}/${band.severity}`;
+  // A nuclear test gives one report, with the felt disc: the largest disc.
+  const chosen = nuclear ? [bands.reduce((largest, band) => (band.radiusKm > largest.radiusKm ? band : largest))] : bands;
+  const kind = nuclear ? NUCLEAR_KIND : EARTHQUAKE_KIND;
+  return chosen.map((band): Report => {
+    const key = `${id}@${observation.id}/${nuclear ? "nuclear" : band.severity}`;
     const areas: Area[] = [{ type: "circle", center: [lon, lat], radiusKm: band.radiusKm }];
     return {
       id: reportId({ source: SOURCE_ID, key, sent: time }),
@@ -127,11 +142,12 @@ function mapEvent(fields: Fields, observation: Observation, problems: Problems):
       correlation,
       status: "actual",
       op: "alert",
-      kind: { code: EARTHQUAKE_KIND, label: "Earthquake" },
-      categories: [categoryOf(EARTHQUAKE_KIND)],
-      severity: band.severity,
-      // The shaking is over when the feed tells of it.
-      urgency: "past",
+      kind: { code: kind, label: nuclear ? kindLabel(kind) : "Earthquake" },
+      categories: [categoryOf(kind)],
+      // A nuclear detonation is a threat to life near it. The feed does not tell a contained test from a burst in the air.
+      severity: nuclear ? "extreme" : band.severity,
+      // The shaking is over when the feed tells of it. The fallout of a burst stays a danger for hours after it.
+      urgency: nuclear ? "immediate" : "past",
       certainty: certainty ?? "unknown",
       response: [],
       // The feed gives no time of each version that a count of felt reports leaves alone, so the sent time is the time of the event.

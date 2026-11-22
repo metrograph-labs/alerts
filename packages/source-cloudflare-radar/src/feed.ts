@@ -63,8 +63,14 @@ export const SHUTDOWN_KIND = "infra.internet.shutdown";
 /** The kind of an outage of a platform (the scope `PLATFORM`) and of an anomaly of a cloud region (the type `ORIGIN`). */
 export const CLOUD_KIND = "infra.cloud.outage";
 
-/** The kinds of the two sources. */
-export const RADAR_KINDS: readonly string[] = [OUTAGE_KIND, SHUTDOWN_KIND, CLOUD_KIND];
+/**
+ * The kind of a collapse of a power grid: a nationwide outage with the cause `POWER_OUTAGE`. The outage gives this report
+ * in addition to its report of the internet outage.
+ */
+export const GRID_COLLAPSE_KIND = "infra.power.grid-collapse";
+
+/** The kinds of the outages. The anomalies give only the internet and cloud outages. */
+export const RADAR_KINDS: readonly string[] = [OUTAGE_KIND, SHUTDOWN_KIND, CLOUD_KIND, GRID_COLLAPSE_KIND];
 
 /** The system of the shared key of an outage. An anomaly that names the outage gives the same key. */
 export const OUTAGE_KEY_SYSTEM = "cloudflare-radar-outage";

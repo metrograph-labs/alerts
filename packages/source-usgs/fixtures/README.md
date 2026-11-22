@@ -5,4 +5,5 @@
 - The feed holds 5 events with an intensity map. The tests use the M5.5 event `us7000tyek` in the Philippines (depth 9.971 km, MMI 6.399).
 - The M3.5 event `aka2026wqrlbd` in Alaska has two ids: the id of the Alaska network and the id of the national network.
 - `query-us6000jllz.geojson` is a real answer of the event query of the USGS, in the format of the feed. It holds the M7.8 event `us6000jllz` in Turkey on 2023-02-06 (depth 10 km, MMI 9.537). The request asked for the events of magnitude 7 or more from 01:17 to 01:18 UTC.
+- `query-us2000aert.geojson` is a real answer of the event query of the USGS, in the format of the feed. It holds the M6.3 event `us2000aert` in North Korea on 2017-09-03, of the type `nuclear explosion` (depth 0 km, MMI 5.85). The request asked for the events of magnitude 6 or more from 03:30 to 03:31 UTC.
 - The USGS data is in the U.S. public domain. Credit: U.S. Geological Survey.
