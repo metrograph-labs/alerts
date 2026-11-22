@@ -1,7 +1,7 @@
 {
   "format": "capacity-app/1",
   "id": "alerts-runtime",
-  "title": "The alerts runtime at rest: a seeded log, fake keys and no network",
+  "title": "The alerts runtime: a seeded log, fake keys, and the NWS alerts of a fake of the feeds at the rates of the workload",
   "repository": "https://github.com/metrograph-labs/alerts.git",
   "variables": [
     {
@@ -39,9 +39,33 @@
       "min": 0,
       "max": 1000,
       "scale": "linear"
+    },
+    {
+      "id": "eventBytes",
+      "title": "The bytes of the description of one version of an alert",
+      "kind": "request",
+      "unit": "B",
+      "min": 200,
+      "max": 100000,
+      "scale": "log"
     }
   ],
-  "classes": [],
+  "classes": [
+    {
+      "id": "event",
+      "title": "A new alert of the NWS API: the first version of an alert",
+      "rate": { "unit": "{event}/s", "min": 0, "max": 100, "scale": "linear" },
+      "request": ["eventBytes"],
+      "entry": { "kind": "service", "service": "feeds" }
+    },
+    {
+      "id": "update",
+      "title": "An update of the NWS API: a new version of a live alert, with a reference to its last version",
+      "rate": { "unit": "{event}/s", "min": 0, "max": 100, "scale": "linear" },
+      "request": ["eventBytes"],
+      "entry": { "kind": "service", "service": "feeds" }
+    }
+  ],
   "start": {
     "install": {
       "argv": ["pnpm", "install", "--frozen-lockfile"],
@@ -54,7 +78,7 @@
       "env": {}
     },
     "run": {
-      "argv": ["node", "scripts/lab-runtime.ts", "{store}"],
+      "argv": ["node", "scripts/lab-runtime.ts", "{store}", "{service.feeds}", "{service.channels}"],
       "cwd": "packages/testkit",
       "env": {},
       "ready": {
@@ -63,6 +87,33 @@
       }
     }
   },
-  "services": [],
+  "services": [
+    {
+      "id": "feeds",
+      "title": "The fake of the feeds: the NWS alerts of the classes event and update, the canary, and empty transit feeds",
+      "fake": {
+        "argv": ["node", "scripts/fake-feeds.ts", "{port}", "{workload}"],
+        "cwd": "packages/testkit",
+        "env": {},
+        "ready": {
+          "kind": "line",
+          "text": "\"ev\":\"fake-ready\",\"service\":\"feeds\""
+        }
+      }
+    },
+    {
+      "id": "channels",
+      "title": "The fake of the channels: the answers of the Pushover API, with no send",
+      "fake": {
+        "argv": ["node", "scripts/fake-channels.ts", "{port}"],
+        "cwd": "packages/testkit",
+        "env": {},
+        "ready": {
+          "kind": "line",
+          "text": "\"ev\":\"fake-ready\",\"service\":\"channels\""
+        }
+      }
+    }
+  ],
   "metrics": []
 }
