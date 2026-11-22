@@ -697,6 +697,21 @@ The webhook channel (`@mark1russell7/alerts-channel-webhook`, AL-55) sends each 
 - The User-Agent of each request is `alerts-runtime`. The receiver gets no contact of the configuration.
 - The channel has no probe, because each probe is a request to the receiver.
 
+The supervisor sends a notice to a receiver when the runtime stops again and again (`loop-notice.ts`, AL-55). A runtime in a loop sends no alert, because the runtime is the sender:
+
+- The URL is the value of the key `SUPERVISOR_WEBHOOK_URL` of `secrets.env`. Each copy has its own file, thus its own receiver.
+- The key `WEBHOOK_SECRET` signs each notice. A URL with no secret is a bad key.
+- Without the key, the supervisor sends no notice.
+- A bad key writes one warning, and the supervisor sends no notice. The supervisor does not stop.
+- The supervisor reads the keys at its start. A change of the keys takes effect at the next start of the supervisor.
+- A loop starts at 3 stops of the runtime in 15 minutes. A stop after a ready start counts too, because a crash after each ready start is a loop.
+- The start of a loop sends the event `runtime.restarts`. Its data has the copy id, the count of stops, the window, the end of the last stop and the time of the first stop.
+- A loop ends when the runtime is ready and has no stop for 15 minutes. The end sends the event `runtime.ready`, with the copy id, the count of stops and the time of the first stop.
+- One loop gives one event of each type. The id comes from the copy, the type and the time of the first stop.
+- A failed send goes again after 60 seconds, with the same id. Thus the receiver keeps one of each event.
+- The end of the last stop comes from the warning of the group. It has one line of 200 characters or fewer.
+- The requests follow the rules of the webhook channel: the same headers, the same URL rule and the User-Agent `alerts-runtime`.
+
 ## The delivery promise
 
 For `life-safety`, the system prefers a duplicate to a miss.
