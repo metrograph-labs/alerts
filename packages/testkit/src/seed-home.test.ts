@@ -82,10 +82,16 @@ describe("seedHome with levels", () => {
     const measured = await openMeasuredRuntime(home, { wall: wallClock({ start: record.end }), startSnapshot: true, transitLimit: record.levels.feeds });
     try {
       expect(measured.instance.transit?.chosen.feeds).toHaveLength(LEVELS.feeds);
+      // The start also has the incidents of the system, for example the health of the sources of a start with no network.
+      // Each one reaches each person. Thus the routes of the hazards are persons times incidents.
       const routes = measured.first.delivery?.routes ?? [];
-      expect(routes).toHaveLength(LEVELS.persons * LEVELS.incidents);
-      expect(new Set(routes.map((route) => route.person)).size).toBe(LEVELS.persons);
-      expect(new Set(routes.map((route) => route.incident.anchor)).size).toBe(LEVELS.incidents);
+      const hazards = routes.filter((route) => !route.incident.kind.code.startsWith("system."));
+      expect(hazards).toHaveLength(LEVELS.persons * LEVELS.incidents);
+      expect(new Set(hazards.map((route) => route.person)).size).toBe(LEVELS.persons);
+      expect(new Set(hazards.map((route) => route.incident.anchor)).size).toBe(LEVELS.incidents);
+      const system = routes.filter((route) => route.incident.kind.code.startsWith("system."));
+      const each = new Set(Array.from({ length: LEVELS.persons }, (_, index) => system.filter((route) => route.person === `person-${String(index + 1)}`).length));
+      expect(each.size).toBe(1);
     } finally {
       await measured.close();
     }
