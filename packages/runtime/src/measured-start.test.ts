@@ -81,6 +81,29 @@ describe("openMeasuredRuntime", { timeout: 30_000 }, () => {
     log.close();
   });
 
+  it("times each write of the snapshot with the option timeSnapshot, and keeps no record without it", async () => {
+    const timed = await openMeasuredRuntime(home, { startSnapshot: true, timeSnapshot: true });
+    opened.push(timed);
+    // The first pass makes the start good. The next pass writes the snapshot.
+    expect(timed.snapshotWrites).toEqual([]);
+    await timed.pass();
+    expect(timed.snapshotWrites).toHaveLength(1);
+    const [write] = timed.snapshotWrites;
+    expect(write!.rows).toBeGreaterThan(0);
+    expect(write!.chars).toBeGreaterThan(0);
+    expect(write!.rowsMs).toBeGreaterThanOrEqual(0);
+    expect(write!.writeMs).toBeGreaterThanOrEqual(0);
+    // A pass in the same period of the snapshot does not write again.
+    await timed.pass();
+    expect(timed.snapshotWrites).toHaveLength(1);
+    await timed.close();
+    // The next start reads the snapshot through the timed store. Without the option, it keeps no record.
+    const plain = await openMeasuredRuntime(home, { startSnapshot: true });
+    opened.push(plain);
+    await plain.pass();
+    expect(plain.snapshotWrites).toEqual([]);
+  });
+
   it("stops when a runtime holds the home folder, and frees the lock at the close", async () => {
     const measured = await open();
     await expect(openMeasuredRuntime(home)).rejects.toBeInstanceOf(HomeHeld);
