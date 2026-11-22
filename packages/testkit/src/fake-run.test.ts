@@ -61,22 +61,21 @@ const hazards = (incidents: readonly Incident[]): readonly Incident[] =>
 describe("a measured start with the fakes", { timeout: 120_000 }, () => {
   it("gets the alerts of the fake of the feeds, and sends their messages to the fake of the channels", async () => {
     const record = readSeedRecord(home);
-    const wall = fakeWallClock(record.end);
     const [feedsServer, channelsServer] = servers;
-    let measured: MeasuredRuntime | undefined;
-    try {
-      measured = await openMeasuredRuntime(home, {
-        wall,
+    // The instance makes a frame clock on the wall clock and the monotonic clock. A set of the wall clock in a start is a step
+    // of the clock, and the runtime moves its times by the step. Thus the time of the test goes on only between two starts.
+    const start = (at: number): Promise<MeasuredRuntime> =>
+      openMeasuredRuntime(home, {
+        wall: fakeWallClock(at),
         startSnapshot: true,
         transitLimit: LEVELS.feeds,
         services: { feeds: feedsServer!.url, channels: channelsServer!.url },
       });
-      // The seeded log tells when the NWS source is due. One minute after its last fetch, a pass fetches it.
-      let pass = measured.first;
-      for (let step = 1; step <= 3 && !pass.fetched.includes(NWS_ID); step += 1) {
-        wall.set(record.end + step * MINUTE);
-        pass = await measured.pass();
-      }
+    let measured: MeasuredRuntime | undefined;
+    try {
+      // The last fetch of the NWS source in the seeded log is at the end of the log or before it. One minute after the end, it is due.
+      measured = await start(record.end + MINUTE);
+      const pass = measured.first;
       expect(pass.fetched).toContain(NWS_ID);
       const counts = feeds.counts();
       expect(counts.answers).toBeGreaterThan(0);
@@ -87,9 +86,11 @@ describe("a measured start with the fakes", { timeout: 120_000 }, () => {
       expect(new Set(routes.map((route) => route.person)).size).toBe(LEVELS.persons);
       // The transit feeds of the start read the empty feeds of the fake.
       expect(measured.instance.transit?.chosen.feeds).toHaveLength(LEVELS.feeds);
-      // A later pass has the alerts of the minutes after it.
-      wall.set(wall.now() + 2 * MINUTE);
-      const later = await measured.pass();
+      await measured.close();
+      // A later start has the alerts of the minutes after the first start. The fake gives one alert in each minute.
+      measured = await start(record.end + 3 * MINUTE);
+      const later = measured.first;
+      expect(later.fetched).toContain(NWS_ID);
       expect(feeds.counts().events).toBeGreaterThan(counts.events);
       expect(hazards(later.view.incidents)).toHaveLength(feeds.counts().events);
       expect(channels.counts().messages).toBeGreaterThan(0);
