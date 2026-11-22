@@ -204,10 +204,22 @@
     "note": "The host of the feed of greynoise-community-api."
   },
   {
+    "id": "api.hungermapdata.org",
+    "name": "api.hungermapdata.org",
+    "kind": "host",
+    "note": "The host of the feed of wfp-hungermap-api."
+  },
+  {
     "id": "api.ioda.inetintel.cc.gatech.edu",
     "name": "api.ioda.inetintel.cc.gatech.edu",
     "kind": "host",
     "note": "The host of the feed of ioda-api."
+  },
+  {
+    "id": "api.ipcinfo.org",
+    "name": "api.ipcinfo.org",
+    "kind": "host",
+    "note": "The host of the feed of ipc-api."
   },
   {
     "id": "api.limitless.exchange",
@@ -346,6 +358,12 @@
     "name": "api.weather.gov",
     "kind": "host",
     "note": "The host of the feed of nws-alerts-api."
+  },
+  {
+    "id": "apidatos.ree.es",
+    "name": "apidatos.ree.es",
+    "kind": "host",
+    "note": "The host of the feed of ree-redata-api."
   },
   {
     "id": "apix.cisco.com",
@@ -852,6 +870,12 @@
     "note": "The host of the free URL of rocketlaunch-live."
   },
   {
+    "id": "fdw.fews.net",
+    "name": "fdw.fews.net",
+    "kind": "host",
+    "note": "The host of the feed of fews-net-fdw-ipc-api."
+  },
+  {
     "id": "feeds.meteoalarm.org",
     "name": "feeds.meteoalarm.org",
     "kind": "host",
@@ -988,6 +1012,12 @@
     "name": "ico.org.uk",
     "kind": "host",
     "note": "The host of the feed of uk-ico-incident-trends."
+  },
+  {
+    "id": "incidentdatabase.ai",
+    "name": "incidentdatabase.ai",
+    "kind": "host",
+    "note": "The host of the feed of aiid-rss."
   },
   {
     "id": "incidentnews.noaa.gov",
@@ -1222,6 +1252,12 @@
     "name": "odin.ornl.gov",
     "kind": "host",
     "note": "The host of the ODIN Web API of ORNL."
+  },
+  {
+    "id": "oecd.ai",
+    "name": "oecd.ai",
+    "kind": "host",
+    "note": "The host of the feed of oecd-ai-incidents-monitor."
   },
   {
     "id": "ofac.treasury.gov",
@@ -1620,6 +1656,12 @@
     "note": "Each department of transportation publishes its own WZDx feed."
   },
   {
+    "id": "stats.bis.org",
+    "name": "stats.bis.org",
+    "kind": "host",
+    "note": "The host of the feed of bis-data-api."
+  },
+  {
     "id": "status.aws.amazon.com",
     "name": "status.aws.amazon.com",
     "kind": "host",
@@ -1636,6 +1678,12 @@
     "name": "status.firebase.google.com",
     "kind": "host",
     "note": "The host of the feed of firebase-status. Google answers from its own front end, the provider of the feed."
+  },
+  {
+    "id": "status.openai.com",
+    "name": "status.openai.com",
+    "kind": "host",
+    "note": "The host of the feed of openai-status."
   },
   {
     "id": "statusgator.com",
@@ -1822,6 +1870,12 @@
     "name": "wcc.sc.egov.usda.gov",
     "kind": "host",
     "note": "The host of the feed of nrcs-awdb-rest."
+  },
+  {
+    "id": "webservices.ingv.it",
+    "name": "webservices.ingv.it",
+    "kind": "host",
+    "note": "The host of the feed of ingv-fdsnws-event."
   },
   {
     "id": "webtris.nationalhighways.co.uk",
@@ -2292,6 +2346,12 @@
     "note": "The host of the feed of irs-disaster-relief."
   },
   {
+    "id": "www.isc.ac.uk",
+    "name": "www.isc.ac.uk",
+    "kind": "host",
+    "note": "The host of the feed of isc-fdsnws-event."
+  },
+  {
     "id": "www.ivanti.com",
     "name": "www.ivanti.com",
     "kind": "host",
@@ -2692,5 +2752,11 @@
     "name": "xenbits.xen.org",
     "kind": "host",
     "note": "The host of the feed of xen-xsa-json."
+  },
+  {
+    "id": "zenodo.org",
+    "name": "zenodo.org",
+    "kind": "host",
+    "note": "The host of the feed of eurepoc-global-dataset."
   }
 ]

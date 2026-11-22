@@ -712,6 +712,44 @@
     "round": 10
   },
   {
+    "id": "aiid-rss",
+    "name": "AI Incident Database RSS feed",
+    "classes": [
+      "civic.ai-collapse"
+    ],
+    "url": "https://incidentdatabase.ai/rss.xml",
+    "access": "feed",
+    "auth": "none",
+    "terms": {
+      "url": "https://incidentdatabase.ai/terms-of-use/",
+      "automated": "unclear",
+      "redistribution": "limited",
+      "note": "The terms give a personal, revocable license to use the site, and the operator can block a user. The section Data License puts the incidents collection under CC BY-SA. Other material needs permission. The terms say nothing on feeds or automated reading."
+    },
+    "cost": "free",
+    "delay": "The items of the feed read on 2026-11-22 had the date 2026-11-21.",
+    "history": "The feed holds the recent reports only.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "World: reports of harm or near harm from AI systems, linked to incident numbers.",
+    "origins": [
+      "raic"
+    ],
+    "path": [
+      "incidentdatabase.ai"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "The only public machine feed of AI incidents that the research found. Most items are small, so the core keeps only the incidents with wide effects.",
+    "evidence": [
+      "https://incidentdatabase.ai/rss.xml",
+      "https://incidentdatabase.ai/terms-of-use/"
+    ],
+    "round": 20
+  },
+  {
     "id": "aikido-intel",
     "name": "Aikido Intel malware feed",
     "classes": [
@@ -911,7 +949,8 @@
     "id": "alerts-in-ua",
     "name": "alerts.in.ua API",
     "classes": [
-      "security.air-raid"
+      "security.air-raid",
+      "security.nuclear-war"
     ],
     "url": "https://devs.alerts.in.ua/",
     "access": "api",
@@ -2218,6 +2257,44 @@
       "https://api.binance.com/sapi/v1/system/status"
     ],
     "round": 1
+  },
+  {
+    "id": "bis-data-api",
+    "name": "BIS Data Portal SDMX API, consumer prices",
+    "classes": [
+      "civic.economy.collapse"
+    ],
+    "url": "https://stats.bis.org/api/v1/",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.bis.org/about/terms-conditions",
+      "automated": "unclear",
+      "redistribution": "limited",
+      "note": "Users can download, print and redistribute BIS material for non-commercial purposes with no written permission. The statistics of the Data Portal have their own terms under About BIS statistics, which the research did not read. The page says nothing on automated reading."
+    },
+    "cost": "free",
+    "delay": "Monthly. On 2026-11-22 the last value for Argentina was for 2026-09.",
+    "history": "unknown",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "Many economies: long series of consumer prices, with the change from the same month of the year before (unit 771). The value for Argentina for 2026-09 was 33.5.",
+    "origins": [
+      "bis"
+    ],
+    "path": [
+      "stats.bis.org"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "A threshold on the change of consumer prices gives the signal of hyperinflation, with no key. The source gives no bank holiday, capital control or default event.",
+    "evidence": [
+      "https://stats.bis.org/api/v1/data/WS_LONG_CPI/M.AR.771/all?lastNObservations=3&format=csv",
+      "https://www.bis.org/about/terms-conditions"
+    ],
+    "round": 20
   },
   {
     "id": "black-marble",
@@ -4336,7 +4413,8 @@
     "classes": [
       "cyber.vulnerability.exploited",
       "cyber.advisory.ics",
-      "cyber.campaign"
+      "cyber.campaign",
+      "cyber.infrastructure-attack"
     ],
     "url": "https://www.cisa.gov/cybersecurity-advisories/all.xml",
     "access": "feed",
@@ -7929,6 +8007,43 @@
     "round": 1
   },
   {
+    "id": "eurepoc-global-dataset",
+    "name": "EuRepoC Global Dataset of Cyber Incidents",
+    "classes": [
+      "cyber.infrastructure-attack"
+    ],
+    "url": "https://zenodo.org/records/14965395",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://zenodo.org/records/14965395",
+      "automated": "unclear",
+      "redistribution": "limited",
+      "note": "The Zenodo record has the license CC BY-NC 4.0: no commercial use. It says nothing on automated reading."
+    },
+    "cost": "free",
+    "delay": "Releases with versions. Version 1.3.2 of 2025-03-04 covers the incidents that started up to 2024-12-31.",
+    "history": "3416 incidents from 2000 to 2024.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "World: cyber incidents with political effects, coded from more than 220 public sources. The release has a receiver dataset. The research did not open the codebook to see the codes of the sectors.",
+    "origins": [
+      "eurepoc"
+    ],
+    "path": [
+      "zenodo.org"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "The consolidated release is too late for an alert. The record says that the data in real time is in the table view, and that API access is by contact.",
+    "evidence": [
+      "https://zenodo.org/api/records/14965395"
+    ],
+    "round": 20
+  },
+  {
     "id": "eurocontrol-traffic",
     "name": "Eurocontrol daily traffic and airport delay data",
     "classes": [],
@@ -8545,6 +8660,44 @@
     "reason": "Known shelter layer; not confirmed.",
     "evidence": [],
     "round": 1
+  },
+  {
+    "id": "fews-net-fdw-ipc-api",
+    "name": "FEWS NET Data Warehouse API, food insecurity phases",
+    "classes": [
+      "infra.supply-chain.food"
+    ],
+    "url": "https://fdw.fews.net/api/ipcphase.json",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://help.fews.net/fdp/data-and-information-use-and-attribution-policy",
+      "automated": "allowed",
+      "redistribution": "limited",
+      "note": "The policy permits the use of the FEWS NET APIs, also through other websites and software. Each use gives the attribution of the metadata. Some data of third parties needs the consent of the original source. A user does not imply an endorsement of FEWS NET."
+    },
+    "cost": "free",
+    "delay": "unknown",
+    "history": "The reply for Sudan was approximately 100 MB, with the classifications of past periods. The first item was for April 2023.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "The countries that FEWS NET monitors: the phase of acute food insecurity of each area (IPC-compatible, from 1 Minimal to 5 Famine), for the current situation and the projections.",
+    "origins": [
+      "fews-net"
+    ],
+    "path": [
+      "fdw.fews.net"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "An official JSON source of food-security crises by area, with no key. A rise to phase 4 or 5 is the signal. The parameter limit did not make the reply smaller, so the adapter uses filters.",
+    "evidence": [
+      "https://fdw.fews.net/api/ipcphase.json?country_code=SD&limit=2",
+      "https://help.fews.net/fdp/data-and-information-use-and-attribution-policy"
+    ],
+    "round": 20
   },
   {
     "id": "find-case-law-atom",
@@ -11124,6 +11277,47 @@
     "round": 15
   },
   {
+    "id": "ingv-fdsnws-event",
+    "name": "INGV FDSN event service",
+    "classes": [
+      "cbrne.nuclear-detonation",
+      "geo.earthquake"
+    ],
+    "url": "https://webservices.ingv.it/fdsnws/event/1/",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://terremoti.ingv.it/en/webservices_and_software",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The page puts the data that INGV publishes on the site under CC BY 4.0. It says nothing on automated reading or on a rate."
+    },
+    "cost": "free",
+    "delay": "unknown",
+    "history": "The catalog holds the 2017-09-03 event in North Korea.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "Italy in detail, and large world events, each with the column EventType. The 2017-09-03 event in North Korea (M 6.3) has the type nuclear explosion.",
+    "origins": [
+      "ingv"
+    ],
+    "path": [
+      "webservices.ingv.it"
+    ],
+    "subjectIds": [
+      "point"
+    ],
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "A second catalog that names a nuclear explosion as an event type, on other hosts than the USGS, with no key. EMSC and GEOFON gave no such type for the same event.",
+    "evidence": [
+      "https://webservices.ingv.it/fdsnws/event/1/query?starttime=2017-09-03T03:25:00&endtime=2017-09-03T03:35:00&minmag=5&format=text",
+      "https://terremoti.ingv.it/en/webservices_and_software"
+    ],
+    "round": 20
+  },
+  {
     "id": "insight-prediction-site",
     "name": "Insight Prediction",
     "classes": [
@@ -11296,7 +11490,8 @@
     "name": "IODA (Internet Outage Detection and Analysis) API",
     "classes": [
       "infra.internet.outage",
-      "infra.internet.shutdown"
+      "infra.internet.shutdown",
+      "infra.power.grid-collapse"
     ],
     "dimensions": [
       "internet-connectivity"
@@ -11502,6 +11697,44 @@
     "round": 1
   },
   {
+    "id": "ipc-api",
+    "name": "IPC public API (Integrated Food Security Phase Classification)",
+    "classes": [
+      "infra.supply-chain.food"
+    ],
+    "url": "https://docs.api.ipcinfo.org/",
+    "access": "api",
+    "auth": "key",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The documentation page showed only its title to the reader. The research found no terms page."
+    },
+    "cost": "unknown",
+    "delay": "unknown",
+    "history": "unknown",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "unknown",
+    "origins": [
+      "ipc"
+    ],
+    "path": [
+      "api.ipcinfo.org"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "The API answers HTTP 401 with the code API_KEY_MISSING. The research did not read how to get a key or the terms.",
+    "evidence": [
+      "https://docs.api.ipcinfo.org/",
+      "https://api.ipcinfo.org/country?format=json"
+    ],
+    "round": 20
+  },
+  {
     "id": "irs-disaster-relief",
     "name": "IRS tax relief in disaster situations",
     "classes": [
@@ -11537,6 +11770,46 @@
       "https://www.irs.gov/newsroom/tax-relief-in-disaster-situations"
     ],
     "round": 1
+  },
+  {
+    "id": "isc-fdsnws-event",
+    "name": "ISC Bulletin FDSN event service",
+    "classes": [
+      "cbrne.nuclear-detonation"
+    ],
+    "url": "https://www.isc.ac.uk/fdsnws/event/1/",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.isc.ac.uk/citations/",
+      "automated": "unclear",
+      "redistribution": "limited",
+      "note": "The page says that each use of ISC data cites the ISC product and its articles, also for commercial organizations. It says nothing on automated reading."
+    },
+    "cost": "free",
+    "delay": "The review of the bulletin comes long after the event. A comment in the reply starts with the words Data on or after 2024/11/01 have n, and the research did not read the full comment.",
+    "history": "The reviewed bulletin holds the 2017-09-03 event.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "World: the ISC Bulletin in QuakeML. The 2017-09-03 event in North Korea has the type nuclear explosion with the typeCertainty suspected.",
+    "origins": [
+      "isc"
+    ],
+    "path": [
+      "www.isc.ac.uk"
+    ],
+    "subjectIds": [
+      "point"
+    ],
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "The event type comes with the review of the bulletin, so the delay is too long for an alert. It is a good source to confirm an event later.",
+    "evidence": [
+      "https://www.isc.ac.uk/fdsnws/event/1/query?starttime=2017-09-03T03:29:00&endtime=2017-09-03T03:32:00&minmagnitude=5",
+      "https://www.isc.ac.uk/citations/"
+    ],
+    "round": 20
   },
   {
     "id": "itrc-notified",
@@ -15337,6 +15610,43 @@
     "round": 3
   },
   {
+    "id": "oecd-ai-incidents-monitor",
+    "name": "OECD AI Incidents and Hazards Monitor (AIM)",
+    "classes": [
+      "civic.ai-collapse"
+    ],
+    "url": "https://oecd.ai/en/incidents-methodology",
+    "access": "page",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.oecd.org/termsandconditions",
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The methodology page puts the use of AIM under the general terms of the OECD. The research did not read those terms."
+    },
+    "cost": "free",
+    "delay": "The page says that the pipeline processes the events of one to four days before, each day.",
+    "history": "unknown",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "World: AI incidents and hazards from news. Event Registry gives the news events, from more than 150000 articles each day.",
+    "origins": [
+      "oecd"
+    ],
+    "path": [
+      "oecd.ai"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "The page gives no download, feed or API for the AIM data. The terms are not read.",
+    "evidence": [
+      "https://oecd.ai/en/incidents-methodology"
+    ],
+    "round": 20
+  },
+  {
     "id": "oecd-cli-sdmx",
     "name": "OECD Composite Leading Indicators (SDMX API)",
     "classes": [
@@ -15619,6 +15929,47 @@
       "https://wiki.open311.org/GeoReport_v2/Servers"
     ],
     "round": 10
+  },
+  {
+    "id": "openai-status",
+    "name": "OpenAI status page",
+    "classes": [
+      "civic.ai-collapse",
+      "infra.saas.outage"
+    ],
+    "dimensions": [
+      "online-service-status"
+    ],
+    "url": "https://status.openai.com/api/v2/status.json",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The research found no terms page for the status page."
+    },
+    "cost": "free",
+    "delay": "unknown",
+    "history": "unknown",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "The OpenAI services: one status indicator and a description.",
+    "origins": [
+      "openai"
+    ],
+    "path": [
+      "status.openai.com"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "The reply has the Statuspage v2 shape, but the page id has a different form from the ids of Statuspage, so the host is possibly another platform. No terms page was found.",
+    "evidence": [
+      "https://status.openai.com/api/v2/status.json"
+    ],
+    "round": 20
   },
   {
     "id": "openaq-api",
@@ -18114,6 +18465,48 @@
     ]
   },
   {
+    "id": "ree-redata-api",
+    "name": "Red Eléctrica REData API, demand in real time",
+    "classes": [
+      "infra.power.grid-collapse"
+    ],
+    "dimensions": [
+      "power-demand"
+    ],
+    "url": "https://www.ree.es/en/datos/apidata",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.ree.es/en/legal-notice-privacy-policy",
+      "automated": "unclear",
+      "redistribution": "limited",
+      "note": "The legal notice lets users reuse the information and data for information only, not for commercial purposes. The user names the company as the source, keeps the meaning and gives the date of the last update. The notice says nothing on automated reading. The API page says that only GET requests are possible."
+    },
+    "cost": "free",
+    "delay": "The widget demanda-tiempo-real gives values at steps of 5 minutes.",
+    "history": "The reply of 2026-11-22 gave the values of 2025-04-28.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "Spain: the national demand in real time, with the real, forecast and scheduled values.",
+    "origins": [
+      "ree"
+    ],
+    "path": [
+      "apidatos.ree.es"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "On 2025-04-28 the real demand fell from 26968 MW at 12:30 to 1785 MW at 12:35 local time. This drop is the signal of the collapse of the Iberian grid, with no key.",
+    "evidence": [
+      "https://www.ree.es/en/datos/apidata",
+      "https://apidatos.ree.es/en/datos/demanda/demanda-tiempo-real?start_date=2025-04-28T09:00&end_date=2025-04-28T14:00&time_trunc=hour",
+      "https://www.ree.es/en/legal-notice-privacy-policy"
+    ],
+    "round": 20
+  },
+  {
     "id": "ria-cert-ee-rss",
     "name": "RIA (CERT-EE) news RSS (Estonia)",
     "classes": [
@@ -19854,7 +20247,8 @@
     "classes": [
       "infra.saas.outage",
       "infra.internet.dns-cdn",
-      "infra.payments.outage"
+      "infra.payments.outage",
+      "civic.ai-collapse"
     ],
     "dimensions": [
       "online-service-status"
@@ -22064,12 +22458,51 @@
     "round": 10
   },
   {
+    "id": "wfp-hungermap-api",
+    "name": "WFP HungerMap LIVE API",
+    "classes": [
+      "infra.supply-chain.food"
+    ],
+    "url": "https://api.hungermapdata.org/v1/foodsecurity/country",
+    "access": "api",
+    "auth": "key",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The research found no terms page. The path /swagger/ gave HTTP 404."
+    },
+    "cost": "unknown",
+    "delay": "unknown",
+    "history": "unknown",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "unknown",
+    "origins": [
+      "wfp"
+    ],
+    "path": [
+      "api.hungermapdata.org"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "The path of the food security of each country answers HTTP 401 Unauthorized. The research did not find how to get access or the terms.",
+    "evidence": [
+      "https://api.hungermapdata.org/v1/foodsecurity/country",
+      "https://api.hungermapdata.org/swagger/"
+    ],
+    "round": 20
+  },
+  {
     "id": "who-don-api",
     "name": "WHO Disease Outbreak News (JSON API)",
     "classes": [
       "health.outbreak",
       "health.travel-notice",
-      "cbrne.biological"
+      "cbrne.biological",
+      "health.outbreak.pandemic"
     ],
     "dimensions": [
       "outbreak-reports"
@@ -22104,6 +22537,44 @@
       "https://www.who.int/api/news/diseaseoutbreaknews"
     ],
     "round": 1
+  },
+  {
+    "id": "who-news-items-api",
+    "name": "WHO news items API (statements of the IHR Emergency Committees)",
+    "classes": [
+      "health.outbreak.pandemic"
+    ],
+    "url": "https://www.who.int/api/news/newsitems",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.who.int/about/policies/terms-of-use",
+      "automated": "unclear",
+      "redistribution": "limited",
+      "note": "The page gives the WHO copyright notice. Extracts are for research or private study, not for sale or commercial use. Substantial parts need written authorization. Each use names WHO as the source. The page says nothing on automated reading."
+    },
+    "cost": "free",
+    "delay": "unknown",
+    "history": "unknown",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "World: WHO news items, each with a type. The items with the type Statement include the statements of the IHR Emergency Committees, which declare, keep or end a PHEIC.",
+    "origins": [
+      "who"
+    ],
+    "path": [
+      "www.who.int"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "The declaration of a PHEIC comes as a statement of an IHR Emergency Committee. The same OData service as who-don-api gives these items as JSON with no key.",
+    "evidence": [
+      "https://www.who.int/api/news/newsitems?$top=50",
+      "https://www.who.int/about/policies/terms-of-use"
+    ],
+    "round": 20
   },
   {
     "id": "wikimedia-eventstreams",

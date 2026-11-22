@@ -1050,5 +1050,65 @@
       "members": 1757,
       "cause": "Round 19 adds 9 classes for new codes of the taxonomy, with gaps. The classes go from 204 to 213, and the gaps from 103 to 112. No source changes."
     }
+  },
+  {
+    "round": 20,
+    "date": "2026-11-22",
+    "by": "One session and one research agent, for the 9 classes of the new hazard cases (AL-127).",
+    "method": "Web searches and reads of the pages and the API replies of each source. The agent examined the existing records for the 9 codes first, then searched new sources. Before the commit, the session read four claims again: the USGS event type, the INGV event type, the alert types of alerts.in.ua and the WHO news API.",
+    "lists": [
+      "USGS FDSN event query, the events with the type nuclear explosion since 2010: https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&eventtype=nuclear%20explosion&starttime=2010-01-01&endtime=2026-11-22",
+      "EMSC SeismicPortal FDSN event query, the window of the 2017-09-03 event in North Korea: https://www.seismicportal.eu/fdsnws/event/1/query?format=json&start=2017-09-03T03:00:00&end=2017-09-03T04:30:00&minmag=4",
+      "GEOFON FDSN event query, the same window: https://geofon.gfz.de/fdsnws/event/1/query?format=text&start=2017-09-03T03:00:00&end=2017-09-03T04:30:00&minmag=4",
+      "ISC FDSN event query, the same window: https://www.isc.ac.uk/fdsnws/event/1/query?starttime=2017-09-03T03:29:00&endtime=2017-09-03T03:32:00&minmagnitude=5",
+      "INGV FDSN event query, the same window: https://webservices.ingv.it/fdsnws/event/1/query?starttime=2017-09-03T03:25:00&endtime=2017-09-03T03:35:00&minmag=5&format=text",
+      "CISA cybersecurity advisories feed (10 items): https://www.cisa.gov/cybersecurity-advisories/cybersecurity-advisories.xml",
+      "CISA all advisories feed: https://www.cisa.gov/cybersecurity-advisories/all.xml",
+      "WHO news items API, 50 items: https://www.who.int/api/news/newsitems?$top=50",
+      "WHO disease outbreak news API, 100 items: https://www.who.int/api/news/diseaseoutbreaknews?$top=100",
+      "Zenodo record of the EuRepoC Global Dataset of Cyber Incidents: https://zenodo.org/api/records/14965395",
+      "AI Incident Database RSS feed: https://incidentdatabase.ai/rss.xml"
+    ],
+    "queries": [
+      "EuRepoC European Repository of Cyber Incidents data download API licence",
+      "FEWS NET Data Warehouse fdw.fews.net API terms of use data reuse",
+      "OECD AI Incidents Monitor AIM data download API incidents dataset terms",
+      "J-Alert 国民保護情報 弾道ミサイル 配信 XML API 公開 データ"
+    ],
+    "notes": [
+      "Round 20 adds 12 sources for the 9 classes of round 19: 6 planned and 6 later. It adds the codes to 5 records that carry the signals already: who-don-api, cisa-advisories-rss, alerts-in-ua, ioda-api, statuspage-public-api.",
+      "The USGS catalog gives the event type nuclear explosion, and Cloudflare Radar gives the cause power outage. Their records are adopted, but their adapters do not give the two codes. Thus the two records get the codes after AL-128.",
+      "health.outbreak.pandemic: 2 live sources. who-don-api (existing, plan) and who-news-items-api (new, plan). The research did not check cdc-han, because it is an email source and its archive was not read.",
+      "cyber.infrastructure-attack: 1 live source, cisa-advisories-rss (existing, plan), and eurepoc-global-dataset (later). The current windows of the CERT-UA RSS feed, the CCCS alerts feed and the NCSC UK feed had no item on an attack on the control systems of a utility, so no record got the code.",
+      "cbrne.nuclear-detonation: 1 live source, ingv-fdsnws-event (new, plan), with isc-fdsnws-event (later). The USGS catalog names the 2017-09-03 event in North Korea a nuclear explosion, but the adapter of usgs-comcat-geojson maps each event to an earthquake (AL-128). EMSC gives the evtype ke (known earthquake) for the event, and GEOFON gives an empty EventType. The research did not read the CTBTO pages this round.",
+      "cbrne.emp: no source. The research found no public feed that names an electromagnetic pulse. A burst high in the atmosphere gives little or no seismic signal, so the seismic catalogs do not carry it. The likely signals are the national warnings of security.nuclear-war and wide outages of power and telecom, but no source names the cause.",
+      "security.nuclear-war: 1 live source, alerts-in-ua (existing, plan). The swagger document of api.ukrainealarm.com gave HTTP 403, so no record was made. A search found no public machine-readable form of the J-Alert civil protection messages of Japan. The IPAWS page in the record ipaws-open gave HTTP 404, so the research could not show that the feed carries the national code EAN.",
+      "infra.power.grid-collapse: 2 live sources, ree-redata-api (new, plan) and ioda-api (existing, plan). Cloudflare Radar also shows the Iberian blackout of 2025-04-28 with the cause power outage, but its adapter maps the outage to an internet outage (AL-128). eia-930 (power-demand) can give the same drop of load for US balancing areas, but its record has no classes, so it got no code.",
+      "infra.supply-chain.food: 1 live source, fews-net-fdw-ipc-api (new, plan), with ipc-api and wfp-hungermap-api (later). The HDX HAPI food-security path (hapi.humdata.org) answered HTTP 429 with the message Blocked due to bot activity, so no record was made and the research did not try again.",
+      "civic.economy.collapse: 1 live source, bis-data-api (new, plan), for hyperinflation only. The research found no free machine-readable source of bank holidays, capital controls or sovereign defaults within the budget.",
+      "civic.ai-collapse: 2 live sources. statuspage-public-api (existing, plan, with the Claude status page as evidence) and aiid-rss (new, plan), with oecd-ai-incidents-monitor and openai-status (later).",
+      "Failed reads: WHO disease outbreak news API with $select or $orderby (HTTP 400). WHO path /api/news/statements (HTTP 404). REE path demanda/evolucion (HTTP 400, the path demanda-tiempo-real worked). IPC documentation page (only the title). HungerMap path /swagger/ (HTTP 404). HDX HAPI (HTTP 429, bot block). api.ukrainealarm.com swagger (HTTP 403). FEMA all-hazards feed page (HTTP 404). alerts.ncdr.nat.gov.tw (a small script page with no alert data)."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 213,
+      "gaps": 109,
+      "cover": {
+        "adopted": 54,
+        "paths": 54,
+        "origins": 4
+      },
+      "total": {
+        "adopted": 146,
+        "paths": 146,
+        "origins": 67
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 8,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 20 adds planned and later sources to the 9 classes of round 19. The gaps go from 112 to 109, because 3 classes get two live sources: civic.ai-collapse, health.outbreak.pandemic and infra.power.grid-collapse. The dimensions with two live sources go from 7 to 8, because ree-redata-api is a second source of power-demand. No source is adopted, so the cover and the totals do not change."
+    }
   }
 ]

@@ -26,7 +26,7 @@
       "CAP 1.2: CBRNE",
       "CISA sectors: Energy"
     ],
-    "gap": "Round 19 added the class for a new hazard case. It searched no source for the class.",
+    "gap": "No public feed names an electromagnetic pulse. A burst high in the atmosphere gives little seismic signal. The national warnings and the wide outages of power show its effects, with no cause.",
     "round": 19
   },
   {
@@ -75,7 +75,7 @@
     "references": [
       "CAP 1.2: CBRNE"
     ],
-    "gap": "Round 19 added the class for a new hazard case. It searched no source for the class.",
+    "gap": "INGV names a nuclear test with the event type nuclear explosion. The USGS catalog does too, but its adapter maps each event to an earthquake (AL-128). ISC is later.",
     "round": 19
   },
   {
@@ -123,7 +123,7 @@
     "references": [
       "No hazard list names this class."
     ],
-    "gap": "Round 19 added the class for a new hazard case. It searched no source for the class.",
+    "gap": null,
     "round": 19
   },
   {
@@ -169,7 +169,7 @@
     "references": [
       "CISA sectors: Financial Services"
     ],
-    "gap": "Round 19 added the class for a new hazard case. It searched no source for the class.",
+    "gap": "The BIS consumer prices show hyperinflation only. No free machine-readable source of bank holidays, capital controls or sovereign defaults was found.",
     "round": 19
   },
   {
@@ -440,7 +440,7 @@
       "CISA sectors: Water and Wastewater Systems",
       "CISA sectors: Energy"
     ],
-    "gap": "Round 19 added the class for a new hazard case. It searched no source for the class.",
+    "gap": "The CISA advisories are the only live source. The current items of the CERT-UA, CCCS and NCSC UK feeds had no attack on the control systems of a utility. EuRepoC is later.",
     "round": 19
   },
   {
@@ -1201,7 +1201,7 @@
       "CAP 1.2: Health",
       "CISA sectors: Healthcare and Public Health"
     ],
-    "gap": "Round 19 added the class for a new hazard case. It searched no source for the class.",
+    "gap": null,
     "round": 19
   },
   {
@@ -1434,7 +1434,7 @@
       "CAP 1.2: Infra",
       "CISA sectors: Energy"
     ],
-    "gap": "Round 19 added the class for a new hazard case. It searched no source for the class.",
+    "gap": null,
     "round": 19
   },
   {
@@ -1567,7 +1567,7 @@
       "CAP 1.2: Infra",
       "CISA sectors: Food and Agriculture"
     ],
-    "gap": "Round 19 added the class for a new hazard case. It searched no source for the class.",
+    "gap": "FEWS NET is the only live source. The IPC API and HungerMap need a key. HDX HAPI refused the read with a bot block.",
     "round": 19
   },
   {
@@ -3188,7 +3188,7 @@
     "references": [
       "CAP 1.2: Security"
     ],
-    "gap": "Round 19 added the class for a new hazard case. It searched no source for the class.",
+    "gap": "The alerts.in.ua API is the only live source: its alert types include nuclear. J-Alert has no public machine-readable form. The IPAWS page of the record ipaws-open returned 404.",
     "round": 19
   },
   {
