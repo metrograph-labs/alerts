@@ -162,6 +162,12 @@
     "note": "The records of binance-api name this issuer."
   },
   {
+    "id": "bis",
+    "name": "BIS (the Bank for International Settlements)",
+    "issues": null,
+    "note": "The records of bis-data-api name this issuer."
+  },
+  {
     "id": "blitzortung",
     "name": "Blitzortung.org, a network of volunteer lightning stations",
     "issues": null,
@@ -642,6 +648,12 @@
     "note": "The records of meteoalarm-feeds name this issuer."
   },
   {
+    "id": "eurepoc",
+    "name": "EuRepoC (the European Repository of Cyber Incidents)",
+    "issues": null,
+    "note": "The records of eurepoc-global-dataset name this issuer."
+  },
+  {
     "id": "exploit-db",
     "name": "Exploit-DB (OffSec)",
     "issues": null,
@@ -700,6 +712,12 @@
     "name": "US Federal Emergency Management Agency",
     "issues": null,
     "note": "The records of fema-open-shelters, openfema-api name this issuer."
+  },
+  {
+    "id": "fews-net",
+    "name": "FEWS NET (the Famine Early Warning Systems Network)",
+    "issues": null,
+    "note": "The records of fews-net-fdw-ipc-api name this issuer."
   },
   {
     "id": "first",
@@ -936,6 +954,12 @@
     "note": "The record of indiana-ag-breach-reports names this issuer."
   },
   {
+    "id": "ingv",
+    "name": "INGV (the National Institute of Geophysics and Volcanology of Italy)",
+    "issues": null,
+    "note": "The records of ingv-fdsnws-event name this issuer."
+  },
+  {
     "id": "insight-prediction",
     "name": "Insight Prediction",
     "issues": null,
@@ -972,10 +996,22 @@
     "note": "The records of ipa-security-alerts-rss, jvn-ipedia-myjvn-api, jvn-rss-en name this issuer."
   },
   {
+    "id": "ipc",
+    "name": "IPC (the Integrated Food Security Phase Classification)",
+    "issues": null,
+    "note": "The records of ipc-api name this issuer."
+  },
+  {
     "id": "irs",
     "name": "US Internal Revenue Service",
     "issues": null,
     "note": "The records of irs-disaster-relief name this issuer."
+  },
+  {
+    "id": "isc",
+    "name": "ISC (the International Seismological Centre)",
+    "issues": null,
+    "note": "The records of isc-fdsnws-event name this issuer."
   },
   {
     "id": "isid",
@@ -1349,6 +1385,12 @@
     "note": "The record of open-xchange-csaf names this issuer."
   },
   {
+    "id": "openai",
+    "name": "OpenAI",
+    "issues": null,
+    "note": "The records of openai-status name this issuer."
+  },
+  {
     "id": "openbsd",
     "name": "The OpenBSD Project",
     "issues": null,
@@ -1511,6 +1553,12 @@
     "note": "The record of radware-live-threat-map names this issuer."
   },
   {
+    "id": "raic",
+    "name": "The Responsible AI Collaborative (the AI Incident Database)",
+    "issues": null,
+    "note": "The records of aiid-rss name this issuer."
+  },
+  {
     "id": "ransomfeed",
     "name": "Ransomfeed",
     "issues": null,
@@ -1545,6 +1593,12 @@
     "name": "Red Hat",
     "issues": null,
     "note": "The records of redhat-csaf-advisories, redhat-csaf-vex, redhat-security-data-api name this issuer."
+  },
+  {
+    "id": "ree",
+    "name": "Red Eléctrica (the operator of the transmission grid of Spain)",
+    "issues": null,
+    "note": "The records of ree-redata-api name this issuer."
   },
   {
     "id": "ria",
