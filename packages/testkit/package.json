@@ -31,7 +31,7 @@
     "@mark1russell7/rigor-proxy": "^0.3.2",
     "@mark1russell7/rigor-testkit": "^0.1.20",
     "@mark1russell7/service": "^0.11.6",
-    "@mark1russell7/sqlite": "^0.5.0",
+    "@mark1russell7/sqlite": "^0.6.0",
     "@mark1russell7/text": "^0.0.17",
     "@procedures/json": "^0.68.0",
     "@procedures/notify": "^0.68.0",
