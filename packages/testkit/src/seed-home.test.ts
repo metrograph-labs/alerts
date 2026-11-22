@@ -1,0 +1,77 @@
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { CONFIG_FILE, openMeasuredRuntime } from "@mark1russell7/alerts-runtime";
+import { wallClock } from "@mark1russell7/algebra/clock";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { LAB_READY, MEASURE_CONFIG, readSeedRecord, SEED_RECORD_FILE, seedHome } from "./seed-home.ts";
+import type { SeedStoreResult } from "./seed-store.ts";
+
+// A small home: approximately 1 hour of the live mix, with small cache files.
+const LOG = 2_000_000;
+const FILES = { shapes: 1_000_000, transit: 400_000 };
+const ROOT = fileURLToPath(new URL("../../../", import.meta.url));
+
+let dir: string;
+let seeded: SeedStoreResult;
+
+beforeAll(async () => {
+  dir = await mkdtemp(join(tmpdir(), "seed-home-"));
+  seeded = await seedHome(join(dir, "home"), { log: LOG, seed: "al-124", files: FILES });
+}, 120_000);
+
+afterAll(async () => {
+  await rm(dir, { recursive: true, force: true });
+});
+
+describe("seedHome", () => {
+  it("writes the log, the configuration and the seed record", () => {
+    const home = join(dir, "home");
+    expect(JSON.parse(readFileSync(join(home, CONFIG_FILE), "utf8"))).toEqual(MEASURE_CONFIG);
+    expect(readSeedRecord(home)).toEqual({ seed: "al-124", log: LOG, bytes: seeded.bytes, events: seeded.events, end: seeded.end });
+    expect(seeded.bytes).toBeGreaterThanOrEqual(LOG);
+  });
+
+  it("gives a home that a measured runtime opens, at the time of the seeded state", async () => {
+    const home = join(dir, "home");
+    const record = readSeedRecord(home);
+    const measured = await openMeasuredRuntime(home, { wall: wallClock({ start: record.end }), startSnapshot: true });
+    try {
+      expect(measured.first.at).toBeGreaterThanOrEqual(record.end);
+      expect(measured.instance.loop.times.retryCap).toBeGreaterThan(0);
+    } finally {
+      await measured.close();
+    }
+  });
+
+  it("refuses a seed record that is not one", async () => {
+    const other = join(dir, "other");
+    await mkdir(other);
+    writeFileSync(join(other, SEED_RECORD_FILE), JSON.stringify({ seed: 7, log: LOG, bytes: "many", events: 1, end: 1 }));
+    expect(() => readSeedRecord(other)).toThrow(/The field bytes/u);
+    writeFileSync(join(other, SEED_RECORD_FILE), "7");
+    expect(() => readSeedRecord(other)).toThrow(/not hold a JSON object/u);
+  });
+});
+
+describe("capacity-app.json", () => {
+  const app = JSON.parse(readFileSync(join(ROOT, "capacity-app.json"), "utf8")) as {
+    readonly variables: readonly { readonly id: string; readonly kind: string }[];
+    readonly start: Readonly<Record<"seed" | "run", { readonly argv: readonly string[]; readonly cwd: string; readonly ready?: { readonly text: string } }>>;
+  };
+
+  it("names the seed and the run scripts of this package", () => {
+    for (const command of [app.start.seed, app.start.run]) {
+      expect(existsSync(join(ROOT, command.cwd, command.argv[1] ?? ""))).toBe(true);
+    }
+  });
+
+  it("waits for the ready line of the lab run, and the seed sets each store variable", () => {
+    expect(JSON.stringify({ ev: LAB_READY, opened: 1 })).toContain(app.start.run.ready?.text ?? "none");
+    for (const variable of app.variables.filter((each) => each.kind === "store")) {
+      expect(app.start.seed.argv).toContain(`{variable.${variable.id}}`);
+    }
+  });
+});

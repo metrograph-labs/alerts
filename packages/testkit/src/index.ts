@@ -453,3 +453,4 @@ export type { DeliveryMix } from "./seed-delivery.ts";
 export type { SystemMix } from "./seed-system.ts";
 export { LIVE_MIX, LIVE_TYPES, SEED_PEER, seedStore, type LogMix, type SeedShape, type SeedStoreOptions, type SeedStoreResult, type SourceMix, type TypeCount } from "./seed-store.ts";
 export { LIVE_FILES, SEED_COUNTY_ZONES, SEED_FORECAST_ZONES, seedShapes, seedTransit, TRANSIT_COLUMNS, type SeedFileOptions, type SeedShapesResult, type SeedTransitResult } from "./seed-files.ts";
+export { LAB_READY, MEASURE_CONFIG, readSeedRecord, SEED_RECORD_FILE, seedHome, type SeedHomeOptions, type SeedRecord } from "./seed-home.ts";

@@ -1,0 +1,41 @@
+{
+  "format": "capacity-app/1",
+  "id": "alerts-runtime",
+  "title": "The alerts runtime at rest: a seeded log, fake keys and no network",
+  "repository": "https://github.com/metrograph-labs/alerts.git",
+  "variables": [
+    {
+      "id": "log",
+      "title": "The bytes of the log runtime.sqlite at the start",
+      "kind": "store",
+      "unit": "B",
+      "min": 2000000,
+      "max": 400000000,
+      "scale": "log"
+    }
+  ],
+  "classes": [],
+  "start": {
+    "install": {
+      "argv": ["pnpm", "install", "--frozen-lockfile"],
+      "cwd": ".",
+      "env": {}
+    },
+    "seed": {
+      "argv": ["node", "scripts/seed-home.ts", "{store}", "{variable.log}"],
+      "cwd": "packages/testkit",
+      "env": {}
+    },
+    "run": {
+      "argv": ["node", "scripts/lab-runtime.ts", "{store}"],
+      "cwd": "packages/testkit",
+      "env": {},
+      "ready": {
+        "kind": "line",
+        "text": "\"ev\":\"lab-ready\""
+      }
+    }
+  },
+  "services": [],
+  "metrics": []
+}

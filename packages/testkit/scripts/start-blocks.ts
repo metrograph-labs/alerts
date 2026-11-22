@@ -14,15 +14,13 @@
  * of each write of the snapshot: the build of the rows apart from the write of SQLite. It also has the longest part between two
  * pauses of the write, the most CPU time of the thread in one part, and the wait of the longest part.
  */
-import { statSync, writeFileSync } from "node:fs";
+import { statSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { PerformanceObserver, type PerformanceEntry } from "node:perf_hooks";
-import { CONFIG_FORMAT, type AlertConfig, type ChannelId, type EscalationPolicy, type PersonId, type PlaceId } from "@mark1russell7/alerts";
 import { openMeasuredRuntime, START_SNAPSHOT_FILE, type MeasuredRuntime } from "@mark1russell7/alerts-runtime";
 import { wallClock } from "@mark1russell7/algebra/clock";
-import { LIVE_FILES } from "../src/seed-files.ts";
-import { seedStore } from "../src/seed-store.ts";
+import { seedHome } from "../src/seed-home.ts";
 
 const [folder, sizeText = "192", passesText = "4"] = process.argv.slice(2);
 const limitText = process.env["BLOCK_LIMIT_MS"];
@@ -36,34 +34,7 @@ if (!(size > 0) || !Number.isInteger(passes) || passes < 2) throw new RangeError
 // The timer of the recorder ticks at this period. A gap above `LONG_MS` between two ticks is one block of the loop.
 const TICK_MS = 10;
 const LONG_MS = 100;
-const MINUTE = 60_000;
 const round = (value: number): number => Math.round(value * 10) / 10;
-
-// A made-up configuration with one public point in McMullen County TX. No request leaves the measure.
-const pushover = "pushover" as ChannelId;
-const person = "person-1" as PersonId;
-const place = "place-1" as PlaceId;
-const policy = (level: EscalationPolicy["level"]): EscalationPolicy => ({ level, steps: [{ channel: pushover, at: 0 }], exhaustedAfter: 20 * MINUTE });
-const config: AlertConfig = {
-  format: CONFIG_FORMAT,
-  places: [
-    {
-      id: place,
-      label: "Place",
-      at: [-98.55, 28.3],
-      codes: [
-        { system: "state", code: "TX" },
-        { system: "ugc", code: "TXC311" },
-        { system: "same", code: "048311" },
-        { system: "iso3166", code: "US" },
-      ],
-      bufferKm: 5,
-    },
-  ],
-  people: [{ watch: { person, places: [place], rules: [] } }],
-  contacts: [{ person, channel: pushover, address: { user: { secret: "PUSHOVER_USER_KEY" } } }],
-  policies: [policy("life-safety"), policy("urgent"), policy("notice")],
-};
 
 /** One block of the event loop (the gap between two ticks of the timer, from the tick before), or one pause of the collector. */
 interface Block {
@@ -126,8 +97,7 @@ const fileBytes = (path: string): number => {
 const dir = join(folder, `seed-${sizeText}mb`);
 await rm(dir, { recursive: true, force: true });
 await mkdir(dir, { recursive: true });
-const seeded = await seedStore(dir, { log: size * 1_000_000, seed: "al105", shapes: LIVE_FILES.shapes, transit: LIVE_FILES.transit });
-writeFileSync(join(dir, "config.json"), JSON.stringify(config));
+const seeded = await seedHome(dir, { log: size * 1_000_000, seed: "al105" });
 
 // The parts of the snapshot writes in the start that folds the whole log, for the gate: the most CPU time of the thread in one
 // part, and the wall time and the wait of the longest part.

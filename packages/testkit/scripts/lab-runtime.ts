@@ -1,0 +1,41 @@
+/**
+ * AL-124: the run of the runtime in the lab of the capacity models. The script opens the home folder of the script
+ * `seed-home.ts` with `openMeasuredRuntime`: the configuration and the log of the seed, fake keys and no network. Thus no
+ * fetch and no send leaves the process. The wall clock starts at the time of the seeded state, as in `start-blocks.ts`.
+ * The start reads and writes the snapshot of the start, as a live start does.
+ *
+ * After the first pass, the script writes one JSON line with the event `lab-ready`. The ready signal of `capacity-app.json`
+ * waits for this line. Then the script does each pass at the wake time of the pass before it, until the lab stops the
+ * process. Each pass gives one JSON line with its wall time. The lines of the start go to the standard error.
+ *
+ * The loop of a live runtime is a worker of `@mark1russell7/service`, with the server of its probes. The lab run has no
+ * server, thus it waits for each wake time with `delay`. The wait of a pass with no wake time is the longest retry of the
+ * loop. A pass that fails stops the process with the code 1: the lab records a failed run. The fakes of the feeds and the
+ * classes of load are the item AL-126.
+ *
+ * Usage: node scripts/lab-runtime.ts <home folder>.
+ */
+import { performance } from "node:perf_hooks";
+import { openMeasuredRuntime } from "@mark1russell7/alerts-runtime";
+import { delay, wallClock } from "@mark1russell7/algebra/clock";
+import { LAB_READY, readSeedRecord } from "../src/seed-home.ts";
+
+const [home] = process.argv.slice(2);
+if (home === undefined) throw new Error("Give the home folder of the seed.");
+const record = readSeedRecord(home);
+const wall = wallClock({ start: record.end });
+const line = (fields: Readonly<Record<string, unknown>>): void => {
+  process.stdout.write(`${JSON.stringify(fields)}\n`);
+};
+
+const measured = await openMeasuredRuntime(home, { wall, startSnapshot: true, report: (text) => process.stderr.write(`${text}\n`) });
+line({ ev: LAB_READY, opened: Math.round(measured.opened), at: measured.first.at, events: record.events, bytes: record.bytes });
+const retry = measured.instance.loop.times.retryCap;
+let wakeAt = measured.first.wakeAt;
+for (;;) {
+  await delay(wall, wakeAt === undefined ? retry : Math.max(0, wakeAt - wall.now()));
+  const started = performance.now();
+  const pass = await measured.pass();
+  line({ ev: "lab-pass", at: pass.at, ms: Math.round(performance.now() - started), fetched: pass.fetched.length });
+  wakeAt = pass.wakeAt;
+}
