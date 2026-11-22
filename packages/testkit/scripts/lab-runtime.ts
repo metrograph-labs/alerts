@@ -10,8 +10,12 @@
  *
  * The loop of a live runtime is a worker of `@mark1russell7/service`, with the server of its probes. The lab run has no
  * server, thus it waits for each wake time with `delay`. The wait of a pass with no wake time is the longest retry of the
- * loop. A pass that fails stops the process with the code 1: the lab records a failed run. The fakes of the feeds and the
- * classes of load are the item AL-126.
+ * loop. A pass that fails stops the process with the code 1: the lab records a failed run.
+ *
+ * The levels of the seed record set the size of the start (AL-126). The count of the feeds near the place is the limit of the
+ * transit feeds of the start. Thus each feed is one polled source, also past the limit of a live copy. The ready line gives
+ * the feeds, the persons and the open incidents of the start, and the routes of its first pass. The fakes of the feeds and
+ * the classes of load are the item AL-131.
  *
  * Usage: node scripts/lab-runtime.ts <home folder>.
  */
@@ -28,8 +32,21 @@ const line = (fields: Readonly<Record<string, unknown>>): void => {
   process.stdout.write(`${JSON.stringify(fields)}\n`);
 };
 
-const measured = await openMeasuredRuntime(home, { wall, startSnapshot: true, report: (text) => process.stderr.write(`${text}\n`) });
-line({ ev: LAB_READY, opened: Math.round(measured.opened), at: measured.first.at, events: record.events, bytes: record.bytes });
+const report = (text: string): void => {
+  process.stderr.write(`${text}\n`);
+};
+const measured = await openMeasuredRuntime(home, { wall, startSnapshot: true, transitLimit: record.levels.feeds, report });
+line({
+  ev: LAB_READY,
+  opened: Math.round(measured.opened),
+  at: measured.first.at,
+  events: record.events,
+  bytes: record.bytes,
+  feeds: measured.instance.transit?.chosen.feeds.length ?? 0,
+  persons: record.levels.persons,
+  incidents: record.levels.incidents,
+  routes: measured.first.delivery?.routes.length ?? 0,
+});
 const retry = measured.instance.loop.times.retryCap;
 let wakeAt = measured.first.wakeAt;
 for (;;) {
