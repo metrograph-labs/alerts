@@ -6,13 +6,14 @@
  *
  * Usage: node scripts/start-blocks.ts <folder> [size in MB] [passes].
  *
- * Each start gives one JSON line. For each phase, the line has the wall time, the CPU time and the blocks of the event
- * loop. A phase is the open with its first pass, or one more pass. The line also has the time of each write of the snapshot:
- * the build of the rows apart from the write of SQLite.
+ * Each start gives one JSON line. For each phase, the line has the wall time, the CPU time, the blocks of the event loop and
+ * the pauses of the garbage collector. A phase is the open with its first pass, or one more pass. The line also has the time
+ * of each write of the snapshot: the build of the rows apart from the write of SQLite.
  */
 import { statSync, writeFileSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
+import { PerformanceObserver, type PerformanceEntry } from "node:perf_hooks";
 import { CONFIG_FORMAT, type AlertConfig, type ChannelId, type EscalationPolicy, type PersonId, type PlaceId } from "@mark1russell7/alerts";
 import { openMeasuredRuntime, START_SNAPSHOT_FILE, type MeasuredRuntime } from "@mark1russell7/alerts-runtime";
 import { wallClock } from "@mark1russell7/algebra/clock";
@@ -57,7 +58,7 @@ const config: AlertConfig = {
   policies: [policy("life-safety"), policy("urgent"), policy("notice")],
 };
 
-/** One block of the event loop: the gap between two ticks of the timer, from the tick before. */
+/** One block of the event loop (the gap between two ticks of the timer, from the tick before), or one pause of the collector. */
 interface Block {
   readonly start: number;
   readonly ms: number;
@@ -94,6 +95,15 @@ async function phase(name: string, phases: Phase[], work: () => Promise<unknown>
   phases.push({ name, start, end: performance.now(), cpuMs: (used.user + used.system) / 1000 });
 }
 
+// The tick before a block often comes before the start of its phase, because a phase starts its work with no wait. Thus a
+// block goes to the phase that it overlaps most. A block that overlaps no phase goes to no phase.
+const overlap = (block: Block, each: Phase): number => Math.max(0, Math.min(block.start + block.ms, each.end) - Math.max(block.start, each.start));
+function phaseOf(block: Block, phases: readonly Phase[]): Phase | undefined {
+  let best: Phase | undefined;
+  for (const each of phases) if (overlap(block, each) > (best === undefined ? 0 : overlap(block, best))) best = each;
+  return best;
+}
+
 const fileBytes = (path: string): number => {
   try {
     return statSync(path).size;
@@ -111,6 +121,9 @@ writeFileSync(join(dir, "config.json"), JSON.stringify(config));
 for (const kind of ["full", "snapshot"] as const) {
   const phases: Phase[] = [];
   const recorder = recordBlocks();
+  const pauses: PerformanceEntry[] = [];
+  const collector = new PerformanceObserver((list) => pauses.push(...list.getEntries()));
+  collector.observe({ entryTypes: ["gc"] });
   let measured: MeasuredRuntime | undefined;
   const lines: string[] = [];
   try {
@@ -120,8 +133,11 @@ for (const kind of ["full", "snapshot"] as const) {
     for (let at = 2; at <= passes; at += 1) await phase(`pass-${String(at)}`, phases, () => measured!.pass());
   } finally {
     recorder.stop();
+    pauses.push(...collector.takeRecords());
+    collector.disconnect();
     await measured?.close();
   }
+  const gc: Block[] = pauses.map((entry) => ({ start: entry.startTime, ms: entry.duration }));
   const writes = measured!.snapshotWrites;
   // A block overlaps a write when the two intervals share a point. The longest block outside each write is the work of the
   // pass apart from the snapshot.
@@ -136,8 +152,9 @@ for (const kind of ["full", "snapshot"] as const) {
     longMs: LONG_MS,
     openedMs: round(measured!.opened - phases[0]!.start),
     phases: phases.map((each) => {
-      const own = recorder.found.filter((block) => block.start >= each.start && block.start < each.end);
+      const own = recorder.found.filter((block) => phaseOf(block, phases) === each);
       const outside = own.filter((block) => !inWrite(block));
+      const collected = gc.filter((pause) => phaseOf(pause, phases) === each);
       return {
         name: each.name,
         ms: round(each.end - each.start),
@@ -146,6 +163,9 @@ for (const kind of ["full", "snapshot"] as const) {
         blockedMs: round(own.reduce((sum, block) => sum + block.ms, 0)),
         longestMs: round(Math.max(0, ...own.map((block) => block.ms))),
         longestOutsideWriteMs: round(Math.max(0, ...outside.map((block) => block.ms))),
+        gcPauses: collected.length,
+        gcMs: round(collected.reduce((sum, pause) => sum + pause.ms, 0)),
+        longestGcMs: round(Math.max(0, ...collected.map((pause) => pause.ms))),
         top: [...own]
           .sort((a, b) => b.ms - a.ms)
           .slice(0, 5)
