@@ -6,7 +6,7 @@ import { fakeWallClock, wallClock } from "@mark1russell7/algebra/clock";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HomeHeld } from "./home-lock.ts";
 import { openRuntimeLog } from "./log.ts";
-import { openMeasuredRuntime, type MeasuredRuntime } from "./measured-start.ts";
+import { fakeBase, fakeUrl, MEASURE_NOW_HEADER, openMeasuredRuntime, type MeasuredRuntime } from "./measured-start.ts";
 import { START_SNAPSHOT_EVERY, START_SNAPSHOT_FLOOR } from "./start-snapshot.ts";
 
 const MINUTE = 60_000;
@@ -163,6 +163,38 @@ describe("openMeasuredRuntime", { timeout: 30_000 }, () => {
     const time = measured.instance.runtime.state().time;
     expect(time).toBeGreaterThanOrEqual(start);
     expect(time).toBeLessThan(start + MINUTE);
+  });
+
+  it("sends each fetch to the fake of the feeds, with the instant of the wall clock (AL-131)", async () => {
+    const start = Date.UTC(2020, 0, 1);
+    const measured = await openMeasuredRuntime(home, { wall: wallClock({ start }), services: { feeds: "http://127.0.0.1:9/", channels: "http://localhost:9" } });
+    opened.push(measured);
+    // The fake of the test refuses each request. The calls of the global fetch are the requests of the transport and of the
+    // channel. A start with no feed has incidents of the system, thus the first pass also sends to the fake of the channels.
+    const calls = requests.mock.calls as unknown as [string, { readonly headers: Readonly<Record<string, string>> }][];
+    const feeds = calls.filter(([url]) => url.startsWith("http://127.0.0.1:9/"));
+    const channels = calls.filter(([url]) => url.startsWith("http://localhost:9/"));
+    expect(feeds.length).toBeGreaterThan(0);
+    expect(feeds.length + channels.length).toBe(calls.length);
+    for (const [url] of channels) expect(url.startsWith("http://localhost:9/api.pushover.net/")).toBe(true);
+    for (const [, init] of calls) {
+      const now = Number(init.headers[MEASURE_NOW_HEADER]);
+      expect(now).toBeGreaterThanOrEqual(start);
+      expect(now).toBeLessThan(start + MINUTE);
+    }
+    expect(feeds.some(([url]) => url.startsWith("http://127.0.0.1:9/api.weather.gov/alerts"))).toBe(true);
+  });
+
+  it("gives the URL of a request at a fake, and refuses a fake that is not on this computer", async () => {
+    expect(fakeUrl(fakeBase("http://127.0.0.1:4100/", "feeds"), "https://api.weather.gov/alerts/active?area=KS")).toBe("http://127.0.0.1:4100/api.weather.gov/alerts/active?area=KS");
+    expect(fakeUrl(fakeBase("http://localhost:4101/base", "channels"), "https://api.pushover.net/1/messages.json")).toBe("http://localhost:4101/base/api.pushover.net/1/messages.json");
+    for (const text of ["https://127.0.0.1:4100", "http://example.org", "http://127.0.0.1:4100/?key=1", "not a URL"]) {
+      expect(() => fakeBase(text, "feeds")).toThrow(RangeError);
+    }
+    await expect(openMeasuredRuntime(home, { services: { channels: "http://example.org" } })).rejects.toThrow(RangeError);
+    // The refusal comes before the lock. Thus a start after it opens the folder.
+    const measured = await open();
+    expect(measured.first.fetched.length).toBeGreaterThan(0);
   });
 
   it("refuses private files that do not pass the check, and frees the lock", async () => {
