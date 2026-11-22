@@ -175,6 +175,8 @@ export function createTwilioCallChannel(options: TwilioCallChannelOptions): Chan
 export * from "./outage.ts";
 export * from "./list.ts";
 export * from "./deploy.ts";
+// The file of the bundles. The module imports no esbuild (AL-112).
+export * from "./bundle-file.ts";
 export * from "./function.ts";
 export * from "./twilio-runtime.ts";
 

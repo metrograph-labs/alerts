@@ -6,7 +6,8 @@ import { join } from "node:path";
 import { compileFunction, createContext, runInContext } from "node:vm";
 import type { ChannelId, PersonId } from "@mark1russell7/alerts";
 import { beforeAll, describe, expect, it } from "vitest";
-import { bundleFunctions, type FunctionBundle, withoutStoreFolders } from "./bundle.ts";
+import { bundleBuild, bundleFunctions, withoutStoreFolders } from "./bundle.ts";
+import { bundleFileOf, bundleFileText, checkBundleFile, type BundleBuild, type FunctionBundle } from "./bundle-file.ts";
 import { CHANNEL_ID } from "./descriptor.ts";
 import { OUTAGE_PATHS, OUTAGE_TEXTS, type OutageList } from "./outage.ts";
 import { OUTAGE_LIST_ASSET, type RuntimeCallOptions, type RuntimeCalls, type RuntimeContext, type RuntimeHandler } from "./twilio-runtime.ts";
@@ -132,8 +133,24 @@ describe("withoutStoreFolders", () => {
 
 describe("bundleFunctions", () => {
   let bundles: FunctionBundle[] = [];
+  let build: BundleBuild = { bundles: [], inputs: [] };
   beforeAll(async () => {
-    bundles = await bundleFunctions();
+    build = await bundleBuild();
+    bundles = [...build.bundles];
+  }, 60_000);
+
+  it("gives the module files that esbuild read: the source of each Function, the core and the packages of the store (AL-112)", () => {
+    expect(build.inputs).toEqual(expect.arrayContaining(["src/functions/outage.ts", "src/functions/press.ts", "src/functions/ended.ts", "src/outage.ts"]));
+    expect(build.inputs.some((input) => input.startsWith("../core/src/"))).toBe(true);
+    expect(build.inputs.some((input) => input.startsWith("../../node_modules/"))).toBe(true);
+    expect(build.inputs.filter((input) => input.includes("\\") || /^(?:[a-z]:)?\//iu.test(input))).toEqual([]);
+  });
+
+  it("gives a file of the bundles that the check of a deploy passes, and the same code for the same sources (AL-112)", async () => {
+    const file = await bundleFileOf(build);
+    expect(Object.keys(file.inputs)).toEqual(expect.arrayContaining([...build.inputs, "../../pnpm-lock.yaml", "../core/package.json"]));
+    expect(await checkBundleFile(bundleFileText(file))).toEqual({ ok: true, bundles });
+    expect((await bundleFunctions()).map((bundle) => bundle.code)).toEqual(bundles.map((bundle) => bundle.code));
   }, 60_000);
 
   it("gives one bundle for each path: a public entry and two protected Functions", () => {
@@ -142,10 +159,6 @@ describe("bundleFunctions", () => {
       [OUTAGE_PATHS.press, "protected"],
       [OUTAGE_PATHS.ended, "protected"],
     ]);
-  });
-
-  it("gives the same code for the same sources", async () => {
-    expect((await bundleFunctions()).map((bundle) => bundle.code)).toEqual(bundles.map((bundle) => bundle.code));
   });
 
   it("gives the same code from each start folder, with each module path relative to the package", async () => {

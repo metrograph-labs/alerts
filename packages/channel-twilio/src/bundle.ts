@@ -3,31 +3,14 @@
  * each module that it imports. The Functions runtime of Twilio gives only the Node built-ins and the
  * helper library of Twilio, so a bundle imports nothing else.
  *
- * The module `index.ts` does not export this module. `deployOutage` of `deploy.ts` loads it with a
- * dynamic import. Thus the runtime of the instance loads esbuild only for a deploy.
+ * The module `index.ts` does not export this module. `makeBundleFile` of `bundle-file.ts` loads it with a
+ * dynamic import. Thus the runtime of the instance loads esbuild only when the file of the bundles is missing or old.
+ * The text of this module is a part of the key of the file. Thus a change of an option of esbuild makes the file old.
  */
 
 import { fileURLToPath } from "node:url";
 import { build, stop } from "esbuild";
-import { OUTAGE_PATHS } from "./outage.ts";
-
-/**
- * The Node runtime of the Functions on the server of Twilio. Node 24 is the Active LTS runtime of
- * Twilio Functions, and Node 22 is in maintenance.
- */
-export const FUNCTION_RUNTIME = "node24";
-
-/**
- * The npm packages of the build, each with an exact version. Twilio refuses a range for the runtime
- * handler. On Node 24 the platform keeps the handler at 2.1.2 or later.
- */
-export const FUNCTION_DEPENDENCIES: Readonly<Record<string, string>> = { "@twilio/runtime-handler": "2.1.2" };
-
-/**
- * The folder of this package. esbuild writes the path of each module into the bundle, relative to its working folder.
- * This folder is fixed. Thus the start folder of the process does not change the code or the version of the plan.
- */
-const PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url));
+import { FUNCTION_RUNTIME, FUNCTION_SOURCES, PACKAGE_ROOT, type BundleBuild, type FunctionBundle } from "./bundle-file.ts";
 
 /**
  * This pattern finds the folder of a package in the store of pnpm, in a module path of a bundle. The tool pnpm names this
@@ -46,23 +29,6 @@ export function withoutStoreFolders(code: string): string {
   return code.replace(STORE_FOLDER, () => "node_modules/");
 }
 
-/** The bundle of one Function. */
-export interface FunctionBundle {
-  /** The path of the Function on the domain of the service. */
-  readonly path: (typeof OUTAGE_PATHS)[keyof typeof OUTAGE_PATHS];
-  /** The entry is public, and it checks its own token. Twilio signs each request to a protected Function. */
-  readonly visibility: "public" | "protected";
-  /** The CommonJS code of the bundle. */
-  readonly code: string;
-}
-
-// The source file of each Function, by its path.
-const SOURCES = [
-  { path: OUTAGE_PATHS.entry, visibility: "public", file: "./functions/outage.ts" },
-  { path: OUTAGE_PATHS.press, visibility: "protected", file: "./functions/press.ts" },
-  { path: OUTAGE_PATHS.ended, visibility: "protected", file: "./functions/ended.ts" },
-] as const;
-
 /**
  * This function makes the bundle of each Function. The same sources, the same packages and the same esbuild give the
  * same code from each start folder and on each host.
@@ -71,16 +37,26 @@ const SOURCES = [
  * 160 MB until its stop, and a deploy comes once a day. The next bundle starts a new service.
  */
 export async function bundleFunctions(): Promise<FunctionBundle[]> {
+  return [...(await bundleBuild()).bundles];
+}
+
+/**
+ * This function makes the bundle of each Function, as `bundleFunctions` does. It also gives the module files that esbuild
+ * read, each relative to the folder of this package, with `/` between the parts.
+ */
+export async function bundleBuild(): Promise<BundleBuild> {
   try {
-    return await bundleEach();
+    const each = await bundleEach();
+    const inputs = new Set(each.flatMap((result) => result.inputs));
+    return { bundles: each.map((result) => result.bundle), inputs: [...inputs].sort() };
   } finally {
     await stop();
   }
 }
 
-function bundleEach(): Promise<FunctionBundle[]> {
+function bundleEach(): Promise<{ readonly bundle: FunctionBundle; readonly inputs: readonly string[] }[]> {
   return Promise.all(
-    SOURCES.map(async (source) => {
+    FUNCTION_SOURCES.map(async (source) => {
       const result = await build({
         entryPoints: [fileURLToPath(new URL(source.file, import.meta.url))],
         absWorkingDir: PACKAGE_ROOT,
@@ -93,10 +69,12 @@ function bundleEach(): Promise<FunctionBundle[]> {
         legalComments: "none",
         charset: "utf8",
         logLevel: "silent",
+        metafile: true,
       });
       const [file] = result.outputFiles;
       if (file === undefined || result.outputFiles.length !== 1) throw new Error(`The bundle of ${source.path} is not one file.`);
-      return { path: source.path, visibility: source.visibility, code: withoutStoreFolders(file.text) };
+      const bundle = { path: source.path, visibility: source.visibility, code: withoutStoreFolders(file.text) };
+      return { bundle, inputs: Object.keys(result.metafile.inputs) };
     }),
   );
 }

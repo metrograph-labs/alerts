@@ -44,6 +44,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { configHash } from "@mark1russell7/alerts";
 import { PUSHOVER_QUOTA, PUSHOVER_RESERVE_NOTICES } from "@mark1russell7/alerts-channel-pushover";
+import { OUTAGE_BUNDLE_FILE } from "@mark1russell7/alerts-channel-twilio";
 import { openShapeCache, SHAPES_FILE } from "@mark1russell7/alerts-shapes-nws";
 import { realClock, wallClock } from "@mark1russell7/algebra/clock";
 import type { ServiceBuilder } from "@mark1russell7/service";
@@ -67,6 +68,7 @@ import { spendNotes } from "./balance.ts";
 import { PROFILES, declare } from "./index.ts";
 import { daemonCheck, instanceCheck, LOUD_PING_URL_KEY, openInstance, pingKeyOf, pingTargets, userAgent } from "./instance.ts";
 import { openCheckedRuntimeLog } from "./log.ts";
+import { fileBundleStore } from "./outage.ts";
 import type { ExchangeRound } from "./peers.ts";
 import { loadPriors } from "./priors.ts";
 import { openReadingStore, READINGS_FILE } from "./readings.ts";
@@ -286,6 +288,8 @@ async function runtime(): Promise<ServiceBuilder> {
     pushoverReserveNotices,
     // The Twilio calls and the read of the balance. The cap of the spend counts in quotas.sqlite.
     twilio: fetch,
+    // The stage of the slot writes the outage bundles to this file. A deploy reads it, thus it starts no esbuild (AL-112).
+    outageBundles: fileBundleStore(OUTAGE_BUNDLE_FILE),
     spendStore: quotas,
     run: randomUUID(),
     copy,

@@ -68,6 +68,7 @@ import {
   twilioSetupProblems,
   twilioTextDescriptor,
   twilioTextServices,
+  type BundleStore,
   type TextOptIn,
   type TwilioCredentials,
   type TwilioFetch,
@@ -697,6 +698,8 @@ export interface InstanceOptions {
    * secrets have the keys of Twilio.
    */
   readonly twilio?: TwilioFetch;
+  /** The store of the file of the outage bundles. The entry gives the file of the slot. Without it, each deploy makes the bundles. */
+  readonly outageBundles?: BundleStore;
   /**
    * The store of the counts of the caps of the spend. The entry gives the file `quotas.sqlite`, thus a count holds
    * across a restart. The instance needs it when a channel with a sender has a spend entry.
@@ -1184,7 +1187,12 @@ function outageWorker(options: InstanceOptions, limit: Duration): OutageDeployWo
   if (fetch === undefined) throw new Error("The configuration has an outage call, and the instance has no fetch for the requests of Twilio.");
   const log = options.onOutageLog;
   return outageDeployWorker({
-    deploy: outageDeploy(setup.value, { fetch, clock: options.clock, ...(log === undefined ? {} : { log }) }),
+    deploy: outageDeploy(setup.value, {
+      fetch,
+      clock: options.clock,
+      ...(log === undefined ? {} : { log }),
+      ...(options.outageBundles === undefined ? {} : { bundles: options.outageBundles }),
+    }),
     clock: options.clock,
     wall: options.wall,
     limit,

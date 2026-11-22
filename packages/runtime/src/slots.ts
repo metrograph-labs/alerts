@@ -155,8 +155,11 @@ export async function adoptLive(slots: Slots, platform: NodeJS.Platform = proces
   }
 }
 
-/** The checks of a stage, in their order: the install with the lockfile, the check of the private files, and the load of the code. */
-export const STAGE_CHECKS = ["install", "config", "load"] as const;
+/**
+ * The checks of a stage, in their order (AL-112 added the bundles). They are the install, the file of the outage bundles,
+ * the check of the private files and the load of the code.
+ */
+export const STAGE_CHECKS = ["install", "bundles", "config", "load"] as const;
 
 /** The record of a staged slot: its commit, the time of the stage, and the checks that passed with its code. */
 export interface StageMark {
