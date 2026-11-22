@@ -5,7 +5,7 @@
 
 import { placeOfNode, type AssessedLevel, type AssessReason, type HealthStep, type Incident, type Report } from "@mark1russell7/alerts";
 import { NAMES, SHORT_NAMES } from "./demo.ts";
-import { estimateText, shadowText } from "./score-view.ts";
+import { estimateText, scoreRuleText, shadowText } from "./score-view.ts";
 
 /** This function gives the name of a person or a place on the page. */
 export function nameOf(id: string): string {
@@ -118,6 +118,8 @@ export function reasonText(reason: AssessReason, incident: Pick<Incident, "sever
       return `The lines that hold this place give the level ${reason.level} at ${nameOf(reason.place)}.`;
     case "rule":
       return `Rule ${String(reason.index + 1)} of the person sets ${reason.max} as the highest level${reason.place === undefined ? "" : ` at ${nameOf(reason.place)}`}.`;
+    case "score":
+      return scoreRuleText(reason);
     case "shadow":
       return shadowText(reason.score);
     case "reach":
