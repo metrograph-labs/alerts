@@ -2,7 +2,7 @@ import { fakeWallClock } from "@mark1russell7/algebra/clock";
 import type { LimitConfig } from "@mark1russell7/alerts";
 import type { RestExchange, RestReply, RestTransport } from "@procedures/gh";
 import { describe, expect, it } from "vitest";
-import { GITHUB_BILLING_TOKEN, githubUse, limitProblems, limitWatch, limitWatches, type LimitWatchOptions, type UseReading } from "./use.ts";
+import { GITHUB_BILLING_TOKEN, githubTokenKey, githubUse, limitProblems, limitWatch, limitWatches, type LimitWatchOptions, type UseReading } from "./use.ts";
 
 const T0 = Date.UTC(2026, 10, 15, 12);
 const MINUTE = 60_000;
@@ -176,17 +176,41 @@ describe("the reader of the use of GitHub", () => {
 describe("the setup of the watches of the limits", () => {
   const secrets = (values: Record<string, string>) => (name: string) => values[name];
 
-  it("gives a problem for a provider with no reader and for no token, with no value", () => {
+  const OWN_KEY = "GITHUB_BILLING_TOKEN_USER";
+  const OTHER: LimitConfig = { ...ORG, id: "other:x", provider: "provider:other" };
+
+  it("gives a problem for a provider with no reader and for each limit with no value of the key of its token, with no value", () => {
+    expect(githubTokenKey(ORG)).toBe(GITHUB_BILLING_TOKEN);
+    expect(githubTokenKey({ tokenKey: OWN_KEY })).toBe(OWN_KEY);
     expect(limitProblems([], secrets({}))).toEqual([]);
     expect(limitProblems([ORG], secrets({ [GITHUB_BILLING_TOKEN]: "test-token" }))).toEqual([]);
-    expect(limitProblems([ORG, { ...ORG, id: "other:x", provider: "provider:other" }], secrets({}))).toEqual([
+    expect(limitProblems([ORG, { ...USER, tokenKey: OWN_KEY }, OTHER], secrets({ [OWN_KEY]: "" }))).toEqual([
+      `The watch of the limit ${ID} needs a token in the key ${GITHUB_BILLING_TOKEN}, and the secret store has no value for it.`,
+      `The watch of the limit github:someone/actions needs a token in the key ${OWN_KEY}, and the secret store has no value for it.`,
       "The watch of the limit other:x names the provider provider:other, and the runtime has no reader of it.",
-      `The configuration has watches of limits of GitHub, and the secret store has no value for ${GITHUB_BILLING_TOKEN}.`,
     ]);
+    // A token of the organization does not stand for the token of the user.
+    expect(limitProblems([ORG, { ...USER, tokenKey: OWN_KEY }], secrets({ [GITHUB_BILLING_TOKEN]: "org-token" }))).toHaveLength(1);
+    expect(limitProblems([ORG, { ...USER, tokenKey: OWN_KEY }], secrets({ [GITHUB_BILLING_TOKEN]: "org-token", [OWN_KEY]: "user-token" }))).toEqual([]);
   });
 
-  it("makes one watch for each limit of GitHub, and none with no token", () => {
+  it("makes one watch for each limit of GitHub with a token, and one client for each key of a token", async () => {
     expect(limitWatches([ORG, USER], secrets({}))).toEqual([]);
-    expect(limitWatches([ORG, USER, { ...ORG, id: "other:x", provider: "provider:other" }], secrets({ [GITHUB_BILLING_TOKEN]: "test-token" })).map((watch) => watch.id)).toEqual([ID, "github:someone/actions"]);
+    expect(limitWatches([ORG, USER, OTHER], secrets({ [GITHUB_BILLING_TOKEN]: "test-token" })).map((watch) => watch.id)).toEqual([ID, "github:someone/actions"]);
+    // The user has its own key with no value: only the organization gets a watch.
+    expect(limitWatches([ORG, { ...USER, tokenKey: OWN_KEY }], secrets({ [GITHUB_BILLING_TOKEN]: "org-token" })).map((watch) => watch.id)).toEqual([ID]);
+    const github = fakeGithub({ usage: { usageItems: [item("actions", 1)] }, budgets: budgets(budget("actions", 8)) });
+    const watches = limitWatches([ORG, { ...USER, tokenKey: OWN_KEY }], secrets({ [GITHUB_BILLING_TOKEN]: "org-token", [OWN_KEY]: "user-token" }), github.transport);
+    const clock = fakeWallClock(T0);
+    for (const watch of watches) await watch.check(clock);
+    await clock.advance(20 * 60_000);
+    for (const watch of watches) await watch.check(clock);
+    expect(watches.map((watch) => watch.use()?.read?.used)).toEqual([1, 1]);
+    // Each read of an account goes with the token of its own key.
+    expect(github.sent.map((exchange) => [new URL(exchange.url).pathname.split("/")[1], exchange.headers["authorization"]])).toEqual([
+      ["organizations", "Bearer org-token"],
+      ["organizations", "Bearer org-token"],
+      ["users", "Bearer user-token"],
+    ]);
   });
 });

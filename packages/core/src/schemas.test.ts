@@ -975,10 +975,10 @@ describe("the private configuration", () => {
   it("checks the form of a watch of a limit, and leaves the ids and the limit of a user to the load (AL-111)", () => {
     const limit = { id: "github:example/actions", provider: "provider:github", title: "GitHub Actions", accountKind: "organization", account: "example", products: ["actions"] };
     holds(alertConfigSchema, { ...CONFIG, limits: [limit] });
-    holds(limitConfigSchema, { ...limit, accountKind: "user", monthlyUsd: 10, budget: "actions", levels: [0.5, 0.9] });
+    holds(limitConfigSchema, { ...limit, accountKind: "user", monthlyUsd: 10, budget: "actions", levels: [0.5, 0.9], tokenKey: "GITHUB_BILLING_TOKEN_USER" });
     // An account of a user with no monthly limit is a problem of the load.
     holds(limitConfigSchema, { ...limit, accountKind: "user" });
-    for (const bad of [{ products: [] }, { products: [""] }, { accountKind: "team" }, { monthlyUsd: 0 }, { levels: [] }, { levels: [0] }, { levels: [Number.POSITIVE_INFINITY] }, { id: "" }, { extra: 1 }]) fails(limitConfigSchema, { ...limit, ...bad });
+    for (const bad of [{ products: [] }, { products: [""] }, { accountKind: "team" }, { monthlyUsd: 0 }, { levels: [] }, { levels: [0] }, { levels: [Number.POSITIVE_INFINITY] }, { id: "" }, { extra: 1 }, { tokenKey: "" }, { tokenKey: "github_token" }, { tokenKey: "1TOKEN" }, { tokenKey: "A-B" }]) fails(limitConfigSchema, { ...limit, ...bad });
   });
 
   it("checks the form of the outage call, and leaves the people and the channels to the load", () => {

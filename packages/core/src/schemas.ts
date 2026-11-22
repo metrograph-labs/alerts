@@ -1543,6 +1543,10 @@ export const limitConfigSchema: z.ZodType<LimitConfig, LimitConfig> = schemaOf<L
         .min(1, "A watch of a limit has one level or more.")
         .readonly()
         .exactOptional(),
+      tokenKey: z
+        .string()
+        .regex(/^[A-Z][A-Z0-9_]{0,63}$/u, "The key of a token is a capital letter, then capital letters, digits and underscores, up to 64 characters.")
+        .exactOptional(),
     })
     .readonly(),
 );

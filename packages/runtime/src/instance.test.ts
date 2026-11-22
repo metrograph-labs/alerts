@@ -1328,7 +1328,7 @@ describe("the Twilio call channel of the instance", () => {
     // The health has the state of the reads of each limit, with no amount and no message.
     expect(instance.health().reads).toContainEqual({ what: `use of ${limit.id}`, at: null, failed: false, next: null });
     const problem = messageOf(() => open(store(SECRETS), config));
-    expect(problem).toContain("The configuration has watches of limits of GitHub, and the secret store has no value for GITHUB_BILLING_TOKEN.");
+    expect(problem).toContain(`The watch of the limit ${limit.id} needs a token in the key GITHUB_BILLING_TOKEN, and the secret store has no value for it.`);
     expect(open().instance.uses).toEqual([]);
   });
 

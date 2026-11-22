@@ -2538,6 +2538,7 @@ export interface LimitConfig {
   readonly monthlyUsd?: number;
   readonly budget?: string;
   readonly levels?: readonly number[];
+  readonly tokenKey?: string;
 }
 
 ### build/index.d.ts#LimitInput
