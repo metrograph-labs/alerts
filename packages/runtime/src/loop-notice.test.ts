@@ -183,11 +183,13 @@ describe("loopNotifier", () => {
     for (let steps = 0; steps < 4000 && calls.length < 1; steps += 1) {
       await host.clock.advance(100);
       await host.settle();
+      await notifier.idle();
     }
     // More stops of the same loop send nothing more.
     for (let steps = 0; steps < 600; steps += 1) {
       await host.clock.advance(100);
       await host.settle();
+      await notifier.idle();
     }
     await group.stop();
     notifier.stop();
@@ -212,6 +214,7 @@ describe("loopNotifier", () => {
     const end = { program: RUNTIME_PROGRAM, pid: 4, code: 1, signal: null };
     for (let index = 0; index < 3; index += 1) {
       notifier.log("warn", "runtime stopped: it exited with the code 1", end);
+      await notifier.idle();
       await host.clock.advance(MINUTE);
       await host.settle();
     }
@@ -219,6 +222,7 @@ describe("loopNotifier", () => {
     expect(warnings).toEqual([`The notice ${RESTARTS_EVENT} of the supervisor was not sent (server). It goes again in ${String(LOOP_RETRY / 1000)} s.`]);
     await host.clock.advance(LOOP_RETRY);
     await host.settle();
+    await notifier.idle();
     expect(calls).toHaveLength(2);
     expect(calls[1]!.headers["webhook-id"]).toBe(calls[0]!.headers["webhook-id"]);
     // The runtime is ready, and it stays steady for one window: the loop ends.
@@ -228,6 +232,7 @@ describe("loopNotifier", () => {
     expect(calls).toHaveLength(2);
     await host.clock.advance(MINUTE);
     await host.settle();
+    await notifier.idle();
     expect(calls).toHaveLength(3);
     expect(JSON.parse(calls[2]!.body)).toMatchObject({ type: READY_EVENT, data: { copy: "cloud", stops: 3 } });
     notifier.stop();
@@ -239,10 +244,12 @@ describe("loopNotifier", () => {
     const notifier = loopNotifier({ copy: "home", receiver: RECEIVER(), fetch, userAgent: "alerts-runtime-test", clock: host.clock, wall: () => AT, warn: () => undefined });
     for (let index = 0; index < 3; index += 1) notifier.log("warn", "runtime stopped: it exited with the code 1", { program: RUNTIME_PROGRAM, pid: 4, code: 1, signal: null });
     await host.settle();
+    await notifier.idle();
     expect(calls).toHaveLength(1);
     notifier.stop();
     await host.clock.advance(10 * LOOP_RETRY);
     await host.settle();
+    await notifier.idle();
     notifier.log("warn", "runtime stopped: it exited with the code 1", { program: RUNTIME_PROGRAM, pid: 4, code: 1, signal: null });
     expect(calls).toHaveLength(1);
   });

@@ -13,7 +13,7 @@
  * - A bad key does not stop the supervisor. The supervisor writes one warning, and it sends no notice.
  */
 import { createHash } from "node:crypto";
-import type { Duration, Instant, SecretLookup } from "@mark1russell7/alerts";
+import type { Duration, Instant, SecretLookup, SendOutcome } from "@mark1russell7/alerts";
 import { sendWebhookEvent, WEBHOOK_URL, type WebhookFetch, type WebhookSecret } from "@mark1russell7/alerts-channel-webhook";
 import type { Clock } from "@mark1russell7/algebra/clock";
 import { err, ok, type Result } from "@mark1russell7/optional";
@@ -188,6 +188,8 @@ export interface LoopNotifier {
   readonly log: (level: LogLevel, message: string, fields: LogFields) => void;
   /** This function stops the steady check and the retries, thus no timer keeps the supervisor alive after its stop. */
   readonly stop: () => void;
+  /** This function gives a promise that ends when no send is in progress. The signature of a send ends on a thread of Node.js, not on the clock. */
+  readonly idle: () => Promise<void>;
 }
 
 /**
@@ -202,16 +204,15 @@ export function loopNotifier(options: LoopNotifierOptions): LoopNotifier {
   // The wall time of the first stop of each loop, by its monotonic time.
   const walls = new Map<number, Instant>();
   const queue: LoopEvent[] = [];
-  let sending = false;
+  let sending: Promise<void> | undefined;
   const channel = { secrets: options.receiver.secrets, fetch: options.fetch, userAgent: options.userAgent, now: options.wall };
 
   const flush = (): void => {
     retry = undefined;
     const event = queue[0];
-    if (stopped || sending || event === undefined) return;
-    sending = true;
-    void sendWebhookEvent(channel, { url: options.receiver.url, ...event }).then((outcome) => {
-      sending = false;
+    if (stopped || sending !== undefined || event === undefined) return;
+    const done = (outcome: SendOutcome): void => {
+      sending = undefined;
       if (outcome.ok) {
         queue.shift();
         flush();
@@ -219,7 +220,9 @@ export function loopNotifier(options: LoopNotifierOptions): LoopNotifier {
       }
       options.warn(`The notice ${event.type} of the supervisor was not sent (${outcome.kind}). It goes again in ${String(LOOP_RETRY / 1000)} s.`);
       if (!stopped) retry = options.clock.after(LOOP_RETRY, flush);
-    });
+    };
+    // A send that throws is a failed send too, thus the notice goes again after the retry wait.
+    sending = sendWebhookEvent(channel, { url: options.receiver.url, ...event }).then(done, () => done({ ok: false, kind: "server", message: "The send threw." }));
   };
 
   const apply = (input: LoopInput): void => {
@@ -255,6 +258,9 @@ export function loopNotifier(options: LoopNotifierOptions): LoopNotifier {
       retry?.();
       check = undefined;
       retry = undefined;
+    },
+    idle: async () => {
+      while (sending !== undefined) await sending;
     },
   };
 }

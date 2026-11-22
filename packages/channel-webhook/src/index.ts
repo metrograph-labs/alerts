@@ -31,7 +31,7 @@ export const WEBHOOK_LIMITS = { title: 250, body: 4000 } as const;
  * The form of the URL of a receiver: `https:` to each host, or `http:` to the loopback host only. The pattern has no
  * nested repeats, because the load of the configuration examines each address with it.
  */
-export const WEBHOOK_URL = String.raw`(https://[^\s/?#]+|http://(127\.0\.0\.1|localhost|\[::1\])(:[0-9]{1,5})?)([/?#]\S*)?`;
+export const WEBHOOK_URL: string = String.raw`(https://[^\s/?#]+|http://(127\.0\.0\.1|localhost|\[::1\])(:[0-9]{1,5})?)([/?#]\S*)?`;
 
 // The pattern of the URL of a receiver, for one whole text.
 const WEBHOOK_URL_EXACT = new RegExp(`^(?:${WEBHOOK_URL})$`, "u");
@@ -40,7 +40,7 @@ const WEBHOOK_URL_EXACT = new RegExp(`^(?:${WEBHOOK_URL})$`, "u");
 export const WEBHOOK_ADDRESS: readonly AddressField[] = [{ name: "url", required: true, pattern: WEBHOOK_URL, form: "an https URL, or an http URL of the loopback host" }];
 
 /** The data of the event of one message: the fields of the message that a receiver needs, and the copy id of the send. */
-export interface WebhookAlert {
+export type WebhookAlert = {
   readonly key: string;
   readonly person: string;
   readonly level: Message["level"];
@@ -52,7 +52,7 @@ export interface WebhookAlert {
   readonly expires?: Instant;
   readonly why?: string;
   readonly copy?: string;
-}
+};
 
 /** The options of the webhook channel. */
 export interface WebhookChannelOptions {
