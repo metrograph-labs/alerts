@@ -2521,8 +2521,6 @@ export interface LimitUse {
   readonly id: string;
   readonly provider: string;
   readonly title: string;
-  readonly limit: number;
-  readonly currency: string;
   readonly levels: readonly number[];
   readonly maxAge: Duration;
   readonly since: Instant;
@@ -2533,6 +2531,8 @@ export interface LimitUse {
 export interface LimitUseRead {
   readonly month: string;
   readonly used: number;
+  readonly limit: number;
+  readonly currency: string;
   readonly level?: number;
   readonly at: Instant;
 }

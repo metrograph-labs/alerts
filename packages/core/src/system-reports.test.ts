@@ -557,14 +557,12 @@ describe("the use reports (AL-111)", () => {
     id: "github:example/actions",
     provider: "provider:github",
     title: "GitHub Actions",
-    limit: 10,
-    currency: "USD",
     levels: [0.5, 0.8, 1],
     maxAge: 2 * DAY,
     since: START,
     ...(read === undefined
       ? {}
-      : { read: { month: read.month ?? "2026-11", used: read.used, ...(read.level === undefined ? {} : { level: read.level }), at: read.at ?? START } }),
+      : { read: { month: read.month ?? "2026-11", used: read.used, limit: 10, currency: "USD", ...(read.level === undefined ? {} : { level: read.level }), at: read.at ?? START } }),
     ...fields,
   });
   const copyWatch = (copy: string, read: number): CopyWatch => ({ copy, skewLimit: 2_000, maxAge: 60_000, since: START, read: { at: read, skew: 0, sameConfig: true } });

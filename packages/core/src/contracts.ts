@@ -973,6 +973,10 @@ export interface LimitUseRead {
   readonly month: string;
   /** The used amount of the month, in the currency of the limit. */
   readonly used: number;
+  /** The hard limit of the month. The provider stops the paid use at this amount. A budget can change it in a month. */
+  readonly limit: number;
+  /** The currency of the amounts, as a code of ISO 4217: for example `USD`. */
+  readonly currency: string;
   /**
    * The largest level that the used share reached. It is absent when the share is below each level. The reader gives it,
    * because the rule of the levels has its home outside the core.
@@ -989,10 +993,6 @@ export interface LimitUse {
   readonly provider: string;
   /** The name of the limit in a text: for example `GitHub Actions`. */
   readonly title: string;
-  /** The hard limit of a month, in the currency of the limit. The provider stops the paid use at this amount. */
-  readonly limit: number;
-  /** The currency of the limit, as a code of ISO 4217: for example `USD`. */
-  readonly currency: string;
   /** The levels: shares of the limit, each one above 0. Each level that the share reached gives its own line `level`. */
   readonly levels: readonly number[];
   /** The longest time with no read that passed. After it, the stage is `unread`. */

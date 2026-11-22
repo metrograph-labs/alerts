@@ -1305,16 +1305,16 @@ function percent(share: number): string {
 
 // The condition of one stage of the use of a hard limit. A line `level` has its level. The stage `unread` has no level.
 function useCondition(use: LimitUse, stage: UseStage, at: Instant, level?: number): Condition {
-  const { id, provider, title, limit, currency, levels, read } = use;
-  const limitText = `${limit.toFixed(2)} ${currency}`;
+  const { id, provider, title, levels, read } = use;
+  const money = (amount: number): string => `${amount.toFixed(2)} ${read?.currency ?? ""}`;
   const last = read === undefined ? `the start of the watch at ${new Date(use.since).toISOString()}` : new Date(read.at).toISOString();
   const text: Readonly<Record<UseStage, { readonly headline: string; readonly description: string }>> = {
     level: {
-      headline: `${title}: the use of ${read?.month ?? "the month"} reached ${percent(level ?? 0)} of the limit of ${limitText}.`,
+      headline: `${title}: the use of ${read?.month ?? "the month"} reached ${percent(level ?? 0)} of the limit of ${money(read?.limit ?? 0)}.`,
       description:
         (level ?? 0) >= 1
           ? "The provider stops the paid use until the next month. Raise the limit only if the use is necessary."
-          : `The used amount is ${(read?.used ?? 0).toFixed(2)} ${currency}. At the limit, the provider stops the paid use until the next month.`,
+          : `The used amount is ${money(read?.used ?? 0)}. At the limit, the provider stops the paid use until the next month.`,
     },
     unread: {
       headline: `The use of ${title} has no read since ${last}.`,
@@ -1336,9 +1336,7 @@ function useCondition(use: LimitUse, stage: UseStage, at: Instant, level?: numbe
       stage: [stage],
       provider: [provider],
       level: level === undefined ? levels.map(String) : [String(level)],
-      limit: [String(limit)],
-      currency: [currency],
-      ...(read === undefined ? {} : { used: [String(read.used)], month: [read.month] }),
+      ...(read === undefined ? {} : { used: [String(read.used)], limit: [String(read.limit)], currency: [read.currency], month: [read.month] }),
       age: [String(at - (read?.at ?? use.since))],
     },
   };
