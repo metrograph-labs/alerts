@@ -340,6 +340,16 @@ describe("loadConfig", () => {
     ]);
   });
 
+  it("checks each watch of a limit: one for each id, and a monthly limit for the account of a user (AL-111)", () => {
+    const limit = { id: "github:example/actions", provider: "provider:github", title: "GitHub Actions", accountKind: "organization", account: "example", products: ["actions"] } as const;
+    const user = { ...limit, id: "github:someone/actions", accountKind: "user", account: "someone" } as const;
+    expect(loadConfig(config({ limits: [limit, { ...user, monthlyUsd: 5 }] }), CHANNELS, store).problems).toEqual([]);
+    expect(loadConfig(config({ limits: [limit, limit, user] }), CHANNELS, store).problems).toEqual([
+      "Two watches of a limit have the id github:example/actions.",
+      "The watch of the limit github:someone/actions is for the account of a user, and it has no monthly limit.",
+    ]);
+  });
+
   it("checks the table of rank delays: the schema refuses an unknown level, and the load refuses a value out of its bounds", () => {
     expect(loadConfig(config({ rankDelay: { "life-safety": 0, urgent: 30_000 } }), CHANNELS, store).problems).toEqual([]);
     expect(loadConfig(config({ rankDelay: { notice: 2.5 } }), CHANNELS, store).problems).toEqual([

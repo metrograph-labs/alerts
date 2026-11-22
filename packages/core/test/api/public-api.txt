@@ -222,6 +222,7 @@ LIFELINES_TOOLKIT: build/index.d.ts#LIFELINES_TOOLKIT
 LIFELINE_LABELS: build/index.d.ts#LIFELINE_LABELS
 LIFE_SAFETY_KINDS: build/index.d.ts#LIFE_SAFETY_KINDS
 LIMITED_LEVELS: build/index.d.ts#LIMITED_LEVELS
+LIMIT_ACCOUNT_KINDS: build/index.d.ts#LIMIT_ACCOUNT_KINDS
 LIMIT_KIND: build/index.d.ts#LIMIT_KIND
 LIMIT_SUBJECT: build/index.d.ts#LIMIT_SUBJECT
 LOG_KIND: build/index.d.ts#LOG_KIND
@@ -236,6 +237,8 @@ Level: build/index.d.ts#Level
 LevelRule: build/index.d.ts#LevelRule
 LevelTable: build/index.d.ts#LevelTable
 Lifeline: build/index.d.ts#Lifeline
+LimitAccountKind: build/index.d.ts#LimitAccountKind
+LimitConfig: build/index.d.ts#LimitConfig
 LimitInput: build/index.d.ts#LimitInput
 LimitResult: build/index.d.ts#LimitResult
 LimitRule: build/index.d.ts#LimitRule
@@ -674,6 +677,7 @@ latestIn: build/index.d.ts#latestIn
 levelRuleSchema: build/index.d.ts#levelRuleSchema
 levelSchema: build/index.d.ts#levelSchema
 levelTableSchema: build/index.d.ts#levelTableSchema
+limitConfigSchema: build/index.d.ts#limitConfigSchema
 limitRoutes: build/index.d.ts#limitRoutes
 limitRule: build/index.d.ts#limitRule
 limitShare: build/index.d.ts#limitShare
@@ -916,6 +920,7 @@ export interface AlertConfig {
   readonly contact?: string;
   readonly expectations?: readonly ExpectationConfig[];
   readonly spend?: readonly SpendConfig[];
+  readonly limits?: readonly LimitConfig[];
   readonly link?: LinkPolicy;
   readonly outage?: OutageConfig;
   readonly rankDelay?: RankDelays;
@@ -2426,6 +2431,9 @@ export declare const LIFE_SAFETY_KINDS: readonly string[];
 ### build/index.d.ts#LIMITED_LEVELS
 export declare const LIMITED_LEVELS: readonly LimitedLevel[];
 
+### build/index.d.ts#LIMIT_ACCOUNT_KINDS
+export declare const LIMIT_ACCOUNT_KINDS: readonly ["user", "organization"];
+
 ### build/index.d.ts#LIMIT_KIND
 export declare const LIMIT_KIND = "system.limit";
 
@@ -2491,6 +2499,22 @@ export interface LevelTable {
 
 ### build/index.d.ts#Lifeline
 export type Lifeline = (typeof LIFELINES)[number];
+
+### build/index.d.ts#LimitAccountKind
+export type LimitAccountKind = (typeof LIMIT_ACCOUNT_KINDS)[number];
+
+### build/index.d.ts#LimitConfig
+export interface LimitConfig {
+  readonly id: string;
+  readonly provider: string;
+  readonly title: string;
+  readonly accountKind: LimitAccountKind;
+  readonly account: string;
+  readonly products: readonly string[];
+  readonly monthlyUsd?: number;
+  readonly budget?: string;
+  readonly levels?: readonly number[];
+}
 
 ### build/index.d.ts#LimitInput
 export interface LimitInput {
@@ -4646,6 +4670,9 @@ export declare const levelSchema: z.ZodType<Level, Level>;
 
 ### build/index.d.ts#levelTableSchema
 export declare const levelTableSchema: z.ZodType<LevelTable, LevelTable>;
+
+### build/index.d.ts#limitConfigSchema
+export declare const limitConfigSchema: z.ZodType<LimitConfig, LimitConfig>;
 
 ### build/index.d.ts#limitRoutes
 export declare function limitRoutes(input: LimitInput): LimitResult;

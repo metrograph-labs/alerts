@@ -432,6 +432,8 @@ A use report (AL-111) tells the use of a hard limit of a paid provider account i
 - The month is in the name of a line. Thus a level of the next month is a new alert, also when no read saw the start of the month.
 - A read below each level ends each line `level`. A read that passes ends `unread`.
 - A snapshot with no uses keeps each open line of a use.
+- A use with no read keeps its open lines `level`. After a restart, the first read comes later. Thus a restart sends nothing.
+- The runtime gives `limitWatch` for each entry of `limits`. A watch reads once a day. A failed read tries again after one hour.
 - With two copies, only one copy reports `level` (see "The facts of a shared account"). Each copy reports its own `unread`.
 - A person gets the use reports only when the person watches `{ system: "alerts.limit" }`.
 
@@ -1369,6 +1371,12 @@ The function `openInstance` makes the instance of the owner from the private con
 - The instance does not text from `TWILIO_FROM`. Without `TWILIO_TEXT_FROM`, the text channel and the texts of the outage call are off.
 - A spend entry of a provider of a channel gives the cap of the channel. The count of the cap is in `quotas.sqlite`.
 - The spend entry of Twilio also gives the watch of the balance: one read each day, and its floors.
+- Each entry of the field `limits` gives the watch of the use of one hard limit (AL-111). The section "The use report" tells its lines.
+- The watch of a limit of GitHub reads the usage report of the account one time each day. The first read comes 20 minutes after the start.
+- The token of the reads is the key `GITHUB_BILLING_TOKEN`. A fine-grained token needs Plan (read) of a user, or Administration (read) of an organization.
+- The used amount is the sum of the net amounts of the products of the limit in the month, in UTC.
+- The limit is `monthlyUsd`, or the smallest budget of the organization that stops the paid use of its product (the field `budget`, or the first product).
+- The level comes from `useStates` of `@mark1russell7/stack-spend`. The reader loads it and the client of GitHub at its first read.
 - Each source gets the watch of `sourcePlaces`. Thus a source gets the region codes, and a position only when the place shares it with that source.
 - The User-Agent of each request names the project and its page. It names no person.
 - The times of the delivery come from facts of the channel. A call has a limit of 10 seconds. The poll goes at the pace of the emergency repeats, 30 seconds.
@@ -1383,6 +1391,7 @@ The instance does not start when it finds one of these problems:
 - the key `TWILIO_TEXT_FROM` with no keys of Twilio, or a value of the key that is not in E.164 form
 - a step of a policy on a channel that the instance has no sender for. Without the keys of Twilio, the call channel has no sender. Without `TWILIO_TEXT_FROM`, the text channel has no sender.
 - a step on a channel with a cost, when the configuration has no spend entry for a provider of the channel
+- a watch of a limit of a provider with no reader, or watches of limits of GitHub with no value for `GITHUB_BILLING_TOKEN`
 - a place that no regional source covers. Usually the place does not have a code of each level: the zone, the county, SAME, the state and the country. A source with the coverage `global`, for example the SWPC, covers each place with no code. Thus the check does not count it.
 
 The environment gives `PORT` (8080), `PROBE_PORT` (9090) and `SERVICE_PROFILE` (`local`, `daemon` or `pod`). The folder `ALERTS_HOME` (`.alerts` in the home folder) holds the private files: `config.json`, `secrets.env`, the log `runtime.sqlite` and the outlines of the zones `shapes.sqlite`. It also holds the counts of the quotas, `quotas.sqlite`, and the copy of the transit catalog, `transit-catalog.json`. No repository holds them. A problem of `secrets.env` names its line and its key, and no value. The output of a failed pass shows no value of `secrets.env`.
