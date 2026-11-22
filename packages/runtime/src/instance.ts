@@ -32,6 +32,7 @@ import {
   type ChannelId,
   type ChannelProcedures,
   type ChannelQuota,
+  type LoopBlock,
   type ContactServices,
   type CopySettings,
   type Duration,
@@ -789,6 +790,8 @@ export interface InstanceOptions {
   readonly onOutageError?: (error: unknown, failures: number) => void;
   /** The worker of the deploy of the outage call gives a line to this function for each deploy that changed the Functions. */
   readonly onOutageLog?: (line: string) => void;
+  /** This function gives the blocks of the event loop of the runtime (AL-88). Each pass writes the new blocks into the log. */
+  readonly loopBlocks?: () => readonly LoopBlock[];
 }
 
 /** The parts of the exchange that the entry gives to the instance. */
@@ -1073,6 +1076,8 @@ export function openInstance(options: InstanceOptions): Instance {
     ...(uses.length === 0 ? {} : { uses }),
     // Each family of a store with no entry at the end of its window after the start is a line of system reports (AL-86).
     stores: () => shapes.fill(startedAt, STORE_FILL_WINDOW, shapeSources(runtime.config.sources).map((source) => source.id)),
+    // Each block of the event loop of 1 s or more is a line of system reports (AL-88).
+    ...(options.loopBlocks === undefined ? {} : { blocks: options.loopBlocks }),
     // Each pass reads the replies of the texts and the spend of Twilio when each read is due.
     ...(reads.length === 0 ? {} : { reads }),
     // Each pass waits for the first round of the exchange, and its view has a line for each fault of another copy.

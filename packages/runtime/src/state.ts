@@ -7,6 +7,7 @@ import {
   add,
   addSystemReports,
   DEFAULT_LINK_POLICY,
+  LOOP_BLOCK_WINDOW,
   EMPTY_STATE,
   join,
   linkRule,
@@ -27,6 +28,7 @@ import {
   type ChannelId,
   type ClockStep,
   type LogRecovery,
+  type LoopBlock,
   type Cursor,
   type Delivery,
   type Duration,
@@ -156,6 +158,11 @@ export interface RuntimeState {
   readonly steps: readonly ClockStep[];
   /** The recoveries of the log from a broken file, in the order of the log. A later step of the wall clock moves their times. */
   readonly recoveries: readonly LogRecovery[];
+  /**
+   * The blocks of the event loop of this runtime in `LOOP_BLOCK_WINDOW` before the last block, in the order of the log
+   * (AL-88). A later step of the wall clock moves their times.
+   */
+  readonly blocks: readonly LoopBlock[];
   /** The last start of each drill of this copy, by the id of the drill (AL-43). A later step of the wall clock moves them. */
   readonly drills: Readonly<Record<string, Instant>>;
   /**
@@ -268,6 +275,7 @@ export const EMPTY_RUNTIME: RuntimeState = {
   delivered: {},
   steps: [],
   recoveries: [],
+  blocks: [],
   drills: {},
   modes: {},
 };
@@ -533,6 +541,11 @@ function foldRest(state: RuntimeState, event: RuntimeEvent, context: FoldContext
       const shifted = shiftState(state, event.size);
       return { ...shifted, time: Math.max(shifted.time, event.time), steps: [...shifted.steps, { at: event.time, size: event.size }] };
     }
+    case "loop": {
+      // Only the blocks of the window before this block stay. Thus the list stays short, and a rebuild gives the same list.
+      const blocks = [...state.blocks.filter((block) => event.time - block.at < LOOP_BLOCK_WINDOW), { at: event.time, size: event.size }];
+      return { ...base, blocks };
+    }
     case "recovered": {
       const recoveries = [...state.recoveries, { at: event.time, quarantine: event.quarantine, kept: event.added, lost: event.lost, whole: event.whole }];
       // The salvage can lose an import and keep the position after it. Thus the next read of each other copy starts at 0.
@@ -704,6 +717,7 @@ export function shiftState(state: RuntimeState, size: Duration): RuntimeState {
     steps: state.steps.map((step) => ({ ...step, at: step.at + size })),
     ...(state.retiredAt === undefined ? {} : { retiredAt: state.retiredAt + size }),
     recoveries: state.recoveries.map((recovery) => ({ ...recovery, at: recovery.at + size })),
+    blocks: state.blocks.map((block) => ({ ...block, at: block.at + size })),
     drills: Object.fromEntries(Object.entries(state.drills).map(([drill, at]) => [drill, at + size])),
     modes: Object.fromEntries(
       Object.entries(state.modes).map(([source, track]) => [

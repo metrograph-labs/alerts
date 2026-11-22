@@ -664,6 +664,9 @@ importers:
       '@mark1russell7/files':
         specifier: ^0.0.4
         version: 0.0.4
+      '@mark1russell7/lag':
+        specifier: ^0.5.2
+        version: 0.5.2(@opentelemetry/api@1.10.0)
       '@mark1russell7/optional':
         specifier: ^1.5.0
         version: 1.5.0
@@ -2077,6 +2080,17 @@ packages:
     resolution: {integrity: sha512-gxOyU9JQ4ikiomiisbOmNPwwKuOtWqQ6hPWcJANOWvIipjwQu2aYOvCeLokYpMEoCEhJHoY5FxzBGpn/mbgx+A==}
     engines: {node: '>=22'}
 
+  '@mark1russell7/lag@0.5.2':
+    resolution: {integrity: sha512-ASTxWsgPzgLr7fb5f4JK7wKazrWgPCVqnD1Cu96NtP31onRD8hy3U7dT6LqCO9QuqCCB2OlmlRVPzO/xRsMsqQ==}
+    peerDependencies:
+      '@opentelemetry/api': ^1.9.0
+      async-browser-context: ^0.3.0
+    peerDependenciesMeta:
+      '@opentelemetry/api':
+        optional: true
+      async-browser-context:
+        optional: true
+
   '@mark1russell7/layout-contract@0.10.6':
     resolution: {integrity: sha512-/al3v3Q/DH9QvSVZdAqxjKIcoC53FfhCR6T6p819lUIMFglNswy8AaXEo3EZ7rz0xBwBj5C4X0bPLWitrcOsLg==}
     engines: {node: '>=22.12'}
@@ -3451,6 +3465,9 @@ packages:
   package-manager-detector@1.9.0:
     resolution: {integrity: sha512-zAMfbta9nPA8AKkA4WdmNAT8R8s6Dk0/xwPsqNnRidMFcLo1YkLuPDTgs2f64XdzS8vbLNnoJ+uUIkgbz7oRHA==}
 
+  page-lifecycle-tracker@0.1.1:
+    resolution: {integrity: sha512-URDSyWl3d+CwHUyQkInaOosV+jwh+cpLMORjZzD/zWIAJzIdNRfx/uZpOprpd+nCigg2xu3SpZS6qTYMyIwWEw==}
+
   path-expression-matcher@1.6.2:
     resolution: {integrity: sha512-enSlaiat05iasnzmgNxRj8reFdj3puY2QpNgP1aPIaVfT6nn9ICuPoFlKHk8EN22HcwewshO+mN2DGbkCEOtqQ==}
     engines: {node: '>=14.0.0'}
@@ -4050,6 +4067,12 @@ snapshots:
       '@mark1russell7/predicates': 0.1.5
 
   '@mark1russell7/interval@0.1.0': {}
+
+  '@mark1russell7/lag@0.5.2(@opentelemetry/api@1.10.0)':
+    dependencies:
+      page-lifecycle-tracker: 0.1.1
+    optionalDependencies:
+      '@opentelemetry/api': 1.10.0
 
   '@mark1russell7/layout-contract@0.10.6':
     dependencies:
@@ -5306,6 +5329,8 @@ snapshots:
   obug@3.0.0: {}
 
   package-manager-detector@1.9.0: {}
+
+  page-lifecycle-tracker@0.1.1: {}
 
   path-expression-matcher@1.6.2: {}
 

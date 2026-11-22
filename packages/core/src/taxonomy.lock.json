@@ -305,6 +305,8 @@
   "system.limit.held",
   "system.log",
   "system.log.recovered",
+  "system.loop",
+  "system.loop.block",
   "system.quota",
   "system.quota.low",
   "system.quota.reserve",

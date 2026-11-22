@@ -5,7 +5,7 @@
  * that it gets.
  */
 import { isFrameClock, type WallClock } from "@mark1russell7/algebra/clock";
-import { channelDownPolicy, DEFAULT_SEND_LIMITS, downChannels, heldPersons, indicatorBreadth, limitShare, observeConditions, ONLY_COPY, type ChannelQuota, type ChannelSnapshot, type CopyWatch, type DrillWatch, type Duration, type EntryTimes, type Exhaustion, type FetchOutcome, type HeldPerson, type Incident, type IndicatorBreadth, type Instant, type LatenessFolds, type MergeState, type ObserveCondition, type ReportId, type SourceDescriptor, type SourceId, type StoreFill, type SourceProcedures, type Watch, type ZoneRegions } from "@mark1russell7/alerts";
+import { channelDownPolicy, DEFAULT_SEND_LIMITS, downChannels, heldPersons, indicatorBreadth, limitShare, observeConditions, ONLY_COPY, type ChannelQuota, type ChannelSnapshot, type CopyWatch, type DrillWatch, type Duration, type EntryTimes, type Exhaustion, type FetchOutcome, type HeldPerson, type Incident, type IndicatorBreadth, type Instant, type LatenessFolds, type LoopBlock, type MergeState, type ObserveCondition, type ReportId, type SourceDescriptor, type SourceId, type StoreFill, type SourceProcedures, type Watch, type ZoneRegions } from "@mark1russell7/alerts";
 import type { ChunkOptions, FoldMark, FoldSnapshot } from "@mark1russell7/sqlite";
 import { errorMessage } from "@mark1russell7/text";
 import type { BalanceWatch } from "./balance.ts";
@@ -15,6 +15,7 @@ import { createDispatcher, type DeliveryOptions, type DeliveryStep } from "./del
 import { drillStarts, drillStep, type CopyDrill } from "./drills.ts";
 import { entryIndex } from "./entries.ts";
 import { envelope, EVENT_TYPES, FOLD_TYPES, unknownEvents, type RuntimeEvent } from "./events.ts";
+import { blockEvent } from "./loop-watch.ts";
 import { importPage, sharePage, type ExchangePage, type ReceivedPage } from "./exchange.ts";
 import { fetchStep } from "./fetch.ts";
 import { limited } from "./limit.ts";
@@ -92,6 +93,11 @@ export interface RuntimeOptions {
    * the end of its window is a line of system reports. A throw keeps each open line of a store as it is.
    */
   readonly stores?: () => readonly StoreFill[];
+  /**
+   * This function gives the blocks of the event loop of this runtime (AL-88). Each pass writes each new block into the log
+   * before its view. The system report of the blocks reads the log. A throw writes no block.
+   */
+  readonly blocks?: () => readonly LoopBlock[];
   /**
    * The watches of the balances of the paid provider accounts. Each pass starts `check` of each watch, next to
    * its fetches. Each stage of a balance is a line of system reports.
@@ -450,6 +456,16 @@ export function openRuntime(options: RuntimeOptions): Runtime {
     }
   };
 
+  // A fault of the read of the blocks writes no block. The blocks of the log keep their line.
+  const readBlocks = (): readonly LoopBlock[] => {
+    if (options.blocks === undefined) return [];
+    try {
+      return options.blocks();
+    } catch {
+      return [];
+    }
+  };
+
   // A fault of the read of a store ends no line of a store.
   const readStores = (): readonly StoreFill[] | undefined => {
     if (options.stores === undefined) return [];
@@ -552,6 +568,9 @@ export function openRuntime(options: RuntimeOptions): Runtime {
       // Each source with no mode gets its mode before the view (AL-73). The first start seeds the modes, and a later new source observes.
       const modes = modeEvents(state, config.sources, at);
       if (modes.length > 0) conflicts.push(...append(modes));
+      // Each new block of the event loop goes into the log before the view (AL-88). A block that the log has changes nothing.
+      const blocks = readBlocks().map((block) => blockEvent(block, options.run)).filter((event) => !log.has(event.id));
+      if (blocks.length > 0) conflicts.push(...append(blocks));
       const quotas = readQuotas();
       const stores = readStores();
       // The persons with a hold of the send limit (AL-81). With no delivery, no person has a hold, and each open line stays.
