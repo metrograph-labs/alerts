@@ -951,5 +951,68 @@
       "members": 1757,
       "cause": "Round 17 adds the classes personal.income-loss and personal.death with gaps. The classes go from 202 to 204, and the gaps from 105 to 107. No source changes."
     }
+  },
+  {
+    "round": 18,
+    "date": "2026-11-21",
+    "by": "One session and one research agent, for the classes with fewer than two sources, the dimensions with one source and new dimensions of indicators.",
+    "method": "Web searches and reads of the pages and the API replies of each source. The agent started from the thin classes of round 17 and from the dimensions with one source. Before the commit, the session read the evidence of six planned sources again.",
+    "lists": [
+      "DWD open data, health alerts directory: https://opendata.dwd.de/climate_environment/health/alerts/",
+      "Digitraffic Marine API, the OpenAPI document: https://meri.digitraffic.fi/swagger/openapi.json",
+      "Stream water data hub, catalog search for storm overflow activity layers: https://www.streamwaterdata.co.uk/api/search/v1/collections/dataset/items?q=storm%20overflow%20activity&limit=20",
+      "OpenHolidays API, the OpenAPI document: https://openholidaysapi.org/swagger/v1/swagger.json",
+      "Open Government Portal of Canada, CKAN search for vehicle recalls: https://open.canada.ca/data/api/action/package_search?q=motor%20vehicle%20safety%20recalls%20database&rows=3",
+      "Open Government Portal of Canada, CKAN search for CWFIS active fires: https://open.canada.ca/data/api/action/package_search?q=CWFIS%20active%20fires&rows=3",
+      "AEMO NEMWeb, the market notice directory: https://nemweb.com.au/Reports/Current/Market_Notice/",
+      "ECDC RSS feeds: https://www.ecdc.europa.eu/en/rss-feeds",
+      "EMA, download medicine data: https://www.ema.europa.eu/en/medicines/download-medicine-data",
+      "OONI, the data licence folder: https://api.github.com/repos/ooni/license/contents/data"
+    ],
+    "queries": [
+      "National Storm Overflow Hub streamwaterdata FeatureServer live EDM status API open licence",
+      "FAO Desert Locust Hub open data swarms hoppers FeatureServer download licence"
+    ],
+    "notes": [
+      "Round 18 adds 28 sources: 14 planned and 14 later. No source is adopted, because an adoption needs an adapter.",
+      "Round 18 adds 8 dimensions to the core: internet-censorship, gas-storage, reservoir-storage, snowpack, hospital-occupancy, drug-shortages, lightning-activity and jobless-claims. Each is a measure that can show stress before an alert.",
+      "The proposed dimension of electricity prices is a part of power-supply, the dimension of power generation and prices. Thus the aWATTar prices go into power-supply.",
+      "Thin classes that got a source this round: env.pollen, env.uv, transport.sea.navigational-warning, env.water.sewage-overflow (first source), health.hospital-capacity (first source), civic.public-holiday, civic.regulation, civic.court-ruling (later), infra.timekeeping (later), infra.power.grid-emergency and infra.power.load-shedding (later), market.indicator.recession (later), safety.recall.vehicle, security.crime (first source, later), rescue.disaster-assistance (later).",
+      "The EA bathing water quality service (environment.data.gov.uk bwq) returned HTTP 429 twice, so no record was made. Try again from a quiet address next round.",
+      "The Digitraffic nautical-warning v1 path returned 404, and the current marine OpenAPI document has no nautical warning path. The aids-to-navigation faults path is the partial fit in this round.",
+      "The Interpol public notices API (ws-public.interpol.int, yellow notices for security.missing-person) returned Access Denied to an automated client. No record was made.",
+      "Tor Metrics (metrics.torproject.org) returned 503 twice. It is the planned second source for internet-censorship (users per country with censorship events).",
+      "The FAO Locust Hub page rendered no text. A search snippet says the full data needs an account request. No record was made for a locust dimension.",
+      "The CWFIS active fire CSV path returned 404. active-fires still has one source.",
+      "The AEMO copyright page and the OECD terms page returned 403 to the fetch tool.",
+      "EPPO: gd.eppo.int/rss returned 404. env.pest-quarantine is still open.",
+      "Existing records that can carry the new dimensions: openfda-drug-shortages and ashp-drug-shortages (drug-shortages), fred-api with the series ICSA (jobless-claims), noaa-goes-glm (lightning-activity), energy-charts-power with its price endpoint (electricity-prices), eia-api (gas-storage).",
+      "The record federal-register-api can add safety.national-emergency for presidential emergency declarations. Its bot check blocked the earlier round.",
+      "The OPM operating status JSON (www.opm.gov/json/operatingstatus.json) was not checked this round. The record opm-status can use it.",
+      "Find Case Law entries and the NHSN metadata hold personal names or contact addresses. Keep them out of fixtures and logs.",
+      "A DWD Terms_of_use.pdf on opendata.dwd.de answered HTTP 200 but was not read. The DWD legal notice gives CC BY 4.0.",
+      "Not checked this round: IC3 and Scamwatch (safety.scam), FAA KICZ notices (transport.air.conflict-zone), NASA LHASA (geo.landslide), the AMS fireball API (geo.fireball), EGMS (geo.subsidence), ENTSOG flows, CBP airport wait times, NREL AFDC and French IRVE dynamic data (ev-charging), Media Cloud (news-volume)."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 204,
+      "gaps": 103,
+      "cover": {
+        "adopted": 54,
+        "paths": 54,
+        "origins": 4
+      },
+      "total": {
+        "adopted": 146,
+        "paths": 146,
+        "origins": 67
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 7,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 18 adds planned and later sources to the thin classes and to the dimensions. The gaps go from 107 to 103, because 4 classes get a second source. The dimensions with two live sources go from 5 to 7. No source is adopted, so the cover and the totals do not change."
+    }
   }
 ]
