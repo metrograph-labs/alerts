@@ -2501,10 +2501,10 @@
     "access": "stream",
     "auth": "none",
     "terms": {
-      "url": null,
+      "url": "https://docs.bsky.app/docs/developer-guidelines",
       "automated": "unclear",
       "redistribution": "unclear",
-      "note": "The terms were not read."
+      "note": "The developer guidelines forbid automated or bulk interactions, for example messages, follows, likes or replies. They do not name the reading of Jetstream."
     },
     "cost": "free",
     "delay": "unknown (seconds in practice: not measured)",
@@ -2524,9 +2524,10 @@
     "adapter": null,
     "reason": "A live world stream of posts with no key, the fastest human signal of the list. The terms were not read, so the adapter waits for them.",
     "evidence": [
-      "https://bsky.network/docs/jetstream"
+      "https://bsky.network/docs/jetstream",
+      "https://docs.bsky.app/docs/developer-guidelines"
     ],
-    "round": 10
+    "round": 22
   },
   {
     "id": "bom-sws-api",
@@ -9694,8 +9695,8 @@
     "terms": {
       "url": "https://www.gdeltproject.org/about.html#termsofuse",
       "automated": "allowed",
-      "redistribution": "unclear",
-      "note": "The page says the database is 100% free and open. Terms section not opened."
+      "redistribution": "allowed",
+      "note": "The terms permit unlimited and unrestricted use of each dataset with no fee, and redistribution in any form. Each use or redistribution cites the GDELT Project with a link to its site."
     },
     "cost": "free",
     "delay": "every 15 minutes",
@@ -9713,12 +9714,14 @@
     "risks": [],
     "decision": "plan",
     "adapter": null,
-    "reason": "Fast and global, but noisy; useful as a weak signal.",
+    "reason": "Fast and global, but noisy: a weak signal and a second witness. Each event has the place of the action, so an adapter can filter the places on the computer of the user, and no place leaves it. One file of 2026-11-23 had 958 events, and 940 had a place.",
     "evidence": [
       "https://www.gdeltproject.org/data.html",
-      "https://www.gdeltproject.org/about.html"
+      "https://www.gdeltproject.org/about.html",
+      "https://www.gdeltproject.org/about.html#termsofuse",
+      "http://data.gdeltproject.org/gdeltv2/lastupdate.txt"
     ],
-    "round": 1
+    "round": 22
   },
   {
     "id": "gemini-prediction-api",
@@ -23336,5 +23339,236 @@
       "cve-cnas",
       "first-teams"
     ]
+  },
+  {
+    "id": "gdelt-doc-api",
+    "name": "GDELT DOC 2.0 API",
+    "classes": [],
+    "dimensions": [
+      "news-volume"
+    ],
+    "url": "https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.gdeltproject.org/about.html#termsofuse",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The terms permit unlimited and unrestricted use of each dataset with no fee, and redistribution in any form. Each use or redistribution cites the GDELT Project with a link to its site."
+    },
+    "cost": "free",
+    "delay": "unknown",
+    "history": "the last 3 months",
+    "rateLimit": "one request each 5 seconds (the text of the reply)",
+    "coverage": "World: the online news that GDELT monitors, searched by words, themes, domains, languages and source countries.",
+    "origins": [
+      "news-media"
+    ],
+    "path": [
+      "api.gdeltproject.org"
+    ],
+    "decision": "later",
+    "reason": "A query names its words, so a query for a place sends the place out. The event files give news events with places and no query. On 2026-11-23, three queries gave no article, and two more gave the text of the limit.",
+    "evidence": [
+      "https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/",
+      "https://www.gdeltproject.org/about.html#termsofuse"
+    ],
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 22
+  },
+  {
+    "id": "gdelt-gkg",
+    "name": "GDELT 2.0 Global Knowledge Graph",
+    "classes": [],
+    "dimensions": [
+      "news-volume"
+    ],
+    "url": "https://www.gdeltproject.org/data.html",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.gdeltproject.org/about.html#termsofuse",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The terms permit unlimited and unrestricted use of each dataset with no fee, and redistribution in any form. Each use or redistribution cites the GDELT Project with a link to its site."
+    },
+    "cost": "free",
+    "delay": "every 15 minutes",
+    "history": "unknown",
+    "rateLimit": "unknown",
+    "coverage": "World: the themes, places, persons and organizations of the news that GDELT monitors.",
+    "origins": [
+      "news-media"
+    ],
+    "path": [
+      "data.gdeltproject.org"
+    ],
+    "decision": "later",
+    "reason": "The themes name the hazards that the event codes do not have. But one file of 15 minutes was 6,876,277 bytes compressed on 2026-11-23, approximately 660 MB each day. The event file was 65,433 bytes.",
+    "evidence": [
+      "http://data.gdeltproject.org/gdeltv2/lastupdate.txt",
+      "https://www.gdeltproject.org/about.html#termsofuse"
+    ],
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 22
+  },
+  {
+    "id": "hacker-news-api",
+    "name": "Hacker News API",
+    "classes": [],
+    "dimensions": [
+      "news-volume"
+    ],
+    "url": "https://github.com/HackerNews/API",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://github.com/HackerNews/API",
+      "automated": "allowed",
+      "redistribution": "unclear",
+      "note": "The page of the API is for the use of developers and says that there is no rate limit. The round did not read the terms of Y Combinator."
+    },
+    "cost": "free",
+    "delay": "unknown (seconds in practice: not measured)",
+    "history": "yes (each item by its id)",
+    "rateLimit": "none (the page of the API)",
+    "coverage": "World: the technology stories that the users of Hacker News submit and vote on.",
+    "origins": [
+      "hacker-news"
+    ],
+    "path": [
+      "hacker-news.firebaseio.com"
+    ],
+    "decision": "plan",
+    "reason": "A second witness of the outages of software and clouds: the users submit a story of a large outage, and the votes rank it. No key, and no place goes out. The round did not measure the delay from an outage to a story.",
+    "evidence": [
+      "https://github.com/HackerNews/API",
+      "https://hacker-news.firebaseio.com/v0/topstories.json"
+    ],
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 22
+  },
+  {
+    "id": "npr-content-feeds",
+    "name": "NPR content feeds",
+    "classes": [],
+    "dimensions": [
+      "news-volume"
+    ],
+    "url": "https://www.npr.org/about-npr/179876898/terms-of-use",
+    "access": "feed",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.npr.org/about-npr/179876898/terms-of-use",
+      "automated": "limited",
+      "redistribution": "forbidden",
+      "note": "A personal application can show and excerpt the feeds, with the credit NPR next to them. It cannot redistribute a whole feed."
+    },
+    "cost": "free",
+    "delay": "unknown",
+    "history": "unknown",
+    "rateLimit": "unknown",
+    "coverage": "The United States: the headlines and summaries of NPR.",
+    "origins": [
+      "npr"
+    ],
+    "path": [
+      "unknown"
+    ],
+    "decision": "later",
+    "reason": "One national outlet in one country. The fixtures of a public repository cannot hold a feed, because the terms forbid redistribution. A general reader of news feeds comes first.",
+    "evidence": [
+      "https://www.npr.org/about-npr/179876898/terms-of-use"
+    ],
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 22
+  },
+  {
+    "id": "reliefweb-api",
+    "name": "ReliefWeb API",
+    "classes": [],
+    "dimensions": [
+      "news-volume"
+    ],
+    "url": "https://apidoc.reliefweb.int/",
+    "access": "api",
+    "auth": "key",
+    "terms": {
+      "url": "https://reliefweb.int/terms-conditions",
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The page of the terms gave HTTP 202 with no body to the client of the round. The round did not go around it."
+    },
+    "cost": "free",
+    "delay": "unknown",
+    "history": "unknown",
+    "rateLimit": "unknown",
+    "coverage": "World: the reports, disasters and jobs of the humanitarian community that ReliefWeb publishes.",
+    "origins": [
+      "ocha-reliefweb"
+    ],
+    "path": [
+      "api.reliefweb.int"
+    ],
+    "decision": "later",
+    "reason": "Each request needs an appname that ReliefWeb approves first. A person registers it. The terms were not read.",
+    "evidence": [
+      "https://apidoc.reliefweb.int/"
+    ],
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 22
+  },
+  {
+    "id": "wikipedia-current-events",
+    "name": "Wikipedia: Portal:Current events",
+    "classes": [],
+    "dimensions": [
+      "news-volume"
+    ],
+    "url": "https://en.wikipedia.org/wiki/Portal:Current_events",
+    "access": "page",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The text is under CC BY-SA 4.0. The round did not read the rules of Wikimedia for automated reading."
+    },
+    "cost": "free",
+    "delay": "unknown",
+    "history": "yes (a page for each day)",
+    "rateLimit": "unknown",
+    "coverage": "World: a daily list of the main events that editors write, with links to news.",
+    "origins": [
+      "wikimedia-foundation"
+    ],
+    "path": [
+      "unknown"
+    ],
+    "decision": "later",
+    "reason": "Editors write the list by hand, so it is a daily digest, not a fast signal. The round did not read the rules for automated reading.",
+    "evidence": [
+      "https://en.wikipedia.org/wiki/Portal:Current_events"
+    ],
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 22
   }
 ]

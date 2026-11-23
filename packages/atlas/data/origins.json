@@ -2454,5 +2454,23 @@
     "name": "Zyxel",
     "issues": null,
     "note": "The record of zyxel-security-advisories names this issuer."
+  },
+  {
+    "id": "hacker-news",
+    "name": "Hacker News, of Y Combinator",
+    "issues": null,
+    "note": "The record of hacker-news-api names this body. The users submit the stories."
+  },
+  {
+    "id": "npr",
+    "name": "NPR (National Public Radio)",
+    "issues": null,
+    "note": "The record of npr-content-feeds names this body."
+  },
+  {
+    "id": "ocha-reliefweb",
+    "name": "ReliefWeb, of the UN Office for the Coordination of Humanitarian Affairs",
+    "issues": null,
+    "note": "The record of reliefweb-api names this body."
   }
 ]

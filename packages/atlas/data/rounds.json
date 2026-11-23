@@ -1148,5 +1148,57 @@
       "members": 1757,
       "cause": "Round 21 corrects the adopted records: the Radar adapter does not give 3 of its classes, and it gives 1 class that the record did not have. IPAWS gets fire.wildfire. The adopted total goes from 148 to 146, the path total from 148 to 146 and the origin total from 69 to 67. The gaps stay at 108, because a planned record keeps the 3 classes live."
     }
+  },
+  {
+    "round": 22,
+    "date": "2026-11-23",
+    "by": "One agent, with one request to each page and a check of each record before the commit.",
+    "method": "The round looked for free sources of news and read the terms of each. It read the existing news and social records again, and opened one GDELT event file to count the events with a place.",
+    "lists": [
+      "The GDELT data page and its terms of use",
+      "The Hacker News API on GitHub",
+      "The terms of use of NPR",
+      "The ReliefWeb API documentation",
+      "The Bluesky developer guidelines",
+      "Wikipedia: Portal:Current events"
+    ],
+    "queries": [
+      "GDELT DOC 2.0 API terms",
+      "GDELT terms of use redistribution",
+      "Hacker News API rate limit",
+      "NPR RSS terms of use",
+      "ReliefWeb API appname",
+      "Bluesky developer guidelines automated"
+    ],
+    "notes": [
+      "The GDELT terms permit use and redistribution with no fee. Each use cites the GDELT Project with a link. The records of GDELT get these terms.",
+      "A query of the GDELT DOC API holds its words. A query for a place thus sends the place out, so the record is later. The event files need no query.",
+      "One GDELT event file of 15 minutes held 958 events, and 940 of them had a place of the action. The adapter can filter by place on the computer of the user.",
+      "The knowledge graph of GDELT has the hazard themes, but each file of 15 minutes is approximately 7 MB compressed. It is later.",
+      "The Hacker News API needs no key and states no rate limit. It is a second witness of outages of software and clouds, so it is planned.",
+      "The ReliefWeb API needs an appname that ReliefWeb approves first, and its terms page gave no body to the client. It is later until a person registers.",
+      "The NPR terms forbid the redistribution of a whole feed, so a public repository cannot hold a fixture of it. A general reader of news feeds comes first."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 213,
+      "gaps": 108,
+      "cover": {
+        "adopted": 54,
+        "paths": 54,
+        "origins": 4
+      },
+      "total": {
+        "adopted": 146,
+        "paths": 146,
+        "origins": 67
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 35,
+      "dimensions": 9,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 22 adds research only. The dimension news-volume gets a second planned source, hacker-news-api, so the dimensions go from 8 to 9. Two later records have an unknown path, so the unknown paths go from 33 to 35. No adapter changed, so the layers stay."
+    }
   }
 ]
