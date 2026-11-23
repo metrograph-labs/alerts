@@ -1449,6 +1449,7 @@ The function `openInstance` makes the instance of the owner from the private con
   - The date of each read is a date of the time zone of the cap.
 - The spend entry of Twilio also gives the watch of the balance: one read each day, and its floors.
 - Each entry of the field `limits` gives the watch of the use of one hard limit (AL-111). The section "The use report" tells its lines.
+- The field `chain` gives the stack of the alert chain (AL-90): a stack document with a layer of risks, and the subjects that tell the state of its parts. A live incident about a subject tells that its part is down. The runtime gives a `RedundancyState` for each goal of the layer.
 - The watch of a limit of GitHub reads the usage report of the account one time each day. The first read comes 20 minutes after the start.
 - The token of the reads is in the key `tokenKey` of the limit, or in `GITHUB_BILLING_TOKEN`. A fine-grained token needs Plan (read) of a user, or Administration (read) of an organization.
 - A fine-grained token has one owner: a user or one organization. Thus each account needs its own key. The limits with one key share one client.

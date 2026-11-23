@@ -155,6 +155,8 @@ import {
   type PersonConfig,
   type InterestDefaultsConfig,
   type LimitConfig,
+  type ChainConfig,
+  type ChainSubject,
   type PlaceConfig,
   type SecretLookup,
   type SpendConfig,
@@ -1537,6 +1539,21 @@ export const spendConfigSchema: z.ZodType<SpendConfig, SpendConfig> = schemaOf<S
  * This schema checks the watch of one hard limit of a provider account (AL-111). `loadConfig` checks the ids and the
  * monthly limit of the account of a user.
  */
+/** This schema checks one subject of the stack of the alert chain (AL-90). */
+export const chainSubjectSchema: z.ZodType<ChainSubject, ChainSubject> = schemaOf<ChainSubject>()(
+  z.strictObject({ system: z.string().min(1), id: z.string().min(1), part: z.string().min(1) }).readonly(),
+);
+
+/** This schema checks the stack of the alert chain (AL-90). The runtime checks the stack document with its own schemas. */
+export const chainConfigSchema: z.ZodType<ChainConfig, ChainConfig> = schemaOf<ChainConfig>()(
+  z
+    .strictObject({
+      stack: z.record(z.string(), z.unknown()).readonly(),
+      subjects: z.array(chainSubjectSchema).readonly(),
+    })
+    .readonly(),
+);
+
 export const limitConfigSchema: z.ZodType<LimitConfig, LimitConfig> = schemaOf<LimitConfig>()(
   z
     .strictObject({
@@ -1703,6 +1720,7 @@ export const alertConfigSchema: z.ZodType<AlertConfig, AlertConfig> = schemaOf<A
       expectations: z.array(expectationConfigSchema).readonly().exactOptional(),
       spend: z.array(spendConfigSchema).readonly().exactOptional(),
       limits: z.array(limitConfigSchema).readonly().exactOptional(),
+      chain: chainConfigSchema.exactOptional(),
       link: linkPolicySchema.exactOptional(),
       outage: outageConfigSchema.exactOptional(),
       rankDelay: rankDelaysSchema.exactOptional(),

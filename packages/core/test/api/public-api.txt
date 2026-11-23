@@ -58,9 +58,11 @@ Carriage: build/index.d.ts#Carriage
 Category: build/index.d.ts#Category
 CellResource: build/index.d.ts#CellResource
 Certainty: build/index.d.ts#Certainty
+ChainConfig: build/index.d.ts#ChainConfig
 ChainPart: build/index.d.ts#ChainPart
 ChainRun: build/index.d.ts#ChainRun
 ChainState: build/index.d.ts#ChainState
+ChainSubject: build/index.d.ts#ChainSubject
 ChannelCallFailure: build/index.d.ts#ChannelCallFailure
 ChannelDescriptor: build/index.d.ts#ChannelDescriptor
 ChannelDownConfig: build/index.d.ts#ChannelDownConfig
@@ -538,8 +540,10 @@ categoryOf: build/index.d.ts#categoryOf
 categorySchema: build/index.d.ts#categorySchema
 cellResourceSchema: build/index.d.ts#cellResourceSchema
 certaintySchema: build/index.d.ts#certaintySchema
+chainConfigSchema: build/index.d.ts#chainConfigSchema
 chainNext: build/index.d.ts#chainNext
 chainRun: build/index.d.ts#chainRun
+chainSubjectSchema: build/index.d.ts#chainSubjectSchema
 channelDescriptorSchema: build/index.d.ts#channelDescriptorSchema
 channelDownConfigSchema: build/index.d.ts#channelDownConfigSchema
 channelDownPolicy: build/index.d.ts#channelDownPolicy
@@ -943,6 +947,7 @@ export interface AlertConfig {
   readonly expectations?: readonly ExpectationConfig[];
   readonly spend?: readonly SpendConfig[];
   readonly limits?: readonly LimitConfig[];
+  readonly chain?: ChainConfig;
   readonly link?: LinkPolicy;
   readonly outage?: OutageConfig;
   readonly rankDelay?: RankDelays;
@@ -1224,6 +1229,12 @@ export type CellResource = "internet" | "dns" | "power" | "receiver";
 ### build/index.d.ts#Certainty
 export type Certainty = "observed" | "likely" | "possible" | "unlikely" | "unknown";
 
+### build/index.d.ts#ChainConfig
+export interface ChainConfig {
+  readonly stack: Readonly<Record<string, unknown>>;
+  readonly subjects: readonly ChainSubject[];
+}
+
 ### build/index.d.ts#ChainPart
 export interface ChainPart {
   readonly id: string;
@@ -1249,6 +1260,13 @@ export type ChainState = {
 } | {
   readonly kind: "exhausted";
 };
+
+### build/index.d.ts#ChainSubject
+export interface ChainSubject {
+  readonly system: string;
+  readonly id: string;
+  readonly part: string;
+}
 
 ### build/index.d.ts#ChannelCallFailure
 export interface ChannelCallFailure {
@@ -4319,11 +4337,17 @@ export declare const cellResourceSchema: z.ZodType<CellResource, CellResource>;
 ### build/index.d.ts#certaintySchema
 export declare const certaintySchema: z.ZodType<Certainty, Certainty>;
 
+### build/index.d.ts#chainConfigSchema
+export declare const chainConfigSchema: z.ZodType<ChainConfig, ChainConfig>;
+
 ### build/index.d.ts#chainNext
 export declare function chainNext(chain: TryChain, step?: number, end?: TryEnd): ChainState;
 
 ### build/index.d.ts#chainRun
 export declare function chainRun(chain: TryChain, start: Instant, ends: readonly TimedEnd[], instance: string): ChainRun;
+
+### build/index.d.ts#chainSubjectSchema
+export declare const chainSubjectSchema: z.ZodType<ChainSubject, ChainSubject>;
 
 ### build/index.d.ts#channelDescriptorSchema
 export declare const channelDescriptorSchema: z.ZodType<ChannelDescriptor, ChannelDescriptor>;

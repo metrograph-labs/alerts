@@ -88,6 +88,8 @@ import {
   drillConfigSchema,
   expectationConfigSchema,
   limitConfigSchema,
+  chainConfigSchema,
+  chainSubjectSchema,
   outageConfigSchema,
   outagePersonConfigSchema,
   spendConfigSchema,
@@ -419,6 +421,8 @@ const SCHEMA_NAMES = [
   "categorySchema",
   "cellResourceSchema",
   "certaintySchema",
+  "chainConfigSchema",
+  "chainSubjectSchema",
   "channelDescriptorSchema",
   "channelDownConfigSchema",
   "channelFailureKindSchema",
@@ -980,6 +984,14 @@ describe("the private configuration", () => {
     // An account of a user with no monthly limit is a problem of the load.
     holds(limitConfigSchema, { ...limit, accountKind: "user" });
     for (const bad of [{ products: [] }, { products: [""] }, { accountKind: "team" }, { monthlyUsd: 0 }, { levels: [] }, { levels: [0] }, { levels: [Number.POSITIVE_INFINITY] }, { id: "" }, { extra: 1 }, { tokenKey: "" }, { tokenKey: "github_token" }, { tokenKey: "1TOKEN" }, { tokenKey: "A-B" }]) fails(limitConfigSchema, { ...limit, ...bad });
+  });
+
+  it("checks the form of the stack of the alert chain, and leaves the stack document to the runtime (AL-90)", () => {
+    const chain = { stack: { schema: "stack/1", parts: [] }, subjects: [{ system: "domain", id: "status.example.net", part: "texts" }] };
+    holds(alertConfigSchema, { ...CONFIG, chain });
+    holds(chainConfigSchema, { ...chain, subjects: [] });
+    for (const bad of [{ system: "" }, { id: "" }, { part: "" }, { extra: 1 }]) fails(chainSubjectSchema, { ...chain.subjects[0], ...bad });
+    for (const bad of [{ stack: [] }, { stack: "stack/1" }, { subjects: undefined }, { extra: 1 }]) fails(chainConfigSchema, { ...chain, ...bad });
   });
 
   it("checks the form of the outage call, and leaves the people and the channels to the load", () => {
