@@ -173,8 +173,8 @@ describe("the host of the instance", () => {
 
   it("stops the supervisor at the end of its input only when a Windows console started it (AL-141)", () => {
     const group = { start: () => undefined, stop: async () => undefined };
-    expect(declareSupervisor(group, true).describe().triggers).toEqual(["stdin-close"]);
-    expect(declareSupervisor(group).describe().triggers ?? []).toEqual([]);
+    expect(declareSupervisor(group, true).describe().shutdown.triggers).toEqual(["stdin-close"]);
+    expect(declareSupervisor(group).describe().shutdown.triggers ?? []).toEqual([]);
     // A stop of the boot task ends only the headless console. A Linux unit gives an input that is not a console.
     expect(watchesConsole("win32", true)).toBe(true);
     expect(watchesConsole("win32", undefined)).toBe(false);
