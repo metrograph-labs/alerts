@@ -104,6 +104,7 @@ import type { RestTransport } from "@procedures/gh";
 import type { Meter } from "@opentelemetry/api";
 import type { UseRead } from "@mark1russell7/stack-spend";
 import { limitProblems, limitWatches, type LimitWatch } from "./use.ts";
+import { chainProblems, chainWatch, readChain } from "./chain.ts";
 import { balanceWatch, SPEND_UNIT, spendEntryOf, spendGates, spendQuota, spendUnits, spendWatch, type BalanceWatch, type SpendGates, type SpendWatch } from "./balance.ts";
 import { spendUseReads } from "./spend-use.ts";
 import { replyWatch, type ReplyWatch } from "./replies.ts";
@@ -571,6 +572,7 @@ export const RANK_FLOOR: Duration = DELIVERY_TIMES.callLimit + 3 * EXCHANGE_EVER
  * - an outage call with no keys of Twilio, no token `OUTAGE_TOKEN` or a bad list
  * - a setting of an unknown expectation, or a `since` after the time `at`
  * - each problem of `limitProblems`.
+ * - each problem of `chainProblems`: a stack of the alert chain with a fault (AL-90).
  *
  * The message names ids, fields and the names of secrets, and no value.
  *
@@ -641,6 +643,7 @@ export function instanceProblems(parsed: ParsedConfig, secret: SecretLookup, des
     ...outageProblems,
     ...expectationProblems(parsed.config.expectations, INSTANCE_EXPECTATIONS, at),
     ...limitProblems(parsed.config.limits ?? [], secret),
+    ...chainProblems(parsed.config.chain),
   ];
 }
 
@@ -929,7 +932,7 @@ export interface Instance {
  *   copy (`nwwsSetup`). BoM is a source when the secrets have its key (`BOM_SWS_KEY`), and so is EIA-930 (`EIA_KEY`). The outages and the traffic
  *   anomalies of Cloudflare Radar are sources when the secrets have its token (`CLOUDFLARE_RADAR_KEY`). Each status page that one of the
  *   persons can get is a source (`pagesFor`). The feed of Google Cloud, AWS or Azure is a source when one of the persons
- *   can get its reports (`watchReads`). Each transit feed of the copy of the catalog whose box meets a place is a source.
+ *   can get its reports (`watchReads`). The stack of the alert chain reads the pages and the feeds of its subjects too (`chainWatch`). Each transit feed of the copy of the catalog whose box meets a place is a source.
  * - Each source gets the codes of the places. It gets the position of a place only when the place shares it with that
  *   source. The USGS, EMSC, the centers, the SWPC, GFZ, BoM, Energy-Charts, EIA-930, CISA KEV, Radar, Google Cloud, AWS, Azure
  *   and the status pages ask for no place. The transit feeds also ask for no place.
@@ -943,7 +946,9 @@ export function openInstance(options: InstanceOptions): Instance {
   // A change of the wall clock of CLOCK_STEP_ABOVE or less is a drift. A larger change is a step of the clock.
   const wall = frameClock(options.wall, clock, { driftLimit: CLOCK_STEP_ABOVE });
   // A report of a status page has no area. Thus the instance reads only the pages that one of its persons can get.
-  const watches = options.config.recipients.map((recipient) => recipient.watch);
+  // The stack of the alert chain reads the pages and the feeds of its subjects too (AL-90).
+  const chainConfig = options.config.config.chain;
+  const watches = [...options.config.recipients.map((recipient) => recipient.watch), ...(chainConfig === undefined ? [] : [chainWatch(chainConfig)])];
   const pages = pagesFor(watches);
   // The feeds of the cloud providers have no area either. Their domains and their kinds choose them with the same rule.
   const feeds = PROVIDER_FEEDS.filter((feed) => watches.some((watch) => watchReads(watch, feed)));
@@ -1132,6 +1137,9 @@ export function openInstance(options: InstanceOptions): Instance {
   // A write of the snapshot is in progress (AL-115). A pass in the write starts no second write.
   let snapshotting = false;
   const snapshotFloor = options.startSnapshotFloor ?? START_SNAPSHOT_FLOOR;
+  // The stack of the alert chain (AL-90). `instanceProblems` refuses a stack with a fault, thus a read that fails gives no chain.
+  const chainRead = config.chain === undefined ? undefined : readChain(config.chain);
+  const chain = chainRead?.ok === true ? chainRead.chain : undefined;
   const runtime: Runtime = openRuntime({
     log: options.log,
     clock: wall,
@@ -1145,6 +1153,7 @@ export function openInstance(options: InstanceOptions): Instance {
       ...(config.link === undefined ? {} : { link: config.link }),
       ...(config.channelDown === undefined ? {} : { channelDown: config.channelDown }),
       ...(config.sourceClear === undefined ? {} : { sourceClear: config.sourceClear }),
+      ...(chain === undefined ? {} : { chain }),
     },
     run: options.run,
     copy: copy.id,
