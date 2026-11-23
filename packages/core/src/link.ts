@@ -104,10 +104,8 @@ function near(a: Facts["centers"], b: Facts["centers"], limitKm: number): boolea
   );
 }
 
-/** This function tells if two reports of one family tell of one real event. */
-function linked(a: Report, b: Report, family: LinkFamily): boolean {
-  const x = factsOf(a, family);
-  const y = factsOf(b, family);
+/** This function tells if the facts of two reports of one family tell of one real event. */
+function linked(x: Facts | undefined, y: Facts | undefined, family: LinkFamily): boolean {
   if (x === undefined || y === undefined) return false;
   if (Math.abs(x.onset - y.onset) > family.windowMs) return false;
   if (family.magnitude !== undefined && Math.abs(x.magnitude! - y.magnitude!) > family.magnitude + MAGNITUDE_MARGIN) return false;
@@ -134,15 +132,32 @@ export function linkRule(policy: LinkPolicy): LinkRule {
   for (const family of policy.families) {
     if (!(family.windowMs > 0)) throw new RangeError(`The window of the family ${family.family} is not more than 0: ${family.windowMs}.`);
   }
+  // The facts of each report for each family of the policy. A report does not change, so the rule reads its facts one
+  // time (AL-116). The cache holds no entry for a report in no family: such a report has no block, so a build never
+  // gives it to `matches`.
+  const factCache = new WeakMap<Report, readonly (Facts | undefined)[]>();
+  const noFacts: readonly undefined[] = policy.families.map(() => undefined);
+  const factsFor = (report: Report): readonly (Facts | undefined)[] => {
+    const held = factCache.get(report);
+    if (held !== undefined) return held;
+    const facts = policy.families.map((family) => factsOf(report, family));
+    if (facts.every((fact) => fact === undefined)) return noFacts;
+    factCache.set(report, facts);
+    return facts;
+  };
   const rule: LinkRule = {
     blocks: (report) =>
-      policy.families.flatMap((family, index) => {
-        const facts = factsOf(report, family);
+      factsFor(report).flatMap((facts, index) => {
         if (facts === undefined) return [];
-        const slot = Math.floor(facts.onset / family.windowMs);
+        const slot = Math.floor(facts.onset / policy.families[index]!.windowMs);
         return [JSON.stringify(["link", index, slot]), JSON.stringify(["link", index, slot - 1])];
       }),
-    matches: (a, b) => a.source !== b.source && policy.families.some((family) => linked(a, b, family)),
+    matches: (a, b) => {
+      if (a.source === b.source) return false;
+      const x = factsFor(a);
+      const y = factsFor(b);
+      return policy.families.some((family, index) => linked(x[index], y[index], family));
+    },
   };
   rules.set(policy, rule);
   return rule;

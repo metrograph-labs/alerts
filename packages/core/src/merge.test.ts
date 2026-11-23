@@ -286,6 +286,83 @@ describe("the cache of the incidents", () => {
   });
 });
 
+describe("the groups of a list that changes (AL-116)", () => {
+  // A sparse link rule: two reports of one headline from two sources, sent no more than 2 minutes apart.
+  const link: LinkRule = { blocks: (x) => [x.headline], matches: (a, b) => a.source !== b.source && Math.abs(a.sent - b.sent) <= 120_000 };
+  const choices: readonly IncidentOptions[] = [{}, { link }];
+
+  // A report that references an earlier key, or shares a correlation key, for some of the reports.
+  function randomReport(r: Random, index: number): Report {
+    return report({
+      key: `k${index}`,
+      source: r.pick(["nws-api", "ipaws"]),
+      sent: T0 + r.below(600) * 1_000,
+      references: r.chance(0.3) ? [`k${r.below(index + 1)}`] : [],
+      correlation: r.chance(0.3) ? [{ system: "vtec", id: `KTOP.TO.W.${r.below(30)}` }] : [],
+      headline: `Warning ${r.below(5)}`,
+      status: r.chance(0.95) ? "actual" : "test",
+    });
+  }
+
+  it.each(SEEDS)("gives the groups of a full build after each add and each retire step (seed %i)", (seed) => {
+    const r = random(seed);
+    let count = 0;
+    let state = normalize({ reports: Array.from({ length: 80 }, () => randomReport(r, count++)) });
+    for (let step = 0; step < 60; step += 1) {
+      const reports = Array.from({ length: r.int(0, 6) }, () => randomReport(r, count++));
+      // A second content of a known id replaces the report when its canonical JSON is smaller.
+      if (state.reports.length > 0 && r.chance(0.3)) reports.push({ ...r.pick(state.reports), headline: `Warning ${r.below(5)}` });
+      const retired = r.sample(state.reports, r.int(0, 4)).map((x) => ({ report: x.id, until: T0 + HOUR }));
+      state = add(state, { reports, retired });
+      for (const options of choices) same(incidents(state, T0, options), incidents(structuredClone(state), T0, options));
+    }
+  });
+
+  it("makes again only the group that an added report touches", () => {
+    let calls = 0;
+    const counted: LinkRule = {
+      blocks: (x) => [x.headline],
+      matches: (a, b) => {
+        calls += 1;
+        return a.source !== b.source;
+      },
+    };
+    // 40 headlines with 10 reports each. A full build gives the 45 pairs of each headline to the rule.
+    const reports = Array.from({ length: 400 }, (_, index) => report({ key: `k${index}`, source: index % 2 === 0 ? "nws-api" : "ipaws", headline: `Warning ${index % 40}` }));
+    const state = normalize({ reports });
+    incidents(state, T0, { link: counted });
+    expect(calls).toBe(40 * 45);
+    calls = 0;
+    const next = add(state, { reports: [report({ key: "new", headline: "Warning 7" })] });
+    const found = incidents(next, T0, { link: counted });
+    // The new report meets the 10 reports of its headline. Then the build of that group gives its 55 pairs to the rule.
+    expect(calls).toBe(10 + 55);
+    same(found, incidents(structuredClone(next), T0, { link: counted }));
+  });
+
+  it("gives the groups of a full build after a fault of the link rule", () => {
+    let fault = false;
+    const faulty: LinkRule = {
+      blocks: (x) => [x.headline],
+      matches: (a, b) => {
+        if (fault) throw new Error("a fault of the rule");
+        return a.source !== b.source;
+      },
+    };
+    const reports = Array.from({ length: 40 }, (_, index) => report({ key: `k${index}`, source: index % 2 === 0 ? "nws-api" : "ipaws", headline: `Warning ${index % 8}` }));
+    const state = normalize({ reports });
+    incidents(state, T0, { link: faulty });
+    fault = true;
+    const next = add(state, { reports: [report({ key: "new", headline: "Warning 3" })] });
+    expect(() => incidents(next, T0, { link: faulty })).toThrow("a fault of the rule");
+    fault = false;
+    const later = add(next, { reports: [report({ key: "later", headline: "Warning 5" })] });
+    same(incidents(later, T0, { link: faulty }), incidents(structuredClone(later), T0, { link: faulty }));
+    // A list with fewer reports than the last list also gets its groups from the last build.
+    same(incidents(next, T0, { link: faulty }), incidents(structuredClone(next), T0, { link: faulty }));
+  });
+});
+
 describe("the end marks of a snapshot source", () => {
   const row = report({ key: "row", source: "iem", correlation: [{ system: "vtec", id: "KTOP.TO.W.1" }] });
   const mark = (at: number, ended: boolean): EndMark => ({ report: row.id, at, ended });
