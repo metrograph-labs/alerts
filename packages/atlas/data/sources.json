@@ -9701,7 +9701,7 @@
     "cost": "free",
     "delay": "every 15 minutes",
     "history": "unknown",
-    "rateLimit": "unknown",
+    "rateLimit": "No published limit. The adapter asks once each 15 minutes, for one list and at most 4 files.",
     "calibration": null,
     "coverage": "World: machine-coded events from news.",
     "origins": [
@@ -9710,11 +9710,11 @@
     "path": [
       "data.gdeltproject.org"
     ],
-    "subjectIds": null,
+    "subjectIds": ["point"],
     "risks": [],
-    "decision": "plan",
-    "adapter": null,
-    "reason": "Fast and global, but noisy: a weak signal and a second witness. Each event has the place of the action, so an adapter can filter the places on the computer of the user, and no place leaves it. One file of 2026-11-23 had 958 events, and 940 had a place.",
+    "decision": "adopt",
+    "adapter": "@mark1russell7/alerts-source-gdelt",
+    "reason": "Fast and global, but noisy: a weak signal and a second witness. Each event has the place of the action, so the adapter keeps only the events near the places on the computer of the user, and no place leaves it. One file of 2026-11-23 had 958 events, and 940 had a place.",
     "evidence": [
       "https://www.gdeltproject.org/data.html",
       "https://www.gdeltproject.org/about.html",

@@ -8,6 +8,7 @@ import { EMSC_DESCRIPTOR } from "@mark1russell7/alerts-source-emsc";
 import { EIA_930_DESCRIPTOR } from "@mark1russell7/alerts-source-eia-930";
 import { ENERGY_CHARTS_DESCRIPTOR } from "@mark1russell7/alerts-source-energy-charts";
 import { FIREBASE_DESCRIPTOR, GCP_DESCRIPTOR } from "@mark1russell7/alerts-source-gcp";
+import { GDELT_DESCRIPTOR } from "@mark1russell7/alerts-source-gdelt";
 import { GFZ_DESCRIPTOR } from "@mark1russell7/alerts-source-gfz";
 import { IEM_DESCRIPTOR } from "@mark1russell7/alerts-source-iem";
 import { IPAWS_DESCRIPTOR } from "@mark1russell7/alerts-source-ipaws";
@@ -30,6 +31,7 @@ const DESCRIPTORS: Readonly<Record<string, readonly SourceDescriptor[]>> = {
   "@mark1russell7/alerts-source-emsc": [EMSC_DESCRIPTOR],
   "@mark1russell7/alerts-source-energy-charts": [ENERGY_CHARTS_DESCRIPTOR],
   "@mark1russell7/alerts-source-gcp": [GCP_DESCRIPTOR, FIREBASE_DESCRIPTOR],
+  "@mark1russell7/alerts-source-gdelt": [GDELT_DESCRIPTOR],
   "@mark1russell7/alerts-source-gfz": [GFZ_DESCRIPTOR],
   "@mark1russell7/alerts-source-iem": [IEM_DESCRIPTOR],
   "@mark1russell7/alerts-source-ipaws": [IPAWS_DESCRIPTOR],

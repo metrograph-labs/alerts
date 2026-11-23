@@ -7,3 +7,4 @@
 - The machine of GDELT coded these events from the news. Some codes are wrong: the line of Dhaka comes from an article about bad loans. The tests keep these lines because a real feed has this noise.
 - The data is from the GDELT Project (`https://www.gdeltproject.org/`). The terms permit use and redistribution with a citation and a link.
 - The lines name countries, cities, groups and news pages. They contain no personal data.
+- `20261123200000.export.CSV.zip` is an archive of the same 5 lines, with the method deflate, as GDELT gives. A ZIP tool made it from the `.tsv` file. The tests of the runtime use it as the answer of GDELT.

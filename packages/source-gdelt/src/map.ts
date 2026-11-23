@@ -5,6 +5,10 @@
  *
  * The events come from a machine that reads the news, so the certainty of each report is `possible`. A report is a
  * second witness and a weak signal near a watched place, not a warning.
+ *
+ * GDELT adds an event only after the news reports it, so the urgency of each report is `past`. Under the first policy
+ * of the core, no class holds the two kinds, and the urgency `past` gives the digest at most. Thus a report of GDELT
+ * alone sends no push. In an incident with an official warning, the merge keeps the higher urgency of the warning.
  */
 
 import { categoryOf, kindLabel, reportId, type Area, type MapResult, type Observation, type Report, type Severity, type SourceId } from "@mark1russell7/alerts";
@@ -176,7 +180,7 @@ function mapOrThrow(observation: Observation): MapResult {
     kind: { code: kind, label: kindLabel(kind) },
     categories: [categoryOf(kind)],
     severity: severityOf(code, root),
-    urgency: "unknown",
+    urgency: "past",
     certainty: "possible",
     response: ["monitor"],
     sent,
