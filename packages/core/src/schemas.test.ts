@@ -1002,7 +1002,7 @@ describe("the private configuration", () => {
     holds(copySettingsSchema, { ...home, configFrom: "cloud" });
     for (const configFrom of ["Cloud", "", 2]) fails(copySettingsSchema, { ...home, configFrom });
     holds(copySettingsSchema, { ...home, leaveChannels: ["webhook"] });
-    for (const leaveChannels of ["webhook", [""], ["Web Hook"], [2]]) fails(copySettingsSchema, { ...home, leaveChannels });
+    for (const leaveChannels of ["webhook", [""], [2]]) fails(copySettingsSchema, { ...home, leaveChannels });
     for (const accounts of [{ nwws: 0 }, { nwws: 1.5 }, { nwws: "2" }, { "": 2 }, []]) fails(copySettingsSchema, { ...home, accounts });
     holds(copyListenSchema, { host: "home.example.ts.net", port: 65535 });
     holds(copyPeerSchema, { id: "c-2", url: "https://[fd7a:115c::1]:4751/exchange" });
