@@ -60,6 +60,7 @@ import {
   type WatchedPlace,
 } from "@mark1russell7/alerts";
 import { containingCodes } from "@mark1russell7/alerts-format-nws";
+import { chainStates, type Chain } from "./chain.ts";
 import { envelope, type SystemEvent } from "./events.ts";
 import type { FoldContext, RuntimeState } from "./state.ts";
 
@@ -86,6 +87,8 @@ export interface ViewConfig extends FoldContext {
   readonly channelDown?: ChannelDownConfig;
   /** The policy of the end of the line of a down source (AL-75). Each absent field has its default of the core. */
   readonly sourceClear?: SourceClearConfig;
+  /** The stack of the alert chain (AL-90). With it, each view gives the state of each function of the chain to the system reports. */
+  readonly chain?: Chain;
 }
 
 /** The view of the system at one time. */
@@ -166,6 +169,7 @@ export interface SystemParts {
  * - The drill watches read the starts of the drills of the other copies. The time of a miss of a start is a timer too.
  * - The latest step of the wall clock in its window is a line. The end of the window is a timer too.
  * - The latest recovery of the log in its window is a line. The end of the window is a timer too.
+ * - The stack of the alert chain gives the state of each function from the live incidents (AL-90).
  * - The stores are the fills of their families. The end of the window of a family with no entry is a timer too.
  * - The held persons are the holds of the send limit. The time when the last hold of a person leaves the window is a timer too.
  * - The folds are the folds of the last view (`latenessStep`). With no folds, each fold starts again. The view is the same.
@@ -178,7 +182,7 @@ export function systemView(state: RuntimeState, config: ViewConfig, at: Instant,
   const checks = carriages(state.merge, found, config.expectations);
   const { lateness: late, folds: next } = latenessStep(checks, config.expectations, at, ruleOf(config.delay), folds);
   const covered = coverage({ sources: config.sources, health, late: lateSources(late), places: config.places, kinds: config.kinds, containing: containingCodes }, config.coverage);
-  const step = systemReports(state.lines, { sources: config.sources, health, coverage: covered, threats: threats(found, config.places), lateness: late, ...(quotas === undefined ? {} : { quotas }), ...(balances === undefined ? {} : { balances }), ...(uses === undefined ? {} : { uses }), ...(copies === undefined ? {} : { copies }), ...(copy === undefined ? {} : { copy }), ...(drills === undefined ? {} : { drills }), ...(drillWatches === undefined ? {} : { drillWatches }), ...(exhausted === undefined ? {} : { exhausted }), ...(held === undefined ? {} : { held }), ...(channels === undefined ? {} : { channels }), ...(observing === undefined ? {} : { observing }), ...(stores === undefined ? {} : { stores }), ...(config.channelDown === undefined ? {} : { channelDown: config.channelDown }), ...(config.sourceClear === undefined ? {} : { sourceClear: config.sourceClear }), steps: state.steps, recoveries: state.recoveries, blocks: state.blocks }, at);
+  const step = systemReports(state.lines, { sources: config.sources, health, coverage: covered, threats: threats(found, config.places), lateness: late, ...(quotas === undefined ? {} : { quotas }), ...(balances === undefined ? {} : { balances }), ...(uses === undefined ? {} : { uses }), ...(copies === undefined ? {} : { copies }), ...(copy === undefined ? {} : { copy }), ...(drills === undefined ? {} : { drills }), ...(drillWatches === undefined ? {} : { drillWatches }), ...(exhausted === undefined ? {} : { exhausted }), ...(held === undefined ? {} : { held }), ...(channels === undefined ? {} : { channels }), ...(observing === undefined ? {} : { observing }), ...(stores === undefined ? {} : { stores }), ...(config.chain === undefined ? {} : { redundancy: chainStates(config.chain, found) }), ...(config.channelDown === undefined ? {} : { channelDown: config.channelDown }), ...(config.sourceClear === undefined ? {} : { sourceClear: config.sourceClear }), steps: state.steps, recoveries: state.recoveries, blocks: state.blocks }, at);
   // An incident that expires changes the threats, thus its end is a timer too.
   const ends = found.flatMap((incident) => (incident.live && incident.expires !== undefined && incident.expires > at ? [incident.expires] : []));
   // The handover of the facts of a shared account is a timer too, because this copy then reports a low balance.

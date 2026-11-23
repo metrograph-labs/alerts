@@ -716,9 +716,15 @@ importers:
       '@mark1russell7/sqlite':
         specifier: ^0.6.0
         version: 0.6.0
+      '@mark1russell7/stack-risk':
+        specifier: ^0.2.3
+        version: 0.2.3
       '@mark1russell7/stack-spend':
         specifier: ^0.1.12
         version: 0.1.12
+      '@mark1russell7/system-stack':
+        specifier: ^0.1.8
+        version: 0.1.8
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -2497,6 +2503,10 @@ packages:
     resolution: {integrity: sha512-4QytFosiFp6rvX6H2sUlIwicf/fYDLo9wonEDIFheC0qnDKB8L3QYGrspQJ519b9U0CVo/ZtZkmPMl1vKQt/hQ==}
     engines: {node: '>=22.13'}
 
+  '@mark1russell7/stack-risk@0.2.3':
+    resolution: {integrity: sha512-swUktYvDEkGJynSwT4c3/bcgY0hMlzMdQPRN4Nz6pY5pKldPCSmTnpZZdV3UnJ1+R80CoZP4qiXFYy5GIjIAJg==}
+    engines: {node: '>=22'}
+
   '@mark1russell7/stack-spend@0.1.12':
     resolution: {integrity: sha512-a2Ai2FbFLzc8DnNsenOcBEMFCB2HOvVDmZBVYeByqA/p6SlSV1rsqfFR5TZapz5tQMZdsFG+8KlarZViW0/bFQ==}
     engines: {node: '>=22'}
@@ -2512,6 +2522,10 @@ packages:
 
   '@mark1russell7/system-stack@0.1.6':
     resolution: {integrity: sha512-CcxdEO+Zxfpo5w3PRgl8+MkZUVTb2RWNImoQJrg0tdPCOZvjFlF+L/UTLtNmMfnkvy0ol1KYcCHo5PS/pgRxWA==}
+    engines: {node: '>=22'}
+
+  '@mark1russell7/system-stack@0.1.8':
+    resolution: {integrity: sha512-SiCMcXJMaYEP+xb3sijfLN6Kv73rQ7HTRNoN39UCHPIhkf1NdMDr6htaYOKYZtiVqNf10wdaXeJzRK0Gh4s1Cw==}
     engines: {node: '>=22'}
 
   '@mark1russell7/template-cli@0.1.9':
@@ -4919,6 +4933,12 @@ snapshots:
 
   '@mark1russell7/sqlite@0.6.0': {}
 
+  '@mark1russell7/stack-risk@0.2.3':
+    dependencies:
+      '@mark1russell7/collections': 0.11.2(zod@4.6.7)
+      '@mark1russell7/system-stack': 0.1.8
+      zod: 4.6.7
+
   '@mark1russell7/stack-spend@0.1.12':
     dependencies:
       '@mark1russell7/system-stack': 0.1.6
@@ -4937,6 +4957,12 @@ snapshots:
       '@mark1russell7/rigor-statistics': 0.2.19
 
   '@mark1russell7/system-stack@0.1.6':
+    dependencies:
+      '@mark1russell7/coeval': 0.38.1(zod@4.6.7)
+      '@mark1russell7/collections': 0.11.2(zod@4.6.7)
+      zod: 4.6.7
+
+  '@mark1russell7/system-stack@0.1.8':
     dependencies:
       '@mark1russell7/coeval': 0.38.1(zod@4.6.7)
       '@mark1russell7/collections': 0.11.2(zod@4.6.7)

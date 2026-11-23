@@ -104,6 +104,7 @@ import type { RestTransport } from "@procedures/gh";
 import type { Meter } from "@opentelemetry/api";
 import type { UseRead } from "@mark1russell7/stack-spend";
 import { limitProblems, limitWatches, type LimitWatch } from "./use.ts";
+import { chainProblems, readChain } from "./chain.ts";
 import { balanceWatch, SPEND_UNIT, spendEntryOf, spendGates, spendQuota, spendUnits, spendWatch, type BalanceWatch, type SpendGates, type SpendWatch } from "./balance.ts";
 import { spendUseReads } from "./spend-use.ts";
 import { replyWatch, type ReplyWatch } from "./replies.ts";
@@ -571,6 +572,7 @@ export const RANK_FLOOR: Duration = DELIVERY_TIMES.callLimit + 3 * EXCHANGE_EVER
  * - an outage call with no keys of Twilio, no token `OUTAGE_TOKEN` or a bad list
  * - a setting of an unknown expectation, or a `since` after the time `at`
  * - each problem of `limitProblems`.
+ * - each problem of `chainProblems`: a stack of the alert chain with a fault (AL-90).
  *
  * The message names ids, fields and the names of secrets, and no value.
  *
@@ -641,6 +643,7 @@ export function instanceProblems(parsed: ParsedConfig, secret: SecretLookup, des
     ...outageProblems,
     ...expectationProblems(parsed.config.expectations, INSTANCE_EXPECTATIONS, at),
     ...limitProblems(parsed.config.limits ?? [], secret),
+    ...chainProblems(parsed.config.chain),
   ];
 }
 
@@ -1132,6 +1135,9 @@ export function openInstance(options: InstanceOptions): Instance {
   // A write of the snapshot is in progress (AL-115). A pass in the write starts no second write.
   let snapshotting = false;
   const snapshotFloor = options.startSnapshotFloor ?? START_SNAPSHOT_FLOOR;
+  // The stack of the alert chain (AL-90). `instanceProblems` refuses a stack with a fault, thus a read that fails gives no chain.
+  const chainRead = config.chain === undefined ? undefined : readChain(config.chain);
+  const chain = chainRead?.ok === true ? chainRead.chain : undefined;
   const runtime: Runtime = openRuntime({
     log: options.log,
     clock: wall,
@@ -1145,6 +1151,7 @@ export function openInstance(options: InstanceOptions): Instance {
       ...(config.link === undefined ? {} : { link: config.link }),
       ...(config.channelDown === undefined ? {} : { channelDown: config.channelDown }),
       ...(config.sourceClear === undefined ? {} : { sourceClear: config.sourceClear }),
+      ...(chain === undefined ? {} : { chain }),
     },
     run: options.run,
     copy: copy.id,
