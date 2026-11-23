@@ -2758,5 +2758,23 @@
     "name": "zenodo.org",
     "kind": "host",
     "note": "The host of the feed of eurepoc-global-dataset."
+  },
+  {
+    "id": "api.gdeltproject.org",
+    "name": "api.gdeltproject.org",
+    "kind": "host",
+    "note": "The host of the API of gdelt-doc-api."
+  },
+  {
+    "id": "api.reliefweb.int",
+    "name": "api.reliefweb.int",
+    "kind": "host",
+    "note": "The host of the API of reliefweb-api."
+  },
+  {
+    "id": "hacker-news.firebaseio.com",
+    "name": "hacker-news.firebaseio.com",
+    "kind": "host",
+    "note": "The host of the API of hacker-news-api."
   }
 ]
