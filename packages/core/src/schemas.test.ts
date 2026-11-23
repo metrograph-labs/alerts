@@ -1001,6 +1001,8 @@ describe("the private configuration", () => {
     holds(copySettingsSchema, { ...home, accounts: { nwws: 2 } });
     holds(copySettingsSchema, { ...home, configFrom: "cloud" });
     for (const configFrom of ["Cloud", "", 2]) fails(copySettingsSchema, { ...home, configFrom });
+    holds(copySettingsSchema, { ...home, leaveChannels: ["webhook"] });
+    for (const leaveChannels of ["webhook", [""], ["Web Hook"], [2]]) fails(copySettingsSchema, { ...home, leaveChannels });
     for (const accounts of [{ nwws: 0 }, { nwws: 1.5 }, { nwws: "2" }, { "": 2 }, []]) fails(copySettingsSchema, { ...home, accounts });
     holds(copyListenSchema, { host: "home.example.ts.net", port: 65535 });
     holds(copyPeerSchema, { id: "c-2", url: "https://[fd7a:115c::1]:4751/exchange" });
@@ -1019,6 +1021,13 @@ describe("the private configuration", () => {
     expect(copyProblems({ ...base, configFrom: "cloud" })).toEqual([]);
     expect(copyProblems({ ...base, configFrom: "home" })).toEqual(["configFrom: the id is not the id of a copy in peers."]);
     expect(copyProblems({ ...base, configFrom: "other" })).toHaveLength(1);
+    // A copy leaves a channel only to other copies, and it names each channel one time (AL-55).
+    const webhook = "webhook" as ChannelId;
+    expect(copyProblems({ ...base, leaveChannels: [webhook] })).toEqual([]);
+    expect(copyProblems({ ...base, leaveChannels: [webhook, PUSHOVER, webhook] })).toEqual(["leaveChannels[2]: the channel webhook is in the list already."]);
+    expect(copyProblems({ format: COPY_FORMAT, id: "home", rank: 0, leaveChannels: [webhook] })).toEqual([
+      "leaveChannels: a copy with no other copies sends on each channel. Thus it leaves no channel.",
+    ]);
     // A rank is lower than the count of the copies.
     expect(copyProblems({ ...base, rank: 2 })).toHaveLength(1);
     expect(copyProblems({ format: COPY_FORMAT, id: "home", rank: 1 })).toHaveLength(1);

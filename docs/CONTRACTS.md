@@ -686,6 +686,7 @@ The webhook channel (`@mark1russell7/alerts-channel-webhook`, AL-55) sends each 
 - Each secret adds a signature. Thus a receiver can change its secret with no gap.
 - A bad value stops the start. Its problem names the key and the place of the bad secret, and no value.
 - Without the key, the instance has no sender on the channel. A step on the channel then stops the start.
+- A copy that leaves the channel to the other copies (`leaveChannels` of `copy.json`) needs no key. It sends nothing on the channel.
 - The address has one field, `url`: an `https:` URL, or an `http:` URL of the loopback host.
 - The load of the configuration refuses a plain URL to another host, because the body holds the alert.
 - The receiver is a program. Thus the channel has no silent mode, no repeats and no acknowledgement. The body tells if the message is quiet.
@@ -736,10 +737,22 @@ Each copy loads the same configuration: `config.json` and the parts. The sync of
 - `pingKey`: the key of `secrets.env` that holds the ping URL of the first check of this copy. The default is `HEALTHCHECKS_PING_URL`. It is not the key of the loud check, because the copies share the loud check.
 - `accounts`: the number of the account of each source with an account, by the id of the source. The keys of account 2 end in `_2`. The default is account 1.
 - `configFrom`: the id of the copy that gives the configuration of this copy. It is the id of a copy of `peers`. The section "The sync of the configuration" tells the steps.
+- `leaveChannels`: the ids of the channels that this copy leaves to the other copies (AL-55). The section "The channels that a copy leaves" tells the rules.
 
 Without `copy.json`, the runtime is the only copy. It has rank 0 and no exchange. The key `COPY_TOKEN` of `secrets.env` gives the token of the exchange, the same for each copy. The check of the profile `daemon` needs it when the copy has other copies.
 
 The runtime reads `copy.json` at its start, and the reload hook watches it with `config.json` and `secrets.env`. A change that passes the check restarts the runtime. A file with problems gives way to the last good set of the private files, and a problem holds no address and no URL.
+
+### The channels that a copy leaves
+
+A receiver that only one computer reaches gets its messages from the copy on that computer. An example is a receiver on the loopback host. The other copies name its channel in the field `leaveChannels` of `copy.json`:
+
+- Only a copy with other copies has the field. Each id is a channel of the instance, and no id is in the list two times.
+- The plans of the copy keep each step on the channel. Thus the delivery keys and the numbers of the steps are the same in each copy.
+- The copy sends, cancels and polls nothing on the channel. It counts no failure of the channel, and no send on the channel is overdue.
+- A step on the channel needs no sender of the copy. Thus the copy needs no secret of the channel.
+- When the copy on that computer stops, the receiver gets no message. Each other step still goes from each copy.
+- An older runtime refuses the field. Add the field only after each copy has the code that reads it.
 
 ### The rank wait
 
