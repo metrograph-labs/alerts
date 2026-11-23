@@ -54,6 +54,8 @@ const ROUNDS = 6;
 const MIN_JOBS = 5;
 // The time limit of the install of the base checkout and of one child.
 const SETUP_MS = 900_000;
+// Each case has its own limit, so each verdict reads one case. The A/A rounds of that case give its noise.
+const OWN_NOISE = { aaFrom: "rounds" } as const;
 
 type Runtime = typeof import("@mark1russell7/alerts-runtime");
 type Core = typeof import("@mark1russell7/alerts");
@@ -195,7 +197,7 @@ export interface CaseRead {
   readonly headNoise: PooledLimitVerdict;
 }
 
-/** This function gives the read of each case against its limit. The A/A pairs of the base give the noise of the verdict. */
+/** This function gives the read of each case against its limit. The A/A rounds of the base on the case give the noise of the verdict. */
 export function readOf(lines: readonly BenchLine[], limits: ReadonlyMap<string, number>): CaseRead[] {
   const jobs = jobsOf(lines);
   const headJobs = jobsOf(lines, HEAD_AA);
@@ -206,11 +208,11 @@ export function readOf(lines: readonly BenchLine[], limits: ReadonlyMap<string, 
     return {
       case: name,
       limit,
-      verdict: pooledLimitVerdict(own, { limit: limit ?? 1 }),
-      flip: limit === undefined || limit >= 1 ? undefined : pooledLimitVerdict(own.map((job) => ({ ...job, candidate: job.aa })), { limit }),
+      verdict: pooledLimitVerdict(own, { ...OWN_NOISE, limit: limit ?? 1 }),
+      flip: limit === undefined || limit >= 1 ? undefined : pooledLimitVerdict(own.map((job) => ({ ...job, candidate: job.aa })), { ...OWN_NOISE, limit }),
       headNoise: pooledLimitVerdict(
         caseJobs(headJobs, name).map((job) => ({ ...job, candidate: job.aa })),
-        { limit: 1 },
+        { ...OWN_NOISE, limit: 1 },
       ),
     };
   });
