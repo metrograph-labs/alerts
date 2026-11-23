@@ -1,16 +1,16 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
-import type { FetchOutcome, PlaceId, Watch } from "@mark1russell7/alerts";
+import type { FetchOutcome, PlaceId, Watch, WatchedPlace } from "@mark1russell7/alerts";
 import { crc32 } from "@mark1russell7/files/archive";
 import type { Exchange, Reply, Transport } from "polite-crawler/api";
 import { HostScheduler } from "polite-crawler/politeness";
 import { describe, expect, it } from "vitest";
 
 import { checkCanary } from "./check.ts";
-import { createGdeltFetch, eventFilePath, headBody, LAST_UPDATE_PATH, readEventFile, readLastUpdate, stampsToRead } from "./fetch.ts";
+import { createGdeltFetch, eventFilePath, headBody, LAST_UPDATE_PATH, nearPlaces, readEventFile, readLastUpdate, stampsToRead } from "./fetch.ts";
 import { mapObservation } from "./map.ts";
-import { addedTime } from "./row.ts";
+import { addedTime, eventOf } from "./row.ts";
 
 /** The 5 real lines of the event file of 2026-11-23 20:00 UTC (`fixtures/README.md`). */
 const TEXT = readFileSync(new URL("../fixtures/events-20261123200000.tsv", import.meta.url), "utf8");
@@ -19,8 +19,11 @@ const START = addedTime(STAMP)! + 5 * 60_000;
 const BASE = "https://gdelt.test";
 const MIN = 60_000;
 
-/** A place of the tests. The requests hold no place. */
-const WATCH: Watch = { places: [{ id: "a" as PlaceId, codes: [{ system: "iso3166", code: "HT" }], at: [-72.335, 18.539], bufferKm: 0 }] };
+/** This function gives a watched place of the tests at a point. The places of the tests are public places. */
+const place = (id: string, at?: readonly [number, number], bufferKm = 0): WatchedPlace => ({ id: id as PlaceId, codes: [], ...(at === undefined ? {} : { at: [...at] as [number, number] }), bufferKm });
+
+/** The places of the tests: the cities of the three kept events. The requests hold no place. */
+const WATCH: Watch = { places: [place("dhaka", [90.4086, 23.7231]), place("port-au-prince", [-72.335, 18.5392]), place("gaza", [34.3333, 31.4167])] };
 
 /** This function writes a ZIP archive whose entries are stored with no compression. It is only for the tests. */
 function storedZip(entries: readonly { readonly name: string; readonly text: string }[]): Uint8Array {
@@ -82,7 +85,7 @@ const bytes = (data: Uint8Array): Reply => ({ status: 200, statusText: "OK", hea
 const missing: Reply = { status: 404, statusText: "Not Found", headers: {}, body: "" };
 
 /** This function makes a fetch whose transport answers from a map of paths. Each test changes the map between fetches. */
-const fetchWith = (routes: Map<string, Reply>) => {
+const fetchWith = (routes: Map<string, Reply>, watch: Watch = WATCH) => {
   const sent: Exchange[] = [];
   const transport: Transport = async (exchange) => {
     sent.push(exchange);
@@ -92,7 +95,7 @@ const fetchWith = (routes: Map<string, Reply>) => {
   let time = START;
   const clock = { now: () => time, sleep: async (ms: number) => void (time += ms) };
   const fetch = createGdeltFetch({ pace: { scheduler: new HostScheduler(clock, 1), now: clock.now }, transport, userAgent: "alerts-tests", baseUrl: BASE, minIntervalMs: 0, timeoutMs: 1000 });
-  return { fetch: () => fetch({ watch: WATCH }), sent, move: (ms: number) => void (time += ms) };
+  return { fetch: () => fetch({ watch }), sent, move: (ms: number) => void (time += ms) };
 };
 
 /** This function puts the event file of `stamp` in the routes, and names it in `lastupdate.txt`. */
@@ -102,6 +105,7 @@ const publish = (routes: Map<string, Reply>, stamp: string): void => {
   routes.set(LAST_UPDATE_PATH, text(lastUpdateOf(stamp, archive)));
 };
 
+const eventOfLine = (index: number) => eventOf(TEXT.trim().split(String.fromCharCode(10))[index]!)!;
 const bodiesOf = (outcome: FetchOutcome): Record<string, unknown>[] => (outcome.ok ? outcome.observations.map((observation) => JSON.parse(observation.body) as Record<string, unknown>) : []);
 const pathsOf = (sent: readonly Exchange[]): string[] => sent.map((exchange) => new URL(exchange.url).pathname);
 
@@ -136,7 +140,7 @@ describe("readEventFile", () => {
     const expected = readLastUpdate(lastUpdateOf(STAMP, archive))!;
     const file = readEventFile(archive, STAMP, expected);
     expect(typeof file).toBe("object");
-    expect(file).toMatchObject({ lines: 5, parsed: 5 });
+    expect(file).toMatchObject({ lines: 5, parsed: 5, reported: 3 });
     expect(typeof file === "object" ? file.bodies.map((body) => (JSON.parse(body) as { id: string }).id) : []).toEqual(["1334657047", "1334657169", "1334657442"]);
     expect(readEventFile(archive, STAMP, { ...expected, size: expected.size + 1 })).toMatch(/bytes/);
     expect(readEventFile(archive, STAMP, { ...expected, md5: "0".repeat(32) })).toMatch(/MD5/);
@@ -145,6 +149,21 @@ describe("readEventFile", () => {
   it("gives the text of the fault for bytes that are not one event file", () => {
     expect(readEventFile(new Uint8Array([1, 2, 3]), STAMP)).toMatch(/not valid/);
     expect(readEventFile(archiveOf(STAMP), stampAfter(15))).toMatch(/no file/);
+  });
+});
+
+describe("nearPlaces", () => {
+  const haiti = eventOfLine(3);
+  it("passes an event whose circle of 25 km reaches a place within its buffer", () => {
+    // 0.27 degrees of latitude is 30 km: the circle reaches 25 km, and a buffer of 10 km covers the other 5 km.
+    expect(nearPlaces([place("north", [-72.335, 18.5392 + 0.27], 10)])(haiti)).toBe(true);
+    expect(nearPlaces([place("north", [-72.335, 18.5392 + 0.27], 0)])(haiti)).toBe(false);
+    expect(nearPlaces([place("far", [-72.335, 18.5392 + 0.36], 10)])(haiti)).toBe(false);
+  });
+
+  it("passes no event for places with no position", () => {
+    expect(nearPlaces([place("no-position")])(haiti)).toBe(false);
+    expect(nearPlaces([])(haiti)).toBe(false);
   });
 });
 
@@ -157,9 +176,19 @@ describe("createGdeltFetch", () => {
     expect(outcome.ok && outcome.complete).toBe(true);
     expect(outcome.ok ? outcome.asOf : undefined).toBe(addedTime(STAMP));
     expect(pathsOf(sent)).toEqual([LAST_UPDATE_PATH, eventFilePath(STAMP)]);
-    expect(sent.every((exchange) => !exchange.url.includes("?") && !/haiti|18\.5|-72/i.test(exchange.url))).toBe(true);
+    expect(sent.every((exchange) => !exchange.url.includes("?") && !/dhaka|haiti|gaza|18\.5|-72|90\.4|34\.3/i.test(exchange.url))).toBe(true);
     expect(bodiesOf(outcome).map((body) => body["id"] ?? body["file"])).toEqual(["1334657047", "1334657169", "1334657442", STAMP]);
-    expect(bodiesOf(outcome).at(-1)).toEqual({ file: STAMP, lines: 5, parsed: 5, kept: 3 });
+    expect(bodiesOf(outcome).at(-1)).toEqual({ file: STAMP, lines: 5, parsed: 5, reported: 3, near: 3 });
+  });
+
+  it("gives only the head for a watch with no place near an event, or with no position", async () => {
+    const routes = new Map<string, Reply>();
+    publish(routes, STAMP);
+    for (const watch of [{ places: [place("oslo", [10.75, 59.91], 50)] }, { places: [place("no-position")] }, { places: [] }]) {
+      const outcome = await fetchWith(routes, watch).fetch();
+      expect(outcome.ok && outcome.complete).toBe(true);
+      expect(bodiesOf(outcome)).toEqual([{ file: STAMP, lines: 5, parsed: 5, reported: 3, near: 0 }]);
+    }
   });
 
   it("gives the head again when no new file is there, and reads each new file after it", async () => {
@@ -245,7 +274,7 @@ describe("checkCanary and the head", () => {
   });
 
   it("maps a head to no report and no problem", () => {
-    const body = headBody(STAMP, { lines: 5, parsed: 5, bodies: [] });
+    const body = headBody(STAMP, { lines: 5, parsed: 5, reported: 0, bodies: [] });
     const observation = { id: "o", source: "gdelt", fetched: START, contentType: "application/json", body, transport: { latency: 0 } };
     expect(mapObservation(observation as Parameters<typeof mapObservation>[0])).toEqual({ reports: [], problems: [] });
   });

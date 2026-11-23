@@ -1,19 +1,22 @@
 /**
  * The fetch of the GDELT source. GDELT adds one event file each 15 minutes, and the file `lastupdate.txt` names the
  * newest. Each fetch reads `lastupdate.txt`, then each new event file, at most `MAX_FILES_PER_FETCH`. The fetch sends
- * no place and no query: it filters the events on the computer of the user.
+ * no place and no query. It filters the events on the computer of the user, with the places of the watch.
+ *
+ * A place gives its position to this source only when it shares the position with the source. A place with no position
+ * gets no event: the event files have no code of a region that the matcher reads (AL-142).
  */
 
 import { createHash } from "node:crypto";
 
-import { observationId, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch } from "@mark1russell7/alerts";
+import { matchPlaces, observationId, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch, type WatchedPlace } from "@mark1russell7/alerts";
 import { createRequester } from "@mark1russell7/alerts-fetch";
 import { readZipEntries, type ArchiveLimits } from "@mark1russell7/files/archive";
 import { isRecord } from "@mark1russell7/optional/read";
 import type { Pace, Transport } from "polite-crawler/api";
 
-import { SOURCE_ID } from "./map.ts";
-import { addedTime, eventBody, eventOf, keepEvent } from "./row.ts";
+import { eventAreas, SOURCE_ID } from "./map.ts";
+import { addedTime, eventBody, eventOf, keepEvent, type GdeltEvent } from "./row.ts";
 
 /** The base URL of the files of GDELT. */
 export const GDELT_BASE_URL = "https://data.gdeltproject.org";
@@ -76,7 +79,9 @@ export interface EventFile {
   readonly lines: number;
   /** The count of the lines with 61 fields. */
   readonly parsed: number;
-  /** The bodies of the events that give a report. */
+  /** The count of the events of `keepEvent`: the protests and the fights at the point of a city, in the whole world. */
+  readonly reported: number;
+  /** The bodies of the events of `keepEvent` that are also near a watched place. */
   readonly bodies: readonly string[];
 }
 
@@ -121,9 +126,10 @@ export function stampsToRead(last: string | undefined, newest: string): { readon
 
 /**
  * This function reads the events of one archive of an event file. It gives the text of the fault when the archive is
- * not one event file. With `expected` of the same time, it also examines the size and the MD5 digest. It does not throw.
+ * not one event file. With `expected` of the same time, it also examines the size and the MD5 digest. The function
+ * `near` chooses the events of `keepEvent` that give a body. The default chooses each. The function does not throw.
  */
-export function readEventFile(bytes: Uint8Array, stamp: string, expected?: LastUpdate): EventFile | string {
+export function readEventFile(bytes: Uint8Array, stamp: string, expected?: LastUpdate, near: (event: GdeltEvent) => boolean = () => true): EventFile | string {
   if (expected !== undefined && expected.stamp === stamp) {
     if (bytes.byteLength !== expected.size) return `the archive has ${bytes.byteLength} bytes, and lastupdate.txt gives ${expected.size}`;
     const md5 = createHash("md5").update(bytes).digest("hex");
@@ -138,17 +144,30 @@ export function readEventFile(bytes: Uint8Array, stamp: string, expected?: LastU
   const events = lines.map(eventOf);
   const bodies: string[] = [];
   let parsed = 0;
+  let reported = 0;
   for (const event of events) {
     if (event === undefined) continue;
     parsed += 1;
-    if (keepEvent(event)) bodies.push(eventBody(event));
+    if (!keepEvent(event)) continue;
+    reported += 1;
+    if (near(event)) bodies.push(eventBody(event));
   }
-  return { lines: lines.length, parsed, bodies };
+  return { lines: lines.length, parsed, reported, bodies };
 }
 
 /** This function gives the body of the head of a fetch: the newest file that the fetch read, and its counts. */
 export function headBody(stamp: string, file: EventFile): string {
-  return JSON.stringify({ file: stamp, lines: file.lines, parsed: file.parsed, kept: file.bodies.length });
+  return JSON.stringify({ file: stamp, lines: file.lines, parsed: file.parsed, reported: file.reported, near: file.bodies.length });
+}
+
+/**
+ * This function gives the filter of the events for the places of a watch. An event passes when its area reaches a
+ * place with a position, within the buffer of the place. The function `matchPlaces` of the core decides.
+ */
+export function nearPlaces(places: readonly WatchedPlace[]): (event: GdeltEvent) => boolean {
+  const positioned = places.filter((place) => place.at !== undefined);
+  if (positioned.length === 0) return () => false;
+  return (event) => matchPlaces({ areas: eventAreas(event.lat, event.lon) }, positioned).length > 0;
 }
 
 /** This function gives the time of the file of a head body, or `undefined` for a body that is not a head. */
@@ -196,7 +215,8 @@ export function createGdeltFetch(options: GdeltFetchOptions): (input: GdeltFetch
     transport: { url, status, latency },
   });
 
-  return async (_input, signal) => {
+  return async (input, signal) => {
+    const near = nearPlaces(input.watch.places);
     const listed = await requester.get({ path: LAST_UPDATE_PATH, what: "the list of the newest files" }, signal);
     if (!listed.ok) return { ok: false, failure: listed.failure };
     const newest = readLastUpdate(listed.answer.reply.body);
@@ -219,7 +239,7 @@ export function createGdeltFetch(options: GdeltFetchOptions): (input: GdeltFetch
         if (read === 0 && lastHead === undefined) return { ok: false, failure: requested.failure };
         break;
       }
-      const file = readEventFile(requested.answer.reply.bytes ?? new Uint8Array(), stamp, newest);
+      const file = readEventFile(requested.answer.reply.bytes ?? new Uint8Array(), stamp, newest, near);
       if (typeof file === "string") {
         if (read === 0 && lastHead === undefined) return { ok: false, failure: { kind: "network", message: `${file}: ${url}` } };
         complete = false;

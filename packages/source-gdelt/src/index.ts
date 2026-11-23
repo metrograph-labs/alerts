@@ -26,6 +26,7 @@ export {
   headTime,
   LAST_UPDATE_PATH,
   MAX_FILES_PER_FETCH,
+  nearPlaces,
   readEventFile,
   readLastUpdate,
   stampOf,
@@ -35,6 +36,7 @@ export type { EventFile, GdeltFetchInput, GdeltFetchOptions, LastUpdate } from "
 export {
   CAMEO_LABELS,
   cameoLabel,
+  eventAreas,
   CONFLICT_KIND,
   GDELT_CREDIT,
   GDELT_KINDS,

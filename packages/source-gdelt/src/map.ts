@@ -43,6 +43,11 @@ export const GDELT_TERMS_URL = "https://www.gdeltproject.org/about.html#termsofu
  */
 export const PLACE_RADIUS_KM = 25;
 
+/** This function gives the area of the report of an event at a point: a circle of `PLACE_RADIUS_KM` around the point. */
+export function eventAreas(lat: number, lon: number): Area[] {
+  return [{ type: "circle", center: [lon, lat], radiusKm: PLACE_RADIUS_KM }];
+}
+
 /** The time from the addition of an event to the end of its report: one day. A news event of one day is old after it. */
 export const REPORT_LIFE_MS = 86_400_000;
 
@@ -148,7 +153,7 @@ function mapOrThrow(observation: Observation): MapResult {
   const actors = [text(fields, "actor1"), text(fields, "actor2")].filter((actor) => actor !== "");
   const url = text(fields, "url");
   const label = cameoLabel(code, root);
-  const areas: Area[] = [{ type: "circle", center: [lon, lat], radiusKm: PLACE_RADIUS_KM }];
+  const areas = eventAreas(lat, lon);
   const count = (value: number | undefined, one: string, many: string): string => (value === undefined ? "" : `${value} ${value === 1 ? one : many}`);
   const reach = [count(articles, "article", "articles"), count(sources, "source", "sources")].filter((part) => part !== "").join(" from ");
   const description = [
