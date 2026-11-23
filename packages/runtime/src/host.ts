@@ -262,13 +262,24 @@ export interface HostedGroup {
 }
 
 /**
+ * This function tells if the supervisor watches the console that started it (AL-141). On Windows, the boot task starts
+ * the supervisor in a headless console (`conhost.exe`), and a stop of the task ends only the console. Then the input of
+ * the supervisor closes. A Linux unit gives an input that is not a console, thus systemd stops the supervisor itself.
+ */
+export const watchesConsole = (platform: NodeJS.Platform, inputIsConsole: boolean | undefined): boolean =>
+  platform === "win32" && inputIsConsole === true;
+
+/**
  * This function declares the service of the supervisor. The group is its one dependency: the start
  * connects it, and the shutdown stops each program in stages. Only the entry `main.ts` uses `run()`.
+ * When `consoleWatch` is true, the end of the input also starts the shutdown (`watchesConsole`).
  */
-export const declareSupervisor = (group: HostedGroup): ServiceBuilder =>
-  service(`${HOST_NAME}-host`)
+export const declareSupervisor = (group: HostedGroup, consoleWatch = false): ServiceBuilder => {
+  const builder = service(`${HOST_NAME}-host`)
     .dependency("group", { system: null, knobs: {}, operations: {} }, { connect: () => group.start(), close: () => group.stop() })
     .readiness(READINESS)
     .liveness({ type: "window", failAfter: s(45) })
     .startup(STARTUP_BUDGET)
     .profile(SUPERVISOR_PROFILE);
+  return consoleWatch ? builder.trigger("stdin-close") : builder;
+};
