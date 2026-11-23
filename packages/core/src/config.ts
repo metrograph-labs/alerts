@@ -133,6 +133,27 @@ export const LIMIT_ACCOUNT_KINDS: readonly ["user", "organization"] = ["user", "
 /** The kind of an account of a provider in a watch of a limit. */
 export type LimitAccountKind = (typeof LIMIT_ACCOUNT_KINDS)[number];
 
+/** One subject of the sources that tells the state of a part of the stack of the alert chain (AL-90). */
+export interface ChainSubject {
+  /** The system of the subject: for example `domain` for a status page. */
+  readonly system: string;
+  /** The id of the subject in its system. */
+  readonly id: string;
+  /** The id of the part in the stack. A live incident about the subject tells that the part is down. */
+  readonly part: string;
+}
+
+/**
+ * The stack of the alert chain, for the redundancy reports (AL-90). The values are private. Only the configuration holds them.
+ * The core holds the stack as a JSON value. The runtime reads it with the schemas of the stack and of its layer of risks.
+ */
+export interface ChainConfig {
+  /** The stack document (`stack/1`), with the layer of risks (`risk/1`) in its layers. Each goal of the layer is a function. */
+  readonly stack: Readonly<Record<string, unknown>>;
+  /** The subjects of the sources that tell the state of the parts. */
+  readonly subjects: readonly ChainSubject[];
+}
+
 /**
  * The watch of the use of one hard limit of a paid provider account (AL-111). The values are private. Only the
  * configuration holds them.
@@ -248,6 +269,8 @@ export interface AlertConfig {
   readonly spend?: readonly SpendConfig[];
   /** The watches of the use of the hard limits of the paid provider accounts (AL-111). */
   readonly limits?: readonly LimitConfig[];
+  /** The stack of the alert chain, for the redundancy reports (AL-90). Without it, the instance gives no redundancy report. */
+  readonly chain?: ChainConfig;
   /** The policy of the link rule of the merge. Without it, the instance uses `DEFAULT_LINK_POLICY`. */
   readonly link?: LinkPolicy;
   /** The outage call. Without it, an outage of the instance calls no person. */

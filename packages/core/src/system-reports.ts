@@ -10,7 +10,7 @@
 import { canonicalJson } from "@mark1russell7/rigor-generators";
 import { countOf } from "@mark1russell7/text/english";
 import { compareCodeUnits } from "@mark1russell7/text/order";
-import { BALANCE_KIND, CHANNEL_KIND, CLOCK_KIND, CONTEXT_KINDS, COPY_KIND, COVERAGE_KIND, DRILL_KIND, ESCALATION_KIND, hasKind, HEALTH_KIND, LIMIT_KIND, LOG_KIND, LOOP_KIND, matchPlaces, PERSON_SUBJECT, QUOTA_KIND, STORE_KIND, USE_KIND } from "./assess.ts";
+import { BALANCE_KIND, CHANNEL_KIND, CLOCK_KIND, CONTEXT_KINDS, COPY_KIND, COVERAGE_KIND, DRILL_KIND, ESCALATION_KIND, hasKind, HEALTH_KIND, LIMIT_KIND, LOG_KIND, LOOP_KIND, matchPlaces, PERSON_SUBJECT, QUOTA_KIND, REDUNDANCY_KIND, STORE_KIND, USE_KIND } from "./assess.ts";
 import { isPrivate } from "./audience.ts";
 import type {
   Area,
@@ -32,6 +32,8 @@ import type {
   PlaceId,
   ProviderBalance,
   QuotaStage,
+  RedundancyStage,
+  RedundancyState,
   Report,
   ResponseType,
   Severity,
@@ -84,6 +86,8 @@ export const LIMIT_SUBJECT = "alerts.limit";
 
 /** The subject system of an incident. The id of a subject is a report of the incident: an exhausted escalation links its warning. */
 export const INCIDENT_SUBJECT = "alerts.incident";
+/** The subject system of a function of the alert chain (AL-90). The id of a subject is the id of the part of the function in the stack. */
+export const FUNCTION_SUBJECT = "alerts.function";
 
 /** The stages of a quota, from the first to the last. */
 export const QUOTA_STAGES: readonly QuotaStage[] = ["low", "reserve", "spent"];
@@ -399,6 +403,11 @@ export interface SystemSnapshot {
   readonly observing?: readonly ObserveCondition[];
   /** The policy of the end of the line of a down source (AL-75). Each absent field has its value of `DEFAULT_SOURCE_CLEAR`. */
   readonly sourceClear?: SourceClearConfig;
+  /**
+   * The functions of the alert chain, from the open incidents of their parts (AL-90). A function that stops is a condition,
+   * and a function with a new single point of failure is a condition. With no list, each open line of a function stays open.
+   */
+  readonly redundancy?: readonly RedundancyState[];
 }
 
 /** The result of one step of the fold. */
@@ -697,6 +706,10 @@ export function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: 
     const name = storeName(fill);
     if (fill.entries === 0 && (at >= storeEmptyAt(fill) || lines.open[name] !== undefined)) conditions.set(name, storeCondition(fill, titles));
   }
+  for (const state of snapshot.redundancy ?? []) {
+    const stage = redundancyStage(state);
+    if (stage !== undefined) conditions.set(redundancyName(state.function.id, stage), redundancyCondition(state, stage));
+  }
   const names = [...new Set([...Object.keys(lines.open), ...conditions.keys()])].sort(compareCodeUnits);
   let count = lines.count;
   const open = new Map(Object.entries(lines.open));
@@ -717,6 +730,7 @@ export function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: 
     if (condition === undefined && snapshot.channels === undefined && name.startsWith(CHANNEL_LINE)) continue;
     if (condition === undefined && snapshot.observing === undefined && name.startsWith(OBSERVE_LINE)) continue;
     if (condition === undefined && snapshot.stores === undefined && name.startsWith(STORE_LINE)) continue;
+    if (condition === undefined && snapshot.redundancy === undefined && name.startsWith(REDUNDANCY_LINE)) continue;
     const draft = condition === undefined ? (line === undefined ? undefined : cancelOf(line)) : condition;
     if (draft === undefined) continue;
     const facts = canonicalJson(draft.facts, { form: "json" });
@@ -815,6 +829,19 @@ const USE_LINE = "use/";
 function useName(id: string, stage: UseStage, level?: { readonly level: number; readonly month: string }): string {
   const name = `${USE_LINE}${encodeURIComponent(id)}/${stage}`;
   return level === undefined ? name : `${name}/${String(level.level)}/${level.month}`;
+}
+
+// The start of the name of each line of a function of the alert chain (AL-90).
+const REDUNDANCY_LINE = "redundancy/";
+
+function redundancyName(part: string, stage: RedundancyStage): string {
+  return `${REDUNDANCY_LINE}${encodeURIComponent(part)}/${stage}`;
+}
+
+/** This function gives the stage of a function of the alert chain, or `undefined` for a function with its full redundancy (AL-90). */
+export function redundancyStage(state: Pick<RedundancyState, "works" | "points">): RedundancyStage | undefined {
+  if (!state.works) return "stopped";
+  return state.points.length > 0 ? "single" : undefined;
 }
 
 // The start of the name of each line of another copy.
@@ -1395,6 +1422,35 @@ function useCondition(use: LimitUse, stage: UseStage, at: Instant, level?: numbe
       ...(read === undefined ? {} : { used: [String(read.used)], limit: [String(read.limit)], currency: [read.currency], month: [read.month] }),
       age: [String(at - (read?.at ?? use.since))],
     },
+  };
+}
+
+function redundancyCondition(state: RedundancyState, stage: RedundancyStage): Condition {
+  const { function: part, down } = state;
+  const points = [...state.points].sort((a, b) => compareCodeUnits(a.id, b.id));
+  const names = (parts: readonly { readonly name: string }[]): string => (parts.length === 0 ? "no part" : parts.map((item) => item.name).join(", "));
+  const text: Readonly<Record<RedundancyStage, { readonly headline: string; readonly description: string }>> = {
+    single: {
+      headline: `${part.name} has a single point of failure: ${names(points)}.`,
+      description: `The open incidents tell that these parts are down: ${names(down)}. A failure of ${points.length === 1 ? "this point" : "one of these points"} alone stops ${part.name}.`,
+    },
+    stopped: {
+      headline: `${part.name} does not work.`,
+      description: `The open incidents tell that these parts are down: ${names(down)}. No path of ${part.name} is left.`,
+    },
+  };
+  const code = `${REDUNDANCY_KIND}.${stage}`;
+  return {
+    // The list of the down parts is not a fact: a new down part that leaves the same points gives no update.
+    facts: { function: part.id, stage, points: points.map((item) => item.id) },
+    kind: { code, label: kindLabel(code) },
+    severity: stage === "stopped" ? "severe" : "moderate",
+    urgency: stage === "stopped" ? "immediate" : "expected",
+    response: ["assess"],
+    areas: [],
+    about: [{ system: FUNCTION_SUBJECT, id: part.id, label: part.name }],
+    ...text[stage],
+    parameters: { stage: [stage], points: points.map((item) => item.id), down: down.map((item) => item.id).sort(compareCodeUnits) },
   };
 }
 

@@ -437,6 +437,18 @@ A use report (AL-111) tells the use of a hard limit of a paid provider account i
 - With two copies, only one copy reports `level` (see "The facts of a shared account"). Each copy reports its own `unread`.
 - A person gets the use reports only when the person watches `{ system: "alerts.limit" }`.
 
+A redundancy report (AL-90) tells that a function of the alert chain lost a path. An example is the push to a person when the carriers of the texts are down. A redundancy report has no area. Its subject is `{ system: "alerts.function", id: <part id> }` (`FUNCTION_SUBJECT`). Its kind is `system.redundancy.<stage>`, and it gets `notice` at most. The runtime gives a `RedundancyState` for each function from the open incidents of its parts. `redundancyStage` gives its stage:
+
+| Stage | Condition | Severity, urgency |
+| --- | --- | --- |
+| `single` | The function works, and it has a new single point of failure: a part that alone stops it with the down parts, and not with no part down | `moderate`, `expected` |
+| `stopped` | The down parts stop the function | `severe`, `immediate` |
+
+- Each stage of each function is its own line: `redundancy/<part>/<stage>`. A function that stops ends its line `single` and opens `stopped`.
+- The facts of a line are the function, the stage and the points. A new down part that leaves the same points gives no update.
+- A function with its full redundancy ends each line. A snapshot with no list keeps each open line of a function.
+- A person gets the redundancy reports only when the person watches `{ system: "alerts.function" }`.
+
 A clock report has no area. Its subject is `{ system: "alerts.clock", id: "wall" }`. Its kind is `system.clock.step`, with the severity `minor` and the urgency `past`. Thus it gets `digest` at most:
 
 - The condition is the latest step of the wall clock in `CLOCK_STEP_WINDOW` (24 hours) before the time of the snapshot (`recentStep`).
@@ -1437,6 +1449,7 @@ The function `openInstance` makes the instance of the owner from the private con
   - The date of each read is a date of the time zone of the cap.
 - The spend entry of Twilio also gives the watch of the balance: one read each day, and its floors.
 - Each entry of the field `limits` gives the watch of the use of one hard limit (AL-111). The section "The use report" tells its lines.
+- The field `chain` gives the stack of the alert chain (AL-90): a stack document with a layer of risks, and the subjects that tell the state of its parts. A live incident about a subject tells that its part is down. The runtime gives a `RedundancyState` for each goal of the layer.
 - The watch of a limit of GitHub reads the usage report of the account one time each day. The first read comes 20 minutes after the start.
 - The token of the reads is in the key `tokenKey` of the limit, or in `GITHUB_BILLING_TOKEN`. A fine-grained token needs Plan (read) of a user, or Administration (read) of an organization.
 - A fine-grained token has one owner: a user or one organization. Thus each account needs its own key. The limits with one key share one client.

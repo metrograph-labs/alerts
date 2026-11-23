@@ -1012,6 +1012,40 @@ export interface LimitUse {
 }
 
 /**
+ * The stages of a function of the alert chain (AL-90). Each stage is a line of system reports:
+ *
+ * - `single`: the down parts leave the function with a single point of failure that it did not have with no part down.
+ * - `stopped`: the down parts stop the function.
+ */
+export type RedundancyStage = "single" | "stopped";
+
+/** A part of the stack of the alert chain, with its name for a text. */
+export interface ChainPart {
+  /** The id of the part in the stack. */
+  readonly id: string;
+  /** The name of the part in a text: for example `Pushover`. */
+  readonly name: string;
+}
+
+/**
+ * The state of one function of the alert chain at one time (AL-90). The runtime gives it from the open incidents of the parts
+ * of the stack. A function is a part with a goal of the layer of risks: for example the push to a person.
+ */
+export interface RedundancyState {
+  /** The function: its part in the stack. */
+  readonly function: ChainPart;
+  /** This value tells that the function works with the parts of `down` down. */
+  readonly works: boolean;
+  /**
+   * The new single points of failure. A failure of each point alone stops the function, and it did not stop the function
+   * with no part down. The list is empty when the function does not work.
+   */
+  readonly points: readonly ChainPart[];
+  /** The parts that are down, from the open incidents of the sources. */
+  readonly down: readonly ChainPart[];
+}
+
+/**
  * The result of a send. A failed send has one of these kinds:
  *
  * - `network`, `timeout` and `server`: the channel can have the message.
