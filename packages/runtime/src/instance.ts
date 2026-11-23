@@ -337,6 +337,14 @@ function accountProblems(copy: CopySettings): string[] {
     .map((id) => `The file ${COPY_FILE}: the field accounts names the source ${id}. Only these sources have an account: ${ACCOUNT_SOURCES.join(", ")}.`);
 }
 
+/** This function gives the problems of the field `leaveChannels` of a copy: each id that is not a channel of the instance. */
+function leaveProblems(copy: CopySettings): string[] {
+  const known = INSTANCE_CHANNELS.map((descriptor) => descriptor.id as string);
+  return (copy.leaveChannels ?? [])
+    .filter((id) => !known.includes(id))
+    .map((id) => `The file ${COPY_FILE}: the field leaveChannels names the channel ${id}. The channels of the instance are ${known.join(", ")}.`);
+}
+
 /**
  * This function gives the channels that the instance sends on. Pushover is always one. The Twilio call channel needs the keys of
  * `TWILIO_KEYS`, and the text channel also needs `TWILIO_TEXT_FROM_KEY`. The webhook channel needs `WEBHOOK_SECRET_KEY`. A step
@@ -556,7 +564,8 @@ export const RANK_FLOOR: Duration = DELIVERY_TIMES.callLimit + 3 * EXCHANGE_EVER
  * - a value of `WEBHOOK_SECRET_KEY` that is not a list of secrets of Standard Webhooks
  * - one key of the NWWS-OI account of the copy and not the other, or an account of the copy with no keys
  * - an id of a source with no account in the field `accounts` of the copy
- * - a step of a policy on a channel with no sender
+ * - an id in the field `leaveChannels` of the copy that is not a channel of `INSTANCE_CHANNELS`
+ * - a step of a policy on a channel with no sender, when the copy does not leave the channel to the other copies
  * - a step on a channel with a cost, when the configuration has no spend entry for its provider
  * - a place that no regional source covers. A source with the coverage `global` covers each place, with no code.
  * - an outage call with no keys of Twilio, no token `OUTAGE_TOKEN` or a bad list
@@ -585,12 +594,14 @@ export function instanceProblems(parsed: ParsedConfig, secret: SecretLookup, des
   // A half of a key pair of NWWS-OI is a fault of the secret store, not a choice of no stream. Thus it stops the start.
   const nwws = nwwsSetup(secret, copy);
   const nwwsProblems = nwws.tag === "err" ? nwws.error : [];
-  // A step on a channel with no sender fails each send of the step. Thus it stops the start.
+  // A step on a channel with no sender fails each send of the step. Thus it stops the start. A copy sends nothing on a
+  // channel that it leaves to the other copies (AL-55). Thus such a step needs no sender of this copy.
   const senders = instanceSenders(secret);
+  const left = new Set<string>(copy.leaveChannels ?? []);
   const senderProblems = parsed.recipients.flatMap((recipient) =>
     recipient.policies.flatMap((policy) =>
       policy.steps.flatMap((step, index) =>
-        senders.includes(step.channel)
+        senders.includes(step.channel) || left.has(step.channel)
           ? []
           : [`Step ${index} of ${policy.level} of ${recipient.watch.person} uses the channel ${step.channel}, and the instance has no sender on it.`],
       ),
@@ -599,7 +610,7 @@ export function instanceProblems(parsed: ParsedConfig, secret: SecretLookup, des
   // A send on a channel with a cost needs a cap. Without it, a fault of a loop can spend all the money of the account.
   const used = new Set(parsed.recipients.flatMap((recipient) => recipient.policies.flatMap((policy) => policy.steps.map((step) => step.channel))));
   const spendProblems = INSTANCE_CHANNELS.flatMap((descriptor) =>
-    senders.includes(descriptor.id) && used.has(descriptor.id) && (descriptor.costUsd ?? 0) > 0 && spendEntryOf(descriptor, parsed.config.spend) === undefined
+    senders.includes(descriptor.id) && !left.has(descriptor.id) && used.has(descriptor.id) && (descriptor.costUsd ?? 0) > 0 && spendEntryOf(descriptor, parsed.config.spend) === undefined
       ? [`The channel ${descriptor.id} costs money, and the configuration has no spend entry for its provider. Give an entry with a monthly cap.`]
       : [],
   );
@@ -623,6 +634,7 @@ export function instanceProblems(parsed: ParsedConfig, secret: SecretLookup, des
     ...webhookProblems,
     ...nwwsProblems,
     ...accountProblems(copy),
+    ...leaveProblems(copy),
     ...senderProblems,
     ...spendProblems,
     ...placeProblems,
@@ -1091,6 +1103,7 @@ export function openInstance(options: InstanceOptions): Instance {
     ...DELIVERY_TIMES,
     rank: copy.rank,
     rankDelay: RANK_DELAY,
+    ...(copy.leaveChannels === undefined ? {} : { leaveChannels: copy.leaveChannels }),
     ...(config.rankDelay === undefined ? {} : { rankDelays: config.rankDelay }),
     rankFloor: config.rankFloor ?? RANK_FLOOR,
     sendLimits: sendLimitsOf(config.sendLimit),

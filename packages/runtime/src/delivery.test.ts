@@ -354,6 +354,47 @@ describe("the delivery step of a pass", () => {
     log.close();
   });
 
+  it("sends nothing on a channel that the copy leaves to the other copies, and gives no failure and no overdue send of it (AL-55)", async () => {
+    const { clock, runtime, log, pushover, sms } = open({}, undefined, undefined, { leaveChannels: [SMS], overdueAfter: MINUTE });
+    let pass = await runtime.pass();
+    while (clock.now() < T0 + 8 * MINUTE) {
+      await clock.advance(30 * SECOND);
+      pass = await runtime.pass();
+    }
+    expect(pushover.send).toHaveLength(1);
+    expect(sms.send).toEqual([]);
+    // The plan keeps the step on the channel. Thus the keys and the numbers of the steps are the same in each copy.
+    expect(pass.delivery?.routes.flatMap((entry) => entry.plan.sends).map((send) => [send.channel, send.step])).toEqual([[SMS, 1]]);
+    expect(pass.delivery?.failures).toEqual([]);
+    expect(pass.delivery?.overdue).toEqual([]);
+    expect(new Set(types(log))).toEqual(new Set(["started", "escalation", "attempt", "delivery"]));
+    log.close();
+  });
+
+  it("polls and cancels nothing on a channel that the copy leaves, also for a delivery of the log (AL-55)", async () => {
+    const clock = fakeWallClock(T0);
+    const log = openRuntimeLog(":memory:");
+    const first = open({}, log, clock);
+    await first.runtime.pass();
+    expect(first.pushover.send).toHaveLength(1);
+    // The copy starts again, and it leaves the channel to the other copies. The log keeps the delivery and its receipt.
+    await clock.advance(MINUTE);
+    const left = open({}, log, clock, { leaveChannels: [PUSHOVER] });
+    const polled = await left.runtime.pass();
+    expect(left.pushover.status).toEqual([]);
+    expect(polled.delivery?.failures).toEqual([]);
+    // The person no longer watches the place, thus the escalation ends. The copy that sent the message cancels it,
+    // because the copies share each cancel. A cancel of this copy would end the cancel of that copy.
+    await clock.advance(MINUTE);
+    const gone = open({}, log, clock, { leaveChannels: [PUSHOVER], recipients: [{ ...RECIPIENT, watch: { ...RECIPIENT.watch, places: [] } }] });
+    const ended = await gone.runtime.pass();
+    expect(gone.pushover.cancel).toEqual([]);
+    expect(ended.delivery?.cancelled).toEqual([]);
+    expect(ended.delivery?.failures).toEqual([]);
+    expect(types(log)).not.toContain("cancelled");
+    log.close();
+  });
+
   it("sends the next step at its time when no acknowledgment comes", async () => {
     const { clock, runtime, log, pushover, sms } = open();
     let pass = await runtime.pass();
