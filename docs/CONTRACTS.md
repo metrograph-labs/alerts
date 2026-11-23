@@ -437,6 +437,18 @@ A use report (AL-111) tells the use of a hard limit of a paid provider account i
 - With two copies, only one copy reports `level` (see "The facts of a shared account"). Each copy reports its own `unread`.
 - A person gets the use reports only when the person watches `{ system: "alerts.limit" }`.
 
+A redundancy report (AL-90) tells that a function of the alert chain lost a path. An example is the push to a person when the carriers of the texts are down. A redundancy report has no area. Its subject is `{ system: "alerts.function", id: <part id> }` (`FUNCTION_SUBJECT`). Its kind is `system.redundancy.<stage>`, and it gets `notice` at most. The runtime gives a `RedundancyState` for each function from the open incidents of its parts. `redundancyStage` gives its stage:
+
+| Stage | Condition | Severity, urgency |
+| --- | --- | --- |
+| `single` | The function works, and it has a new single point of failure: a part that alone stops it with the down parts, and not with no part down | `moderate`, `expected` |
+| `stopped` | The down parts stop the function | `severe`, `immediate` |
+
+- Each stage of each function is its own line: `redundancy/<part>/<stage>`. A function that stops ends its line `single` and opens `stopped`.
+- The facts of a line are the function, the stage and the points. A new down part that leaves the same points gives no update.
+- A function with its full redundancy ends each line. A snapshot with no list keeps each open line of a function.
+- A person gets the redundancy reports only when the person watches `{ system: "alerts.function" }`.
+
 A clock report has no area. Its subject is `{ system: "alerts.clock", id: "wall" }`. Its kind is `system.clock.step`, with the severity `minor` and the urgency `past`. Thus it gets `digest` at most:
 
 - The condition is the latest step of the wall clock in `CLOCK_STEP_WINDOW` (24 hours) before the time of the snapshot (`recentStep`).

@@ -58,6 +58,7 @@ Carriage: build/index.d.ts#Carriage
 Category: build/index.d.ts#Category
 CellResource: build/index.d.ts#CellResource
 Certainty: build/index.d.ts#Certainty
+ChainPart: build/index.d.ts#ChainPart
 ChainRun: build/index.d.ts#ChainRun
 ChainState: build/index.d.ts#ChainState
 ChannelCallFailure: build/index.d.ts#ChannelCallFailure
@@ -166,6 +167,7 @@ ExpectationConfig: build/index.d.ts#ExpectationConfig
 ExpectedHarm: build/index.d.ts#ExpectedHarm
 FLOAT_REACH: build/index.d.ts#FLOAT_REACH
 FOREIGN_TABLE: build/index.d.ts#FOREIGN_TABLE
+FUNCTION_SUBJECT: build/index.d.ts#FUNCTION_SUBJECT
 FetchFailure: build/index.d.ts#FetchFailure
 FetchOutcome: build/index.d.ts#FetchOutcome
 FetchRecord: build/index.d.ts#FetchRecord
@@ -353,6 +355,7 @@ QuietWindow: build/index.d.ts#QuietWindow
 QuotaHealth: build/index.d.ts#QuotaHealth
 QuotaStage: build/index.d.ts#QuotaStage
 RANK_DELAY_LIMIT: build/index.d.ts#RANK_DELAY_LIMIT
+REDUNDANCY_KIND: build/index.d.ts#REDUNDANCY_KIND
 RETENTION_HORIZON: build/index.d.ts#RETENTION_HORIZON
 RULED_STATUSES: build/index.d.ts#RULED_STATUSES
 RankDelays: build/index.d.ts#RankDelays
@@ -362,6 +365,8 @@ ReadHealth: build/index.d.ts#ReadHealth
 Reading: build/index.d.ts#Reading
 Receipt: build/index.d.ts#Receipt
 Recipient: build/index.d.ts#Recipient
+RedundancyStage: build/index.d.ts#RedundancyStage
+RedundancyState: build/index.d.ts#RedundancyState
 RegionCode: build/index.d.ts#RegionCode
 Relevance: build/index.d.ts#Relevance
 RelevanceInput: build/index.d.ts#RelevanceInput
@@ -790,6 +795,7 @@ recentBlocks: build/index.d.ts#recentBlocks
 recentRecovery: build/index.d.ts#recentRecovery
 recentStep: build/index.d.ts#recentStep
 recipientProblems: build/index.d.ts#recipientProblems
+redundancyStage: build/index.d.ts#redundancyStage
 regionCodeKey: build/index.d.ts#regionCodeKey
 regionCodeSchema: build/index.d.ts#regionCodeSchema
 regionContains: build/index.d.ts#regionContains
@@ -1217,6 +1223,12 @@ export type CellResource = "internet" | "dns" | "power" | "receiver";
 
 ### build/index.d.ts#Certainty
 export type Certainty = "observed" | "likely" | "possible" | "unlikely" | "unknown";
+
+### build/index.d.ts#ChainPart
+export interface ChainPart {
+  readonly id: string;
+  readonly name: string;
+}
 
 ### build/index.d.ts#ChainRun
 export interface ChainRun {
@@ -2058,6 +2070,9 @@ export declare const FLOAT_REACH: ReachArithmetic<number>;
 
 ### build/index.d.ts#FOREIGN_TABLE
 export declare const FOREIGN_TABLE: LevelTable;
+
+### build/index.d.ts#FUNCTION_SUBJECT
+export declare const FUNCTION_SUBJECT = "alerts.function";
 
 ### build/index.d.ts#FetchFailure
 export type FetchFailure = {
@@ -3283,6 +3298,9 @@ export type QuotaStage = "low" | "reserve" | "spent";
 ### build/index.d.ts#RANK_DELAY_LIMIT
 export declare const RANK_DELAY_LIMIT: Duration;
 
+### build/index.d.ts#REDUNDANCY_KIND
+export declare const REDUNDANCY_KIND = "system.redundancy";
+
 ### build/index.d.ts#RETENTION_HORIZON
 export declare const RETENTION_HORIZON: Duration;
 
@@ -3333,6 +3351,17 @@ export interface Recipient {
   readonly policies: readonly EscalationPolicy[];
   readonly addresses: Readonly<Record<string, Address>>;
   readonly channelRules?: readonly ChannelRule[];
+}
+
+### build/index.d.ts#RedundancyStage
+export type RedundancyStage = "single" | "stopped";
+
+### build/index.d.ts#RedundancyState
+export interface RedundancyState {
+  readonly function: ChainPart;
+  readonly works: boolean;
+  readonly points: readonly ChainPart[];
+  readonly down: readonly ChainPart[];
 }
 
 ### build/index.d.ts#RegionCode
@@ -3920,6 +3949,7 @@ export interface SystemSnapshot {
   readonly channelDown?: ChannelDownConfig;
   readonly observing?: readonly ObserveCondition[];
   readonly sourceClear?: SourceClearConfig;
+  readonly redundancy?: readonly RedundancyState[];
 }
 
 ### build/index.d.ts#SystemStep
@@ -5070,6 +5100,9 @@ export declare function recentStep(steps: readonly ClockStep[], at: Instant): Cl
 
 ### build/index.d.ts#recipientProblems
 export declare function recipientProblems(recipient: Recipient, channels: readonly ChannelDescriptor[]): string[];
+
+### build/index.d.ts#redundancyStage
+export declare function redundancyStage(state: Pick<RedundancyState, "works" | "points">): RedundancyStage | undefined;
 
 ### build/index.d.ts#regionCodeKey
 export declare function regionCodeKey(code: RegionCode): string;

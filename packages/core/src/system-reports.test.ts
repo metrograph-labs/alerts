@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { assess, PERSON_SUBJECT } from "./assess.ts";
 import { CONFIG_FORMAT } from "./config.ts";
 import { messageOf } from "./delivery.ts";
-import type { ChannelId, ChannelQuota, CopyRead, CopyWatch, Coverage, HealthState, Incident, Observation, PersonId, PersonWatch, PlaceId, LimitUse, ProviderBalance, Report, ReportId, SourceDescriptor, SourceHealth, SourceId, WatchedPlace } from "./contracts.ts";
+import type { ChannelId, ChannelQuota, CopyRead, CopyWatch, Coverage, HealthState, Incident, Observation, PersonId, PersonWatch, PlaceId, LimitUse, ProviderBalance, RedundancyState, Report, ReportId, SourceDescriptor, SourceHealth, SourceId, WatchedPlace } from "./contracts.ts";
 import { SYSTEM_SOURCE } from "./contracts.ts";
 import { DRILL_WATCH_GRACE, type DrillConfig, type DrillRun, type DrillWatch } from "./drill.ts";
 import type { Lateness } from "./lateness.ts";
@@ -28,6 +28,7 @@ import {
   copyUnreadAt,
   copyUnsteadyAt,
   drillWatchAt,
+  FUNCTION_SUBJECT,
   gapGrade,
   HELD_SHOWN,
   heldText,
@@ -42,6 +43,7 @@ import {
   recentBlocks,
   recentRecovery,
   recentStep,
+  redundancyStage,
   reportsShared,
   SHARED_HANDOVER,
   sourceClearAt,
@@ -1162,6 +1164,78 @@ describe("the store reports (AL-86)", () => {
     expect(levels(step.reports, OPERATOR, END)).toEqual(["notice"]);
     expect(levels(step.reports, NEIGHBOR, END)).toEqual(["none"]);
     expect(levels(step.reports, { ...NEIGHBOR, subjects: [{ system: STORE_SUBJECT }] }, END)).toEqual(["notice"]);
+  });
+});
+
+describe("the redundancy reports (AL-90)", () => {
+  const AT = Date.UTC(2026, 10, 23, 20);
+  const push = { id: "push", name: "The push to a person" };
+  const pushover = { id: "pushover", name: "Pushover" };
+  const twilio = { id: "twilio", name: "Twilio" };
+  const carriers = { id: "carriers", name: "The carriers of the texts" };
+  const full: RedundancyState = { function: push, works: true, points: [], down: [] };
+  const single: RedundancyState = { function: push, works: true, points: [pushover], down: [carriers] };
+  const stopped: RedundancyState = { function: push, works: false, points: [], down: [carriers, pushover] };
+  const codes = (reports: readonly Report[]) => reports.map((report) => [report.op, report.kind.code, report.about[0]!.id]);
+
+  it("gives the stage of a function from its state", () => {
+    expect(unknownKinds(["system.redundancy", "system.redundancy.single", "system.redundancy.stopped"])).toEqual([]);
+    expect(redundancyStage(full)).toBeUndefined();
+    expect(redundancyStage(single)).toBe("single");
+    expect(redundancyStage(stopped)).toBe("stopped");
+    // A function that does not work is stopped, also with points in its state.
+    expect(redundancyStage({ works: false, points: [pushover] })).toBe("stopped");
+  });
+
+  it("gives an alert for a new single point of failure, and no report for a function with its full redundancy", () => {
+    expect(systemReports(NO_SYSTEM_LINES, snapshot({ redundancy: [full] }), AT).reports).toEqual([]);
+    const step = systemReports(NO_SYSTEM_LINES, snapshot({ redundancy: [single] }), AT);
+    expect(step.reports).toMatchObject([
+      {
+        op: "alert",
+        status: "system",
+        kind: { code: "system.redundancy.single", label: "Function with a new single point of failure" },
+        severity: "moderate",
+        urgency: "expected",
+        areas: [],
+        about: [{ system: FUNCTION_SUBJECT, id: "push", label: "The push to a person" }],
+        headline: "The push to a person has a single point of failure: Pushover.",
+        description: "The open incidents tell that these parts are down: The carriers of the texts. A failure of this point alone stops The push to a person.",
+        parameters: { stage: ["single"], points: ["pushover"], down: ["carriers"] },
+      },
+    ]);
+    expect(Object.keys(step.lines.open)).toEqual(["redundancy/push/single"]);
+    expect(addSystemReports(NO_SYSTEM_LINES, step.reports, step.observations)).toEqual(step.lines);
+  });
+
+  it("moves from single to stopped and back, and ends each line at the full redundancy", () => {
+    const first = systemReports(NO_SYSTEM_LINES, snapshot({ redundancy: [single] }), AT);
+    // A new down part that leaves the same points is not a new fact.
+    const same = systemReports(first.lines, snapshot({ redundancy: [{ ...single, down: [carriers, twilio] }] }), AT + 1);
+    expect(same.reports).toEqual([]);
+    const stop = systemReports(first.lines, snapshot({ redundancy: [stopped] }), AT + 2);
+    expect(codes(stop.reports)).toEqual([
+      ["cancel", "system.redundancy.single", "push"],
+      ["alert", "system.redundancy.stopped", "push"],
+    ]);
+    expect(stop.reports[1]).toMatchObject({ severity: "severe", urgency: "immediate", headline: "The push to a person does not work." });
+    const back = systemReports(stop.lines, snapshot({ redundancy: [full] }), AT + 3);
+    expect(codes(back.reports)).toEqual([["cancel", "system.redundancy.stopped", "push"]]);
+    expect(back.lines.open).toEqual({});
+  });
+
+  it("updates the line when the points change, and keeps each open line with no list", () => {
+    const first = systemReports(NO_SYSTEM_LINES, snapshot({ redundancy: [single] }), AT);
+    const more = systemReports(first.lines, snapshot({ redundancy: [{ ...single, points: [twilio, pushover] }] }), AT + 1);
+    expect(more.reports).toMatchObject([{ op: "update", references: [first.reports[0]!.key], parameters: { points: ["pushover", "twilio"] } }]);
+    // With no list, as when the stack of the chain is not in the configuration, the line stays open.
+    expect(systemReports(first.lines, snapshot(), AT + 2).reports).toEqual([]);
+  });
+
+  it("goes as a notice to the person who watches the functions of the chain, and to no other person", () => {
+    const step = systemReports(NO_SYSTEM_LINES, snapshot({ redundancy: [single] }), AT);
+    expect(levels(step.reports, NEIGHBOR, AT)).toEqual(["none"]);
+    expect(levels(step.reports, { ...NEIGHBOR, subjects: [{ system: FUNCTION_SUBJECT }] }, AT)).toEqual(["notice"]);
   });
 });
 

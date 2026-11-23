@@ -11,8 +11,8 @@
  * its plain name and its summary here, and in no other place. A new code comes here first, in its pull request.
  */
 import { compareCodeUnits } from "@mark1russell7/text/order";
-import { BALANCE_KIND, CHANNEL_KIND, CLOCK_KIND, COPY_KIND, COVERAGE_KIND, DRILL_KIND, ESCALATION_KIND, HEALTH_KIND, LIMIT_KIND, LOG_KIND, LOOP_KIND, QUOTA_KIND, STORE_KIND, TELL_KIND, USE_KIND } from "./assess.ts";
-import type { BalanceStage, Category, CopyStage, HealthState, QuotaStage, UseStage } from "./contracts.ts";
+import { BALANCE_KIND, CHANNEL_KIND, CLOCK_KIND, COPY_KIND, COVERAGE_KIND, DRILL_KIND, ESCALATION_KIND, HEALTH_KIND, LIMIT_KIND, LOG_KIND, LOOP_KIND, QUOTA_KIND, STORE_KIND, REDUNDANCY_KIND, TELL_KIND, USE_KIND } from "./assess.ts";
+import type { BalanceStage, Category, CopyStage, HealthState, QuotaStage, RedundancyStage, UseStage } from "./contracts.ts";
 
 /** One code of the taxonomy: its plain name and one plain sentence about it. */
 export interface KindEntry {
@@ -77,6 +77,12 @@ const BALANCE_ENTRIES: Readonly<Record<BalanceStage, KindEntry>> = {
 };
 
 // The use kinds of the core: one for each stage of the watch of the use of a hard limit (AL-111).
+// The redundancy kinds of the core: one for each stage of a function of the alert chain (AL-90).
+const REDUNDANCY_ENTRIES: Readonly<Record<RedundancyStage, KindEntry>> = {
+  single: entry("Function with a new single point of failure", "Down parts leave a function of the alert chain with one part whose failure alone stops it."),
+  stopped: entry("Function stopped", "Down parts stop a function of the alert chain: for example each path of the push to a person."),
+};
+
 const USE_ENTRIES: Readonly<Record<UseStage, KindEntry>> = {
   level: entry("Use of a hard limit at a level", "The used share of a hard limit of a paid provider account reached a level in the month: for example 50, 80 or 100 %."),
   unread: entry("Use of a hard limit not read", "No read of the use of a hard limit passed for the maximum age, so a level is not seen."),
@@ -441,6 +447,8 @@ export const TAXONOMY: Readonly<Record<string, KindEntry>> = {
   [`${LIMIT_KIND}.held`]: entry("Alerts held", "The send limit holds new alerts for the person. The next digest tells each one. The limit does not hold a life-safety warning."),
   [USE_KIND]: entry("Use of a hard limit", "The used amount of a month of a paid provider account, as a share of its hard limit."),
   ...Object.fromEntries(Object.entries(USE_ENTRIES).map(([stage, value]) => [`${USE_KIND}.${stage}`, value])),
+  [REDUNDANCY_KIND]: entry("Redundancy of the alert chain", "The paths of a function of the alert chain, from the open incidents of its parts."),
+  ...Object.fromEntries(Object.entries(REDUNDANCY_ENTRIES).map(([stage, value]) => [`${REDUNDANCY_KIND}.${stage}`, value])),
   [`${ESCALATION_KIND}.exhausted`]: entry("Exhausted escalation", "A person did not acknowledge a real warning in the time of the policy. The people who watch the person get this report."),
 };
 
