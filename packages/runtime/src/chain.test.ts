@@ -1,6 +1,7 @@
 import { reportId, type ChainConfig, type Incident, type ObservationId, type Report, type ReportId, type SourceId, type Subject } from "@mark1russell7/alerts";
 import { describe, expect, it } from "vitest";
-import { chainProblems, chainStates, downParts, readChain, type Chain } from "./chain.ts";
+import { pagesFor, STATUS_PAGES } from "@mark1russell7/alerts-source-statuspage";
+import { chainProblems, chainStates, chainWatch, downParts, readChain, type Chain } from "./chain.ts";
 import { envelope, type RuntimeEvent } from "./events.ts";
 import { EMPTY_RUNTIME, fold } from "./state.ts";
 import { DELAY_LIMITS, systemView, type ViewConfig } from "./view.ts";
@@ -72,6 +73,16 @@ describe("the read of the stack of the alert chain (AL-90)", () => {
     expect(chainProblems({ ...CONFIG, stack: goal })).toContain('chain: the goal of the part "nothing" names a part that is not in the stack.');
     const needs = { ...STACK, parts: [...STACK.parts, { id: "lost", kind: "service", needs: ["nowhere"] }] };
     expect(chainProblems({ ...CONFIG, stack: needs }).length).toBeGreaterThan(0);
+  });
+});
+
+describe("the sources of the subjects of the chain (AL-90)", () => {
+  it("reads the status page of a subject of the chain, also when no person names it", () => {
+    const page = STATUS_PAGES[0]!;
+    const watch = chainWatch({ ...CONFIG, subjects: [{ system: "domain", id: page.domain, part: "text-provider" }] });
+    expect(pagesFor([])).toEqual([]);
+    expect(pagesFor([watch])).toContain(page);
+    expect(watch).toMatchObject({ places: [], rules: [] });
   });
 });
 

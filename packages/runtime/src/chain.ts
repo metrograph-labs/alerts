@@ -7,7 +7,7 @@
  * the points with the down parts, less the points with no part down. Thus a single point that the design accepts gives no
  * report, and a single point that an outage makes gives one.
  */
-import type { ChainConfig, ChainPart, Incident, RedundancyState } from "@mark1russell7/alerts";
+import type { ChainConfig, ChainPart, Incident, PersonId, PersonWatch, RedundancyState } from "@mark1russell7/alerts";
 import { goalStates, RISK_SCHEMA, type RiskLayer } from "@mark1russell7/stack-risk";
 import { parseRisk } from "@mark1russell7/stack-risk/schema";
 import { checkStack, type Stack } from "@mark1russell7/system-stack";
@@ -76,6 +76,18 @@ export function chainProblems(config: ChainConfig | undefined): readonly string[
   if (config === undefined) return [];
   const read = readChain(config);
   return read.ok ? [] : read.problems;
+}
+
+/** The person id of the watch of the chain (`chainWatch`). No person of a configuration has it, and it gets no delivery. */
+export const CHAIN_READER = "alerts-chain" as PersonId;
+
+/**
+ * This function gives the watch of the stack of the alert chain. The instance reads each status page and each feed that
+ * a person or this watch can get. Thus each subject of the chain has a source, also when no person names it. The watch
+ * selects sources only. It has no place and no rule, and it gets no delivery.
+ */
+export function chainWatch(config: ChainConfig): PersonWatch {
+  return { person: CHAIN_READER, places: [], rules: [], subjects: config.subjects.map(({ system, id }) => ({ system, id })) };
 }
 
 /**
