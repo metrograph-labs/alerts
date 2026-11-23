@@ -417,6 +417,12 @@ export interface CopySettings {
    * keeps its own files. The id is the id of a copy of `peers`. Each copy keeps its own `secrets.env` and `copy.json`.
    */
   readonly configFrom?: string;
+  /**
+   * The channels that this copy leaves to the other copies (AL-55). The copy keeps each step on them in its plans, and
+   * it sends, cancels and polls nothing on them. Thus it needs no sender on them, and it counts no failure of them.
+   * An example is a receiver that only the loopback of one computer reaches.
+   */
+  readonly leaveChannels?: readonly ChannelId[];
 }
 
 /** The settings of a runtime with no file `copy.json`: the only copy, with rank 0 and no exchange. */
@@ -433,6 +439,7 @@ const ALL_INTERFACES: ReadonlySet<string> = new Set(["0.0.0.0", "::", "[::]", "*
  * - The other copies have different ids and URLs, and no other copy has the id of this copy.
  * - A copy with other copies has the address `listen`, and the address is not an address of all interfaces.
  * - The field `configFrom` names a copy of `peers`.
+ * - The field `leaveChannels` names each channel one time, and only a copy with other copies has it.
  */
 export function copyProblems(settings: CopySettings): string[] {
   const problems: string[] = [];
@@ -447,6 +454,11 @@ export function copyProblems(settings: CopySettings): string[] {
     urls.add(peer.url);
   });
   if (settings.configFrom !== undefined && !peers.some((peer) => peer.id === settings.configFrom)) problems.push("configFrom: the id is not the id of a copy in peers.");
+  const left = settings.leaveChannels ?? [];
+  if (left.length > 0 && peers.length === 0) problems.push("leaveChannels: a copy with no other copies sends on each channel. Thus it leaves no channel.");
+  left.forEach((channel, at) => {
+    if (left.indexOf(channel) < at) problems.push(`leaveChannels[${String(at)}]: the channel ${channel} is in the list already.`);
+  });
   if (peers.length > 0 && settings.listen === undefined) problems.push("A copy with other copies needs the address listen of its exchange.");
   if (settings.listen !== undefined && ALL_INTERFACES.has(settings.listen.host)) problems.push("listen.host: the exchange does not listen on all the interfaces. Give the tailnet address of the computer.");
   return problems;

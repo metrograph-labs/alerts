@@ -1223,6 +1223,24 @@ describe("the webhook channel of the instance (AL-55)", () => {
     expect(() => open(store(SECRETS), hooked(false))).not.toThrow();
   });
 
+  it("starts with a step on the channel and no secret when the copy leaves the channel to the other copies", async () => {
+    const noDelay: AlertConfig = { ...hooked(), rankDelay: { digest: 0, notice: 0, urgent: 0, "life-safety": 0 } };
+    const leaves: CopySettings = { ...CLOUD, leaveChannels: [WEBHOOK_CHANNEL] };
+    expect(() => open(store(SECRETS), noDelay, undefined, undefined, { copy: leaves })).not.toThrow();
+    // With the secret, the copy has a sender on the channel, and it still sends nothing on it. The other copy sends to the receiver.
+    const hooks = receiver();
+    const { instance, clock, server } = open(store({ ...SECRETS, [WEBHOOK_SECRET_KEY]: SECRET }), noDelay, undefined, undefined, { webhook: hooks.fetch, copy: leaves });
+    const pass = await finish(clock, instance.runtime.pass());
+    expect(server.calls).toHaveLength(1);
+    expect(hooks.calls).toEqual([]);
+    expect(pass.delivery?.failures).toEqual([]);
+  });
+
+  it("does not start with a name in the field leaveChannels that is not a channel of the instance", () => {
+    const copy: CopySettings = { ...CLOUD, leaveChannels: ["web-hook" as ChannelId] };
+    expect(messageOf(() => open(store(SECRETS), hooked(false), undefined, undefined, { copy }))).toContain("the field leaveChannels names the channel web-hook.");
+  });
+
   it("does not start with the key and no fetch of the channel", () => {
     expect(messageOf(() => open(store({ ...SECRETS, [WEBHOOK_SECRET_KEY]: SECRET }), hooked()))).toContain("the instance has no fetch for it");
   });
