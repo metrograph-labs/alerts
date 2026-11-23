@@ -25,6 +25,8 @@ declare module "@xmpp/client" {
     /** The client tells `disconnect` when the socket closes. `clean` is false after an error of the socket. */
     on(event: "disconnect", listener: (detail: { readonly clean: boolean }) => void): this;
     on(event: "error", listener: (error: Error) => void): this;
+    /** The client tells `close` at the end of the stream, before the socket closes. */
+    on(event: "close", listener: () => void): this;
     on(event: "stanza", listener: (stanza: XmlElement) => void): this;
     start(): Promise<unknown>;
     stop(): Promise<unknown>;
