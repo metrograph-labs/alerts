@@ -152,6 +152,8 @@ import {
   type CopyBillingConfig,
   type CopyListen,
   type CopyPeer,
+  type CopySounder,
+  type CopySounderDevice,
   type CopySettings,
   type DriftCommandConfig,
   type DriftConfig,
@@ -1815,6 +1817,34 @@ export const copyPeerSchema: z.ZodType<CopyPeer, CopyPeer> = schemaOf<CopyPeer>(
     .readonly(),
 );
 
+/** This schema checks the program of one sound or one probe of a sounder: a program and its arguments, with no empty text. */
+const sounderArgvSchema = z.array(z.string().min(1, "An argument of a sounder program is a non-empty text.")).min(1, "A sounder program names its program.").readonly();
+
+/** This schema checks the programs of one sounder of a copy (AL-41). */
+export const copySounderDeviceSchema: z.ZodType<CopySounderDevice, CopySounderDevice> = schemaOf<CopySounderDevice>()(
+  z
+    .strictObject({
+      sound: sounderArgvSchema,
+      levels: z.partialRecord(levelSchema, sounderArgvSchema).readonly().exactOptional(),
+      probe: sounderArgvSchema.exactOptional(),
+    })
+    .readonly(),
+);
+
+/** This schema checks the sounder channel of a copy (AL-41). The channel checks the names of the devices and the counts again at the start. */
+export const copySounderSchema: z.ZodType<CopySounder, CopySounder> = schemaOf<CopySounder>()(
+  z
+    .strictObject({
+      devices: z
+        .record(z.string().min(1, "The name of a sounder is a non-empty text."), copySounderDeviceSchema)
+        .refine((devices) => Object.keys(devices).length > 0, "A sounder channel has one device or more.")
+        .readonly(),
+      sounds: z.partialRecord(levelSchema, z.int().nonnegative("A count of sounds is an integer, 0 or more.")).readonly().exactOptional(),
+      gapMs: durationSchema.exactOptional(),
+    })
+    .readonly(),
+);
+
 /** This schema checks the JSON of the settings of one copy, the file `copy.json`. Then `copyProblems` checks the ranks and the ids. */
 export const copySettingsSchema: z.ZodType<CopySettings, CopySettings> = schemaOf<CopySettings>()(
   z
@@ -1835,6 +1865,7 @@ export const copySettingsSchema: z.ZodType<CopySettings, CopySettings> = schemaO
       configFrom: copyIdSchema.exactOptional(),
       leaveChannels: z.array(channelIdSchema).readonly().exactOptional(),
       leaveSources: z.array(sourceIdSchema).readonly().exactOptional(),
+      sounder: copySounderSchema.exactOptional(),
     })
     .readonly(),
 );

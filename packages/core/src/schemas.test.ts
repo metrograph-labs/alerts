@@ -1037,6 +1037,12 @@ describe("the private configuration", () => {
     for (const leaveChannels of ["webhook", [""], [2]]) fails(copySettingsSchema, { ...home, leaveChannels });
     holds(copySettingsSchema, { ...home, leaveSources: ["gdelt"] });
     for (const leaveSources of ["gdelt", [""], [2]]) fails(copySettingsSchema, { ...home, leaveSources });
+    // The sounder of a copy (AL-41): each device has a program, and each count is a whole number.
+    const desk = { sound: ["beep-tool", "--short"] };
+    holds(copySettingsSchema, { ...home, sounder: { devices: { desk } } });
+    holds(copySettingsSchema, { ...home, sounder: { devices: { desk: { ...desk, levels: { "life-safety": ["beep-tool", "--long"] }, probe: ["beep-tool", "--check"] } }, sounds: { urgent: 0 }, gapMs: 500 } });
+    for (const sounder of [{ devices: {} }, { devices: { desk: { sound: [] } } }, { devices: { desk: { sound: [""] } } }, { devices: { desk: { ...desk, levels: { loud: ["x"] } } } }, { devices: { desk }, sounds: { urgent: 1.5 } }, { devices: { desk }, gapMs: -1 }, { devices: { desk }, extra: 1 }])
+      fails(copySettingsSchema, { ...home, sounder });
     for (const accounts of [{ nwws: 0 }, { nwws: 1.5 }, { nwws: "2" }, { "": 2 }, []]) fails(copySettingsSchema, { ...home, accounts });
     holds(copyListenSchema, { host: "home.example.ts.net", port: 65535 });
     holds(copyPeerSchema, { id: "c-2", url: "https://[fd7a:115c::1]:4751/exchange" });

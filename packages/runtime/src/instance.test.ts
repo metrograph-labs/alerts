@@ -31,6 +31,7 @@ import {
 } from "@mark1russell7/alerts";
 import type { TwilioFetch } from "@mark1russell7/alerts-channel-twilio";
 import { WEBHOOK_CHANNEL, WEBHOOK_EVENT, type WebhookFetch } from "@mark1russell7/alerts-channel-webhook";
+import { SOUNDER_CHANNEL, type CommandRunner } from "@mark1russell7/alerts-channel-sounder";
 import { PUSHOVER_QUOTA, PUSHOVER_RESERVE_NOTICES, PUSHOVER_TIMEOUT_MS, type PushoverChannelOptions } from "@mark1russell7/alerts-channel-pushover";
 import { memoryCache, type ShapeCache } from "@mark1russell7/alerts-shapes-nws";
 import { CANARY_PATH, createNwsSource } from "@mark1russell7/alerts-source-nws-api";
@@ -51,7 +52,7 @@ import { DATE_FORMAT as EIA_DATE_FORMAT, EIA_930_DESCRIPTOR, HOUR_MS, periodEnd,
 import { memoryQuotaStore, quotaGate, type Exchange, type Transport } from "polite-crawler/api";
 import { DEFAULT_POLICY } from "polite-crawler/politeness";
 import { afterEach, describe, expect, it } from "vitest";
-import { ACCOUNT_SOURCES, BOM_SWS_KEY, readsGdelt, CHECKS_KEY, EIA_KEY, CLOUDFLARE_RADAR_KEY, checksKeys, DAEMON_CHECK, daemonCheck, DELIVERY_TIMES, INSTANCE_CHANNELS, INSTANCE_CHECK, INSTANCE_EXPECTATIONS, instanceExpectations, INSTANCE_FETCH_LIMIT, INSTANCE_SOURCES, INSTANCE_TIMES, instanceCheck, instanceProblems, instanceServices, shownNode, shownServices, LOUD_PING_URL_KEY, LOUD_STEADY, nwwsKeys, nwwsSetup, openInstance, PING_URL_KEY, pingKeyOf, pingTargets, RANK_DELAY, RANK_FLOOR, SOURCE_POLICY, sourcePace, twilioSetup, USER_AGENT_NAME, instanceSenders, WEBHOOK_SECRET_KEY, WEBHOOK_USER_AGENT, webhookSetup, type Instance, type InstanceOptions } from "./instance.ts";
+import { ACCOUNT_SOURCES, BOM_SWS_KEY, readsGdelt, CHECKS_KEY, EIA_KEY, CLOUDFLARE_RADAR_KEY, checksKeys, DAEMON_CHECK, daemonCheck, DELIVERY_TIMES, INSTANCE_CHANNELS, INSTANCE_CHECK, INSTANCE_EXPECTATIONS, instanceExpectations, INSTANCE_FETCH_LIMIT, INSTANCE_SOURCES, INSTANCE_TIMES, instanceCheck, instanceProblems, instanceServices, shownNode, shownServices, LOUD_PING_URL_KEY, LOUD_STEADY, nwwsKeys, nwwsSetup, openInstance, PING_URL_KEY, pingKeyOf, pingTargets, RANK_DELAY, RANK_FLOOR, SOURCE_POLICY, sourcePace, twilioSetup, USER_AGENT_NAME, instanceSenders, copySounderProblems, sounderOptions, WEBHOOK_SECRET_KEY, WEBHOOK_USER_AGENT, webhookSetup, type Instance, type InstanceOptions } from "./instance.ts";
 import { heartbeatGap } from "./heartbeat.ts";
 import { NO_PARTS } from "./config.ts";
 import { configFilesOf } from "./config-sync.ts";
@@ -1486,6 +1487,62 @@ describe("the webhook channel of the instance (AL-55)", () => {
 
   it("does not start with the key and no fetch of the channel", () => {
     expect(messageOf(() => open(store({ ...SECRETS, [WEBHOOK_SECRET_KEY]: SECRET }), hooked()))).toContain("the instance has no fetch for it");
+  });
+});
+
+describe("the sounder channel of the instance (AL-41)", () => {
+  // A made-up program. A test looks for its arguments in each problem.
+  const SOUND = ["beep-tool", "--private-arg"];
+  // One sound for each level. Thus the play ends after the first sound, and no timer stays after a test.
+  const ONE = { "life-safety": 1, urgent: 1, notice: 1, digest: 1 } as const;
+  const SOUNDING: CopySettings = { ...ONLY_COPY, sounder: { devices: { desk: { sound: SOUND } }, sounds: ONE } };
+  // Each policy sends the alert to the sounder at once, next to the Pushover message.
+  const sounded = (steps = true): AlertConfig => ({
+    ...CONFIG,
+    contacts: [...CONFIG.contacts, { person, channel: SOUNDER_CHANNEL, address: { device: "desk" } }],
+    policies: steps ? CONFIG.policies.map((entry) => ({ ...entry, steps: [...entry.steps, { channel: SOUNDER_CHANNEL, at: 0 }] })) : CONFIG.policies,
+  });
+
+  /** A fake runner of the programs. Each program ends with the exit code 0. */
+  function runner() {
+    const runs: (readonly string[])[] = [];
+    const run: CommandRunner = async (argv) => {
+      runs.push(argv);
+      return { exitCode: 0 };
+    };
+    return { run, runs };
+  }
+
+  it("makes the sound of the device of the copy for an alert, with the program of copy.json", async () => {
+    const sounds = runner();
+    const { instance, clock } = open(store(SECRETS), sounded(), undefined, undefined, { copy: SOUNDING, sounderRunner: sounds.run });
+    const pass = await finish(clock, instance.runtime.pass());
+    expect(pass.delivery?.sent.map((sent) => sent.channel)).toContain(SOUNDER_CHANNEL);
+    expect(sounds.runs).toEqual([SOUND]);
+  });
+
+  it("has a sender on the channel only for a copy with the field sounder", () => {
+    expect(instanceSenders(store(SECRETS), SOUNDING)).toContain(SOUNDER_CHANNEL);
+    expect(instanceSenders(store(SECRETS))).not.toContain(SOUNDER_CHANNEL);
+    expect(sounderOptions(ONLY_COPY, runner().run)).toBeUndefined();
+    expect(Object.keys(sounderOptions(SOUNDING, runner().run)?.sounders ?? {})).toEqual(["desk"]);
+  });
+
+  it("does not start with a bad field sounder, and no message holds a program or an argument", () => {
+    const bad: CopySettings = { ...ONLY_COPY, sounder: { devices: { "Bad Name": { sound: SOUND } } } };
+    const message = messageOf(() => open(store(SECRETS), CONFIG, 0, TEST_FETCH_LIMIT, { copy: bad, sounderRunner: runner().run }));
+    expect(message).toContain("The file copy.json: the field sounder:");
+    for (const arg of SOUND) expect(message).not.toContain(arg);
+    expect(copySounderProblems({ ...CLOUD, leaveChannels: [SOUNDER_CHANNEL], sounder: SOUNDING.sounder })).toEqual([
+      "The file copy.json: the copy has the field sounder, and its field leaveChannels names the channel sounder. Remove one of the two.",
+    ]);
+    expect(copySounderProblems(SOUNDING)).toEqual([]);
+  });
+
+  it("does not start with a step on the channel and no sounder, and starts when the copy leaves the channel", () => {
+    expect(messageOf(() => open(store(SECRETS), sounded()))).toContain("uses the channel sounder, and the instance has no sender on it.");
+    expect(() => open(store(SECRETS), sounded(false))).not.toThrow();
+    expect(copySounderProblems({ ...CLOUD, leaveChannels: [SOUNDER_CHANNEL] })).toEqual([]);
   });
 });
 
