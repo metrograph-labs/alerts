@@ -5,6 +5,7 @@ import type { IndicatorBreadth } from "./breadth.ts";
 import type { Area, AssessedLevel, Assessment, Coverage, Estimate, Incident, PersonId, PersonWatch, PlaceId, RegionCode, ReportId, ScorePriors, Severity } from "./contracts.ts";
 import { MAP_FORMAT, mapPayload, mapView, regionRank, type MapInput, type MapPayloadInput, type MapPlaceInput, type MapRegion, type MapShape, type ShapeLookup } from "./map.ts";
 import { PRIORS_FORMAT, shadowScore } from "./score.ts";
+import { indicatorSurprise } from "./threat.ts";
 
 const SEEDS = seedsFrom(process.env["SEED"], [1, 2, 3, 4, 5, 6, 7, 8]);
 const PERSON_A = "person:a" as PersonId;
@@ -209,6 +210,10 @@ describe("the payload of the map route", () => {
     };
     expect(mapPayload(payloadInput({ breadth })).breadth).toEqual(breadth);
     expect("breadth" in mapPayload(payloadInput())).toBe(false);
+    // The surprise of the signals (AL-24) goes next to the breadth. Without it, the payload has no field.
+    const surprise = indicatorSurprise(breadth, [{ unit: "world/grid-frequency", reads: 100, signals: 1 }]);
+    expect(mapPayload(payloadInput({ breadth, surprise })).surprise).toEqual(surprise);
+    expect("surprise" in mapPayload(payloadInput({ breadth }))).toBe(false);
   });
 
   it("shows no private incident, also to a person of its addresses (AL-92)", () => {

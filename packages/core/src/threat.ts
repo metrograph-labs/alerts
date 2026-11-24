@@ -6,6 +6,8 @@
  *   unit has a signal or no signal.
  * - The history of a unit gives its base rate: the count of its reads with a signal over the count of its reads. The
  *   rate is the upper bound of the Wilson interval, thus a short history gives a high rate and a low surprise.
+ * - The history counts one read of a unit in each bucket of one hour at most (`signalHistories`). Thus the passes a few
+ *   seconds apart do not count one read many times.
  * - When the units are independent, the count of the units with a signal has the Poisson binomial law of their rates.
  *   The chance of the count of this time or more is the p of the signals.
  * - The surprise is `-log10(p)`. A surprise of 3 tells a count that independent units give one time in 1000 reads.
@@ -18,7 +20,8 @@
  */
 import { poissonBinomialTest, wilson } from "@mark1russell7/rigor-statistics";
 import { compareCodeUnits } from "@mark1russell7/text/order";
-import type { Breadth } from "./breadth.ts";
+import type { Breadth, IndicatorBreadth } from "./breadth.ts";
+import type { Duration, Instant, PlaceId } from "./contracts.ts";
 
 /** One unit of evidence at the time of the read. */
 export interface SignalUnit {
@@ -120,4 +123,89 @@ export function surpriseOf(units: readonly SignalUnit[], histories: readonly Sig
  */
 export function breadthUnits(breadth: Breadth, scope: string): SignalUnit[] {
   return breadth.dimensions.filter((count) => count.read > 0).map((count) => ({ unit: `${scope}/${count.dimension}`, signal: count.signals > 0 }));
+}
+
+/** The scope of the units of the world. */
+export const WORLD_SCOPE = "world";
+
+/** This function gives the scope of the units of a watched place: `place/<id>`. Thus no place id gives the scope `world`. */
+export function placeScope(place: PlaceId): string {
+  return `place/${place}`;
+}
+
+/** The surprise of the signals of one watched place. */
+export interface PlaceSurprise extends Surprise {
+  readonly place: PlaceId;
+}
+
+/** The surprise of the signals of the world and of each watched place. */
+export interface IndicatorSurprise {
+  readonly world: Surprise;
+  /** The surprise of each place, in the order of the places of the breadth. */
+  readonly places: readonly PlaceSurprise[];
+}
+
+/**
+ * This function gives the units of the breadth of the world and of each place. The units of the world have the scope
+ * `world`, and the units of a place have the scope of `placeScope`.
+ */
+export function indicatorUnits(breadth: IndicatorBreadth): SignalUnit[] {
+  return [...breadthUnits(breadth.world, WORLD_SCOPE), ...breadth.places.flatMap((place) => breadthUnits(place, placeScope(place.place)))];
+}
+
+/** This function gives the surprise of the signals of the world and of each place, from the histories of the units. */
+export function indicatorSurprise(breadth: IndicatorBreadth, histories: readonly SignalHistory[], minReads: number = MIN_READS): IndicatorSurprise {
+  return {
+    world: surpriseOf(breadthUnits(breadth.world, WORLD_SCOPE), histories, minReads),
+    places: breadth.places.map((place) => ({ place: place.place, ...surpriseOf(breadthUnits(place, placeScope(place.place)), histories, minReads) })),
+  };
+}
+
+/**
+ * The size of a bucket of the history: one hour. The history of a unit holds one read in each bucket at most.
+ *
+ * Two passes a few seconds apart give the same read nearly always. A count of each pass thus counts one read many times,
+ * and the times with many passes count more. A bucket of a fixed size gives each hour the same weight.
+ */
+export const HISTORY_BUCKET: Duration = 3_600_000;
+
+/** The reads of the units in one bucket of the history. */
+export interface BucketReads {
+  /** The start of the bucket, from `bucketOf`. */
+  readonly bucket: Instant;
+  /** The units with a read in the bucket. A unit with no read in the bucket is not in the list. */
+  readonly units: readonly SignalUnit[];
+}
+
+/** This function gives the start of the bucket of a time: the time rounded down to a whole count of buckets. */
+export function bucketOf(at: Instant, size: Duration = HISTORY_BUCKET): Instant {
+  if (!Number.isFinite(size) || size <= 0) throw new RangeError(`The size of a bucket is ${size}, not a finite number above 0.`);
+  return Math.floor(at / size) * size;
+}
+
+/**
+ * This function gives the history of each unit from the reads of the buckets, in the order of the code units of the ids.
+ * The result is a function of the set of the reads: the order and a duplicate do not change it.
+ *
+ * - A unit gets one read for each bucket with a read of the unit. Two reads of a unit in one bucket count one time.
+ * - A read with a signal adds to the reads and to the signals. When a unit has two reads in one bucket, a signal counts.
+ * - A bucket with no read of a unit adds nothing to the history of the unit.
+ */
+export function signalHistories(buckets: readonly BucketReads[]): SignalHistory[] {
+  const seen = new Map<Instant, Map<string, boolean>>();
+  for (const item of buckets) {
+    const units = seen.get(item.bucket) ?? new Map<string, boolean>();
+    for (const one of item.units) units.set(one.unit, (units.get(one.unit) ?? false) || one.signal);
+    seen.set(item.bucket, units);
+  }
+  const counts = new Map<string, { reads: number; signals: number }>();
+  for (const units of seen.values()) {
+    for (const [unit, signal] of units) {
+      const count = counts.get(unit) ?? { reads: 0, signals: 0 };
+      count.reads += 1;
+      if (signal) count.signals += 1;
+      counts.set(unit, count);
+    }
+  }
+  return [...counts].sort(([a], [b]) => compareCodeUnits(a, b)).map(([unit, count]) => ({ unit, reads: count.reads, signals: count.signals }));
 }

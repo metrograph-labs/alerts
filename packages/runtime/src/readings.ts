@@ -7,7 +7,7 @@
  * each series then has no read until its history has enough values again.
  */
 import type { DatabaseSync } from "node:sqlite";
-import { checkWith, DEFAULT_BASELINE, readingSchema, type Duration, type Instant, type Reading, type SourceId } from "@mark1russell7/alerts";
+import { checkWith, DEFAULT_BASELINE, readingSchema, type BucketReads, type Duration, type Instant, type Reading, type SignalUnit, type SourceId } from "@mark1russell7/alerts";
 import { migrate, openDatabase, openOrQuarantine, transaction, type Migration } from "@mark1russell7/sqlite";
 
 /** The name of the file of the store in the home folder of the instance. */
@@ -41,7 +41,17 @@ export interface ReadingStore {
   series(ref: SeriesRef, since: Instant): Reading[];
   /** This function gives each series of the store, in the order of the source, the measure and the series. */
   refs(): SeriesRef[];
-  /** This function deletes each reading before `before`, and gives the count of the deleted readings. */
+  /**
+   * This function adds the reads of the units of one bucket (AL-24) in one transaction. It gives the count of the new
+   * reads. The key of a read is its bucket and its unit. A read with the key of a stored read changes nothing.
+   */
+  addUnitReads(reads: BucketReads): number;
+  /** This function gives the reads of the units of each bucket at `since` or later, in the order of the buckets. */
+  unitReads(since: Instant): BucketReads[];
+  /**
+   * This function deletes each reading before `before`, and gives the count of the deleted readings. It also deletes the
+   * reads of the units of each bucket before `before`.
+   */
   prune(before: Instant): number;
   /** This function gives the count of the readings in the store. */
   count(): number;
@@ -69,6 +79,18 @@ const MIGRATIONS: readonly Migration<DatabaseSync>[] = [
   CREATE INDEX readings_at ON readings (at);`,
 ];
 
+// The reads of the units (AL-24) are a part of the file with its own version. Thus an older build opens the file: it
+// reads only the version of the readings, and it does not know the table.
+const UNIT_READS_PART = "unit-reads";
+const UNIT_READS_MIGRATIONS: readonly Migration<DatabaseSync>[] = [
+  `CREATE TABLE unit_reads (
+    bucket INTEGER NOT NULL,
+    unit TEXT NOT NULL,
+    signal INTEGER NOT NULL,
+    PRIMARY KEY (bucket, unit)
+  ) WITHOUT ROWID;`,
+];
+
 // The body of a row, or `undefined` for a row with a problem. A later build can change the form of a reading.
 function readingOf(body: unknown): Reading | undefined {
   if (typeof body !== "string") return undefined;
@@ -92,6 +114,8 @@ export function openReadingStore(path: string): FileReadingStore {
     const db = openDatabase(file, { wal: true, synchronous: "NORMAL", busyTimeoutMs: 5000, makeFolder: true });
     try {
       migrate(db, MIGRATIONS);
+      // A newer part keeps its table. A read of the units that then fails goes to the hook of the faults, not to quarantine.
+      migrate(db, UNIT_READS_MIGRATIONS, { part: UNIT_READS_PART, newer: "keep" });
       return db;
     } catch (error) {
       db.close();
@@ -107,6 +131,9 @@ export function openReadingStore(path: string): FileReadingStore {
   const list = db.prepare("SELECT DISTINCT source, measure, series FROM readings ORDER BY source, measure, series");
   const drop = db.prepare("DELETE FROM readings WHERE at < $before");
   const total = db.prepare("SELECT count(*) AS n FROM readings");
+  const putUnit = db.prepare("INSERT INTO unit_reads (bucket, unit, signal) VALUES ($bucket, $unit, $signal) ON CONFLICT DO NOTHING");
+  const readUnits = db.prepare("SELECT bucket, unit, signal FROM unit_reads WHERE bucket >= $since ORDER BY bucket, unit");
+  const dropUnits = db.prepare("DELETE FROM unit_reads WHERE bucket < $before");
   return {
     quarantined: quarantined?.folder,
     add: (readings) =>
@@ -122,7 +149,26 @@ export function openReadingStore(path: string): FileReadingStore {
     series: (ref, since) =>
       read.all({ source: ref.source, measure: ref.measure, series: ref.series, since }).flatMap((row) => readingOf(row["body"]) ?? []),
     refs: () => list.all().map((row) => ({ source: String(row["source"]) as SourceId, measure: String(row["measure"]), series: String(row["series"]) })),
-    prune: (before) => Number(drop.run({ before }).changes),
+    addUnitReads: (reads) =>
+      transaction(db, () => {
+        let added = 0;
+        for (const { unit, signal } of reads.units) added += Number(putUnit.run({ bucket: reads.bucket, unit, signal: signal ? 1 : 0 }).changes);
+        return added;
+      }),
+    unitReads: (since) => {
+      const buckets: { bucket: Instant; units: SignalUnit[] }[] = [];
+      for (const row of readUnits.all({ since })) {
+        const bucket = Number(row["bucket"]);
+        if (buckets.at(-1)?.bucket !== bucket) buckets.push({ bucket, units: [] });
+        buckets.at(-1)?.units.push({ unit: String(row["unit"]), signal: Number(row["signal"]) !== 0 });
+      }
+      return buckets;
+    },
+    prune: (before) =>
+      transaction(db, () => {
+        dropUnits.run({ before });
+        return Number(drop.run({ before }).changes);
+      }),
     count: () => Number(total.get()?.["n"] ?? 0),
     close: () => db.close(),
   };
