@@ -1,14 +1,14 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
-import type { FetchOutcome, PlaceId, Watch, WatchedPlace } from "@mark1russell7/alerts";
-import { crc32 } from "@mark1russell7/files/archive";
+import type { Cursor, FetchOutcome, PlaceId, Watch, WatchedPlace } from "@mark1russell7/alerts";
+import { writeZipEntries } from "@mark1russell7/files/archive";
 import type { Exchange, Reply, Transport } from "polite-crawler/api";
 import { HostScheduler } from "polite-crawler/politeness";
 import { describe, expect, it } from "vitest";
 
 import { checkCanary } from "./check.ts";
-import { censusBody, censusRegions, createGdeltFetch, eventFilePath, headBody, LAST_UPDATE_PATH, nearPlaces, readEventFile, readLastUpdate, stampsToRead } from "./fetch.ts";
+import { censusBody, censusRegions, createGdeltFetch, cursorOf, eventFilePath, headBody, LAST_UPDATE_PATH, nearPlaces, readCursor, readEventFile, readLastUpdate, stampsToRead } from "./fetch.ts";
 import { mapObservation } from "./map.ts";
 import { addedTime, eventOf } from "./row.ts";
 
@@ -25,52 +25,14 @@ const place = (id: string, at?: readonly [number, number], bufferKm = 0): Watche
 /** The places of the tests: the cities of the three kept events. The requests hold no place. */
 const WATCH: Watch = { places: [place("dhaka", [90.4086, 23.7231]), place("port-au-prince", [-72.335, 18.5392]), place("gaza", [34.3333, 31.4167])] };
 
-/** This function writes a ZIP archive whose entries are stored with no compression. It is only for the tests. */
-function storedZip(entries: readonly { readonly name: string; readonly text: string }[]): Uint8Array {
-  const locals: Buffer[] = [];
-  const centrals: Buffer[] = [];
-  let offset = 0;
-  for (const { name, text } of entries) {
-    const nameBytes = Buffer.from(name, "utf8");
-    const data = Buffer.from(text, "utf8");
-    const crc = crc32(data);
-    const local = Buffer.alloc(30);
-    local.writeUInt32LE(0x04034b50, 0);
-    local.writeUInt16LE(20, 4);
-    local.writeUInt16LE(0x21, 12);
-    local.writeUInt32LE(crc, 14);
-    local.writeUInt32LE(data.length, 18);
-    local.writeUInt32LE(data.length, 22);
-    local.writeUInt16LE(nameBytes.length, 26);
-    const central = Buffer.alloc(46);
-    central.writeUInt32LE(0x02014b50, 0);
-    central.writeUInt16LE(20, 4);
-    central.writeUInt16LE(20, 6);
-    central.writeUInt16LE(0x21, 14);
-    central.writeUInt32LE(crc, 16);
-    central.writeUInt32LE(data.length, 20);
-    central.writeUInt32LE(data.length, 24);
-    central.writeUInt16LE(nameBytes.length, 28);
-    central.writeUInt32LE(offset, 42);
-    locals.push(local, nameBytes, data);
-    centrals.push(central, nameBytes);
-    offset += 30 + nameBytes.length + data.length;
-  }
-  const directory = Buffer.concat(centrals);
-  const end = Buffer.alloc(22);
-  end.writeUInt32LE(0x06054b50, 0);
-  end.writeUInt16LE(entries.length, 8);
-  end.writeUInt16LE(entries.length, 10);
-  end.writeUInt32LE(directory.length, 12);
-  end.writeUInt32LE(offset, 16);
-  return new Uint8Array(Buffer.concat([...locals, directory, end]));
-}
+/** This function gives a ZIP archive of one text file, stored with no compression. */
+const textZip = (name: string, text: string): Uint8Array => writeZipEntries([{ name, bytes: new TextEncoder().encode(text), method: 0 }]);
 
 /** This function gives the time `YYYYMMDDHHMMSS` that is `minutes` after the time of the fixture. */
 const stampAfter = (minutes: number): string => new Date(addedTime(STAMP)! + minutes * MIN).toISOString().replace(/\D/g, "").slice(0, 14);
 
 /** This function gives the archive of an event file of the time `stamp`, with the real lines and that time of addition. */
-const archiveOf = (stamp: string): Uint8Array => storedZip([{ name: `${stamp}.export.CSV`, text: TEXT.replaceAll("\t20261123200000\t", `\t${stamp}\t`) }]);
+const archiveOf = (stamp: string): Uint8Array => textZip(`${stamp}.export.CSV`, TEXT.replaceAll("\t20261123200000\t", `\t${stamp}\t`));
 
 /** This function gives the text of `lastupdate.txt` for an archive, in the real format. */
 const lastUpdateOf = (stamp: string, archive: Uint8Array, md5 = createHash("md5").update(archive).digest("hex")): string =>
@@ -84,7 +46,11 @@ const text = (body: string, status = 200): Reply => ({ status, statusText: statu
 const bytes = (data: Uint8Array): Reply => ({ status: 200, statusText: "OK", headers: { "content-type": "application/zip" }, body: "", bytes: data });
 const missing: Reply = { status: 404, statusText: "Not Found", headers: {}, body: "" };
 
-/** This function makes a fetch whose transport answers from a map of paths. Each test changes the map between fetches. */
+/**
+ * This function makes a fetch whose transport answers from a map of paths. Each test changes the map between fetches.
+ * As the runtime, the harness keeps the cursor of each fetch that succeeds and gives it to the next fetch. `start` makes
+ * the fetch function again with the kept cursor, as a start of the runtime does.
+ */
 const fetchWith = (routes: Map<string, Reply>, watch: Watch = WATCH) => {
   const sent: Exchange[] = [];
   const transport: Transport = async (exchange) => {
@@ -94,8 +60,15 @@ const fetchWith = (routes: Map<string, Reply>, watch: Watch = WATCH) => {
   };
   let time = START;
   const clock = { now: () => time, sleep: async (ms: number) => void (time += ms) };
-  const fetch = createGdeltFetch({ pace: { scheduler: new HostScheduler(clock, 1), now: clock.now }, transport, userAgent: "alerts-tests", baseUrl: BASE, minIntervalMs: 0, timeoutMs: 1000 });
-  return { fetch: () => fetch({ watch }), sent, move: (ms: number) => void (time += ms) };
+  const make = () => createGdeltFetch({ pace: { scheduler: new HostScheduler(clock, 1), now: clock.now }, transport, userAgent: "alerts-tests", baseUrl: BASE, minIntervalMs: 0, timeoutMs: 1000 });
+  let fetch = make();
+  let cursor: Cursor | undefined;
+  const fetchOnce = async (): Promise<FetchOutcome> => {
+    const outcome = await fetch({ watch, ...(cursor === undefined ? {} : { cursor }) });
+    if (outcome.ok && outcome.cursor !== undefined) cursor = outcome.cursor;
+    return outcome;
+  };
+  return { fetch: fetchOnce, sent, move: (ms: number) => void (time += ms), start: () => void (fetch = make()), cursor: () => cursor };
 };
 
 /** This function puts the event file of `stamp` in the routes, and names it in `lastupdate.txt`. */
@@ -185,7 +158,7 @@ describe("the census of the regions (AL-142)", () => {
   });
 
   it("counts the events of a state with the place of the state only, and gives 0 to a region with no event", () => {
-    const archive = storedZip([{ name: `${STAMP}.export.CSV`, text: stateText(STAMP) }]);
+    const archive = textZip(`${STAMP}.export.CSV`, stateText(STAMP));
     const file = readEventFile(archive, STAMP, undefined, () => true, ["CA", "TX"]);
     expect(typeof file === "object" ? file.census : file).toEqual({ CA: 0, TX: 1 });
     expect(typeof file === "object" ? file.reported : file).toBe(3);
@@ -199,7 +172,7 @@ describe("the census of the regions (AL-142)", () => {
 
   it("gives one census for each file that a fetch reads, only for a watch with a US state", async () => {
     const routes = new Map<string, Reply>();
-    const archive = storedZip([{ name: `${STAMP}.export.CSV`, text: stateText(STAMP) }]);
+    const archive = textZip(`${STAMP}.export.CSV`, stateText(STAMP));
     routes.set(eventFilePath(STAMP), bytes(archive));
     routes.set(LAST_UPDATE_PATH, text(lastUpdateOf(STAMP, archive)));
     const { fetch, sent } = fetchWith(routes, { places: [statePlace("austin", "TX")] });
@@ -301,6 +274,49 @@ describe("createGdeltFetch", () => {
     expect(pathsOf(sent).slice(-2)).toEqual([LAST_UPDATE_PATH, eventFilePath(stampAfter(30))]);
     expect(late.ok && late.complete).toBe(true);
     expect(bodiesOf(late).at(-1)?.["file"]).toBe(stampAfter(30));
+  });
+
+  it("gives the same last head after a start as a copy that runs, while GDELT does not have its newest files (AL-166)", async () => {
+    const routes = new Map<string, Reply>();
+    publish(routes, STAMP);
+    const { fetch, move, start, cursor } = fetchWith(routes);
+    const first = await fetch();
+    // GDELT names four new files one after the other, and has none of them.
+    for (const minutes of [15, 30, 45, 60]) {
+      publish(routes, stampAfter(minutes));
+      routes.delete(eventFilePath(stampAfter(minutes)));
+    }
+    move(60 * MIN);
+    const running = await fetch();
+    start();
+    const started = await fetch();
+    const heads = (outcome: FetchOutcome): readonly unknown[] => bodiesOf(outcome).map((body) => body["file"]);
+    expect(heads(running)).toEqual([STAMP]);
+    expect(started).toEqual(running);
+    expect(started.ok && !started.complete && started.observations.at(-1)?.id).toBe(first.ok ? first.observations.at(-1)?.id : "x");
+    expect(readCursor(cursor()).head?.stamp).toBe(STAMP);
+    // When GDELT has the newest file again, the copy after the start reads it.
+    publish(routes, stampAfter(60));
+    move(MIN);
+    const back = await fetch();
+    expect(back.ok && back.complete).toBe(true);
+    expect(heads(back).at(-1)).toBe(stampAfter(60));
+  });
+
+  it("gives a server failure, not a refusal, when the first newest file is missing (AL-166)", async () => {
+    const routes = new Map<string, Reply>();
+    publish(routes, STAMP);
+    routes.delete(eventFilePath(STAMP));
+    const outcome = await fetchWith(routes).fetch();
+    expect(outcome.ok ? undefined : outcome.failure).toEqual({ kind: "server", message: `lastupdate.txt names the file, but GDELT does not have it (404): ${BASE}${eventFilePath(STAMP)}` });
+  });
+
+  it("reads the state of its own cursor, and leaves out each value that is not valid", () => {
+    const head = { stamp: STAMP, body: headBody(STAMP, { lines: 5, parsed: 5, reported: 3, bodies: [] }) };
+    expect(readCursor(cursorOf(stampAfter(15), head))).toEqual({ stamp: stampAfter(15), head });
+    expect(readCursor(undefined)).toEqual({});
+    expect(readCursor({ stamp: "soon", head: "{}" })).toEqual({});
+    expect(readCursor({ head: head.body })).toEqual({ head });
   });
 
   it("fails when the first newest file is missing, has a wrong digest, or lastupdate.txt names no file", async () => {

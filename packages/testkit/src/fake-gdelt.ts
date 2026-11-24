@@ -9,10 +9,10 @@
  */
 import { createHash } from "node:crypto";
 import { eventFilePath, FILE_STEP_MS, GDELT_BASE_URL, LAST_UPDATE_PATH, REPORTED_ROOTS, stampOf } from "@mark1russell7/alerts-source-gdelt";
+import { writeZipEntries } from "@mark1russell7/files/archive";
 import { random, seedOf, type Random } from "@mark1russell7/rigor-generators";
 import type { FakeReply, FakeRequest } from "./fake-server.ts";
 import { MEASURE_PLACE } from "./seed-home.ts";
-import { zipArchive } from "./zip.ts";
 
 /** The lines of one event file. A real file of 2026-11-23 had 400 KB of text, and a line has 340 bytes on average. */
 export const GDELT_ROWS = 1_200;
@@ -109,7 +109,7 @@ export function createFakeGdelt(load: GdeltLoad = {}): FakeGdelt {
   const archiveOf = (stamp: string): Uint8Array => {
     const found = archives.get(stamp);
     if (found !== undefined) return found;
-    const made = zipArchive([{ name: `${stamp}.export.CSV`, text: gdeltEventText(stamp, load) }]);
+    const made = writeZipEntries([{ name: `${stamp}.export.CSV`, bytes: new TextEncoder().encode(gdeltEventText(stamp, load)) }]);
     archives.set(stamp, made);
     return made;
   };
