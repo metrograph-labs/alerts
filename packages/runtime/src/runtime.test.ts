@@ -161,6 +161,7 @@ function crashing(inner: RuntimeLog, at: number): RuntimeLog {
     count: () => inner.count(),
     counts: () => inner.counts(),
     head: () => inner.head(),
+    endStart: () => inner.endStart(),
     close: () => inner.close(),
     appendAll(events, accept) {
       if (gone) throw new Crash("The process is gone.");

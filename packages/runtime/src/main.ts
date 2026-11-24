@@ -256,6 +256,9 @@ async function runtime(): Promise<ServiceBuilder> {
     if (marked || service.lifecycle?.state !== "running") return;
     marked = true;
     blockWatch?.phase("run after the good start");
+    // The first pass is over: the log sets the automatic checkpoint of SQLite again, and copies its WAL file once (AL-151).
+    const ended = log.endStart();
+    if (ended !== undefined) out.error(`The checkpoint of the log after the good start failed: ${ended}`);
     // Each block of 1 s or more goes to the output at once, and the next pass writes it into the log. Thus a stop after a
     // block has its cause on file.
     loopWatch = startLoopWatch({

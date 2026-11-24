@@ -124,6 +124,28 @@ describe("the checked open of the log at the boot (AL-50)", () => {
     }
   }
 
+  it("ends the start of the log after the first pass, and keeps each event (AL-151)", async () => {
+    const opened = openCheckedRuntimeLog(path, { now: () => T0 });
+    let first: string[];
+    try {
+      await runtimeOn(opened.log, fakeWallClock(T0), "run-1").pass();
+      expect(opened.log.endStart()).toBeUndefined();
+      expect(opened.log.endStart()).toBeUndefined();
+      await runtimeOn(opened.log, fakeWallClock(T0 + MINUTE), "run-1").pass();
+      first = ids(opened.log);
+    } finally {
+      opened.log.close();
+    }
+    const again = openCheckedRuntimeLog(path, { now: () => T0 + 2 * MINUTE });
+    try {
+      expect(ids(again.log)).toEqual(first);
+    } finally {
+      again.log.close();
+    }
+    // The limit of the start goes to the open of SQLite, and SQLite refuses a bad limit.
+    expect(() => openCheckedRuntimeLog(join(folder, "bad.sqlite"), { now: () => T0, startCheckpointPages: -1 })).toThrow(RangeError);
+  });
+
   it("opens a new file and a file that passes its check with no recovery", async () => {
     const first = await firstLife();
     expect(first.length).toBeGreaterThan(2);

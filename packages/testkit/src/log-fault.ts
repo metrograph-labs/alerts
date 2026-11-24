@@ -412,6 +412,7 @@ function lockingLog(log: RuntimeLog, holder: DatabaseSync, plan: LockPlan, state
     count: () => log.count(),
     counts: () => log.counts(),
     head: () => log.head(),
+    endStart: () => log.endStart(),
     close: () => log.close(),
     appendAll(events, accept) {
       if (state.from === undefined && events.some((event) => event.type === plan.type)) {

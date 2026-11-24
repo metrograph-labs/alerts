@@ -52,8 +52,23 @@ export interface RuntimeLog {
    * function throws, and nothing changed.
    */
   appendAll(events: readonly RuntimeEvent[], accept: (event: RuntimeEvent) => void): readonly string[];
+  /**
+   * This function ends the start of the log (AL-151). It sets the automatic checkpoint to the default of SQLite, and it
+   * does one `PASSIVE` checkpoint of the WAL file. It gives the problem as a text when the checkpoint fails.
+   */
+  endStart(): string | undefined;
   close(): void;
 }
+
+/**
+ * The pages of the WAL file that start the automatic checkpoint at the boot (AL-151). The large commits of the first pass
+ * stay below this limit, thus no commit of the first pass copies the WAL file. The limit holds the WAL file near 200 MB
+ * when `endStart` does not come.
+ */
+export const START_CHECKPOINT_PAGES = 50_000;
+
+/** The pages of the WAL file that start the automatic checkpoint after `endStart`: the default of SQLite. */
+export const RUN_CHECKPOINT_PAGES = 1000;
 
 /** The options of the file. */
 export interface RuntimeLogOptions {
@@ -73,6 +88,8 @@ export function openRuntimeLog(path: string, options: RuntimeLogOptions = {}): R
 export interface CheckedLogOptions extends RuntimeLogOptions {
   /** This clock gives the time of the `recovered` event and of the name of the quarantine folder. */
   readonly now: () => Instant;
+  /** The pages of the automatic checkpoint until `endStart`. The default is `START_CHECKPOINT_PAGES`. */
+  readonly startCheckpointPages?: number;
 }
 
 /** The result of `openCheckedRuntimeLog`. */
@@ -93,11 +110,18 @@ export interface CheckedLog {
  *
  * A fault that is not a broken file, for example a lock, goes to the caller. The broken file does not change.
  *
+ * Each commit syncs the WAL file, thus the automatic checkpoint does not change what a crash keeps. The log starts with a
+ * high limit of the automatic checkpoint. Call `endStart` of the log after the first pass.
+ *
  * @param path - The path of the log file.
  * @param options - The clock of the recovery and the options of the file.
  */
 export function openCheckedRuntimeLog(path: string, options: CheckedLogOptions): CheckedLog {
-  const opened = openCheckedEventLog(path, parseEvent, { ...fileOptions(options), quarantine: { now: new Date(options.now()) } });
+  const opened = openCheckedEventLog(path, parseEvent, {
+    ...fileOptions(options),
+    autocheckpointPages: options.startCheckpointPages ?? START_CHECKPOINT_PAGES,
+    quarantine: { now: new Date(options.now()) },
+  });
   const log = runtimeLog(opened.log);
   let events: readonly RecoveredEvent[];
   try {
@@ -166,6 +190,15 @@ function runtimeLog(log: EventLogFile<RuntimeEvent>): RuntimeLog {
         throw error;
       }
       return results.flatMap((result, at) => (result.kind === "conflict" ? [events[at]!.id] : []));
+    },
+    endStart() {
+      try {
+        log.setAutocheckpoint(RUN_CHECKPOINT_PAGES);
+        log.checkpoint("PASSIVE");
+        return undefined;
+      } catch (error) {
+        return error instanceof Error ? error.message : String(error);
+      }
     },
     close: () => log.close(),
   };

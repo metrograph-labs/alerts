@@ -41,6 +41,7 @@ function killingLog(log: RuntimeLog, point: KillPoint | "none"): RuntimeLog {
     count: () => log.count(),
     counts: () => log.counts(),
     head: () => log.head(),
+    endStart: () => log.endStart(),
     close: () => log.close(),
     appendAll(events, accept) {
       const types = new Set(events.map((event) => event.type));

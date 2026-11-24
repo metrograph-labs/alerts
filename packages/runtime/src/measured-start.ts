@@ -338,6 +338,9 @@ export async function openMeasuredRuntime(home: string, options: MeasuredOptions
     const opened = performance.now();
     const first = await instance.runtime.pass();
     ready = true;
+    // The start of a live copy ends the start of the log at its good start (AL-151).
+    const ended = log.endStart();
+    if (ended !== undefined) report(`The checkpoint after the first pass failed: ${ended}`);
     let closed = false;
     return {
       instance,
