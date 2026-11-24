@@ -78,6 +78,8 @@ export const DELAY_LIMITS: DelayLimitOptions = { quantile: 0.99, level: 0.95 };
 
 /** The configuration of the views. The private configuration gives the places. */
 export interface ViewConfig extends FoldContext {
+  /** The whole descriptors of the sources. The fold reads only their fields of `HealthSource`. */
+  readonly sources: readonly SourceDescriptor[];
   readonly places: readonly WatchedPlace[];
   /** The taxonomy codes or prefixes of the coverage at each place. */
   readonly kinds: readonly string[];

@@ -201,6 +201,7 @@ HISTORY_FORMAT: build/index.d.ts#HISTORY_FORMAT
 HealthOptions: build/index.d.ts#HealthOptions
 HealthPayload: build/index.d.ts#HealthPayload
 HealthPayloadInput: build/index.d.ts#HealthPayloadInput
+HealthSource: build/index.d.ts#HealthSource
 HealthState: build/index.d.ts#HealthState
 HealthStep: build/index.d.ts#HealthStep
 HealthTrack: build/index.d.ts#HealthTrack
@@ -677,6 +678,7 @@ hasKind: build/index.d.ts#hasKind
 health: build/index.d.ts#health
 healthPayload: build/index.d.ts#healthPayload
 healthPayloadSchema: build/index.d.ts#healthPayloadSchema
+healthSource: build/index.d.ts#healthSource
 healthStateSchema: build/index.d.ts#healthStateSchema
 heldPersons: build/index.d.ts#heldPersons
 heldText: build/index.d.ts#heldText
@@ -2335,6 +2337,9 @@ export interface HealthPayloadInput {
   readonly channels?: readonly ChannelSnapshot[];
   readonly channelDown?: ChannelDownPolicy;
 }
+
+### build/index.d.ts#HealthSource
+export type HealthSource = Pick<SourceDescriptor, "id" | "interval" | "slowAfter" | "maxQuiet">;
 
 ### build/index.d.ts#HealthState
 export type HealthState = "unknown" | "healthy" | "slow" | "failing" | "silent" | "changed";
@@ -4444,7 +4449,7 @@ export declare const addressValueSchema: z.ZodType<AddressValue, AddressValue>;
 export declare function admits(policy: AssessPolicy, incident: Pick<Incident, "status" | "kind">): boolean;
 
 ### build/index.d.ts#advanceHealth
-export declare function advanceHealth(track: HealthTrack, now: Instant, descriptor: SourceDescriptor, options?: HealthOptions): HealthStep;
+export declare function advanceHealth(track: HealthTrack, now: Instant, descriptor: HealthSource, options?: HealthOptions): HealthStep;
 
 ### build/index.d.ts#alertAreaSchema
 export declare const alertAreaSchema: z.ZodType<AlertArea, AlertArea>;
@@ -4867,13 +4872,16 @@ export declare function graphLabels(labels: WhyLabels, graph: Pick<InterestGraph
 export declare function hasKind(prefixes: readonly string[], kind: string): boolean;
 
 ### build/index.d.ts#health
-export declare function health(descriptor: SourceDescriptor, start: Instant, records: readonly FetchRecord[], now: Instant, options?: HealthOptions): HealthStep;
+export declare function health(descriptor: HealthSource, start: Instant, records: readonly FetchRecord[], now: Instant, options?: HealthOptions): HealthStep;
 
 ### build/index.d.ts#healthPayload
 export declare function healthPayload(input: HealthPayloadInput): HealthPayload;
 
 ### build/index.d.ts#healthPayloadSchema
 export declare const healthPayloadSchema: z.ZodType<HealthPayload, HealthPayload>;
+
+### build/index.d.ts#healthSource
+export declare function healthSource(descriptor: HealthSource): HealthSource;
 
 ### build/index.d.ts#healthStateSchema
 export declare const healthStateSchema: z.ZodType<HealthState, HealthState>;
@@ -5202,7 +5210,7 @@ export declare function observeConditions(verdicts: readonly ObserveVerdict[], l
 export declare function observeCut(input: ObserveCutInput): ObserveCut;
 
 ### build/index.d.ts#observeFetch
-export declare function observeFetch(track: HealthTrack, record: FetchRecord, descriptor: SourceDescriptor, options?: HealthOptions): HealthStep;
+export declare function observeFetch(track: HealthTrack, record: FetchRecord, descriptor: HealthSource, options?: HealthOptions): HealthStep;
 
 ### build/index.d.ts#observeVerdict
 export declare function observeVerdict(input: ObserveVerdictInput): ObserveVerdict;

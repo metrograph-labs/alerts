@@ -11,7 +11,7 @@
  *
  * The store of `@mark1russell7/sqlite` also checks that the log has the event of the mark at the position of the mark.
  */
-import { DEFAULT_LINK_POLICY, type Duration } from "@mark1russell7/alerts";
+import { DEFAULT_LINK_POLICY, healthSource, type Duration, type SourceDescriptor } from "@mark1russell7/alerts";
 import { isRecord } from "@mark1russell7/optional/read";
 import { canonicalHash } from "@mark1russell7/rigor-generators";
 import { openFoldSnapshot, openOrQuarantine, type FoldKey, type FoldMark, type FoldRow, type FoldSnapshotFile, type Quarantined } from "@mark1russell7/sqlite";
@@ -63,10 +63,28 @@ export interface SnapshotLog {
 
 /** This function gives the key of the snapshots of a fold context on a log. */
 export function snapshotKey(context: FoldContext, log: SnapshotLog): FoldKey {
+  // Only the fields that the fold reads (AL-156). Thus a change of the kinds or of the text of a source keeps the snapshot.
+  return keyOf(context, log, context.sources.map(healthSource));
+}
+
+/**
+ * This function gives the key of the old form, over the whole descriptors of the sources (AL-156). The fold reads only the
+ * fields of `HealthSource`, thus a snapshot of the old key is a snapshot of the new key. A start reads the old key only
+ * when the new key gives nothing.
+ *
+ * This read ends after one deploy: each start writes its snapshot with the new key. AL-156 removes it when both copies
+ * have a snapshot of the new key.
+ */
+export function wholeSourcesKey(context: FoldContext & { readonly sources: readonly SourceDescriptor[] }, log: SnapshotLog): FoldKey {
+  return keyOf(context, log, context.sources);
+}
+
+// The key of a context on a log, with the given form of the sources.
+function keyOf(context: FoldContext, log: SnapshotLog, sources: readonly unknown[]): FoldKey {
   const parts = {
     first: log.first,
     recoveries: log.recoveries,
-    sources: context.sources,
+    sources,
     health: context.health ?? null,
     // The retention with its defaults. Thus a change of a default of the core gives a new key.
     retention: context.retention === undefined ? null : retention(context.retention),
