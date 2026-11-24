@@ -30,7 +30,7 @@ import { readSnapshot, snapshotKey, snapshotRows, type StartRead, type StartSnap
 import { retention, type RetentionOptions } from "./retention.ts";
 import type { ReadWatch } from "./schedule.ts";
 import { seriesReads } from "./series-reads.ts";
-import { fold, rebuild, type ExchangeCursor, type RuntimeState } from "./state.ts";
+import { fold, foldScratch, rebuild, type ExchangeCursor, type RuntimeState } from "./state.ts";
 import { earliest, nextFetch, systemEvent, systemView, type SystemView, type ViewConfig } from "./view.ts";
 
 /** The parts of the worker of the exchange that a pass reads (AL-16). `exchangeWorker` gives them. */
@@ -378,11 +378,13 @@ export function openRuntime(options: RuntimeOptions): Runtime {
   const append = (events: readonly RuntimeEvent[], kept?: (accepted: readonly RuntimeEvent[], before: MergeState) => void): readonly string[] => {
     const before = state.own.merge;
     let draft = state;
+    // Only the last state of the batch becomes the state. Thus the folds of the batch grow its lists in place (AL-150).
+    const scratch = foldScratch();
     const accepted: RuntimeEvent[] = [];
     // The merge state after each retirement of the fold, with the position of its event.
     const retirements: { readonly at: number; readonly merge: Pick<MergeState, "reports"> }[] = [];
     const conflicts = log.appendAll(events, (event) => {
-      draft = fold(draft, event, config, (merge) => retirements.push({ at: accepted.length, merge }));
+      draft = fold(draft, event, config, (merge) => retirements.push({ at: accepted.length, merge }), scratch);
       accepted.push(event);
     });
     state = draft;

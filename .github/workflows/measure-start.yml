@@ -1,0 +1,62 @@
+# The measure of the CPU time of a start with live alerts and persons (AL-150). Each case starts one fresh process of
+# `live-heap.ts --profile`: it seeds a small home with the persons, the fake feeds give the live alerts, and the open of the
+# home runs under the CPU profiler. The records give the time of the open, the routes of the first pass, the routes with
+# a send, the functions with the most self time and the inclusive time of each function of the delivery step. Time on a
+# shared computer tells nothing, thus the measure runs in CI only. It is a measure, not a gate.
+name: Measure start
+
+on:
+  # A pull request that changes the measure gets a run of the default cases.
+  pull_request:
+    paths:
+      - packages/testkit/scripts/live-heap.ts
+      - packages/testkit/src/cpu-profile.ts
+      - .github/workflows/measure-start.yml
+  # A person starts a run of other cases: gh workflow run measure-start.yml -f cases="4000x1 4000x10"
+  workflow_dispatch:
+    inputs:
+      cases:
+        description: The cases, as a list of <alerts>x<persons> with spaces
+        default: "0x1 1000x1 1000x10 4000x1 4000x10"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: measure-start-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Profile the start of each case
+        working-directory: packages/testkit
+        env:
+          CASES: ${{ inputs.cases || '0x1 1000x1 1000x10 4000x1 4000x10' }}
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/start"
+          for case in $CASES; do
+            node --expose-gc scripts/live-heap.ts "${case%x*}" "${case#*x}" --profile | tee -a "$GITHUB_WORKSPACE/start/records.jsonl"
+          done
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: measure-start-${{ github.run_id }}-${{ github.run_attempt }}
+          path: start/
+          if-no-files-found: error
+          retention-days: 90
