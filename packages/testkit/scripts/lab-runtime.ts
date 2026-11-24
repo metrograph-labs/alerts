@@ -22,10 +22,13 @@
  * The runtime gets a meter of the OpenTelemetry SDK (AL-132). After the ready line and after each pass line, the script
  * collects the meter. Then it writes one line `lab-readings` with the readings of the series of `capacity-app.json` at the wall time.
  *
+ * The start times each write of the snapshot (the option `timeSnapshot`, AL-115). At the end of each write, the script writes one
+ * line `lab-snapshot-write` with the times of the write (CAP-65). The field `at` is the time of the start of the write on the wall clock.
+ *
  * Usage: node scripts/lab-runtime.ts <home folder> [<feeds URL> <channels URL>].
  */
 import { performance } from "node:perf_hooks";
-import { openMeasuredRuntime } from "@mark1russell7/alerts-runtime";
+import { openMeasuredRuntime, type SnapshotWriteTime } from "@mark1russell7/alerts-runtime";
 import { delay, wallClock } from "@mark1russell7/algebra/clock";
 import { MeterProvider } from "@opentelemetry/sdk-metrics";
 import { collectReadings, LAB_READINGS, LabMetricReader } from "../src/lab-readings.ts";
@@ -35,6 +38,8 @@ const [home, feeds, channels] = process.argv.slice(2);
 if (home === undefined) throw new Error("Give the home folder of the seed.");
 if ((feeds === undefined) !== (channels === undefined)) throw new Error("Give the URLs of the two fakes, or no URL.");
 const record = readSeedRecord(home);
+/** The event of the line of one write of the snapshot of the start. The app `capacity-app.json` names it. */
+const LAB_SNAPSHOT_WRITE = "lab-snapshot-write";
 const wall = wallClock({ start: record.end });
 const line = (fields: Readonly<Record<string, unknown>>): void => {
   process.stdout.write(`${JSON.stringify(fields)}\n`);
@@ -46,7 +51,11 @@ const report = (text: string): void => {
 const services = feeds === undefined || channels === undefined ? {} : { services: { feeds, channels } };
 const reader = new LabMetricReader();
 const meter = new MeterProvider({ readers: [reader] }).getMeter("alerts-runtime");
-const measured = await openMeasuredRuntime(home, { wall, startSnapshot: true, transitLimit: record.levels.feeds, report, meter, ...services });
+const onSnapshotWrite = (write: SnapshotWriteTime): void => {
+  const at = wall.now() - (performance.now() - write.at);
+  line({ ev: LAB_SNAPSHOT_WRITE, at: new Date(at).toISOString(), longestMs: write.longestMs, writeMs: write.writeMs, rowsMs: write.rowsMs, wallMs: write.wallMs, cpuMs: write.cpuMs });
+};
+const measured = await openMeasuredRuntime(home, { wall, startSnapshot: true, timeSnapshot: true, onSnapshotWrite, transitLimit: record.levels.feeds, report, meter, ...services });
 const readings = async (): Promise<void> => {
   const at = wall.now();
   const collection = await collectReadings(reader, at);

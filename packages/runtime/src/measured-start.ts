@@ -127,6 +127,11 @@ export interface MeasuredOptions {
    * rows apart from the time of SQLite. It also has the longest time between two pauses of the write. Default: false.
    */
   readonly timeSnapshot?: boolean;
+  /**
+   * With `timeSnapshot`, this function gets the record of each write of the snapshot at the end of that write (CAP-65). The
+   * list `snapshotWrites` gets the same record. The lab of the capacity models writes one line for each record. Default: no function.
+   */
+  readonly onSnapshotWrite?: (write: SnapshotWriteTime) => void;
   /** The option `startSnapshotFloor` of `openInstance`. Default: `START_SNAPSHOT_FLOOR`. A measure with a small log gives 1. */
   readonly snapshotFloor?: number;
   /**
@@ -207,7 +212,7 @@ const oneTimer = (): Promise<void> => new Promise((resolve) => setTimeout(resolv
 
 // The store with a record of each write. The rows come from a generator of the runtime. This store times each step of the
 // generator, and each part of the write between two pauses. The read and the clear do not change.
-function timedSnapshot(store: FoldSnapshot, writes: SnapshotWriteTime[]): FoldSnapshot {
+function timedSnapshot(store: FoldSnapshot, writes: SnapshotWriteTime[], onWrite?: (write: SnapshotWriteTime) => void): FoldSnapshot {
   const timed = (rows: Iterable<FoldRow>, written: (record: Omit<SnapshotWriteTime, "at" | "cpuMs" | "wallMs">) => void, chunked: { readonly pause?: () => Promise<void> } = {}) => {
     const counts = { rows: 0, chars: 0, rowsMs: 0, busyMs: 0, longestMs: 0, longestCpuMs: 0, longestWaitMs: 0, chunks: 1 };
     let segment = performance.now();
@@ -250,7 +255,9 @@ function timedSnapshot(store: FoldSnapshot, writes: SnapshotWriteTime[]): FoldSn
   };
   const record = (at: number, cpu: NodeJS.CpuUsage) => (part: Omit<SnapshotWriteTime, "at" | "cpuMs" | "wallMs">): void => {
     const used = process.cpuUsage(cpu);
-    writes.push({ at, ...part, cpuMs: (used.user + used.system) / 1000, wallMs: performance.now() - at });
+    const write: SnapshotWriteTime = { at, ...part, cpuMs: (used.user + used.system) / 1000, wallMs: performance.now() - at };
+    writes.push(write);
+    onWrite?.(write);
   };
   return {
     read<T>(key: FoldKey, log: MarkLog, work: (mark: FoldMark, rows: Iterable<FoldRow>) => T): T | undefined {
@@ -308,7 +315,7 @@ export async function openMeasuredRuntime(home: string, options: MeasuredOptions
     // The stores of shapes and of the transit catalog start their work after the first pass, as in a live start.
     let ready = false;
     const snapshotWrites: SnapshotWriteTime[] = [];
-    const store = snapshot.store === undefined || options.timeSnapshot !== true ? snapshot.store : timedSnapshot(snapshot.store, snapshotWrites);
+    const store = snapshot.store === undefined || options.timeSnapshot !== true ? snapshot.store : timedSnapshot(snapshot.store, snapshotWrites, options.onSnapshotWrite);
     const instance = openInstance({
       config: checked.value.parsed,
       secret: envSecrets(checked.value.keys),
