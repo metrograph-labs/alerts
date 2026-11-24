@@ -547,6 +547,16 @@ describe("the places of a configuration", () => {
     expect(localPlaces(config()).some((place) => "label" in place || "sharePosition" in place)).toBe(false);
   });
 
+  it("keep a moving place out of the local places, give its codes with no position to a source, and check its rule (AL-40)", () => {
+    const moving: PlaceConfig = { id: "place-3" as PlaceId, label: "Here", codes: [{ system: "state", code: "KS" }], bufferKm: 1, moving: { device: "ph", maxAgeMinutes: 30 } };
+    const places = [...PLACES, moving];
+    expect(localPlaces(config({ places })).map((place) => place.id)).toEqual([home, work]);
+    expect(sourcePlaces(config({ places }), nws).at(-1)).toEqual({ id: moving.id, codes: moving.codes, bufferKm: 1 });
+    expect(alertConfigSchema.safeParse(config({ places })).success).toBe(true);
+    const bad = { ...moving, at: HOME_AT };
+    expect(loadConfig(config({ places: [...PLACES, bad] }), CHANNELS, store).problems).toContain(`The moving place ${moving.id} has a position. A moving place gets its position only from its fixes.`);
+  });
+
   it("give each label by the node key of its place, for the why line on the machine of the instance", () => {
     const labels = placeLabels(config());
     expect(labels(`place:${home}`)).toBe("Home");

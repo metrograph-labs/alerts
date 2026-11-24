@@ -111,6 +111,7 @@ DEFAULT_COVERAGE_POLICY: build/index.d.ts#DEFAULT_COVERAGE_POLICY
 DEFAULT_ENTRY_MAX: build/index.d.ts#DEFAULT_ENTRY_MAX
 DEFAULT_FAIL_AFTER: build/index.d.ts#DEFAULT_FAIL_AFTER
 DEFAULT_LINK_POLICY: build/index.d.ts#DEFAULT_LINK_POLICY
+DEFAULT_MAX_ACCURACY_KM: build/index.d.ts#DEFAULT_MAX_ACCURACY_KM
 DEFAULT_RELEVANCE_POLICY: build/index.d.ts#DEFAULT_RELEVANCE_POLICY
 DEFAULT_SEND_LIMITS: build/index.d.ts#DEFAULT_SEND_LIMITS
 DEFAULT_SOURCE_CLEAR: build/index.d.ts#DEFAULT_SOURCE_CLEAR
@@ -183,6 +184,7 @@ Exhaustion: build/index.d.ts#Exhaustion
 Expectation: build/index.d.ts#Expectation
 ExpectationConfig: build/index.d.ts#ExpectationConfig
 ExpectedHarm: build/index.d.ts#ExpectedHarm
+FIX_FUTURE_LIMIT_MS: build/index.d.ts#FIX_FUTURE_LIMIT_MS
 FLOAT_REACH: build/index.d.ts#FLOAT_REACH
 FOREIGN_TABLE: build/index.d.ts#FOREIGN_TABLE
 FUNCTION_SUBJECT: build/index.d.ts#FUNCTION_SUBJECT
@@ -190,6 +192,8 @@ FetchFailure: build/index.d.ts#FetchFailure
 FetchOutcome: build/index.d.ts#FetchOutcome
 FetchRecord: build/index.d.ts#FetchRecord
 FetchSignal: build/index.d.ts#FetchSignal
+FixRefusal: build/index.d.ts#FixRefusal
+FixStep: build/index.d.ts#FixStep
 FixedCost: build/index.d.ts#FixedCost
 HEALTH_EVENTS: build/index.d.ts#HEALTH_EVENTS
 HEALTH_FORMAT: build/index.d.ts#HEALTH_FORMAT
@@ -311,6 +315,7 @@ Message: build/index.d.ts#Message
 MessageKeyInput: build/index.d.ts#MessageKeyInput
 MissRecord: build/index.d.ts#MissRecord
 Move: build/index.d.ts#Move
+MovingRule: build/index.d.ts#MovingRule
 Mute: build/index.d.ts#Mute
 MuteEffect: build/index.d.ts#MuteEffect
 NEEDS: build/index.d.ts#NEEDS
@@ -373,6 +378,7 @@ PlaceId: build/index.d.ts#PlaceId
 PlaceMatch: build/index.d.ts#PlaceMatch
 PlaceSurprise: build/index.d.ts#PlaceSurprise
 Position: build/index.d.ts#Position
+PositionFix: build/index.d.ts#PositionFix
 ProbeOutcome: build/index.d.ts#ProbeOutcome
 ProblemEffect: build/index.d.ts#ProblemEffect
 ProblemSink: build/index.d.ts#ProblemSink
@@ -676,6 +682,8 @@ fetchFailureSchema: build/index.d.ts#fetchFailureSchema
 fetchOutcomeSchema: build/index.d.ts#fetchOutcomeSchema
 fetchRecordSchema: build/index.d.ts#fetchRecordSchema
 fitsWhy: build/index.d.ts#fitsWhy
+fixAge: build/index.d.ts#fixAge
+fixProblems: build/index.d.ts#fixProblems
 foreignIncidents: build/index.d.ts#foreignIncidents
 gapGrade: build/index.d.ts#gapGrade
 graphLabels: build/index.d.ts#graphLabels
@@ -778,10 +786,13 @@ missRecord: build/index.d.ts#missRecord
 missedDrillAt: build/index.d.ts#missedDrillAt
 mostInWindow: build/index.d.ts#mostInWindow
 moveSchema: build/index.d.ts#moveSchema
+movingPlace: build/index.d.ts#movingPlace
+movingProblems: build/index.d.ts#movingProblems
 muteEffectSchema: build/index.d.ts#muteEffectSchema
 muteOf: build/index.d.ts#muteOf
 muteSchema: build/index.d.ts#muteSchema
 nextDrillAt: build/index.d.ts#nextDrillAt
+nextFix: build/index.d.ts#nextFix
 nodeCovers: build/index.d.ts#nodeCovers
 nodeKeySchema: build/index.d.ts#nodeKeySchema
 nodesOverlap: build/index.d.ts#nodesOverlap
@@ -809,6 +820,7 @@ parentKind: build/index.d.ts#parentKind
 parseConfig: build/index.d.ts#parseConfig
 parseCopySettings: build/index.d.ts#parseCopySettings
 partLabel: build/index.d.ts#partLabel
+passPlaces: build/index.d.ts#passPlaces
 personConfigSchema: build/index.d.ts#personConfigSchema
 personIdSchema: build/index.d.ts#personIdSchema
 personInterests: build/index.d.ts#personInterests
@@ -818,6 +830,7 @@ placeConfigSchema: build/index.d.ts#placeConfigSchema
 placeIdSchema: build/index.d.ts#placeIdSchema
 placeLabels: build/index.d.ts#placeLabels
 placeNode: build/index.d.ts#placeNode
+placeOfDevice: build/index.d.ts#placeOfDevice
 placeOfNode: build/index.d.ts#placeOfNode
 placeScope: build/index.d.ts#placeScope
 placeWhy: build/index.d.ts#placeWhy
@@ -922,6 +935,7 @@ sourceHealthViewSchema: build/index.d.ts#sourceHealthViewSchema
 sourceIdSchema: build/index.d.ts#sourceIdSchema
 sourcePlaces: build/index.d.ts#sourcePlaces
 spendConfigSchema: build/index.d.ts#spendConfigSchema
+staleMovingPlaces: build/index.d.ts#staleMovingPlaces
 staleTime: build/index.d.ts#staleTime
 startHealth: build/index.d.ts#startHealth
 statusSchema: build/index.d.ts#statusSchema
@@ -1648,6 +1662,9 @@ export declare const DEFAULT_FAIL_AFTER = 2;
 ### build/index.d.ts#DEFAULT_LINK_POLICY
 export declare const DEFAULT_LINK_POLICY: LinkPolicy;
 
+### build/index.d.ts#DEFAULT_MAX_ACCURACY_KM
+export declare const DEFAULT_MAX_ACCURACY_KM = 2;
+
 ### build/index.d.ts#DEFAULT_RELEVANCE_POLICY
 export declare const DEFAULT_RELEVANCE_POLICY: RelevancePolicy;
 
@@ -2219,6 +2236,9 @@ export interface ExpectedHarm {
   readonly injuries: Estimate;
 }
 
+### build/index.d.ts#FIX_FUTURE_LIMIT_MS
+export declare const FIX_FUTURE_LIMIT_MS = 6e4;
+
 ### build/index.d.ts#FLOAT_REACH
 export declare const FLOAT_REACH: ReachArithmetic<number>;
 
@@ -2274,6 +2294,15 @@ export interface FetchSignal {
     readonly once?: boolean;
   }): void;
   removeEventListener(type: "abort", listener: () => void): void;
+}
+
+### build/index.d.ts#FixRefusal
+export type FixRefusal = "problems" | "accuracy" | "older";
+
+### build/index.d.ts#FixStep
+export interface FixStep {
+  readonly fix: PositionFix | undefined;
+  readonly refused?: FixRefusal;
 }
 
 ### build/index.d.ts#FixedCost
@@ -3082,6 +3111,13 @@ export interface MissRecord {
 ### build/index.d.ts#Move
 export type Move = "rise" | "drop" | "both";
 
+### build/index.d.ts#MovingRule
+export interface MovingRule {
+  readonly device: string;
+  readonly maxAgeMinutes: number;
+  readonly maxAccuracyKm?: number;
+}
+
 ### build/index.d.ts#Mute
 export interface Mute {
   readonly id: string;
@@ -3429,6 +3465,7 @@ export interface PlaceConfig {
   readonly codes: readonly RegionCode[];
   readonly bufferKm: number;
   readonly sharePosition?: readonly SourceId[];
+  readonly moving?: MovingRule;
 }
 
 ### build/index.d.ts#PlaceId
@@ -3450,6 +3487,14 @@ export interface PlaceSurprise extends Surprise {
 
 ### build/index.d.ts#Position
 export type Position = readonly [lon: number, lat: number];
+
+### build/index.d.ts#PositionFix
+export interface PositionFix {
+  readonly place: PlaceId;
+  readonly at: Position;
+  readonly accuracyKm: number;
+  readonly observedAt: Instant;
+}
 
 ### build/index.d.ts#ProbeOutcome
 export type ProbeOutcome = {
@@ -4900,6 +4945,12 @@ export declare const fetchRecordSchema: z.ZodType<FetchRecord, FetchRecord>;
 ### build/index.d.ts#fitsWhy
 export declare function fitsWhy(text: string, limit: WhyLimit): boolean;
 
+### build/index.d.ts#fixAge
+export declare function fixAge(fix: PositionFix, now: Instant): number;
+
+### build/index.d.ts#fixProblems
+export declare function fixProblems(fix: PositionFix): string[];
+
 ### build/index.d.ts#foreignIncidents
 export declare function foreignIncidents(reports: readonly {
   readonly id: string;
@@ -5214,6 +5265,12 @@ export declare function mostInWindow(times: readonly Instant[], length: Duration
 ### build/index.d.ts#moveSchema
 export declare const moveSchema: z.ZodType<Move, Move>;
 
+### build/index.d.ts#movingPlace
+export declare function movingPlace(place: PlaceConfig, fix: PositionFix | undefined, now: Instant, codes: readonly RegionCode[]): WatchedPlace | undefined;
+
+### build/index.d.ts#movingProblems
+export declare function movingProblems(place: PlaceConfig, places: readonly PlaceConfig[]): string[];
+
 ### build/index.d.ts#muteEffectSchema
 export declare const muteEffectSchema: z.ZodType<MuteEffect, MuteEffect>;
 
@@ -5228,6 +5285,9 @@ export declare const muteSchema: z.ZodType<Mute, Mute>;
 
 ### build/index.d.ts#nextDrillAt
 export declare function nextDrillAt(drill: DrillConfig, runs: readonly DrillRun[], at: Instant, quiet?: QuietWindow): Instant | undefined;
+
+### build/index.d.ts#nextFix
+export declare function nextFix(place: PlaceConfig, last: PositionFix | undefined, fix: PositionFix): FixStep;
 
 ### build/index.d.ts#nodeCovers
 export declare function nodeCovers(a: NodeKey, b: NodeKey): boolean;
@@ -5310,6 +5370,9 @@ export declare function parseCopySettings(text: string): Result<CopySettings, re
 ### build/index.d.ts#partLabel
 export declare function partLabel(name: string, index: number): string;
 
+### build/index.d.ts#passPlaces
+export declare function passPlaces(config: AlertConfig, fixes: ReadonlyMap<PlaceId, PositionFix>, now: Instant, codesAt: (place: PlaceConfig, at: Position) => readonly RegionCode[]): WatchedPlace[];
+
 ### build/index.d.ts#personConfigSchema
 export declare const personConfigSchema: z.ZodType<PersonConfig, PersonConfig>;
 
@@ -5336,6 +5399,9 @@ export declare function placeLabels(config: AlertConfig): WhyLabels;
 
 ### build/index.d.ts#placeNode
 export declare function placeNode(place: PlaceId): NodeKey;
+
+### build/index.d.ts#placeOfDevice
+export declare function placeOfDevice(places: readonly PlaceConfig[], device: string): PlaceConfig | undefined;
 
 ### build/index.d.ts#placeOfNode
 export declare function placeOfNode(node: NodeKey): PlaceId | undefined;
@@ -5648,6 +5714,9 @@ export declare function sourcePlaces(config: AlertConfig, source: SourceId): Wat
 
 ### build/index.d.ts#spendConfigSchema
 export declare const spendConfigSchema: z.ZodType<SpendConfig, SpendConfig>;
+
+### build/index.d.ts#staleMovingPlaces
+export declare function staleMovingPlaces(config: AlertConfig, fixes: ReadonlyMap<PlaceId, PositionFix>, now: Instant): PlaceId[];
 
 ### build/index.d.ts#staleTime
 export declare function staleTime(latest: Reading, measure: MeasureDeclaration, policy?: BaselinePolicy): Duration;
