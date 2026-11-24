@@ -34,9 +34,10 @@
 import { GCP_BASE, GLOBAL_LOCATION, INCIDENTS_PATH, readIncidentHistory, VM_PRODUCTS, type PastIncident } from "@mark1russell7/alerts-source-gcp";
 import { COMPONENTS_PATH, HISTORY_LIMIT, HISTORY_PATH, readComponentNames, readHistory, type HistoryIncident, type HistoryRead } from "@mark1russell7/alerts-source-statuspage";
 import { wilson, Z95 } from "@mark1russell7/rigor-statistics";
+import { openDatabase } from "@mark1russell7/sqlite";
 import { errorMessage } from "@mark1russell7/text";
 import { send, statusLine, type Pace, type Transport } from "polite-crawler/api";
-import { providerFragment, regionFragment, type ChanceOverride, type PlacementChances } from "./placement.ts";
+import { providerFragment, regionFragment, siteFragment, type ChanceOverride, type PlacementChances } from "./placement.ts";
 
 /** The impacts of an incident that count as a down time: the outages of a part or of all of a service. */
 export const DOWN_IMPACTS: readonly string[] = ["major", "critical"];
@@ -138,6 +139,58 @@ export function historyWindow(read: HistoryRead, now: number, days: number, sinc
   if (read.listed < HISTORY_LIMIT || read.incidents.length === 0) return { from, to: now };
   const oldest = Math.min(...read.incidents.map((incident) => incident.updated));
   return { from: Math.min(Math.max(from, oldest), now), to: now };
+}
+
+/** The longest time between two fetch events of a live copy that is up: 5 minutes. A longer gap is a down time. */
+export const FETCH_GAP_MS = 300_000;
+
+/** The shortest log that gives a measured chance of a site: 24 hours. The Wilson interval holds the doubt of a short log. */
+export const MIN_LOG_HOURS = 24;
+
+/**
+ * This function gives the down time of a live copy from the times of its fetch events, in milliseconds. Each gap
+ * longer than `limit` between two fetches is down, from the first fetch to the next. A gap from the last fetch to
+ * `now` counts too. The copy fetches each due source in each pass, thus a long gap tells that the copy did not work.
+ */
+export function fetchGapTime(times: readonly number[], now: number, limit: number = FETCH_GAP_MS): number {
+  let total = 0;
+  const ends = [...times, now];
+  for (let index = 1; index < ends.length; index += 1) {
+    const gap = (ends[index] ?? 0) - (ends[index - 1] ?? 0);
+    if (gap > limit) total += gap;
+  }
+  return total;
+}
+
+/**
+ * This function gives the measured chance input of a site from the fetch times of the log of its live copy. The window
+ * starts at the first fetch and ends at `now`. It gives a reason and no input for a log shorter than `MIN_LOG_HOURS`.
+ */
+export function measureSite(site: string, times: readonly number[], now: number, limit: number = FETCH_GAP_MS): { readonly ok: true; readonly measure: ChanceMeasure } | { readonly ok: false; readonly reason: string } {
+  const first = times[0];
+  if (first === undefined || now - first < MIN_LOG_HOURS * HOUR_MS) return { ok: false, reason: `The log of the site ${site} has less than ${String(MIN_LOG_HOURS)} hours of fetch events.` };
+  const window: TimeWindow = { from: first, to: now };
+  const down = downShare(fetchGapTime(times, now, limit), window);
+  const low = 1 - down.interval.high;
+  const source =
+    `the fetch events of the log of the site ${site} from ${dayOf(window.from)} to ${dayOf(window.to)}: ` +
+    `${String(down.downHours)} of ${String(down.hours)} hours down (no fetch for more than ${String(limit / 60_000)} minutes), ` +
+    `works ${(1 - down.share).toFixed(6)}, 95% Wilson interval ${low.toFixed(6)} to ${(1 - down.interval.low).toFixed(6)}, the input is the low end`;
+  return { ok: true, measure: { input: { id: siteFragment(site), works: low, kind: "measured", source }, down, window } };
+}
+
+/** This function reads the times of the fetch events of a runtime log file, in their order. It opens the file to read only. */
+export function readFetchTimes(path: string): readonly number[] {
+  const db = openDatabase(path, { readOnly: true });
+  try {
+    return db
+      .prepare("SELECT at FROM events WHERE type = 'fetch' ORDER BY seq")
+      .all()
+      .map((row) => Date.parse(String(row["at"])))
+      .filter((time) => Number.isFinite(time));
+  } finally {
+    db.close();
+  }
 }
 
 /** This function tells if an incident is a down time: its impact is in `DOWN_IMPACTS`, and it is not a scheduled maintenance. */

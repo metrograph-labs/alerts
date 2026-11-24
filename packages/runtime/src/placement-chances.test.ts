@@ -1,4 +1,8 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { VM_PRODUCTS, type PastIncident } from "@mark1russell7/alerts-source-gcp";
+import { openDatabase } from "@mark1russell7/sqlite";
 import type { HistoryIncident, HistoryRead } from "@mark1russell7/alerts-source-statuspage";
 import { HostScheduler } from "polite-crawler/politeness";
 import { describe, expect, it } from "vitest";
@@ -8,6 +12,8 @@ import {
   downShare,
   downTime,
   feedOf,
+  FETCH_GAP_MS,
+  fetchGapTime,
   googleHistory,
   historyWindow,
   HISTORY_GAPS,
@@ -16,11 +22,13 @@ import {
   isDown,
   locationPlace,
   measureProvider,
+  measureSite,
+  readFetchTimes,
   readPageHistory,
   withMeasures,
   type HistorySource,
 } from "./placement-chances.ts";
-import type { PlacementChances } from "./placement.ts";
+import { siteFragment, type PlacementChances } from "./placement.ts";
 
 // Each incident is made up: neutral names, made-up places and times. No text of a real page.
 const NOW = Date.parse("2026-03-01T00:00:00.000Z");
@@ -165,6 +173,51 @@ describe("the records of the providers", () => {
     const sources = HISTORY_SOURCES.map((source) => source.provider);
     const gaps = HISTORY_GAPS.map((gap) => gap.provider);
     expect(sources.filter((provider) => gaps.includes(provider))).toEqual([]);
+  });
+});
+
+describe("the measured chance of a site from its log", () => {
+  const MINUTE = 60_000;
+  // A fetch each minute for 48 hours, with one gap of 3 hours after hour 10.
+  const start = NOW - 48 * HOUR_MS;
+  const times = Array.from({ length: 48 * 60 }, (_, index) => start + index * MINUTE).filter((time) => time < start + 10 * HOUR_MS || time >= start + 13 * HOUR_MS);
+
+  it("counts each gap past the limit, and the gap to the end", () => {
+    expect(fetchGapTime(times, NOW - MINUTE)).toBe(3 * HOUR_MS + MINUTE);
+    expect(fetchGapTime([0, 4 * MINUTE, 10 * MINUTE], 10 * MINUTE)).toBe(6 * MINUTE);
+    expect(fetchGapTime([0], 4 * MINUTE)).toBe(0);
+    expect(fetchGapTime([0], 4 * MINUTE, 3 * MINUTE)).toBe(4 * MINUTE);
+    expect(FETCH_GAP_MS).toBe(5 * MINUTE);
+  });
+
+  it("gives the low end of the Wilson interval as the input of the site fragment", () => {
+    const measured = measureSite("site-a", times, NOW);
+    expect(measured.ok).toBe(true);
+    if (!measured.ok) return;
+    expect(measured.measure.input.id).toBe(siteFragment("site-a"));
+    expect(measured.measure.down.hours).toBe(48);
+    expect(measured.measure.down.downHours).toBe(4);
+    expect(measured.measure.input.works).toBeCloseTo(1 - measured.measure.down.interval.high, 12);
+    expect(measured.measure.input.source).toContain("4 of 48 hours down");
+    expect(measureSite("site-a", times.slice(-60), NOW).ok).toBe(false);
+    expect(measureSite("site-a", [], NOW).ok).toBe(false);
+  });
+
+  it("reads the fetch times of a log file, and no other event", () => {
+    const folder = mkdtempSync(join(tmpdir(), "alerts-site-log-"));
+    try {
+      const path = join(folder, "runtime.sqlite");
+      const db = openDatabase(path);
+      db.exec("CREATE TABLE events (seq INTEGER PRIMARY KEY, id TEXT NOT NULL UNIQUE, at TEXT NOT NULL, type TEXT NOT NULL, body TEXT NOT NULL) STRICT");
+      const add = db.prepare("INSERT INTO events (id, at, type, body) VALUES (?, ?, ?, '{}')");
+      add.run("a", "2026-01-01T00:00:00.000Z", "fetch");
+      add.run("b", "2026-01-01T00:01:00.000Z", "delivery");
+      add.run("c", "2026-01-01T00:02:00.000Z", "fetch");
+      db.close();
+      expect(readFetchTimes(path)).toEqual([at("2026-01-01T00:00:00.000Z"), at("2026-01-01T00:02:00.000Z")]);
+    } finally {
+      rmSync(folder, { recursive: true, force: true });
+    }
   });
 });
 
