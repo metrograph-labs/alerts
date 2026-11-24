@@ -6,7 +6,7 @@ import { fakeWallClock, wallClock } from "@mark1russell7/algebra/clock";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HomeHeld } from "./home-lock.ts";
 import { openRuntimeLog } from "./log.ts";
-import { fakeBase, fakeUrl, MEASURE_NOW_HEADER, openMeasuredRuntime, type MeasuredRuntime } from "./measured-start.ts";
+import { fakeBase, fakeUrl, MEASURE_NOW_HEADER, openMeasuredRuntime, type MeasuredRuntime, type SnapshotWriteTime } from "./measured-start.ts";
 import { START_SNAPSHOT_EVERY, START_SNAPSHOT_FLOOR } from "./start-snapshot.ts";
 
 const MINUTE = 60_000;
@@ -83,7 +83,8 @@ describe("openMeasuredRuntime", { timeout: 30_000 }, () => {
   });
 
   it("times each write of the snapshot with the option timeSnapshot, and keeps no record without it", async () => {
-    const timed = await openMeasuredRuntime(home, { startSnapshot: true, timeSnapshot: true, snapshotFloor: 1 });
+    const heard: SnapshotWriteTime[] = [];
+    const timed = await openMeasuredRuntime(home, { startSnapshot: true, timeSnapshot: true, snapshotFloor: 1, onSnapshotWrite: (write) => heard.push(write) });
     opened.push(timed);
     // The first pass makes the start good. The next pass writes the snapshot, and the pass ends after the write.
     expect(timed.snapshotWrites).toEqual([]);
@@ -91,6 +92,8 @@ describe("openMeasuredRuntime", { timeout: 30_000 }, () => {
     expect(before).toBeGreaterThan(0);
     await timed.pass();
     expect(timed.snapshotWrites).toHaveLength(1);
+    // The function onSnapshotWrite gets the same record at the end of the write (CAP-65).
+    expect(heard).toEqual(timed.snapshotWrites);
     const [write] = timed.snapshotWrites;
     expect(write!.rows).toBeGreaterThan(0);
     expect(write!.chars).toBeGreaterThan(0);
