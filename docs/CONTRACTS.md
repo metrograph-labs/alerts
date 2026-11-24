@@ -1705,7 +1705,11 @@ The live path of the checkout is a link to one of two checkouts, the slots `<liv
 - `deploy.ts stage <commit>` checks out the commit in the slot that the link does not name. Then it installs and checks the code there.
 - A stage checks four things: the install, the file of the outage bundles, the private files and the load of the code.
 - On Linux, the heavy steps of a stage operate in a scope of the user manager. The scope has a memory limit and a low weight of the processor.
-- `deploy.ts swap` points the link at the staged slot in one step. A second `swap` goes back to the old slot.
+- `deploy.ts swap <a|b> <commit>` points the link at the staged slot in one step. A swap to the old slot goes back to it.
+- The swap is a compare and swap (AL-167). It refuses when the link names the target slot already, or when the target slot has another commit.
+- `stage`, `swap`, `relink`, `adopt` and `fold` hold the deploy lock `host/deploy.lock`. A second deploy on the host stops at its start.
+- Each start of the runtime writes `host/running.json`: its process, its slot and the commit of the stage of that slot.
+- `install.ts restart` and `deploy.ts status` compare that slot with the link. A runtime of the other slot gives exit code 1.
 - On Windows the link is a junction. The swap removes it and makes a new one. A start in that short gap fails, and the supervisor starts the runtime again.
 - A swap stops no process. The runtime takes the new code at its next start. `node src/install.ts restart` from the live path starts it at once.
 - A swap back to older code is a rollback. Do it only when the new code wrote no new kind of event to the log.
@@ -1751,7 +1755,7 @@ The supervisor keeps the code of its own start:
 A deploy has these steps, in this order:
 
 1. `deploy.ts stage <commit>`. Read its line about the supervisor.
-2. `deploy.ts swap`.
+2. `deploy.ts swap <slot> <commit>`, with the slot and the commit that the stage tells.
 3. With no change of the supervisor, `node src/install.ts restart` from the live path.
 4. With a change of the supervisor, the operator restarts the boot task. This restart also starts the runtime on the new code.
 5. `node src/install.ts status` after the ready wait.
@@ -2057,8 +2061,8 @@ A deploy of new code does not change the live checkout (AL-89). The live path of
 - `ALERTS_LIVE` names the live path in place of the path of the entry file (`liveRoot`). `install.ts` reads it too.
 - `node src/deploy.ts swap` points the live path at the staged slot in one step. It refuses a slot with no mark of its commit, a missing check or a change in its tree.
 - On Linux, the swap renames a new symbolic link over the old link. On Windows, it removes the junction and makes a new one. A start in that short gap fails, and the supervisor starts the runtime again.
-- The old slot stays as it is. A second `swap` goes back to it. Do not go back after the new code wrote a new kind of event to the log.
-- `node src/deploy.ts status` gives the live slot, and the commit and the mark of each slot.
+- The old slot stays as it is. A swap to it goes back to it. Do not go back after the new code wrote a new kind of event to the log.
+- `node src/deploy.ts status` gives the live slot, the commit and the mark of each slot, and the slot of the running runtime.
 
 The supervisor and `install.ts` take the folder of the package from the path of the command line (`entryRoot`), not from the URL of the module. Node resolves the links in the URL of a module, but not in the path of the command line. Thus each start of the runtime goes through the link, and takes the slot that the link names at that time.
 

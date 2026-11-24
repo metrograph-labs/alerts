@@ -17,9 +17,10 @@
  */
 import { createHash } from "node:crypto";
 import type { Stats } from "node:fs";
-import { lstat, readdir, readlink, rename, rmdir, symlink, unlink } from "node:fs/promises";
+import { lstat, mkdir, readdir, readlink, rename, rmdir, symlink, unlink } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { runCommand, type CommandResult } from "@procedures/shell/command";
+import { acquireInstanceLock, type HostPorts } from "@mark1russell7/service/host";
 
 /** The names of the two slots. */
 export const SLOT_NAMES = ["a", "b"] as const;
@@ -285,8 +286,26 @@ export interface ForeignLinks {
   readonly target: readonly PackageLink[];
 }
 
-/** The facts that decide a swap: the live slot, the mark of the target slot, its commit, its changes and the foreign links. */
+/**
+ * The target of a swap (AL-167): the slot that the live link names after the swap, and the start of its commit. The swap
+ * compares the two with the slots before it changes the link. Thus a second swap of the same target, or a stage after
+ * the read of the operator, changes nothing.
+ */
+export interface SwapTarget {
+  readonly slot: SlotName;
+  readonly commit: string;
+}
+
+/** This function reads the target of a swap from the arguments `<a|b> <commit>`, or gives undefined for bad arguments. */
+export function parseSwapTarget(args: readonly string[]): SwapTarget | undefined {
+  const [slot, commit, ...rest] = args;
+  if (rest.length > 0 || (slot !== "a" && slot !== "b") || commit === undefined || !/^[0-9a-f]{7,40}$/u.test(commit)) return undefined;
+  return { slot, commit };
+}
+
+/** The facts that decide a swap: the target, the live slot, the mark of the target slot, its commit, its changes and the foreign links. */
 export interface SwapFacts {
+  readonly target: SwapTarget;
   readonly live: LiveState;
   readonly mark: StageMark | undefined;
   readonly head: string | undefined;
@@ -310,6 +329,7 @@ export function swapRefusal(facts: SwapFacts): string | undefined {
   if (facts.live.kind !== "link" || facts.live.slot === undefined) return "The live path is not a link to a slot. Start `deploy.ts adopt` first.";
   const from = facts.live.slot;
   const slot = otherSlot(from);
+  if (facts.target.slot === from) return `The live path is a link to slot ${from} already. Another deploy swapped it, or the swap is done. Read \`deploy.ts status\`.`;
   const foreign = facts.foreign;
   if (foreign !== undefined && foreign.target.length > 0) {
     return `Slot ${slot} has ${foreign.target.length} package links outside its folder${linkExample(foreign.target)}. Start \`deploy.ts relink\` first.`;
@@ -318,11 +338,36 @@ export function swapRefusal(facts: SwapFacts): string | undefined {
     return `Slot ${from} has ${foreign.live.length} package links outside its folder${linkExample(foreign.live)}. After the swap, a start from slot ${from} fails. Stop the boot task, start \`deploy.ts relink ${from}\`, and start the task.`;
   }
   if (facts.head === undefined) return `Slot ${slot} has no checkout. Start \`deploy.ts stage <commit>\` first.`;
+  if (!facts.head.startsWith(facts.target.commit)) {
+    return `Slot ${slot} has the commit ${facts.head.slice(0, 7)}, not ${facts.target.commit}. Another stage changed it. Read \`deploy.ts status\`.`;
+  }
   if (facts.mark === undefined || facts.mark.sha !== facts.head) return `Slot ${slot} has no stage of its commit. Start \`deploy.ts stage <commit>\` first.`;
   const missing = STAGE_CHECKS.filter((check) => !facts.mark?.checks.includes(check));
   if (missing.length > 0) return `The stage of slot ${slot} did not pass these checks: ${missing.join(", ")}.`;
   if (!facts.clean) return `Slot ${slot} has changes after its stage.`;
   return undefined;
+}
+
+/** The name of the deploy lock in the host folder (AL-167). */
+export const DEPLOY_LOCK_FILE = "deploy.lock";
+
+/**
+ * This function does `work` while this process holds the deploy lock at `path` (AL-167). A stage, a swap, a relink and a
+ * fold each take the lock. Thus two deploys on one host do not cross. A lock of a process that stopped is stale, and
+ * the take removes it. The function throws when a live process holds the lock, and the work does not start.
+ */
+export async function withDeployLock<T>(path: string, ports: HostPorts, work: () => Promise<T>): Promise<T> {
+  await mkdir(dirname(path), { recursive: true });
+  const result = await acquireInstanceLock(path, ports);
+  if (result.kind === "held") {
+    throw new Error(`The process ${String(result.owner.pid)} holds the deploy lock: another deploy runs. Wait for its end, then read \`deploy.ts status\`.`);
+  }
+  if (result.kind === "failed") throw new Error(`The deploy lock is not free: ${result.problem.split(dirname(path)).join("<host>")}`);
+  try {
+    return await work();
+  } finally {
+    await result.lock.release();
+  }
 }
 
 /** The files of the supervisor, from the checkout. The supervisor loads them only at its own start. */
