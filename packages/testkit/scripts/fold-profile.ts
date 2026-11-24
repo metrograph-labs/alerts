@@ -13,6 +13,7 @@ import { Session } from "node:inspector/promises";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { FOLD_TYPES, openRuntimeLog, rebuild, type FoldContext } from "@mark1russell7/alerts-runtime";
+import { profileSummary, type Profile } from "../src/cpu-profile.ts";
 import { seedStore } from "../src/seed-store.ts";
 
 const [folder, sizeText = "192", variantList = "off,168,6"] = process.argv.slice(2);
@@ -35,83 +36,10 @@ function heapMb(): number | undefined {
 // The functions of the retire step, for their inclusive time. A name that the profile does not hold gives 0.
 const STEP_FUNCTIONS = ["retirementAt", "retiredEvent", "incidents", "groupsOf", "changedBuild", "componentsOf", "cachedIncident", "quietKeeps", "retirements", "foldRetired", "compact", "normalize", "withSides", "join", "foldRest"];
 
-interface ProfileNode {
-  readonly id: number;
-  readonly callFrame: { readonly functionName: string; readonly url: string; readonly lineNumber: number };
-  readonly children?: readonly number[];
-}
-interface Profile {
-  readonly nodes: readonly ProfileNode[];
-  readonly samples: readonly number[];
-  readonly timeDeltas: readonly number[];
-}
-
-// The place of a frame with no path of the computer: the path from the folder `packages`, or the URL of a module of Node.
-function placeOf(frame: ProfileNode["callFrame"]): string {
-  if (frame.url === "") return "(native)";
-  const at = frame.url.indexOf("/packages/");
-  const file = at === -1 ? frame.url.replace(/^file:\/\/.*\/node_modules\//u, "node_modules/") : frame.url.slice(at + 1);
-  return `${file}:${frame.lineNumber + 1}`;
-}
-
-// The self time and the inclusive time of the functions of a profile, in milliseconds.
-function summary(profile: Profile): { readonly rebuildMs: number; readonly gcMs: number; readonly top: readonly object[]; readonly step: Readonly<Record<string, number>> } {
-  const selfUs = new Map<number, number>();
-  profile.samples.forEach((id, index) => selfUs.set(id, (selfUs.get(id) ?? 0) + (profile.timeDeltas[index] ?? 0)));
-  const byId = new Map(profile.nodes.map((node) => [node.id, node]));
-  const parent = new Map<number, number>();
-  for (const node of profile.nodes) for (const child of node.children ?? []) parent.set(child, node.id);
-  // The inclusive time of each node: its self time and the time of its children.
-  const inclusive = new Map<number, number>();
-  const inclusiveOf = (id: number): number => {
-    const held = inclusive.get(id);
-    if (held !== undefined) return held;
-    let total = selfUs.get(id) ?? 0;
-    for (const child of byId.get(id)?.children ?? []) total += inclusiveOf(child);
-    inclusive.set(id, total);
-    return total;
-  };
-  for (const node of profile.nodes) inclusiveOf(node.id);
-  // The nodes under the rebuild. The time of the profiler and of the garbage collector is not under it.
-  const under = new Set<number>();
-  const addTree = (id: number): void => {
-    under.add(id);
-    for (const child of byId.get(id)?.children ?? []) addTree(child);
-  };
-  for (const node of profile.nodes) if (node.callFrame.functionName === "rebuild" && !under.has(node.id)) addTree(node.id);
-  let totalUs = 0;
-  let gcUs = 0;
-  const self = new Map<string, number>();
-  for (const node of profile.nodes) {
-    const us = selfUs.get(node.id) ?? 0;
-    if (node.callFrame.functionName === "(garbage collector)") gcUs += us;
-    if (!under.has(node.id)) continue;
-    totalUs += us;
-    const key = `${node.callFrame.functionName || "(anonymous)"} ${placeOf(node.callFrame)}`;
-    self.set(key, (self.get(key) ?? 0) + us);
-  }
-  const ms = (us: number): number => Number((us / 1000).toFixed(1));
-  const top = [...self.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 25)
-    .map(([fn, us]) => ({ fn, selfMs: ms(us), share: Number((us / Math.max(1, totalUs)).toFixed(3)) }));
-  // A function counts once on each path: a node with an ancestor of the same name adds nothing.
-  const step: Record<string, number> = {};
-  for (const name of STEP_FUNCTIONS) {
-    let us = 0;
-    for (const node of profile.nodes) {
-      if (node.callFrame.functionName !== name) continue;
-      let up = parent.get(node.id);
-      let nested = false;
-      while (up !== undefined && !nested) {
-        nested = byId.get(up)?.callFrame.functionName === name;
-        up = parent.get(up);
-      }
-      if (!nested) us += inclusive.get(node.id) ?? 0;
-    }
-    step[name] = ms(us);
-  }
-  return { rebuildMs: ms(totalUs), gcMs: ms(gcUs), top, step };
+// The summary of the rebuild. The field `rebuildMs` keeps the name of the records before AL-150.
+function foldSummary(profile: Profile): object {
+  const { totalMs, ...rest } = profileSummary(profile, { root: "rebuild", steps: STEP_FUNCTIONS });
+  return { rebuildMs: totalMs, ...rest };
 }
 
 const dir = join(folder, `seed-${size}mb`);
@@ -154,7 +82,7 @@ for (const variant of variantList.split(",")) {
       retirements: timed.retirements,
       reports: timed.reports,
       ...(timed.heapMb === undefined ? {} : { heapMb: timed.heapMb }),
-      profile: summary(profile),
+      profile: foldSummary(profile),
     }),
   );
 }
