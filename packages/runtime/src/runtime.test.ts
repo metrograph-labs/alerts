@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fakeWallClock, type WallClock } from "@mark1russell7/algebra/clock";
-import { reportId, type ChannelId, type ChannelProcedures, type ChannelQuota, type Expectation, LOOP_BLOCK_WINDOW, type LoopBlock, type FetchOutcome, type FetchSignal, type Observation, type ObservationId, type PlaceId, type Report, type SourceDescriptor, type SourceId, type SourceProcedures, type Watch, type WatchedPlace } from "@mark1russell7/alerts";
+import { reportId, type ChannelId, type ChannelProcedures, type ChannelQuota, type Expectation, LOOP_BLOCK_WINDOW, type LoopBlock, type FetchOutcome, type FetchSignal, type Observation, type ObservationId, type PersonId, type PlaceId, type Report, type SourceDescriptor, type SourceId, type SourceProcedures, type Watch, type WatchedPlace } from "@mark1russell7/alerts";
 import { random, seedsFrom } from "@mark1russell7/rigor-generators";
 import { openFoldSnapshot, type FoldSnapshot } from "@mark1russell7/sqlite";
 import { afterEach, describe, expect, it } from "vitest";
@@ -477,7 +477,7 @@ describe("the bound of the reports (AL-145)", () => {
     const far = reportOf(seen);
     expect(keepsAtBound(far, [KANSAS])).toBe(false);
     expect(keepsAtBound({ ...far, references: ["an earlier report"] }, [KANSAS])).toBe(true);
-    expect(keepsAtBound({ ...far, addresses: ["person:a"] } as Report, [KANSAS])).toBe(true);
+    expect(keepsAtBound({ ...far, addresses: ["person:a" as PersonId] }, [KANSAS])).toBe(true);
     expect(keepsAtBound({ ...far, areas: [{ type: "code", system: "ugc", code: "KSZ083" }] }, [KANSAS])).toBe(true);
   });
 });

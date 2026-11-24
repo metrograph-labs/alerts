@@ -11,7 +11,8 @@ const PERSONS = 10;
 /**
  * The limit of the heap of one live alert, in bytes (AL-145). The measure gives the heap after the first pass with 1,000
  * live alerts and 10 persons, less the heap with no alert, divided by the live alerts. Five runs on Node 24 gave 11,140 to
- * 11,266 bytes. The limit is the worst run plus the spread of the runs: 11,266 + 126, up to 11,400. Before AL-145, the
+ * 11,266 bytes. The limit is the worst run plus the spread of the runs: 11,266 + 126, up to 11,400. The CI runs of the
+ * first pull request gave 11,127 and 11,182 bytes on Node 24, and 10,689 bytes on Node 26. Before AL-145, the
  * same measure gave approximately 26,900 bytes.
  */
 const BYTES_PER_ALERT_LIMIT = 11_400;
