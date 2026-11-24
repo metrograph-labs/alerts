@@ -209,6 +209,21 @@ describe("createEmscFetch", () => {
     expect(two).toEqual(one);
   });
 
+  it("gives the newest full answer from the store for a 304, with its time of fetch", async () => {
+    const older = json(JSON.stringify({ type: "FeatureCollection", metadata: { count: 1 }, features: [first()] }), 200, { etag: '"a5e0"' });
+    const { fetch, sent, now, setTime } = fetchWith([older, FULL, NOT_MODIFIED]);
+    await fetch({ watch: WATCH });
+    setTime(START + 1000);
+    const full = await fetch({ watch: WATCH });
+    const fetched = now();
+    setTime(START + 2000);
+    const replay = await fetch({ watch: WATCH });
+    expect(conditionsOf(sent)).toEqual([undefined, '"a5e0"', ETAG]);
+    expect(observationsOf(full)).toHaveLength(FEATURES.length);
+    expect(replay).toEqual(full);
+    expect(replay.ok && replay.observations.every((observation) => observation.fetched === fetched)).toBe(true);
+  });
+
   it("gives only the events of the past day for a 304 later in the hour", async () => {
     const { fetch, sent, now, setTime } = fetchWith([FULL, NOT_MODIFIED]);
     await fetch({ watch: WATCH });

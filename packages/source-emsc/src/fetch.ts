@@ -7,7 +7,7 @@
  */
 
 import { observationId, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch } from "@mark1russell7/alerts";
-import { createRequester } from "@mark1russell7/alerts-fetch";
+import { answerStore, createRequester } from "@mark1russell7/alerts-fetch";
 import { isRecord, type Fields } from "@mark1russell7/optional/read";
 import type { Condition, Conditions, Pace, Reply, Transport } from "polite-crawler/api";
 
@@ -187,7 +187,8 @@ function lastUrlStore(): Conditions & { clear(): void } {
  *
  * Each fetch is one conditional GET (`poll` of polite-crawler) of the query of the past day, with the ETag of the last
  * full answer. A 304 answer has no body. Then the fetch gives the observations of the last full answer again, with
- * only the events of the past day. The fetch gives no cursor: the answer holds each event of the past day.
+ * only the events of the past day. The fetch gives no cursor: the answer holds each event of the past day. The fetch
+ * keeps the last full answer as compressed bytes (`answerStore`), and it reads the answer again at a 304.
  */
 export function createEmscFetch(options: EmscFetchOptions): (input: EmscFetchInput, signal?: FetchSignal) => Promise<FetchOutcome> {
   const requester = createRequester({
@@ -201,7 +202,14 @@ export function createEmscFetch(options: EmscFetchOptions): (input: EmscFetchInp
   });
   const now = options.pace.now;
   const conditions = lastUrlStore();
-  let lastRead: { readonly url: string; readonly read: Read } | undefined;
+  // The last full answer, with its time of fetch and its latency. A 304 answer gives its read again. The path of the
+  // query changes each hour, so the store keeps only the answer of the last URL.
+  const lastAnswer = answerStore<{ readonly fetched: Instant; readonly latency: number }>();
+  let keptUrl: string | undefined;
+  const forget = (): void => {
+    if (keptUrl !== undefined) lastAnswer.delete(keptUrl);
+    keptUrl = undefined;
+  };
 
   return async (_input, signal) => {
     const requested = await requester.get({ path: queryPath(now()), what: "the earthquakes of the past day", conditions }, signal);
@@ -209,21 +217,26 @@ export function createEmscFetch(options: EmscFetchOptions): (input: EmscFetchInp
     const { url, answer, latency } = requested;
     let read: Read | undefined;
     if (answer.classified.outcome === "not-modified") {
-      if (lastRead === undefined || lastRead.url !== url) {
+      const previous = keptUrl === url ? await lastAnswer.get(url).catch(() => undefined) : undefined;
+      read = previous === undefined ? undefined : readAnswer(previous.reply, url, previous.extra.fetched, previous.extra.latency);
+      if (read === undefined) {
         // A 304 with no earlier full answer: the next request sends no condition
         conditions.clear();
+        forget();
         return { ok: false, failure: { kind: "network", message: `a 304 answer with no earlier full answer: ${url}` } };
       }
-      read = lastRead.read;
     } else {
-      read = readAnswer(answer.reply, url, now(), latency);
+      const fetched = now();
+      read = readAnswer(answer.reply, url, fetched, latency);
       if (read === undefined) {
         // poll keeps the condition of each 2xx answer. A body that does not parse must not be the base of a later 304.
         conditions.clear();
-        lastRead = undefined;
+        forget();
         return { ok: false, failure: { kind: "network", message: `truncated or malformed body: ${url}` } };
       }
-      lastRead = { url, read };
+      forget();
+      lastAnswer.keep(url, answer.reply, { fetched, latency });
+      keptUrl = url;
     }
     return { ok: true, observations: pastDay(read.listed, now()), complete: read.complete };
   };
