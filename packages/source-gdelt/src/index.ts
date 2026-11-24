@@ -16,6 +16,8 @@ export { checkCanary, FILE_MAX_AGE_MS } from "./check.ts";
 export { GDELT_DESCRIPTOR } from "./descriptor.ts";
 export {
   BODY_TYPE,
+  censusBody,
+  censusRegions,
   createGdeltFetch,
   EVENT_ARCHIVE_LIMITS,
   eventFilePath,
@@ -37,6 +39,7 @@ export {
   CAMEO_LABELS,
   cameoLabel,
   eventAreas,
+  CONFLICT_EVENTS_MEASURE,
   CONFLICT_KIND,
   GDELT_CREDIT,
   GDELT_KINDS,
@@ -50,7 +53,7 @@ export {
   SOURCE_ID,
   UNREST_KIND,
 } from "./map.ts";
-export { addedTime, CITY_GEO_TYPES, dayStart, EVENT_FIELD_COUNT, EVENT_FIELDS, eventBody, eventOf, keepEvent, MAX_EVENT_AGE_DAYS, REPORTED_ROOTS } from "./row.ts";
+export { addedTime, CITY_GEO_TYPES, countEvent, dayStart, EVENT_FIELD_COUNT, EVENT_FIELDS, eventBody, eventOf, keepEvent, MAX_EVENT_AGE_DAYS, REPORTED_ROOTS, stateOf } from "./row.ts";
 export type { GdeltEvent } from "./row.ts";
 
 /** This function makes the procedures of the GDELT source: describe, fetch, map and check. */

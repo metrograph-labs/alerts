@@ -8,7 +8,7 @@ import { HostScheduler } from "polite-crawler/politeness";
 import { describe, expect, it } from "vitest";
 
 import { checkCanary } from "./check.ts";
-import { createGdeltFetch, eventFilePath, headBody, LAST_UPDATE_PATH, nearPlaces, readEventFile, readLastUpdate, stampsToRead } from "./fetch.ts";
+import { censusBody, censusRegions, createGdeltFetch, eventFilePath, headBody, LAST_UPDATE_PATH, nearPlaces, readEventFile, readLastUpdate, stampsToRead } from "./fetch.ts";
 import { mapObservation } from "./map.ts";
 import { addedTime, eventOf } from "./row.ts";
 
@@ -105,6 +105,26 @@ const publish = (routes: Map<string, Reply>, stamp: string): void => {
   routes.set(LAST_UPDATE_PATH, text(lastUpdateOf(stamp, archive)));
 };
 
+/**
+ * This function gives the text of the fixture with its line 2, a fight with the place of a country, moved to a US state
+ * (AL-142). The state and the region are public places.
+ */
+const stateText = (stamp: string, adm1 = "USTX"): string =>
+  TEXT.replaceAll("	20261123200000	", `	${stamp}	`)
+    .split(String.fromCharCode(10))
+    .map((line, index) => {
+      if (index !== 1) return line;
+      const fields = line.split("	");
+      fields[51] = "2";
+      fields[53] = "US";
+      fields[54] = adm1;
+      return fields.join("	");
+    })
+    .join(String.fromCharCode(10));
+
+/** This function gives a watched place of the tests with the codes of a US state. */
+const statePlace = (id: string, state: string): WatchedPlace => ({ id: id as PlaceId, codes: [{ system: "state", code: state }, { system: "iso3166", code: "US" }, { system: "iso3166", code: `US-${state}` }], bufferKm: 0 });
+
 const eventOfLine = (index: number) => eventOf(TEXT.trim().split(String.fromCharCode(10))[index]!)!;
 const bodiesOf = (outcome: FetchOutcome): Record<string, unknown>[] => (outcome.ok ? outcome.observations.map((observation) => JSON.parse(observation.body) as Record<string, unknown>) : []);
 const pathsOf = (sent: readonly Exchange[]): string[] => sent.map((exchange) => new URL(exchange.url).pathname);
@@ -155,6 +175,41 @@ describe("readEventFile", () => {
   it("gives the text of the fault for bytes that are not one event file", () => {
     expect(readEventFile(new Uint8Array([1, 2, 3]), STAMP)).toMatch(/not valid/);
     expect(readEventFile(archiveOf(STAMP), stampAfter(15))).toMatch(/no file/);
+  });
+});
+
+describe("the census of the regions (AL-142)", () => {
+  it("gives each US state of the places once, in order, and no territory or other code", () => {
+    expect(censusRegions([statePlace("b", "TX"), statePlace("a", "CA"), statePlace("c", "TX"), place("no-codes")])).toEqual(["CA", "TX"]);
+    expect(censusRegions([statePlace("pr", "PR"), { ...place("iso"), codes: [{ system: "iso3166", code: "US-TX" }] }])).toEqual([]);
+  });
+
+  it("counts the events of a state with the place of the state only, and gives 0 to a region with no event", () => {
+    const archive = storedZip([{ name: `${STAMP}.export.CSV`, text: stateText(STAMP) }]);
+    const file = readEventFile(archive, STAMP, undefined, () => true, ["CA", "TX"]);
+    expect(typeof file === "object" ? file.census : file).toEqual({ CA: 0, TX: 1 });
+    expect(typeof file === "object" ? file.reported : file).toBe(3);
+    const none = readEventFile(archive, STAMP);
+    expect(typeof none === "object" ? none.census : none).toEqual({});
+  });
+
+  it("writes the census body with the regions in order", () => {
+    expect(censusBody(STAMP, { TX: 1, CA: 0 })).toBe(`{"census":"${STAMP}","regions":{"CA":0,"TX":1}}`);
+  });
+
+  it("gives one census for each file that a fetch reads, only for a watch with a US state", async () => {
+    const routes = new Map<string, Reply>();
+    const archive = storedZip([{ name: `${STAMP}.export.CSV`, text: stateText(STAMP) }]);
+    routes.set(eventFilePath(STAMP), bytes(archive));
+    routes.set(LAST_UPDATE_PATH, text(lastUpdateOf(STAMP, archive)));
+    const { fetch, sent } = fetchWith(routes, { places: [statePlace("austin", "TX")] });
+    const outcome = await fetch();
+    expect(outcome.ok && outcome.complete).toBe(true);
+    expect(sent.every((exchange) => !/TX/.test(exchange.url))).toBe(true);
+    expect(bodiesOf(outcome)).toEqual([{ census: STAMP, regions: { TX: 1 } }, { file: STAMP, lines: 5, parsed: 5, reported: 3, near: 0 }]);
+    const readings = outcome.ok ? mapObservation(outcome.observations[0]!) : undefined;
+    expect(readings?.problems).toEqual([]);
+    expect(readings?.readings?.map((reading) => [reading.series, reading.value, reading.at])).toEqual([["TX", 1, addedTime(STAMP)]]);
   });
 });
 

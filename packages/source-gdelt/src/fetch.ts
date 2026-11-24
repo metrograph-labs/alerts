@@ -13,10 +13,11 @@ import { matchPlaces, observationId, type FetchOutcome, type FetchSignal, type I
 import { createRequester } from "@mark1russell7/alerts-fetch";
 import { readZipEntries, type ArchiveLimits } from "@mark1russell7/files/archive";
 import { isRecord } from "@mark1russell7/optional/read";
+import { compareCodeUnits } from "@mark1russell7/text/order";
 import type { Pace, Transport } from "polite-crawler/api";
 
 import { eventAreas, SOURCE_ID } from "./map.ts";
-import { addedTime, eventBody, eventOf, keepEvent, type GdeltEvent } from "./row.ts";
+import { addedTime, countEvent, eventBody, eventOf, keepEvent, stateOf, type GdeltEvent } from "./row.ts";
 
 /** The base URL of the files of GDELT. */
 export const GDELT_BASE_URL = "https://data.gdeltproject.org";
@@ -83,6 +84,11 @@ export interface EventFile {
   readonly reported: number;
   /** The bodies of the events of `keepEvent` that are also near a watched place. */
   readonly bodies: readonly string[];
+  /**
+   * The count of the events of `countEvent` in each region of the census, by its code in the system `state`. Each
+   * region of the census has a count, also a count of 0.
+   */
+  readonly census: Readonly<Record<string, number>>;
 }
 
 /** The pattern of the line of the event file in `lastupdate.txt`: the size, the MD5 digest and the URL. */
@@ -127,9 +133,16 @@ export function stampsToRead(last: string | undefined, newest: string): { readon
 /**
  * This function reads the events of one archive of an event file. It gives the text of the fault when the archive is
  * not one event file. With `expected` of the same time, it also examines the size and the MD5 digest. The function
- * `near` chooses the events of `keepEvent` that give a body. The default chooses each. The function does not throw.
+ * `near` chooses the events of `keepEvent` that give a body. The default chooses each. The census counts the events of
+ * `countEvent` in each region of `regions`. The function does not throw.
  */
-export function readEventFile(bytes: Uint8Array, stamp: string, expected?: LastUpdate, near: (event: GdeltEvent) => boolean = () => true): EventFile | string {
+export function readEventFile(
+  bytes: Uint8Array,
+  stamp: string,
+  expected?: LastUpdate,
+  near: (event: GdeltEvent) => boolean = () => true,
+  regions: readonly string[] = [],
+): EventFile | string {
   if (expected !== undefined && expected.stamp === stamp) {
     if (bytes.byteLength !== expected.size) return `the archive has ${bytes.byteLength} bytes, and lastupdate.txt gives ${expected.size}`;
     const md5 = createHash("md5").update(bytes).digest("hex");
@@ -143,21 +156,51 @@ export function readEventFile(bytes: Uint8Array, stamp: string, expected?: LastU
   const lines = new TextDecoder("utf-8").decode(entry.bytes).split("\n").filter((line) => line.trim() !== "");
   const events = lines.map(eventOf);
   const bodies: string[] = [];
+  const census = new Map(regions.map((region) => [region, 0]));
   let parsed = 0;
   let reported = 0;
   for (const event of events) {
     if (event === undefined) continue;
     parsed += 1;
+    if (census.size > 0 && countEvent(event)) {
+      const state = stateOf(event);
+      const count = state === undefined ? undefined : census.get(state);
+      if (state !== undefined && count !== undefined) census.set(state, count + 1);
+    }
     if (!keepEvent(event)) continue;
     reported += 1;
     if (near(event)) bodies.push(eventBody(event));
   }
-  return { lines: lines.length, parsed, reported, bodies };
+  return { lines: lines.length, parsed, reported, bodies, census: Object.fromEntries(census) };
 }
 
 /** This function gives the body of the head of a fetch: the newest file that the fetch read, and its counts. */
-export function headBody(stamp: string, file: EventFile): string {
+export function headBody(stamp: string, file: Pick<EventFile, "lines" | "parsed" | "reported" | "bodies">): string {
   return JSON.stringify({ file: stamp, lines: file.lines, parsed: file.parsed, reported: file.reported, near: file.bodies.length });
+}
+
+/**
+ * This function gives the body of the census of one file: the time of the file and the count of each region. The
+ * regions are in the order of their codes.
+ */
+export function censusBody(stamp: string, census: Readonly<Record<string, number>>): string {
+  const regions = Object.keys(census).sort(compareCodeUnits);
+  return JSON.stringify({ census: stamp, regions: Object.fromEntries(regions.map((region) => [region, census[region]])) });
+}
+
+/**
+ * The codes of the system `state` that are not a state in GDELT. GDELT codes each territory as a country of its own, for
+ * example Puerto Rico as `RQ`, thus the census of a territory is always 0.
+ */
+const TERRITORIES: ReadonlySet<string> = new Set(["AS", "GU", "MP", "PR", "UM", "VI"]);
+
+/**
+ * This function gives the regions of the census for the places of a watch. Each region is a US state that contains a
+ * watched place, by the `state` codes of the places. The regions are in the order of their codes, with no duplicate.
+ */
+export function censusRegions(places: readonly WatchedPlace[]): readonly string[] {
+  const codes = places.flatMap((place) => place.codes.filter((code) => code.system === "state" && /^[A-Z]{2}$/.test(code.code) && !TERRITORIES.has(code.code)).map((code) => code.code));
+  return [...new Set(codes)].sort(compareCodeUnits);
 }
 
 /**
@@ -217,6 +260,7 @@ export function createGdeltFetch(options: GdeltFetchOptions): (input: GdeltFetch
 
   return async (input, signal) => {
     const near = nearPlaces(input.watch.places);
+    const regions = censusRegions(input.watch.places);
     const listed = await requester.get({ path: LAST_UPDATE_PATH, what: "the list of the newest files" }, signal);
     if (!listed.ok) return { ok: false, failure: listed.failure };
     const newest = readLastUpdate(listed.answer.reply.body);
@@ -239,7 +283,7 @@ export function createGdeltFetch(options: GdeltFetchOptions): (input: GdeltFetch
         if (read === 0 && lastHead === undefined) return { ok: false, failure: requested.failure };
         break;
       }
-      const file = readEventFile(requested.answer.reply.bytes ?? new Uint8Array(), stamp, newest, near);
+      const file = readEventFile(requested.answer.reply.bytes ?? new Uint8Array(), stamp, newest, near, regions);
       if (typeof file === "string") {
         if (read === 0 && lastHead === undefined) return { ok: false, failure: { kind: "network", message: `${file}: ${url}` } };
         complete = false;
@@ -247,6 +291,7 @@ export function createGdeltFetch(options: GdeltFetchOptions): (input: GdeltFetch
       }
       read += 1;
       for (const body of file.bodies) observations.push(observe(body, url, requested.answer.reply.status, requested.latency));
+      if (regions.length > 0) observations.push(observe(censusBody(stamp, file.census), url, requested.answer.reply.status, requested.latency));
       lastStamp = stamp;
       lastHead = { stamp, body: headBody(stamp, file) };
     }

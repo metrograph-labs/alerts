@@ -10,9 +10,10 @@
  * the readings of the 28 days before it, and the store keeps only one day more than that.
  *
  * Cost: a pass reads the store only at the first use. A new bucket or a delete calculates the histories again, in
- * O(buckets × units). Each other pass reuses them.
+ * O(buckets × units). The histories of the pairs take O(buckets × k²), with k the units of one scope. Each other pass
+ * reuses them.
  */
-import { bucketOf, HISTORY_BUCKET, signalHistories, type Duration, type Instant, type SignalHistory, type SignalUnit } from "@mark1russell7/alerts";
+import { bucketOf, HISTORY_BUCKET, pairHistories, signalHistories, type BucketReads, type Duration, type Instant, type PairHistory, type SignalHistory, type SignalUnit } from "@mark1russell7/alerts";
 import type { ReadingStore } from "./readings.ts";
 
 /** The history of the signal units between the passes. */
@@ -22,6 +23,8 @@ export interface UnitHistory {
    * When the store throws, the function throws, and the next call reads the store again.
    */
   histories(before: Instant): SignalHistory[];
+  /** This function gives the joint history of each pair of units of one scope from the buckets before `before`, as `histories` does. */
+  pairs(before: Instant): PairHistory[];
   /**
    * This function writes the units of the bucket of `at` to the store, one time for each bucket. A bucket that the
    * history holds, or an empty list, writes nothing. When the store throws, the history does not change.
@@ -36,18 +39,24 @@ export function unitHistory(store: ReadingStore, size: Duration = HISTORY_BUCKET
   if (!Number.isFinite(size) || size <= 0) throw new RangeError(`The size of a bucket is ${size}, not a finite number above 0.`);
   let buckets: Map<Instant, readonly SignalUnit[]> | undefined;
   // The histories of the last call, and the bound of the buckets that they hold.
-  let cached: { readonly before: Instant; readonly histories: SignalHistory[] } | undefined;
+  let cached: { readonly before: Instant; readonly histories: SignalHistory[]; pairs?: PairHistory[] } | undefined;
   const loaded = (): Map<Instant, readonly SignalUnit[]> => {
     if (buckets === undefined) buckets = new Map(store.unitReads(Number.MIN_SAFE_INTEGER).map((item) => [item.bucket, item.units] as const));
     return buckets;
   };
+  const before = (bound: Instant): BucketReads[] => [...loaded()].filter(([bucket]) => bucket < bound).map(([bucket, units]) => ({ bucket, units }));
+  const current = (bound: Instant): NonNullable<typeof cached> => {
+    if (cached?.before !== bound) cached = { before: bound, histories: signalHistories(before(bound)) };
+    return cached;
+  };
   return {
-    histories(before) {
-      const all = loaded();
-      if (cached?.before !== before) {
-        cached = { before, histories: signalHistories([...all].filter(([bucket]) => bucket < before).map(([bucket, units]) => ({ bucket, units }))) };
-      }
-      return cached.histories;
+    histories(bound) {
+      return current(bound).histories;
+    },
+    pairs(bound) {
+      const found = current(bound);
+      found.pairs ??= pairHistories(before(bound));
+      return found.pairs;
     },
     record(at, units) {
       const all = loaded();
