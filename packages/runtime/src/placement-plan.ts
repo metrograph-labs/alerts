@@ -22,7 +22,8 @@
  *   This input replaces `--assume-site` for that site.
  * - `--base` names a private JSON file with the function and the needs that all copies share (`readBase` of
  *   `placement.ts`). These needs limit the gain of each copy. The output names each of their inputs that is assumed or
- *   missing.
+ *   missing. A chance of the base can name the status page of its part (`status`). The script then measures the input
+ *   from the history of that page (`measureBase` of `placement-chances.ts`), and prints one line for each input.
  * - `--joint` names a private JSON file with the joint measure of the live copies (`readJoint` of `placement.ts`), in the
  *   order of `--fixed`. The fit gives a common cause that each copy needs, thus a new copy is not an independent copy.
  * - `--copies` is the count of new copies. The default is 2.
@@ -48,6 +49,7 @@ import {
   HISTORY_GAPS,
   HISTORY_SOURCES,
   MEASURE_USER_AGENT,
+  measureBase,
   measureProvider,
   measureSite,
   readFetchTimes,
@@ -180,6 +182,11 @@ function frontOf(build: PlacementBuild, chances: PlacementChances, today: string
   };
 }
 
+// The record of one measure in the front file.
+function measureRecord(measure: ChanceMeasure) {
+  return { id: measure.input.id, works: measure.input.works, window: { from: new Date(measure.window.from).toISOString(), to: new Date(measure.window.to).toISOString() }, down: measure.down };
+}
+
 // The configuration as JSON, or undefined when the file is missing or is not JSON. Only its spend entries count.
 async function readConfig(path: string): Promise<unknown> {
   try {
@@ -202,7 +209,6 @@ if (typeof parsed === "string") {
     console.error(`The base file has a problem: ${baseRead}`);
     process.exit(2);
   }
-  const base: PlacementBase | undefined = baseRead;
   const joint = parsed.joint === undefined ? undefined : readJoint(await readConfig(parsed.joint));
   if (typeof joint === "string") {
     console.error(`The joint file has a problem: ${joint}`);
@@ -211,13 +217,6 @@ if (typeof parsed === "string") {
   if (joint !== undefined && joint.works.length !== parsed.fixed.length) {
     console.error("The joint file needs one input for each copy of --fixed, in the same order.");
     process.exit(2);
-  }
-  if (base === undefined) console.log("No base is named. The front leaves out the needs that all copies share.");
-  else {
-    const open = baseAssumed(base);
-    console.log(`The base has ${countOf(base.stack.parts.length, "part")} and ${countOf((base.chances ?? []).length, "chance input")}.`);
-    console.log(`Shared needs with an assumed input: ${open.assumed.length === 0 ? "none" : open.assumed.join(", ")}.`);
-    console.log(`Shared needs with no input, thus a chance of 1: ${open.missing.length === 0 ? "none" : open.missing.join(", ")}.`);
   }
   if (parsed.spend === undefined) console.log("No spend entry is named. The front has no limit of cost.");
   else if (costLimit === undefined) console.log(`The configuration has no valid spend entry ${parsed.spend}. The front has no limit of cost.`);
@@ -262,6 +261,17 @@ if (typeof parsed === "string") {
   const known = new Set([...HISTORY_SOURCES, ...HISTORY_GAPS].map((each) => each.provider));
   for (const provider of [...providers].filter((each) => !known.has(each)).sort()) gaps.push({ provider, reason: "No status page history of this provider is known." });
   console.log(`The status page histories gave ${countOf(measures.length, "measured input")}. The other fragments and the hosts use the assumed inputs.`);
+  // Each chance of the base that names a status page gets a measured input, with the same pace as the providers.
+  const baseMeasure = baseRead === undefined ? undefined : await measureBase(baseRead, { scheduler, now: () => Date.now() }, measureTransport, readAt, parsed.windowDays);
+  const base: PlacementBase | undefined = baseMeasure?.base;
+  if (base === undefined) console.log("No base is named. The front leaves out the needs that all copies share.");
+  else {
+    for (const line of baseMeasure?.lines ?? []) console.log(line);
+    const open = baseAssumed(base);
+    console.log(`The base has ${countOf(base.stack.parts.length, "part")} and ${countOf((base.chances ?? []).length, "chance input")}.`);
+    console.log(`Shared needs with an assumed input: ${open.assumed.length === 0 ? "none" : open.assumed.join(", ")}.`);
+    console.log(`Shared needs with no input, thus a chance of 1: ${open.missing.length === 0 ? "none" : open.missing.join(", ")}.`);
+  }
   for (const log of parsed.siteLogs) {
     let site: ReturnType<typeof measureSite>;
     try {
@@ -310,7 +320,8 @@ if (typeof parsed === "string") {
         costLimit: costLimit ?? null,
       },
       reads,
-      measures: measures.map((measure) => ({ id: measure.input.id, works: measure.input.works, window: { from: new Date(measure.window.from).toISOString(), to: new Date(measure.window.to).toISOString() }, down: measure.down })),
+      measures: measures.map(measureRecord),
+      baseMeasures: (baseMeasure?.measures ?? []).map(measureRecord),
       gaps,
       offers: build.offers,
       skipped: build.skipped,

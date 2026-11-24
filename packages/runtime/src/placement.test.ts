@@ -428,6 +428,19 @@ describe("the needs that all copies share", () => {
     expect(readBase([])).toBe("The base is not an object.");
   });
 
+  it("reads the status page of a chance, with the read api as the default, and gives a problem for a bad status", () => {
+    const chance = { part: "push-api", works: 0.999, kind: "assumed", source: "a test input" };
+    const read = (status: unknown) => readBase({ ...base, chances: [{ ...chance, status }] });
+    const plain = read({ host: "status.service-a.test" });
+    expect(typeof plain !== "string" && plain.chances?.[0]?.status).toEqual({ host: "status.service-a.test", read: "api", components: [] });
+    const file = read({ host: "status.service-a.test", read: "history", components: ["Component one"] });
+    expect(typeof file !== "string" && file.chances?.[0]?.status).toEqual({ host: "status.service-a.test", read: "history", components: ["Component one"] });
+    expect(read({ host: "https://status.service-a.test/" })).toContain("The status of the chance of push-api");
+    expect(read({ host: "status.service-a.test", read: "rss" })).toContain("The status of the chance of push-api");
+    expect(read({ host: "status.service-a.test", components: "Component one" })).toContain("The status of the chance of push-api");
+    expect(read("status.service-a.test")).toContain("The status of the chance of push-api");
+  });
+
   it("refuses an unknown part, two inputs of one part, and an id of a slot in the stack", () => {
     expect(() => placementLayer(input(offers, { base: { ...base, part: "other" } }))).toThrow(RangeError);
     expect(() => placementLayer(input(offers, { base: { ...base, copies: ["copy-z"] } }))).toThrow(RangeError);
