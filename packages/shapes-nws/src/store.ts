@@ -3,14 +3,14 @@
  * the basemap of a state from its records. Its refresh gets the records from the zone service of the
  * NWS API, one request at a time, between the fetches of the alerts.
  */
-import type { Duration, FetchFailure, Instant, MapRegion, RegionCode, ShapeLookup, SourceId } from "@mark1russell7/alerts";
+import type { Duration, FetchFailure, Instant, MapRegion, MapShape, RegionCode, ShapeLookup, SourceId } from "@mark1russell7/alerts";
 import { createRequester, problemDetail } from "@mark1russell7/alerts-fetch";
 import { stateCode, stateOfUgc } from "@mark1russell7/alerts-format-nws";
 import { NWS_BASE_URL } from "@mark1russell7/alerts-source-nws-api";
 import type { Answer, Condition, Conditions, Pace, Transport } from "polite-crawler/api";
 import type { ShapeCache } from "./cache.ts";
 import { dropsOf, listKey, plan, taskId, zoneKey, type CachedList, type CachedZone, type Plan, type ShapeState, type Task, type Wanted } from "./plan.ts";
-import { BASEMAP_KINDS, codeOfZone, compareCodes, listPath, readList, readZone, zoneOfCode, zonePath, type ZoneKind } from "./zones.ts";
+import { BASEMAP_KINDS, codeOfZone, compareCodes, listPath, readList, readZone, zoneOfCode, zonePath, type ZoneKey, type ZoneKind } from "./zones.ts";
 
 /**
  * The age of a record when the store asks for it again: 7 days. Each request is conditional, thus a
@@ -129,8 +129,8 @@ function positive(name: string, value: number): number {
 }
 
 /**
- * This function makes the store. It reads the records of the cache once. The store writes each new
- * record to the cache before it uses the record.
+ * This function makes the store. It reads the lists and the heads of the zones of the cache once. It reads the shapes
+ * of a zone at its first use. The store writes each new record to the cache before it uses the record.
  */
 export function createShapeStore(options: ShapeStoreOptions): ShapeStore {
   const { pace, cache } = options;
@@ -155,6 +155,25 @@ export function createShapeStore(options: ShapeStoreOptions): ShapeStore {
   const lists = new Map(records.lists.map((list) => [listKey(list.state, list.kind), list]));
   const zones = new Map(records.zones.map((zone) => [zoneKey(zone), zone]));
   const state: ShapeState = { lists, zones };
+  // The shapes of the zones in use. The store reads the shapes of a zone from the cache at its first use, and then it keeps
+  // them. Thus a lookup gives the same array until the record changes. The keeper of the instance uses that identity.
+  // The store does not drop the shapes of a zone that is not in use: the view of the map reads each of them at each request
+  // (AL-176). A copy with no request of the map reads only the zones of its places.
+  const outlines = new Map<string, readonly MapShape[]>();
+  const shapesOf = (key: ZoneKey): readonly MapShape[] | undefined => {
+    const id = zoneKey(key);
+    const known = outlines.get(id);
+    if (known !== undefined) return known;
+    if (!zones.has(id)) return undefined;
+    const read = cache.outline(key);
+    if (read === undefined) {
+      // A head with shapes that do not parse is not a record. Thus the plan asks for the zone again.
+      zones.delete(id);
+      return undefined;
+    }
+    outlines.set(id, read);
+    return read;
+  };
   // The waits after failures, in memory only. A restart asks again at once.
   const taskRetry = new Map<string, Instant>();
   let hostRetry: Instant | undefined;
@@ -190,7 +209,8 @@ export function createShapeStore(options: ShapeStoreOptions): ShapeStore {
   const regionsOf = (state: string, kind: ZoneKind): MapRegion[] =>
     (lists.get(listKey(state, kind))?.ids ?? []).flatMap((id): MapRegion[] => {
       const zone = zones.get(zoneKey({ kind, id }));
-      return zone === undefined ? [] : [{ code: codeOfZone(zone), name: zone.name, shapes: zone.shapes }];
+      const shapes = zone === undefined ? undefined : shapesOf(zone);
+      return zone === undefined || shapes === undefined ? [] : [{ code: codeOfZone(zone), name: zone.name, shapes }];
     });
 
   const runList = async (task: Extract<Task, { type: "list" }>, signal: AbortSignal | undefined): Promise<Done> => {
@@ -212,7 +232,10 @@ export function createShapeStore(options: ShapeStoreOptions): ShapeStore {
     const drops = read.complete ? dropsOf(state, list) : [];
     cache.putList(list, drops);
     lists.set(listKey(list.state, list.kind), list);
-    for (const drop of drops) zones.delete(zoneKey(drop));
+    for (const drop of drops) {
+      zones.delete(zoneKey(drop));
+      outlines.delete(zoneKey(drop));
+    }
     return { ok: true, problems: read.problems };
   };
 
@@ -224,7 +247,14 @@ export function createShapeStore(options: ShapeStoreOptions): ShapeStore {
     const fetched = pace.now();
     let zone: CachedZone;
     if (notModified(requested.answer) && old !== undefined) {
-      zone = { ...old, fetched };
+      // The 304 reads the shapes of a zone that is not in use, and it does not keep them. A record with shapes that do not
+      // parse is not a record: the next request of the zone has no validators.
+      const shapes = outlines.get(zoneKey(old)) ?? cache.outline(old);
+      if (shapes === undefined) {
+        zones.delete(zoneKey(old));
+        return { ok: false, problems: [`The cache has no shapes of ${key.id}.`] };
+      }
+      zone = { ...old, fetched, shapes };
     } else {
       const read = readZone(requested.answer.reply.body, key);
       if (!read.ok) return { ok: false, problems: [read.problem] };
@@ -233,19 +263,23 @@ export function createShapeStore(options: ShapeStoreOptions): ShapeStore {
       zone = { kind: key.kind, id: key.id, state: zoneState, name: read.name, fetched, shapes: read.shapes, ...(condition === undefined ? {} : { condition }) };
     }
     cache.putZone(zone);
-    zones.set(zoneKey(zone), zone);
+    const { shapes, ...head } = zone;
+    zones.set(zoneKey(zone), head);
+    // A zone in use gets its new shapes. The shapes of a zone that is not in use stay in the cache.
+    if (outlines.has(zoneKey(zone))) outlines.set(zoneKey(zone), shapes);
     return { ok: true, problems: [] };
   };
 
   return {
     lookup(code) {
       const key = zoneOfCode(code);
-      return key === undefined ? undefined : zones.get(zoneKey(key))?.shapes;
+      return key === undefined ? undefined : shapesOf(key);
     },
     region(code) {
       const key = zoneOfCode(code);
       const zone = key === undefined ? undefined : zones.get(zoneKey(key));
-      return zone === undefined ? undefined : { code: codeOfZone(zone), name: zone.name, shapes: zone.shapes };
+      const shapes = zone === undefined ? undefined : shapesOf(zone);
+      return zone === undefined || shapes === undefined ? undefined : { code: codeOfZone(zone), name: zone.name, shapes };
     },
     basemap(name) {
       const code = stateCode(name);
