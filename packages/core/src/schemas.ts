@@ -1456,7 +1456,7 @@ export const placeConfigSchema: z.ZodType<PlaceConfig, PlaceConfig> = schemaOf<P
       codes: z.array(regionCodeSchema).readonly(),
       bufferKm: z.number(),
       sharePosition: z.array(sourceIdSchema).readonly().exactOptional(),
-      moving: z.strictObject({ device: z.string(), maxAgeMinutes: z.number() }).readonly().exactOptional(),
+      moving: z.strictObject({ device: z.string(), maxAgeMinutes: z.number(), maxAccuracyKm: z.number().exactOptional() }).readonly().exactOptional(),
     })
     .readonly(),
 );

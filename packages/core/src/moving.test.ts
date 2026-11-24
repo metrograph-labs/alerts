@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import type { PlaceConfig } from "./config.ts";
 import type { PlaceId, Position, RegionCode, SourceId } from "./contracts.ts";
 import { matchPlaces } from "./assess.ts";
-import { FIX_FUTURE_LIMIT_MS, fixAge, fixProblems, movingPlace, movingProblems, placeOfDevice, type PositionFix } from "./moving.ts";
+import { DEFAULT_MAX_ACCURACY_KM, FIX_FUTURE_LIMIT_MS, fixAge, fixProblems, movingPlace, movingProblems, nextFix, passPlaces, placeOfDevice, type PositionFix, staleMovingPlaces } from "./moving.ts";
+import type { AlertConfig } from "./config.ts";
 
 const SEEDS = seedsFrom(process.env["SEED"], [1, 2, 3, 4, 5, 6, 7, 8]);
 const MINUTE = 60_000;
@@ -90,5 +91,45 @@ describe("movingProblems", () => {
   it("finds the place of a device", () => {
     expect(placeOfDevice([MOVING], "ph")?.id).toBe(here);
     expect(placeOfDevice([MOVING], "other")).toBeUndefined();
+  });
+});
+
+describe("nextFix", () => {
+  it("keeps a good newer fix, and keeps the last fix for a problem, a doubt over the limit and an older time", () => {
+    const last = fix();
+    expect(nextFix(MOVING, last, fix({ observedAt: NOW }))).toEqual({ fix: fix({ observedAt: NOW }) });
+    expect(nextFix(MOVING, undefined, fix())).toEqual({ fix: fix() });
+    expect(nextFix(MOVING, last, fix({ observedAt: NOW, at: [0, 99] }))).toEqual({ fix: last, refused: "problems" });
+    expect(nextFix(MOVING, last, fix({ observedAt: NOW, accuracyKm: DEFAULT_MAX_ACCURACY_KM + 0.1 }))).toEqual({ fix: last, refused: "accuracy" });
+    expect(nextFix(MOVING, last, fix({ observedAt: last.observedAt }))).toEqual({ fix: last, refused: "older" });
+  });
+
+  it("uses the accuracy limit of the place before the default", () => {
+    const wide: PlaceConfig = { ...MOVING, moving: { device: "ph", maxAgeMinutes: 30, maxAccuracyKm: 10 } };
+    expect(nextFix(wide, undefined, fix({ accuracyKm: 8 })).refused).toBeUndefined();
+    expect(nextFix(wide, undefined, fix({ accuracyKm: 11 })).refused).toBe("accuracy");
+    expect(movingProblems({ ...wide, moving: { device: "ph", maxAgeMinutes: 30, maxAccuracyKm: 0 } }, [wide])).toEqual([`The moving place ${here} has no positive accuracy limit.`]);
+  });
+});
+
+describe("passPlaces", () => {
+  const fixed: PlaceConfig = { id: "place-home" as PlaceId, label: "Home", at: [-95.7, 39.0], codes: [ZONE], bufferKm: 2 };
+  const config = { places: [fixed, MOVING] } as unknown as AlertConfig;
+
+  it("gives the fixed places, then each moving place at a fresh fix with the codes at the fix", () => {
+    const codesAt = (_place: PlaceConfig, at: Position): readonly RegionCode[] => (at === AT ? [ZONE] : []);
+    expect(passPlaces(config, new Map([[here, fix()]]), NOW, codesAt).map((place) => [place.id, place.codes])).toEqual([
+      [fixed.id, [ZONE]],
+      [here, [ZONE]],
+    ]);
+  });
+
+  it("leaves out a moving place with a stale, future or missing fix, and tells it as stale", () => {
+    const none = (): readonly RegionCode[] => [];
+    for (const fixes of [new Map(), new Map([[here, fix({ observedAt: NOW - 31 * MINUTE })]]), new Map([[here, fix({ observedAt: NOW + 2 * MINUTE })]])]) {
+      expect(passPlaces(config, fixes, NOW, none).map((place) => place.id)).toEqual([fixed.id]);
+      expect(staleMovingPlaces(config, fixes, NOW)).toEqual([here]);
+    }
+    expect(staleMovingPlaces(config, new Map([[here, fix()]]), NOW)).toEqual([]);
   });
 });

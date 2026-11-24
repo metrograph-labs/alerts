@@ -63,6 +63,8 @@ export interface MovingRule {
   readonly device: string;
   /** A fix older than this limit gives no place. */
   readonly maxAgeMinutes: number;
+  /** A fix with a greater doubt keeps the last good fix. The default is `DEFAULT_MAX_ACCURACY_KM`. */
+  readonly maxAccuracyKm?: number;
 }
 
 /**
