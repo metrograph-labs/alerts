@@ -1294,6 +1294,8 @@ export function openInstance(options: InstanceOptions): Instance {
       basemap: shapes.basemap(),
       // The breadth of the indicator signals of the last pass. A runtime with no store of the readings has none.
       ...(latest?.breadth === undefined ? {} : { breadth: latest.breadth }),
+      // The surprise of the signals of the last pass (AL-24). A fault of the history of the units gives none.
+      ...(latest?.surprise === undefined ? {} : { surprise: latest.surprise }),
     });
   };
   // The health reads the view of the last pass. The watches of the copies, the balances and the channels are at the time of the read.

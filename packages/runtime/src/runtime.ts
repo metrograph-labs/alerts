@@ -5,7 +5,7 @@
  * that it gets.
  */
 import { isFrameClock, type WallClock } from "@mark1russell7/algebra/clock";
-import { channelDownPolicy, DEFAULT_SEND_LIMITS, downChannels, heldPersons, indicatorBreadth, knowsReport, limitShare, matchPlaces, observeConditions, ONLY_COPY, type StoreBound, type WatchedPlace, type ChannelQuota, type ChannelSnapshot, type CopyWatch, type DrillWatch, type Duration, type EntryTimes, type Exhaustion, type FetchOutcome, type HeldPerson, type Incident, type IndicatorBreadth, type Instant, type LatenessFolds, type LoopBlock, type MergeState, type ObserveCondition, type Report, type ReportId, type SourceDescriptor, type SourceId, type StoreFill, type SourceProcedures, type Watch, type ZoneRegions, type JointDown, type DriftCheck } from "@mark1russell7/alerts";
+import { bucketOf, channelDownPolicy, DEFAULT_SEND_LIMITS, downChannels, heldPersons, indicatorBreadth, indicatorSurprise, indicatorUnits, knowsReport, limitShare, matchPlaces, observeConditions, ONLY_COPY, type StoreBound, type WatchedPlace, type ChannelQuota, type ChannelSnapshot, type CopyWatch, type DrillWatch, type Duration, type EntryTimes, type Exhaustion, type FetchOutcome, type HeldPerson, type Incident, type IndicatorBreadth, type IndicatorSurprise, type Instant, type LatenessFolds, type LoopBlock, type MergeState, type ObserveCondition, type Report, type ReportId, type SourceDescriptor, type SourceId, type StoreFill, type SourceProcedures, type Watch, type ZoneRegions, type JointDown, type DriftCheck } from "@mark1russell7/alerts";
 import type { ChunkOptions, FoldMark, FoldSnapshot } from "@mark1russell7/sqlite";
 import { errorMessage } from "@mark1russell7/text";
 import { compareCodeUnits } from "@mark1russell7/text/order";
@@ -31,6 +31,7 @@ import { readSnapshot, snapshotKey, snapshotRows, type StartRead, type StartSnap
 import { retention, type RetentionOptions } from "./retention.ts";
 import type { ReadWatch } from "./schedule.ts";
 import { seriesReads } from "./series-reads.ts";
+import { unitHistory } from "./unit-history.ts";
 import { fold, foldScratch, rebuild, recordBatch, recordScratch, type ExchangeCursor, type RecordScratch, type RuntimeState } from "./state.ts";
 import { earliest, nextFetch, systemEvent, systemView, type SystemView, type ViewConfig } from "./view.ts";
 
@@ -229,6 +230,12 @@ export interface Pass {
    * runtime has a store of the readings and the read of the store passed. It gives counts and no decision.
    */
   readonly breadth?: IndicatorBreadth;
+  /**
+   * The surprise of the indicator signals at `at`, in the world and in each watched place (AL-24). The base rate of each
+   * unit comes from the hours before the hour of `at`. It is present when the breadth is present and the read of the
+   * history passed. It gives no decision.
+   */
+  readonly surprise?: IndicatorSurprise;
   /** The mode of each source with a mode (AL-73), with the verdict of each source that observes. It has no person. */
   readonly modes?: readonly ModeStatus[];
 }
@@ -492,6 +499,8 @@ export function openRuntime(options: RuntimeOptions): Runtime {
   };
   // The reads of the indicator series between the passes. A pass reads from the store only the changed series.
   const indicatorReads = store === undefined ? undefined : seriesReads({ store, sources: config.sources });
+  // The history of the signal units (AL-24): one read of each unit in each hour, in the store of the readings.
+  const unitReads = store === undefined ? undefined : unitHistory(store);
   const zones = options.zones ?? [];
 
   const limit = options.snapshotMisses ?? SNAPSHOT_MISSES;
@@ -687,6 +696,10 @@ export function openRuntime(options: RuntimeOptions): Runtime {
       // The breadth of the indicator signals at the time of the view. A fault of the store gives no breadth, and the pass continues.
       const signals = indicatorReads === undefined ? undefined : guarded("read", () => indicatorReads.signals(at));
       const breadth = signals === undefined ? undefined : indicatorBreadth(signals, config.places, zones);
+      // The surprise reads the history of the hours before this hour. Then the first pass of the hour writes its units.
+      // A fault of the store gives no surprise or no write, and the pass continues.
+      const surprise = breadth === undefined || unitReads === undefined ? undefined : guarded("read", () => indicatorSurprise(breadth, unitReads.histories(bucketOf(at))));
+      if (breadth !== undefined) guarded("add", () => unitReads?.record(at, indicatorUnits(breadth)));
       // Each due drill starts before the view. Thus the system fold of the view gives its run, and the delivery step sends it.
       const drills = options.drills ?? [];
       const started = drillStarts(state, drills, self, at);
@@ -737,6 +750,7 @@ export function openRuntime(options: RuntimeOptions): Runtime {
         guarded("prune", (readings) => {
           readings.prune(at - keep);
           indicatorReads?.pruned(at - keep);
+          unitReads?.pruned(at - keep);
         });
       }
 
@@ -754,6 +768,7 @@ export function openRuntime(options: RuntimeOptions): Runtime {
         ...(delivery === undefined ? {} : { delivery }),
         ...(wakeAt === undefined ? {} : { wakeAt }),
         ...(breadth === undefined ? {} : { breadth }),
+        ...(surprise === undefined ? {} : { surprise }),
         modes: modeStatus(state, observed.verdicts),
       };
       await options.onPass?.(pass);
