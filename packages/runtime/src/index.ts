@@ -9,6 +9,7 @@ import type { OutageDeployWorker } from "./outage.ts";
 
 export { LOOPBACK, PAGE_INDEX, attachApi, pageFolder, statusOf, type ApiOptions, type StartStatus, type Status } from "./api.ts";
 export * from "./balance.ts";
+export { BLOCK_WATCH_LIMITS, startBlockWatch, type BlockPhase, type BlockWatch, type BlockWatchOptions } from "./block-watch.ts";
 export * from "./channel-watch.ts";
 export * from "./config.ts";
 export * from "./copy-store.ts";

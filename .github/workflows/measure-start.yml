@@ -3,6 +3,10 @@
 # home runs under the CPU profiler. The records give the time of the open, the routes of the first pass, the routes with
 # a send, the functions with the most self time and the inclusive time of each function of the delivery step. Time on a
 # shared computer tells nothing, thus the measure runs in CI only. It is a measure, not a gate.
+#
+# The second step measures the memory of the watch of long blocks (AL-119): a worker thread with its own V8 isolate. Each
+# round starts the case 0x1 with and without `--block-watch` in fresh processes (`block-watch-memory.ts`). The summary of the
+# job gives the change of the resident memory, of its peak and of the heap in each round.
 name: Measure start
 
 on:
@@ -11,6 +15,8 @@ on:
     paths:
       - packages/testkit/scripts/live-heap.ts
       - packages/testkit/src/cpu-profile.ts
+      - packages/testkit/scripts/block-watch-memory.ts
+      - packages/runtime/src/block-watch.ts
       - .github/workflows/measure-start.yml
   # A person starts a run of other cases: gh workflow run measure-start.yml -f cases="4000x1 4000x10"
   workflow_dispatch:
@@ -53,6 +59,10 @@ jobs:
           for case in $CASES; do
             node --expose-gc scripts/live-heap.ts "${case%x*}" "${case#*x}" --profile | tee -a "$GITHUB_WORKSPACE/start/records.jsonl"
           done
+      - name: Measure the memory of the watch of long blocks
+        working-directory: packages/testkit
+        run: |
+          node scripts/block-watch-memory.ts "$GITHUB_WORKSPACE/start" 4
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
