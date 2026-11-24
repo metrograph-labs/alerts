@@ -417,8 +417,8 @@ importers:
         specifier: ^0.1.18
         version: 0.1.19
       '@mark1russell7/rigor-statistics':
-        specifier: ^0.2.19
-        version: 0.2.19
+        specifier: ^0.2.21
+        version: 0.2.21
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -2426,6 +2426,10 @@ packages:
     resolution: {integrity: sha512-eTyJhK4Nowx1KQ3QrsQqLiAlhFoL+8m1OT6He+X0Lf0G/0f9OyQC8ponQLViQKRkP/ef10B6oACFjtjnKErobg==}
     engines: {node: '>=22'}
 
+  '@mark1russell7/rigor-generators@0.2.1':
+    resolution: {integrity: sha512-bWhgmh1I74o1KuNRycv43pZFseddTWTrvEAQjLWnMeiM3p9sB2ACvBiWradssLhCBhIrz2UxY9+5K34fZoUBnA==}
+    engines: {node: '>=22'}
+
   '@mark1russell7/rigor-proxy@0.3.2':
     resolution: {integrity: sha512-QSo2kQNSSqbBJnRzx8qpQgJt8ifBjPDX+sFw2JZGCQjBaXGCv6ISYyUiVS0no3lc1QDMZyLVxCVhliJpIeSgGg==}
     engines: {node: '>=22.19'}
@@ -2438,8 +2442,8 @@ packages:
     resolution: {integrity: sha512-4m8yw4giLH/y1HcsroBQSHAWByC5fK/iJb4dNGCPT6Eelr26bxvBz7kMC7UMFSzGcR+W8GTrAwlAQmmFnQDMuA==}
     engines: {node: '>=22'}
 
-  '@mark1russell7/rigor-statistics@0.2.19':
-    resolution: {integrity: sha512-zMfirguRPEJin3H1q5Rl3kCl6b5M5QSg0ukd/damhZXPwLEUQ/oAYXoRAJA5sSZ7tHW4wZF9DhK8FidiMGsbbg==}
+  '@mark1russell7/rigor-statistics@0.2.21':
+    resolution: {integrity: sha512-ve292V+0VeNwATgElVnkugUn31cJbFOFlqoB38nYHcLawzDldZwGA5w0tr2RrpTkKWudxOGR9+lGWYm+jplhFQ==}
     engines: {node: '>=22'}
 
   '@mark1russell7/rigor-statistics@0.2.8':
@@ -4831,14 +4835,14 @@ snapshots:
   '@mark1russell7/algebra@0.9.10(zod@4.6.7)':
     dependencies:
       '@mark1russell7/quantity': 0.4.3(zod@4.6.7)
-      '@mark1russell7/rigor-statistics': 0.2.19
+      '@mark1russell7/rigor-statistics': 0.2.21
     optionalDependencies:
       zod: 4.6.7
 
   '@mark1russell7/algebra@0.9.9(zod@4.6.7)':
     dependencies:
       '@mark1russell7/quantity': 0.4.3(zod@4.6.7)
-      '@mark1russell7/rigor-statistics': 0.2.19
+      '@mark1russell7/rigor-statistics': 0.2.21
     optionalDependencies:
       zod: 4.6.7
 
@@ -4884,7 +4888,7 @@ snapshots:
     dependencies:
       '@mark1russell7/algebra': 0.8.10(zod@4.6.7)
       '@mark1russell7/optional': 1.5.0
-      '@mark1russell7/rigor-statistics': 0.2.19
+      '@mark1russell7/rigor-statistics': 0.2.21
     transitivePeerDependencies:
       - zod
 
@@ -4921,7 +4925,7 @@ snapshots:
     dependencies:
       '@mark1russell7/predicates': 0.1.5
       '@mark1russell7/rigor-generators': 0.2.0
-      '@mark1russell7/rigor-statistics': 0.2.19
+      '@mark1russell7/rigor-statistics': 0.2.21
       '@mark1russell7/strategy-space': 0.1.1
       '@mark1russell7/typeset': 0.7.1
     transitivePeerDependencies:
@@ -5013,7 +5017,7 @@ snapshots:
   '@mark1russell7/rigor-bench@0.3.2(esbuild@0.28.2)':
     dependencies:
       '@mark1russell7/rigor-generators': 0.2.0
-      '@mark1russell7/rigor-statistics': 0.2.19
+      '@mark1russell7/rigor-statistics': 0.2.21
       '@mark1russell7/text': 0.0.17
     optionalDependencies:
       esbuild: 0.28.2
@@ -5021,11 +5025,13 @@ snapshots:
   '@mark1russell7/rigor-chaos@0.3.3':
     dependencies:
       '@mark1russell7/rigor-generators': 0.1.19
-      '@mark1russell7/rigor-statistics': 0.2.19
+      '@mark1russell7/rigor-statistics': 0.2.21
 
   '@mark1russell7/rigor-generators@0.1.19': {}
 
   '@mark1russell7/rigor-generators@0.2.0': {}
+
+  '@mark1russell7/rigor-generators@0.2.1': {}
 
   '@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7)':
     dependencies:
@@ -5042,9 +5048,9 @@ snapshots:
     dependencies:
       '@mark1russell7/rigor-generators': 0.1.19
 
-  '@mark1russell7/rigor-statistics@0.2.19':
+  '@mark1russell7/rigor-statistics@0.2.21':
     dependencies:
-      '@mark1russell7/rigor-generators': 0.2.0
+      '@mark1russell7/rigor-generators': 0.2.1
 
   '@mark1russell7/rigor-statistics@0.2.8':
     dependencies:
@@ -5131,7 +5137,7 @@ snapshots:
 
   '@mark1russell7/site-pages@0.8.2':
     dependencies:
-      '@mark1russell7/rigor-statistics': 0.2.19
+      '@mark1russell7/rigor-statistics': 0.2.21
 
   '@mark1russell7/sqlite@0.3.12': {}
 

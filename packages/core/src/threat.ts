@@ -13,12 +13,16 @@
  * - The surprise is `-log10(p)`. A surprise of 3 tells a count that independent units give one time in 1000 reads.
  *
  * The count weighs each unit the same: one rare signal and one common signal give the same surprise. The list `rare` tells
- * the rare units. A statistic that weighs each unit by its rate is the next part of AL-24.
+ * the rare units. The field `weighted` weighs each unit by `-ln(rate)`, thus a rare signal counts more:
+ *
+ * - The statistic is the sum of the weights of the units with a signal. Its p is the upper bound of
+ *   `weightedBernoulliTest`, thus the weighted surprise does not tell more than the data gives.
+ * - When each unit has the same rate, the weighted p is the p of the count.
  *
  * A high surprise tells that the independent model fails: a hidden common cause moves many units at one time. The
  * surprise gives no decision and no level. The calculation of the level (AL-31) reads it.
  */
-import { poissonBinomialTest, wilson } from "@mark1russell7/rigor-statistics";
+import { poissonBinomialTest, WEIGHTED_TAIL_CELLS, WEIGHTED_TAIL_MAX_WORK, weightedBernoulliTest, wilson } from "@mark1russell7/rigor-statistics";
 import { compareCodeUnits } from "@mark1russell7/text/order";
 import type { Breadth, IndicatorBreadth } from "./breadth.ts";
 import type { Duration, Instant, PlaceId } from "./contracts.ts";
@@ -61,7 +65,27 @@ export interface Surprise {
   readonly rare: readonly SignalRate[];
   /** The ids of the units with too short a history for a base rate, in the order of the code units. */
   readonly noRate: readonly string[];
+  /** The surprise of the signals, with a weight for each unit from its rate. A group of more than `MAX_WEIGHTED_UNITS` units has none. */
+  readonly weighted?: WeightedSurprise;
 }
+
+/** The surprise of the sum of the weights of the units with a signal. The weight of a unit is `-ln(rate)`. */
+export interface WeightedSurprise {
+  /** The sum of the weights of the units with a signal, 0 or more. */
+  readonly weight: number;
+  /** The lower bound of the chance of `weight` or more when the units are independent, from 0 to `p`. */
+  readonly low: number;
+  /** The upper bound of the chance of `weight` or more when the units are independent, from 0 to 1. */
+  readonly p: number;
+  /** The value `-log10(p)`, 0 or more. */
+  readonly surprise: number;
+}
+
+/**
+ * The most units of a weighted surprise. The work of `weightedBernoulliTest` grows with the square of the count of the
+ * units. Thus a larger group gets fewer cells, and this count gets one cell.
+ */
+export const MAX_WEIGHTED_UNITS: number = Math.floor(Math.sqrt(WEIGHTED_TAIL_MAX_WORK));
 
 /** The default count of reads before a unit gets a base rate. */
 export const MIN_READS = 30;
@@ -112,8 +136,32 @@ export function surpriseOf(units: readonly SignalUnit[], histories: readonly Sig
   }
   const rare = rates.filter((item) => signal.get(item.unit) === true).sort((a, b) => a.rate - b.rate || compareCodeUnits(a.unit, b.unit));
   const p = rates.length === 0 ? 1 : poissonBinomialTest(rare.length, rates.map((item) => item.rate), "greater");
-  const bounded = Math.min(1, Math.max(SMALLEST_P, p));
-  return { units: rates.length, signals: rare.length, p: bounded, surprise: Math.max(0, -Math.log10(bounded)), rare, noRate };
+  const bounded = boundP(p);
+  const found = { units: rates.length, signals: rare.length, p: bounded, surprise: Math.max(0, -Math.log10(bounded)), rare, noRate };
+  const weighted = weightedSurprise(rates, new Set(rare.map((item) => item.unit)));
+  return weighted === undefined ? found : { ...found, weighted };
+}
+
+function boundP(p: number): number {
+  return Math.min(1, Math.max(SMALLEST_P, p));
+}
+
+// The weight of a unit: -ln(rate). A rate of 1 gives 0, thus a unit that has a signal in each read adds nothing.
+function weightOf(rate: number): number {
+  return Math.max(0, -Math.log(rate));
+}
+
+// The weighted surprise of the units with a rate, or undefined for a group of more than MAX_WEIGHTED_UNITS units.
+function weightedSurprise(rates: readonly SignalRate[], signals: ReadonlySet<string>): WeightedSurprise | undefined {
+  const count = rates.length;
+  if (count > MAX_WEIGHTED_UNITS) return undefined;
+  const weights = rates.map((item) => weightOf(item.rate));
+  const weight = rates.reduce((sum, item, index) => (signals.has(item.unit) ? sum + weights[index]! : sum), 0);
+  // The work is approximately count * count * cells. Thus a large group gets fewer cells, and the bounds are wider.
+  const cells = Math.max(1, Math.min(WEIGHTED_TAIL_CELLS, Math.floor(WEIGHTED_TAIL_MAX_WORK / Math.max(1, count * count))));
+  const tail = count === 0 ? { low: 1, high: 1 } : weightedBernoulliTest(weight, rates.map((item) => item.rate), weights, { cells });
+  const p = boundP(tail.high);
+  return { weight, low: Math.min(p, Math.max(0, tail.low)), p, surprise: Math.max(0, -Math.log10(p)) };
 }
 
 /**

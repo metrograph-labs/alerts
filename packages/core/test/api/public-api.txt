@@ -288,6 +288,7 @@ MAGNITUDE_PARAMETER: build/index.d.ts#MAGNITUDE_PARAMETER
 MAP_FORMAT: build/index.d.ts#MAP_FORMAT
 MAP_VIEW: build/index.d.ts#MAP_VIEW
 MAX_PLACE_CODES: build/index.d.ts#MAX_PLACE_CODES
+MAX_WEIGHTED_UNITS: build/index.d.ts#MAX_WEIGHTED_UNITS
 MEASURE_ID: build/index.d.ts#MEASURE_ID
 MIN_READS: build/index.d.ts#MIN_READS
 MOVES: build/index.d.ts#MOVES
@@ -520,6 +521,7 @@ WORK_DEFAULTS_DATE: build/index.d.ts#WORK_DEFAULTS_DATE
 WORLD_SCOPE: build/index.d.ts#WORLD_SCOPE
 Watch: build/index.d.ts#Watch
 WatchedPlace: build/index.d.ts#WatchedPlace
+WeightedSurprise: build/index.d.ts#WeightedSurprise
 WhyLabels: build/index.d.ts#WhyLabels
 WhyLimit: build/index.d.ts#WhyLimit
 WhyRecord: build/index.d.ts#WhyRecord
@@ -2886,6 +2888,9 @@ export declare const MAP_VIEW: {
 ### build/index.d.ts#MAX_PLACE_CODES
 export declare const MAX_PLACE_CODES = 1e3;
 
+### build/index.d.ts#MAX_WEIGHTED_UNITS
+export declare const MAX_WEIGHTED_UNITS: number;
+
 ### build/index.d.ts#MEASURE_ID
 export declare const MEASURE_ID: RegExp;
 
@@ -4138,6 +4143,7 @@ export interface Surprise {
   readonly surprise: number;
   readonly rare: readonly SignalRate[];
   readonly noRate: readonly string[];
+  readonly weighted?: WeightedSurprise;
 }
 
 ### build/index.d.ts#SystemLine
@@ -4380,6 +4386,14 @@ export interface WatchedPlace {
   readonly at?: Position;
   readonly codes: readonly RegionCode[];
   readonly bufferKm: number;
+}
+
+### build/index.d.ts#WeightedSurprise
+export interface WeightedSurprise {
+  readonly weight: number;
+  readonly low: number;
+  readonly p: number;
+  readonly surprise: number;
 }
 
 ### build/index.d.ts#WhyLabels
