@@ -19,6 +19,7 @@ export {
   censusBody,
   censusRegions,
   createGdeltFetch,
+  cursorOf,
   EVENT_ARCHIVE_LIMITS,
   eventFilePath,
   FILE_STEP_MS,
@@ -28,13 +29,15 @@ export {
   headTime,
   LAST_UPDATE_PATH,
   MAX_FILES_PER_FETCH,
+  missingUpstream,
   nearPlaces,
+  readCursor,
   readEventFile,
   readLastUpdate,
   stampOf,
   stampsToRead,
 } from "./fetch.ts";
-export type { EventFile, GdeltFetchInput, GdeltFetchOptions, LastUpdate } from "./fetch.ts";
+export type { EventFile, FetchState, GdeltFetchInput, GdeltFetchOptions, LastUpdate } from "./fetch.ts";
 export {
   CAMEO_LABELS,
   cameoLabel,
