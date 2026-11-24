@@ -33,6 +33,9 @@ export const SOUNDER_CHANNEL = "sounder" as ChannelId;
 /**
  * The most sounds of one message at each level, when the options give no value. A message of the level `life-safety`
  * sounds for approximately 4 minutes, with a sound of 3 seconds.
+ *
+ * The channel has no acknowledgment, and a later rung of the escalation does not stop the sounds. A cancel of the
+ * incident stops them, and so does the time `expires` of the message.
  */
 export const SOUNDER_SOUNDS: Readonly<Record<Level, number>> = { "life-safety": 60, urgent: 3, notice: 1, digest: 1 };
 
@@ -158,8 +161,12 @@ interface Play {
   readonly id: string;
   readonly key: string;
   readonly copy: string | undefined;
+  // The name of the device of the sounds.
+  readonly device: string;
   readonly stop: AbortController;
   readonly most: number;
+  // The answer of the send that started the play. A send of the same message to the same device gives it again.
+  first: Promise<SendOutcome>;
   // The sounds that ended with no failure.
   made: number;
   // The message of the failure of the last sound, when it failed.
@@ -184,6 +191,7 @@ const sleep = (time: Duration, signal: AbortSignal): Promise<void> =>
  * - The other sounds of the message come after the answer, with a wait between two. A failed sound does not stop them.
  * - The sounds stop at a cancel, at the time `expires` of the message, or after the count of the level.
  * - One device makes one sound at a time. Thus the sounds of two messages on one device come in turns.
+ * - A send of a message to a device that already plays it for the same copy joins that play. It makes no second play.
  * - `send` refuses a quiet message with the kind `quiet`, because a device has no silent mode.
  * - `cancel({ receipt })` stops each copy of the delivery key. `cancel({ copy })` stops one copy. A cancel is idempotent, and it does not throw.
  * - `status` gives `delivered` after a sound, and `failed` when the last sound failed. A restart of the system ends the sounds.
@@ -284,19 +292,38 @@ export function createSounderChannel(options: SounderChannelOptions): ChannelPro
       if (typeof found === "string") return { ok: false, kind: "refused", message: found };
       const most = options.sounds?.[message.level] ?? SOUNDER_SOUNDS[message.level];
       if (most === 0) return { ok: false, kind: "refused", message: `The channel makes no sound at the level ${message.level}.` };
+      // An escalation can send one message to two persons near one device. The second send joins the play of the first,
+      // and it does not wait in the line of the device behind the first sound.
+      const live = [...plays.values()].find((play) => !play.ended && play.key === message.key && play.device === found.name && play.copy === copy);
+      if (live !== undefined) return live.first;
       count += 1;
-      const play: Play = { id: String(count), key: message.key, copy, stop: new AbortController(), most, made: 0, failure: undefined, ended: false, at: now() };
+      const play: Play = {
+        id: String(count),
+        key: message.key,
+        copy,
+        device: found.name,
+        stop: new AbortController(),
+        most,
+        first: Promise.resolve({ ok: false, kind: "refused", message: "The play did not start." }),
+        made: 0,
+        failure: undefined,
+        ended: false,
+        at: now(),
+      };
       plays.set(play.id, play);
-      const first = await turn(play, found.name, found.sounder, message.level);
-      // A stop during the first sound is not a failure: the device started the sound.
-      if (!first.ok && !play.stop.signal.aborted) {
-        plays.delete(play.id);
-        return { ok: false, kind: first.kind, message: first.message };
-      }
-      note(play, first);
-      if (play.stop.signal.aborted) end(play);
-      else void rest(play, found.name, found.sounder, message.level, message.expires);
-      return { ok: true, receipt: { key: message.key, device: found.name, play: play.id }, accepted: now() };
+      play.first = (async (): Promise<SendOutcome> => {
+        const first = await turn(play, found.name, found.sounder, message.level);
+        // A stop during the first sound is not a failure: the device started the sound.
+        if (!first.ok && !play.stop.signal.aborted) {
+          plays.delete(play.id);
+          return { ok: false, kind: first.kind, message: first.message };
+        }
+        note(play, first);
+        if (play.stop.signal.aborted) end(play);
+        else void rest(play, found.name, found.sounder, message.level, message.expires);
+        return { ok: true, receipt: { key: message.key, device: found.name, play: play.id }, accepted: now() };
+      })();
+      return play.first;
     },
 
     status({ receipt }): Promise<DeliveryStatus> {
@@ -304,6 +331,8 @@ export function createSounderChannel(options: SounderChannelOptions): ChannelPro
       if (play === undefined) return Promise.resolve({ state: "accepted", at: now(), reason: "The channel does not keep this message. A restart of the system ends its sounds." });
       const sounds = `${String(play.made)} of ${String(play.most)} sounds`;
       if (play.failure !== undefined) return Promise.resolve({ state: "failed", at: play.at, reason: `The last sound failed after ${sounds}: ${play.failure}` });
+      // A cancel during the first sound stops the play before one sound ends. Thus no sound is sure.
+      if (play.made === 0) return Promise.resolve({ state: "accepted", at: play.at, reason: "A cancel stopped the play before the end of the first sound." });
       return Promise.resolve({ state: "delivered", at: play.at, reason: play.ended ? `The sounds ended: ${sounds}.` : `The device made ${sounds}.` });
     },
 

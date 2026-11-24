@@ -276,6 +276,37 @@ describe("createSounderChannel", () => {
     expect(overlap()).toBe(1);
   });
 
+  it("joins a second send of one message to one device into the play of the first", async () => {
+    const { sounder, sounds, gates } = device({ hold: true });
+    const channel = createSounderChannel({ sounders: { desk: sounder }, sounds: { notice: 1 }, wait: waits().wait });
+    // An escalation sends one message to two persons near one device at the same time.
+    const sends = [channel.send({ message: message("notice"), address: {} }), channel.send({ message: message("notice", { person: "p-2" as PersonId }), address: {} })];
+    await settle();
+    expect(sounds).toHaveLength(1);
+    gates[0]?.();
+    const [one, two] = await Promise.all(sends);
+    expect(two).toEqual(one);
+    expect(sounds).toHaveLength(1);
+    // Another copy makes its own play.
+    const other = channel.send({ message: message("notice"), address: {}, copy: "cloud" });
+    await settle();
+    expect(sounds).toHaveLength(2);
+    gates[1]?.();
+    expect(await other).toMatchObject({ ok: true });
+  });
+
+  it("gives no delivered state when a cancel stops the first sound", async () => {
+    const { sounder, gates } = device({ hold: true });
+    const channel = createSounderChannel({ sounders: { desk: sounder }, wait: waits().wait });
+    const send = channel.send({ message: message("urgent"), address: {} });
+    await settle();
+    await channel.cancel({ receipt: { key: KEY } });
+    gates[0]?.();
+    const sent = await send;
+    if (!sent.ok) throw new Error(sent.message);
+    expect(await channel.status({ receipt: sent.receipt })).toMatchObject({ state: "accepted" });
+  });
+
   it("keeps the last ended messages only, and a receipt of another key has no status", async () => {
     const { sounder } = device();
     const channel = createSounderChannel({ sounders: { desk: sounder }, wait: waits().wait });
