@@ -19,14 +19,14 @@ const flip = (at: number, up: boolean): Flip => ({ at, up });
 const sum = (flips: readonly Flip[], status = "up", lag = 0) => jointDownTime({ flips, status, lag, at: T0, window: JOINT_WINDOW });
 
 describe("the request and the answer of the flips", () => {
-  it("asks for the flips of the check in the window, with the key and the User-Agent", () => {
+  it("asks for all the flips of the check, with the key and the User-Agent", () => {
     expect(flipsRequest(KEY, ID, AGENT)).toEqual({
       method: "GET",
-      url: `https://healthchecks.io/api/v3/checks/${ID}/flips/?seconds=604800`,
+      url: `https://healthchecks.io/api/v3/checks/${ID}/flips/`,
       headers: { accept: "application/json", "user-agent": AGENT, "x-api-key": KEY },
       body: null,
     });
-    expect(flipsRequest(KEY, "a/b", AGENT, 90 * MINUTE + 1, "https://checks.example/api/v3/").url).toBe("https://checks.example/api/v3/checks/a%2Fb/flips/?seconds=5401");
+    expect(flipsRequest(KEY, "a/b", AGENT, "https://checks.example/api/v3/").url).toBe("https://checks.example/api/v3/checks/a%2Fb/flips/");
   });
 
   it("reads a list or an object with a list, with 1 and 0 or true and false, from the earliest flip", () => {
@@ -83,9 +83,10 @@ describe("the sum of the joint down time", () => {
     expect(sum([flip(FROM + MINUTE, false), flip(FROM + 2 * MINUTE, true)], "up", 5 * MINUTE)).toEqual({ down: 2 * MINUTE, spans: 1 });
   });
 
-  it("takes the state at the start of the window from the flips before it, or from the first flip in it", () => {
-    // The first flip in the window is up: the check was down at the start of the window.
-    expect(sum([flip(FROM + HOUR, true)])).toEqual({ down: HOUR, spans: 1 });
+  it("takes the state at the start of the window from the flips before it, and counts a new check as not down", () => {
+    // With no flip before the window, the check is new: its first up flip ends no down span.
+    expect(sum([flip(FROM + HOUR, true)])).toEqual({ down: 0, spans: 0 });
+    expect(sum([flip(FROM + HOUR, true), flip(FROM + 2 * HOUR, false), flip(FROM + 3 * HOUR, true)])).toEqual({ down: HOUR, spans: 1 });
     // A flip before the window tells the state. A down flip before the window counts from the start of the window.
     expect(sum([flip(FROM - DAY, false), flip(FROM + HOUR, true)], "up", 5 * MINUTE)).toEqual({ down: HOUR, spans: 1 });
     expect(sum([flip(FROM - DAY, true), flip(FROM - HOUR, false)], "down")).toEqual({ down: JOINT_WINDOW, spans: 1 });
@@ -156,7 +157,7 @@ describe("the reader of the joint down time", () => {
     const { net, run } = read({ [`/checks/${ID}/flips/`]: { status: 200, body: flips }, "checks/": { status: 200, body: CHECKS } });
     // The period of 300 s and the grace of 60 s come before the down flip.
     expect(await run()).toEqual({ ok: true, down: 10 * MINUTE, spans: 1 });
-    expect(net.exchanges.map((exchange) => exchange.url)).toEqual(["https://healthchecks.io/api/v3/checks/", `https://healthchecks.io/api/v3/checks/${ID}/flips/?seconds=604800`]);
+    expect(net.exchanges.map((exchange) => exchange.url)).toEqual(["https://healthchecks.io/api/v3/checks/", `https://healthchecks.io/api/v3/checks/${ID}/flips/`]);
     expect(net.exchanges.every((exchange) => exchange.headers?.["x-api-key"] === KEY)).toBe(true);
   });
 

@@ -448,7 +448,7 @@ A joint report (AL-148) tells the joint down time of the copies: the time in a w
 - The copies share the loud check of Healthchecks.io (see "The outside heartbeat"). It gets only success pings. Thus it is down only when no copy can tell the person.
 - The runtime reads the flips of the loud check with the management API, once in each hour (`JOINT_EVERY`). A failed read tries again after 15 minutes.
 - A down span starts at its down flip less the period and the grace of the check. It ends at the next up flip, or at the read. The window clips it.
-- The state at the start of the window comes from the flips: the last flip before the window, or else the first flip in it. With no flip, it is the state of the check.
+- The request gets all the flips of the check. The state at the start of the window is the state after the last flip before it. With no such flip, the check is new and was not down. With no flip, it is the state of the check.
 - A new sum over the limit gives no update. A read with a sum of the limit or less ends `over`. A read that passes ends `unread`.
 - A watch with no read keeps its open line `over`. Thus a restart sends nothing. A snapshot with no field `joint` keeps each open line.
 - The value `null` of `joint` tells that the copy has no watch. Then each open line ends.

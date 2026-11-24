@@ -48,12 +48,11 @@ export interface Flip {
 }
 
 /**
- * This function gives the request of the flips of one check in the window before the request (API v3). The key and the id
- * of the check are secrets. The query `seconds` gives the window in whole seconds.
+ * This function gives the request of all the flips of one check (API v3). The key and the id of the check are secrets.
+ * The request has no window: the flips before the window tell the state at its start, and the first flip tells a new check.
  */
-export function flipsRequest(apiKey: string, checkId: string, userAgent: string, window: Duration = JOINT_WINDOW, base: string = HEALTHCHECKS_API): Exchange {
+export function flipsRequest(apiKey: string, checkId: string, userAgent: string, base: string = HEALTHCHECKS_API): Exchange {
   const url = new URL(`checks/${encodeURIComponent(checkId)}/flips/`, base);
-  url.searchParams.set("seconds", String(Math.ceil(window / 1000)));
   return { method: "GET", url: url.toString(), headers: { accept: "application/json", "user-agent": userAgent, "x-api-key": apiKey }, body: null };
 }
 
@@ -110,8 +109,9 @@ export interface DownSum {
  * - A down span starts at its down flip less the lag: the check goes down only after the period plus the grace with no ping.
  * - A down span ends at the next up flip. An open span ends at `at`.
  * - Each span is clipped to the window. A span does not start before the flip before it.
- * - The state at the start of the window is the state after the last flip before it. With no such flip, it is the opposite
- *   of the first flip in the window. With no flip, it is the state of the check: only `down` is down for the whole window.
+ * - The state at the start of the window is the state after the last flip before it. With no such flip, the check is
+ *   newer than the window: its first flip is the first up of a new check, thus it was not down. With no flip, it is the
+ *   state of the check: only `down` is down for the whole window.
  * - A flip after `at` does not count. A second flip with the same state changes nothing.
  */
 export function jointDownTime(input: DownInput): DownSum {
@@ -120,8 +120,7 @@ export function jointDownTime(input: DownInput): DownSum {
   const before = flips.filter((flip) => flip.at <= from);
   const inside = flips.filter((flip) => flip.at > from);
   const last = before[before.length - 1];
-  const first = inside[0];
-  const downAtStart = last !== undefined ? !last.up : first !== undefined ? first.up : input.status === "down";
+  const downAtStart = last !== undefined ? !last.up : inside.length === 0 && input.status === "down";
   let start: Instant | undefined = downAtStart ? from : undefined;
   let previous = from;
   let down = 0;
@@ -183,7 +182,7 @@ export function jointReader(options: JointReaderOptions): (signal: AbortSignal, 
       const found = checkOfPingUrl(listed.body, options.url);
       if (!found.ok) return { ok: false, message: found.problem };
       if (found.check.id === "") return { ok: false, message: "The loud check in the answer has no id." };
-      const flipped = await get(flipsRequest(options.key, found.check.id, options.userAgent, window, base), "the flips of the loud check", signal);
+      const flipped = await get(flipsRequest(options.key, found.check.id, options.userAgent, base), "the flips of the loud check", signal);
       if ("ok" in flipped) return flipped;
       const flips = flipsOf(flipped.body);
       if (!flips.ok) return { ok: false, message: flips.problem };
