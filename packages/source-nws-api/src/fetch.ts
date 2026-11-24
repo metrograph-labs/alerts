@@ -4,10 +4,10 @@
  */
 
 import { observationId, type Cursor, type FetchFailure, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch } from "@mark1russell7/alerts";
-import { answerStore, createRequester, problemDetail } from "@mark1russell7/alerts-fetch";
+import { createRequester, problemDetail } from "@mark1russell7/alerts-fetch";
 import { isUgcCode, WEA_EVENT_CODES } from "@mark1russell7/alerts-format-nws";
 import { isRecord } from "@mark1russell7/optional/read";
-import type { Condition, Pace, Reply, Transport } from "polite-crawler/api";
+import { keptReplies, type Condition, type Pace, type Reply, type Transport } from "polite-crawler/api";
 
 import { SOURCE_ID } from "./map.ts";
 
@@ -166,7 +166,8 @@ type QueryResult = { readonly ok: true; readonly read: Read } | { readonly ok: f
  * Each query is a conditional GET (`poll` of polite-crawler), with the ETag and the date of the last
  * full answer of its URL. A 304 answer has no body. Then the query gives the observations of the
  * last full answer again, unchanged. No message is new, so the log gets no new fact. The fetch keeps the last full
- * answer of each URL as compressed bytes (`answerStore`, AL-145), and it reads the answer again at a 304.
+ * answer of each URL as compressed bytes (`keptReplies` of `polite-crawler/api`, AL-145), and it reads the answer
+ * again at a 304.
  *
  * The requester of `@mark1russell7/alerts-fetch` sends each query. It reads the problem text of the
  * NWS API (RFC 9457) into the message of a failure.
@@ -186,7 +187,7 @@ export function createNwsFetch(options: NwsFetchOptions): (input: NwsFetchInput,
   // One store of conditions, because each query sends the same accept header
   const conditions = new Map<string, Condition>();
   // The last full answer of each URL, with its time of fetch and its latency. A 304 answer gives its read again.
-  const lastAnswer = answerStore<{ readonly fetched: Instant; readonly latency: number }>();
+  const lastAnswer = keptReplies<{ readonly fetched: Instant; readonly latency: number }>();
 
   async function query(path: string, signal: FetchSignal | undefined): Promise<QueryResult> {
     const requested = await requester.get({ path, what: `the alerts ${path}`, conditions }, signal);

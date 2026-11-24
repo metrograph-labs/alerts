@@ -38,7 +38,7 @@
     "@procedures/json": "^0.68.0",
     "@procedures/notify": "^0.68.0",
     "ltx": "^3.1.2",
-    "polite-crawler": "^0.7.10"
+    "polite-crawler": "^0.7.12"
   },
   "devDependencies": {
     "@mark1russell7/cue": "^2.0.0",
