@@ -116,14 +116,6 @@ describe("messageKey", () => {
     expect(new Set(keys).size).toBe(keys.length);
   });
 
-  it("gives the same key to a send that it read before and to an equal send (AL-164)", () => {
-    const send = { ...message, step: 3 };
-    const first = messageKey(send);
-    expect(messageKey(send)).toBe(first);
-    expect(messageKey({ ...send })).toBe(first);
-    expect(messageKey({ ...message })).toBe(GOLDEN.message);
-  });
-
   it("keeps the kinds of id apart", () => {
     const asReport = reportId({ source: message.incident as unknown as SourceId, key: message.level, sent: 0 });
     expect(asReport).not.toBe(messageKey({ ...message, person: "0" as PersonId }));

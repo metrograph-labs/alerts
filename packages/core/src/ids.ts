@@ -148,21 +148,10 @@ export function digestEntryKey(key: string, incident: ReportId): string {
  * - The key of the first episode has no episode field. Thus the keys of a log from before the episodes do not change.
  */
 export function messageKey(input: MessageKeyInput): string {
-  const known = messageKeys.get(input);
-  if (known !== undefined) return known;
   const episode = input.episode ?? 0;
   const fields = ["message", input.incident, input.level, input.person, input.step];
-  const key = digest(episode === 0 ? fields : [...fields, episode]);
-  messageKeys.set(input, key);
-  return key;
+  return digest(episode === 0 ? fields : [...fields, episode]);
 }
-
-/**
- * The keys of the sends, by the object of each send (AL-164). One pass reads the key of a send in the throttle, the send
- * limit and the delivery. The fields of an input are read-only, thus the key of an object does not change. The garbage
- * collector removes the key with its send.
- */
-const messageKeys = new WeakMap<MessageKeyInput, string>();
 
 // The form "json" writes NaN and an infinite number as null, and escapes a lone surrogate. So the
 // id functions do not throw, and `map` stays total.
