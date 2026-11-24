@@ -44,9 +44,10 @@ permissions:
   contents: read
 
 env:
-  # The limit of the ratio head / base of each variant on a pull request. A paired run with no change of the rebuild (the
-  # variant off of run 45099923867, 5 jobs) gave a bound of 1.016 and a spread of 0.018. The limit is their sum, rounded up.
-  PR_LIMITS: off=1.04,168=1.04,6=1.04
+  # The limit of the ratio head / base of each variant on a pull request. Five paired runs with no change of the rebuild
+  # (45386091865, 45386164301, 45386184475, 45388527206 and 45388578253, 5 jobs each) gave the bounds of each variant.
+  # The limit is the worst bound plus the spread of the bounds, rounded up: off 1.0378, 168 1.0600, 6 1.0614.
+  PR_LIMITS: off=1.04,168=1.07,6=1.07
 
 # A new push to a pull request stops its old run. Each dispatch is a measure of its own, thus no dispatch stops another.
 concurrency:
