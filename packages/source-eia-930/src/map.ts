@@ -4,6 +4,9 @@
  * Administration. The fetch gives its body. The map gives no report. It gives one indicator reading: the demand, with
  * the forecast as its expected value.
  *
+ * The measure has the baseline `expected`, thus each reading needs its forecast. An hour with no forecast gives no reading
+ * and a note (AL-158). When the forecast comes, the body changes, and the new observation gives the reading.
+ *
  * A demand far below its forecast tells of a large loss of load, for example a blackout. A demand far above its forecast
  * tells of a stress of the grid, for example a heat wave.
  */
@@ -147,8 +150,11 @@ function mapOrThrow(observation: Observation): MapResult {
     problems.add("demand", "the demand equals the forecast, so it is a placeholder: the map gives no reading", "note");
     return { reports: [], problems: problems.list };
   }
-  const known = forecast !== null && forecast > 0;
-  if (!known) problems.add("forecast", `the hour has no forecast above 0 (${JSON.stringify(forecast)}): the reading has no expected value`, "note");
-  const reading: Reading = { source: SOURCE_ID, measure: DEMAND, series: respondent, at, value: demand, area: zoneOf(respondent), observation: observation.id, ...(known ? { expected: forecast } : {}) };
+  // The baseline of the measure is the forecast. Without it, the runtime refuses the reading as lossy (AL-158).
+  if (forecast === null || forecast <= 0) {
+    problems.add("forecast", `the hour has no forecast above 0 (${JSON.stringify(forecast)}): the map gives no reading`, "note");
+    return { reports: [], problems: problems.list };
+  }
+  const reading: Reading = { source: SOURCE_ID, measure: DEMAND, series: respondent, at, value: demand, area: zoneOf(respondent), observation: observation.id, expected: forecast };
   return { reports: [], problems: problems.list, readings: [reading] };
 }

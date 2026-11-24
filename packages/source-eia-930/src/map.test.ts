@@ -44,11 +44,11 @@ describe("mapObservation", () => {
     expect(zoneOf("PJM")).toEqual({ type: "zone", system: "eia-ba", code: "PJM" });
   });
 
-  it("gives a reading with no expected value and a note when the hour has no forecast above 0", () => {
+  it("gives no reading and a note when the hour has no forecast above 0, and each reading passes its declaration (AL-158)", () => {
     for (const forecast of [null, 0, -5]) {
       const result = mapObservation(observationOf(hourBody("2026-11-18T18", "SCEG", 2353, forecast)));
-      expect(result.readings).toHaveLength(1);
-      expect(result.readings?.[0]?.expected).toBeUndefined();
+      expect(result.readings).toBeUndefined();
+      expect(result.reports).toEqual([]);
       expect(result.problems).toMatchObject([{ path: "forecast" }]);
       expect(result.problems[0]?.fatal).not.toBe(true);
     }

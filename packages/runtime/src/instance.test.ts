@@ -168,6 +168,8 @@ function eiaAnswer(url: URL): string {
       data.push({ period: periodText(at), respondent, type: "D", value: String(forecast + 1000), "value-units": "megawatthours" });
       data.push({ period: periodText(at), respondent, type: "DF", value: String(forecast), "value-units": "megawatthours" });
     }
+    // A balancing authority with no forecast gives no reading, and the source stays healthy (AL-158).
+    data.push({ period: periodText(at), respondent: "SCEG", type: "D", value: "2400", "value-units": "megawatthours" });
   }
   return JSON.stringify({ response: { total: String(data.length), dateFormat: EIA_DATE_FORMAT, frequency: "hourly", data }, apiVersion: "2.1.14" });
 }
