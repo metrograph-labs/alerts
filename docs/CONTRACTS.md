@@ -2168,6 +2168,19 @@ The runtime:
 - A stale moving place is the private system report `system.place.stale` for the persons of the place. It has the label of the place and no position.
 - Only a copy that took a fix of the place gives this report. Thus a copy with no phone tells nothing.
 
+The holds at the edge of an area:
+
+- A fix at the edge of an area goes out and back in. Without a hold, each return starts a new episode with new message keys.
+- Thus a hold keeps the match of a moving place. The function `holdPlaces` of the core gives the holds after each pass.
+- A moving place that the area of a live incident covers holds that incident at its fix of that pass.
+- A later fix in the area moves the hold to that fix. A fix out of the area or a stale place keeps the hold.
+- The `route` reads the places of each incident with its holds (`heldPlaces`). A fix in the area wins over the hold.
+- Thus the route stays until the incident ends or the person acknowledges it. An acknowledgment stops the sends of the route.
+- The hold stays after the acknowledgment until the incident ends. Thus a flap after an acknowledgment starts no new episode.
+- The end of the incident ends its holds. A change of the area that leaves the held fix and the fix of the pass ends the route.
+- A fixed place has no hold. Its route ends when the area no longer covers it, as before.
+- The dispatcher keeps the holds in memory only. No log, no file and no payload gets a hold, because a hold has a position.
+
 The privacy rules:
 
 - The fix stays on the copy that takes it. It is in memory and in the file `fixes.json` of the home of that copy only.
@@ -2177,7 +2190,8 @@ The privacy rules:
 
 The limits:
 
-- A match of a moving place does not stay after the fix leaves the area. A sticky match against the flaps at the edge of an area is the next part of AL-40.
+- A restart loses the holds. After a restart, the first fix out of the area ends the route. A later return sends again.
+- A person who leaves the area for real keeps the route until the incident ends or the person acknowledges it.
 - Only the copy that takes the fixes watches a moving place. When that copy is down, no copy watches it.
 - A stop of the runtime loses the last fix when the home store does not have it. The next fix of the phone gives it again.
 - The phone app decides the time between two fixes. A long time between fixes makes the place stale.
