@@ -930,9 +930,13 @@ describe("the private configuration", () => {
     holds(drillConfigSchema, { ...drill, copies: ["home"] });
   });
 
-  it("accepts the drift checks, and refuses a bad name, an empty argv, an unknown kind and two checks with one name (AL-139)", () => {
+  it("accepts the drift checks in the settings of a copy, and refuses a bad name, an empty argv, an unknown kind and two checks with one name (AL-139)", () => {
     const command = { name: "host-a", kind: "setup", argv: ["check-host", "--check"] } as const;
-    holds(alertConfigSchema, { ...CONFIG, drift: { commands: [command, { name: "plan.b", kind: "tofu", argv: ["plan-host"] }] } });
+    const copy: CopySettings = { format: COPY_FORMAT, id: "home", rank: 0 };
+    holds(copySettingsSchema, { ...copy, drift: { commands: [command, { name: "plan.b", kind: "tofu", argv: ["plan-host"] }] } });
+    // The checks are a setting of each copy. The shared configuration refuses them, because a mirror takes it from another host.
+    fails(alertConfigSchema, { ...CONFIG, drift: { commands: [command] } });
+    for (const drift of [{ commands: [] }, { commands: [command, { ...command, kind: "tofu" }] }, { commands: [{ ...command, argv: [] }] }, { commands: [{ ...command, name: "host a" }] }, { commands: [command], extra: 1 }]) fails(copySettingsSchema, { ...copy, drift });
     fails(driftCommandConfigSchema, { ...command, name: "host a" });
     fails(driftCommandConfigSchema, { ...command, name: "" });
     fails(driftCommandConfigSchema, { ...command, argv: [] });

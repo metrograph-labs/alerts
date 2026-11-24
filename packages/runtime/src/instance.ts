@@ -98,6 +98,7 @@ import { createEnergyChartsSource, ENERGY_CHARTS_DESCRIPTOR } from "@mark1russel
 import { createEia930Source, type Eia930FetchOptions } from "@mark1russell7/alerts-source-eia-930";
 import { createFaaSource, FAA_DESCRIPTOR } from "@mark1russell7/alerts-source-faa";
 import { createKevSource, KEV_DESCRIPTOR } from "@mark1russell7/alerts-source-cisa-kev";
+import { createCsafSource, CSAF_PROVIDERS, csafDescriptor, type CsafFetchOptions } from "@mark1russell7/alerts-source-csaf";
 import { createGdeltSource, GDELT_DESCRIPTOR } from "@mark1russell7/alerts-source-gdelt";
 import { createRadarAnomaliesSource, createRadarOutagesSource, type RadarSourceOptions } from "@mark1russell7/alerts-source-cloudflare-radar";
 import { AWS_DOMAIN, AWS_KIND, createAwsSource } from "@mark1russell7/alerts-source-aws";
@@ -496,6 +497,9 @@ const PROVIDER_FEEDS = [
  * CISA KEV gives the known exploited flaws of software, with no area. The work `software` of `WORK_DEFAULTS` in the core
  * names their kind.
  *
+ * The CSAF providers (`source-csaf`) give the security advisories of CISA and of vendors of control systems, with no
+ * area. No work names their kinds: a person gets an advisory when the person names its CVE id or its kind.
+ *
  * The instance also reads the status pages that one of its persons can get (`pagesFor` of `source-statuspage`). They are
  * not in this list, because the persons choose them. The feeds of Google Cloud (`source-gcp`), AWS (`source-aws`)
  * and Azure (`source-azure`) have the same rule.
@@ -515,6 +519,7 @@ export const INSTANCE_SOURCES: readonly SourceDescriptor[] = [
   ENERGY_CHARTS_DESCRIPTOR,
   FAA_DESCRIPTOR,
   KEV_DESCRIPTOR,
+  ...CSAF_PROVIDERS.map((provider) => csafDescriptor(provider)),
 ];
 
 /**
@@ -818,7 +823,7 @@ export interface InstanceOptions {
   readonly checks?: Transport;
   /**
    * The runner of the commands of the drift checks (AL-139). The default is `commandRunner` of `drift.ts`. A test gives a
-   * fake. The instance starts the commands only when the configuration has the field `drift`.
+   * fake. The instance starts the commands only when the settings of the copy have the field `drift`.
    */
   readonly driftRunner?: DriftRunner;
   /**
@@ -966,7 +971,7 @@ export interface Instance {
   readonly uses: readonly LimitWatch[];
   /** The watch of the joint down time of the copies (AL-148), when the secrets have `CHECKS_KEY` and `LOUD_PING_URL_KEY`. */
   readonly joint?: JointWatch;
-  /** The drift watch of the copy hosts (AL-139), when the configuration has the field `drift`. */
+  /** The drift watch of the host of this copy (AL-139), when `copy.json` has the field `drift`. */
   readonly drift?: DriftWatch;
   /** The billing watch of the hosts of the other copies (AL-70), when a peer of `copy.json` has the field `billing`. */
   readonly billing?: BillingWatch;
@@ -1064,6 +1069,7 @@ export function openInstance(options: InstanceOptions): Instance {
     createFaaSource,
     ...(eiaKey === "" ? [] : [eiaFactory(eiaKey)]),
     createKevSource,
+    ...CSAF_PROVIDERS.map((provider) => (fetchOptions: CsafFetchOptions) => createCsafSource(provider, fetchOptions)),
     ...(readsGdelt(options.config.config) ? [createGdeltSource] : []),
     ...(radarToken === "" ? [] : radarFactories(radarToken)),
     ...feeds.map((feed) => feed.create),
@@ -1212,7 +1218,8 @@ export function openInstance(options: InstanceOptions): Instance {
   const balances = twilio?.watch === undefined ? [] : [twilio.watch];
   const uses = limitWatches(config.limits ?? [], options.secret, options.github);
   const joint = jointOf(options, clock, wall);
-  const drift = config.drift === undefined ? undefined : driftWatch({ commands: config.drift.commands, ...(options.driftRunner === undefined ? {} : { run: options.driftRunner }) });
+  // The drift checks are a setting of the copy (copy.json), not of the configuration: a mirror takes the configuration of another host.
+  const drift = copy.drift === undefined ? undefined : driftWatch({ commands: copy.drift.commands, ...(options.driftRunner === undefined ? {} : { run: options.driftRunner }) });
   // The billing watch reads the host of a down copy (AL-70). The loop exists before the first read, and only a pass starts a read.
   const billing =
     worker === undefined || !peers.some((peer) => peer.billing !== undefined)

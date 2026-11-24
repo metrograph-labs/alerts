@@ -504,7 +504,9 @@ A drift report (AL-139) tells that a copy host does not agree with its code, or 
 | `changed` | The last read that passed found one change or more | `moderate`, `expected` |
 | `unread` | No read passed for the maximum age or longer (`driftUnreadAt`) | `moderate`, `expected` |
 
-- Each entry of the field `drift.commands` of the configuration gives one check: a name, a kind and an `argv`. The runtime starts the program with no shell.
+- Each entry of the field `drift.commands` of `copy.json` gives one check: a name, a kind and an `argv`. The runtime starts the program with no shell.
+- The checks are a setting of each copy, because an `argv` has the paths and the programs of one host. A mirror does not take them (`configFrom`).
+- `config.json` and the parts do not have the field `drift`. The schema refuses it.
 - The kind `setup` is a setup check in check mode. It exits with 0, and each line `check: <step>: <reason>` is a change. Another exit code is a failed read.
 - The kind `tofu` is a plan with `-detailed-exitcode`. The exit code 0 tells no change, and 2 tells a change. Another exit code is a failed read.
 - The runtime starts each command one time in each day (`DRIFT_EVERY`). A failed read tries again after 1 hour. A command has a limit of 5 minutes.
@@ -513,8 +515,8 @@ A drift report (AL-139) tells that a copy host does not agree with its code, or 
 - The headline names the check and its first 10 changes. The parameter `steps` holds each name of the read, up to 50.
 - A new list of changes gives an update. A read with no change ends `changed`. A read that passes ends `unread`. The maximum age is 2 days.
 - A check with no read keeps its open line `changed`. Thus a restart sends nothing. A snapshot with no field `drift` keeps each open line.
-- The value `null` of `drift` tells that the copy has no drift check. Then each open line ends. A check that leaves the configuration ends its lines.
-- With two copies, only one copy reports `changed` (see "The facts of a shared account"). Each copy reports its own `unread`.
+- The value `null` of `drift` tells that the copy has no drift check. Then each open line ends. A check that leaves `copy.json` ends its lines.
+- Each copy reports the stages of its own checks, `changed` and `unread`. Give a different name to the check of each host.
 - A message of a failed read names the check. It holds no argument and no output. The health route shows each read as `drift of <name>`.
 - A person gets the drift reports only when the person watches `{ system: "alerts.copy" }`.
 
@@ -889,6 +891,7 @@ Each copy loads the same configuration: `config.json` and the parts. The sync of
 - `configFrom`: the id of the copy that gives the configuration of this copy. It is the id of a copy of `peers`. The section "The sync of the configuration" tells the steps.
 - `leaveChannels`: the ids of the channels that this copy leaves to the other copies (AL-55). The section "The channels that a copy leaves" tells the rules.
 - `sounder`: the sounder channel of this copy (AL-41). The section "The sounder of a copy" tells the rules.
+- `drift`: the drift checks of the host of this copy (AL-139). The section "System reports" tells their lines.
 
 Without `copy.json`, the runtime is the only copy. It has rank 0 and no exchange. The key `COPY_TOKEN` of `secrets.env` gives the token of the exchange, the same for each copy. The check of the profile `daemon` needs it when the copy has other copies.
 
@@ -1600,7 +1603,6 @@ The function `openInstance` makes the instance of the owner from the private con
   - The date of each read is a date of the time zone of the cap.
 - The spend entry of Twilio also gives the watch of the balance: one read each day, and its floors.
 - Each entry of the field `limits` gives the watch of the use of one hard limit (AL-111). The section "The use report" tells its lines.
-- The field `drift` gives the drift checks of the copy hosts (AL-139). The section "System reports" tells their lines.
 - The field `chain` gives the stack of the alert chain (AL-90): a stack document with a layer of risks, and the subjects that tell the state of its parts. A live incident about a subject tells that its part is down. The runtime gives a `RedundancyState` for each goal of the layer.
 - The watch of a limit of GitHub reads the usage report of the account one time each day. The first read comes 20 minutes after the start.
 - The token of the reads is in the key `tokenKey` of the limit, or in `GITHUB_BILLING_TOKEN`. A fine-grained token needs Plan (read) of a user, or Administration (read) of an organization.
