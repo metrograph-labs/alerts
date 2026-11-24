@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fakeWallClock, type WallClock } from "@mark1russell7/algebra/clock";
-import { reportId, type ChannelId, type ChannelProcedures, type ChannelQuota, type Expectation, LOOP_BLOCK_WINDOW, type LoopBlock, type FetchOutcome, type FetchSignal, type Observation, type ObservationId, type PersonId, type PlaceId, type Report, type SourceDescriptor, type SourceId, type SourceProcedures, type Watch, type WatchedPlace } from "@mark1russell7/alerts";
+import { reportId, type ChannelId, type ChannelProcedures, type ChannelQuota, type Expectation, LOOP_BLOCK_WINDOW, type LoopBlock, type FetchOutcome, type FetchSignal, type MeasureDeclaration, type Observation, type ObservationId, type PersonId, type PlaceId, type Reading, type Report, type SourceDescriptor, type SourceId, type SourceProcedures, type Watch, type WatchedPlace } from "@mark1russell7/alerts";
 import { random, seedsFrom } from "@mark1russell7/rigor-generators";
 import { openFoldSnapshot, type FoldSnapshot } from "@mark1russell7/sqlite";
 import { afterEach, describe, expect, it } from "vitest";
@@ -11,6 +11,7 @@ import { limitWatch, type UseReading } from "./use.ts";
 import { DRIFT_LIMIT, driftWatch } from "./drift.ts";
 import { envelope, EVENT_TYPES, FOLD_TYPES, type RuntimeEvent } from "./events.ts";
 import { openRuntimeLog, type RuntimeLog } from "./log.ts";
+import type { ReadingStore } from "./readings.ts";
 import { keepsAtBound, openRuntime, REPORT_LIMIT, type Pass, type RuntimeOptions } from "./runtime.ts";
 import { snapshotKey, type StartRead } from "./start-snapshot.ts";
 import { rebuild, type RuntimeState } from "./state.ts";
@@ -513,6 +514,51 @@ describe("the bound of the reports (AL-145)", () => {
       await wider.pass();
       expect(sourceKeys(wider.state())).toContain("far-3");
       expect(fullLines(wider.state())).toEqual([]);
+    } finally {
+      log.close();
+    }
+  });
+
+  it("takes over the bound each observation with no report: its readings go to the store, and its cursor moves (AL-171)", async () => {
+    const GAUGES = "gauges" as SourceId;
+    const LEVEL: MeasureDeclaration = { id: "level", dimension: "river-levels", title: "River level", unit: "m", area: "point", moves: "rise", baseline: "none", cadence: MINUTE };
+    const added: Reading[] = [];
+    const store: ReadingStore = {
+      add: (readings) => added.push(...readings),
+      series: () => [],
+      refs: () => [],
+      addUnitReads: () => 0,
+      unitReads: () => [],
+      prune: () => 0,
+      count: () => added.length,
+      close: () => undefined,
+    };
+    // Each fetch gives one new observation with one reading and no report, and a cursor with the time of the fetch.
+    const clock = fakeWallClock(T0);
+    const gauges: SourceProcedures = {
+      describe: () => ({ ...descriptor(GAUGES, MINUTE), kinds: [], measures: [LEVEL] }),
+      fetch: () => Promise.resolve({ ok: true, observations: [observation(GAUGES, `level-${clock.now()}`, clock.now(), {})], complete: true, cursor: { seen: String(clock.now()) } }),
+      map: ({ observation: seen }) => ({
+        reports: [],
+        problems: [],
+        readings: [{ source: GAUGES, measure: LEVEL.id, series: "station-1", at: seen.fetched, value: 4, area: { type: "point", at: [-95.68, 39.05] }, observation: seen.id }],
+      }),
+    };
+    const log = openRuntimeLog(":memory:");
+    try {
+      // Two reports of a watched place go in also at the bound. With the line of the full store, the state is over its bound of 1.
+      const runtime = openRuntime({ log, clock, sources: [listed(() => [bodyOf("near-1", "KSZ083"), bodyOf("near-2", "KSZ083")]), gauges], watch: () => ({ places: [KANSAS], kinds: ["met"] as const }), view: VIEW, run: "run-0", reportLimit: 1, readings: store });
+      await runtime.pass();
+      await clock.advance(MINUTE);
+      const second = await runtime.pass();
+      expect(runtime.state().merge.reports.length).toBeGreaterThan(1);
+      expect(fullLines(runtime.state())).toHaveLength(1);
+      expect(added.map((reading) => reading.at)).toEqual([T0, T0 + MINUTE]);
+      expect(log.has(`${GAUGES}:level-${T0 + MINUTE}` as ObservationId)).toBe(true);
+      expect(runtime.state().cursors[GAUGES]).toEqual({ seen: String(T0 + MINUTE) });
+      // The bound counts no waiting observation of the gauges.
+      const full = second.view.step.reports.filter((entry) => entry.kind.code === "system.store.full");
+      expect(full.flatMap((entry) => entry.parameters["waiting"] ?? [])).not.toContain("1");
     } finally {
       log.close();
     }
