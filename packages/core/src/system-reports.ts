@@ -10,7 +10,7 @@
 import { canonicalJson } from "@mark1russell7/rigor-generators";
 import { countOf } from "@mark1russell7/text/english";
 import { compareCodeUnits } from "@mark1russell7/text/order";
-import { BALANCE_KIND, CHANNEL_KIND, CLOCK_KIND, CONTEXT_KINDS, COPY_KIND, COVERAGE_KIND, DRILL_KIND, ESCALATION_KIND, hasKind, HEALTH_KIND, DRIFT_KIND, JOINT_KIND, LIMIT_KIND, LOG_KIND, LOOP_KIND, matchPlaces, PERSON_SUBJECT, QUOTA_KIND, REDUNDANCY_KIND, STORE_KIND, USE_KIND } from "./assess.ts";
+import { BALANCE_KIND, CHANNEL_KIND, CLOCK_KIND, CONTEXT_KINDS, COPY_KIND, COVERAGE_KIND, DRILL_KIND, ESCALATION_KIND, hasKind, HEALTH_KIND, DRIFT_KIND, JOINT_KIND, LIMIT_KIND, LOG_KIND, LOOP_KIND, matchPlaces, PERSON_SUBJECT, PLACE_KIND, QUOTA_KIND, REDUNDANCY_KIND, STORE_KIND, USE_KIND } from "./assess.ts";
 import { isPrivate } from "./audience.ts";
 import type {
   Area,
@@ -93,6 +93,9 @@ export const LIMIT_SUBJECT = "alerts.limit";
 export const INCIDENT_SUBJECT = "alerts.incident";
 /** The subject system of a function of the alert chain (AL-90). The id of a subject is the id of the part of the function in the stack. */
 export const FUNCTION_SUBJECT = "alerts.function";
+
+/** The subject system of a watched place (AL-40). The id of a subject is the id of a place. */
+export const PLACE_SUBJECT = "alerts.place";
 
 /** The stages of a quota, from the first to the last. */
 export const QUOTA_STAGES: readonly QuotaStage[] = ["low", "reserve", "spent"];
@@ -463,6 +466,23 @@ export interface SystemSnapshot {
    * and a function with a new single point of failure is a condition. With no list, each open line of a function stays open.
    */
   readonly redundancy?: readonly RedundancyState[];
+  /**
+   * The stale moving places of this copy (AL-40). Each one is a private condition for the persons of the place. With no
+   * list, each open line of a moving place stays open.
+   */
+  readonly stale?: readonly StalePlace[];
+}
+
+/**
+ * A moving place with no fresh fix on this copy (AL-40). It holds the label of the place and no position. The runtime
+ * gives it only for a place that took a fix on this copy. Thus a copy that takes no fixes tells nothing.
+ */
+export interface StalePlace {
+  readonly place: PlaceId;
+  /** The label of the place, for the text of the report. */
+  readonly label: string;
+  /** The persons who watch the place. Only they get the report. */
+  readonly persons: readonly PersonId[];
 }
 
 /** The result of one step of the fold. */
@@ -816,6 +836,8 @@ export function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: 
     const stage = redundancyStage(state);
     if (stage !== undefined) conditions.set(redundancyName(state.function.id, stage), redundancyCondition(state, stage));
   }
+  // A stale moving place is a fact of this copy: only this copy takes the fixes of the phone. A place with no person tells nobody.
+  for (const entry of snapshot.stale ?? []) if (entry.persons.length > 0) conditions.set(placeName(snapshot.copy, entry.place), staleCondition(entry, snapshot.copy));
   const names = [...new Set([...Object.keys(lines.open), ...conditions.keys()])].sort(compareCodeUnits);
   let count = lines.count;
   const open = new Map(Object.entries(lines.open));
@@ -840,6 +862,8 @@ export function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: 
     if (condition === undefined && snapshot.stores === undefined && name.startsWith(STORE_LINE)) continue;
     if (condition === undefined && snapshot.bounds === undefined && name.startsWith(BOUND_LINE)) continue;
     if (condition === undefined && snapshot.redundancy === undefined && name.startsWith(REDUNDANCY_LINE)) continue;
+    // A copy ends only its own lines of the stale places. Each other copy watches the fixes of its own phones.
+    if (condition === undefined && name.startsWith(PLACE_LINE) && (snapshot.stale === undefined || !name.startsWith(placePrefix(snapshot.copy)))) continue;
     const draft = condition === undefined ? (line === undefined ? undefined : cancelOf(line)) : condition;
     if (draft === undefined) continue;
     const facts = canonicalJson(draft.facts, { form: "json" });
@@ -1243,6 +1267,39 @@ function heldCondition(entry: HeldPerson): Condition {
     description: heldText(entry),
     instruction: "Read the next digest. It tells each held alert.",
     parameters: { person: [entry.person] },
+  };
+}
+
+const PLACE_LINE = "place/";
+
+// The start of the names of the lines of the stale places of one copy.
+function placePrefix(copy: string | undefined): string {
+  return `${PLACE_LINE}${encodeURIComponent(copy ?? "")}/`;
+}
+
+// The copy is in the name: each copy tells only of the fixes that it takes.
+function placeName(copy: string | undefined, place: PlaceId): string {
+  return `${placePrefix(copy)}${encodeURIComponent(place)}`;
+}
+
+function staleCondition(entry: StalePlace, copy: string | undefined): Condition {
+  const code = `${PLACE_KIND}.stale`;
+  return {
+    // The copy and the place are the facts. Thus a line gives one alert, and the next good fix gives its cancel.
+    facts: { copy: copy ?? null, place: entry.place },
+    kind: { code, label: kindLabel(code) },
+    // The table of the system reports gives the level `notice`.
+    severity: "moderate",
+    urgency: "expected",
+    response: ["assess"],
+    // The report is private, and it holds no position. Only the persons of the place get it.
+    areas: [],
+    about: [{ system: PLACE_SUBJECT, id: entry.place, label: entry.label }],
+    addresses: [...entry.persons],
+    headline: `The watch of the moving place ${entry.label} stopped.`,
+    description: "The phone of the place sent no good fix in the age limit of the place. Thus no alert at the position of the phone reaches you.",
+    instruction: "Open the phone app, and send a fix. Examine the network path from the phone to the runtime.",
+    parameters: { place: [entry.place] },
   };
 }
 

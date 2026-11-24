@@ -7,7 +7,7 @@
  * many megabytes. The keeper simplifies the regions of the watched states again only when the store changes them. An
  * incident changes only the small copy of the regions outside those states.
  */
-import { basemapToleranceKm, simplifyBasemap, type AlertConfig, type Duration, type Incident, type Instant, type MapRegion, type PlaceConfig, type RegionCode, type ShapeLookup, type SourceDescriptor, type SourceId, type StoreFill, type WatchedPlace } from "@mark1russell7/alerts";
+import { basemapToleranceKm, simplifyBasemap, type AlertConfig, type Duration, type Incident, type Instant, type MapRegion, type PlaceConfig, type Position, type RegionCode, type ShapeLookup, type SourceDescriptor, type SourceId, type StoreFill, type WatchedPlace } from "@mark1russell7/alerts";
 import { stateOfCode } from "@mark1russell7/alerts-format-nws";
 import { compareCodes, ZONE_KINDS, zoneCodesNear, zoneKindOf, type Refreshed, type ShapeStore, type Wanted, type ZoneKind } from "@mark1russell7/alerts-shapes-nws";
 import { NWS_PROVIDER } from "@mark1russell7/alerts-source-nws-api";
@@ -111,6 +111,27 @@ function zonesOf(place: PlaceConfig, regionsOf: (state: string) => readonly MapR
   const known = new Set(place.codes.map(codeKey));
   const near = zoneCodesNear(regions, place.at, place.bufferKm);
   return { outlined: true, near, added: near.filter((code) => !known.has(codeKey(code))) };
+}
+
+/**
+ * This function gives the region codes of a moving place at a fix (AL-40). The states come from the codes of the file.
+ *
+ * - A fix in or near an outline of these states gives the zone codes near it.
+ * - The result also keeps the codes of the file that name no state.
+ * - The buffer of the search is the buffer of the place plus the doubt of the fix.
+ * - With no outline, or with a fix outside each outline, the place keeps the codes of the file.
+ */
+export function codesAtFix(place: PlaceConfig, at: Position, accuracyKm: number, regionsOf: (state: string) => readonly MapRegion[]): readonly RegionCode[] {
+  const states = new Set<string>();
+  for (const code of place.codes) {
+    const state = stateOfCode(code);
+    if (state !== undefined) states.add(state);
+  }
+  const regions = [...states].sort(compareCodes).flatMap((state) => regionsOf(state));
+  if (regions.length === 0) return place.codes;
+  const near = zoneCodesNear(regions, at, place.bufferKm + accuracyKm);
+  if (near.length === 0) return place.codes;
+  return [...place.codes.filter((code) => stateOfCode(code) === undefined), ...near];
 }
 
 /**
