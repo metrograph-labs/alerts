@@ -6,7 +6,8 @@
  * store of the readings, not to the log.
  *
  * A bound of the state (AL-145) can keep a new observation out of the log: `admit` refuses its reports. Then the step
- * writes neither the observation nor its reports, and the observation stays new. Thus a later fetch gives it again, and
+ * writes neither the observation nor its reports, and the observation stays new. The fetch event then keeps no cursor, thus
+ * the cursor of the source stays. A later fetch gives the observation again, also from a source that reads from a cursor, and
  * it goes in when the state has space.
  */
 import {
@@ -119,7 +120,7 @@ export function fetchStep(input: FetchInput): FetchStep {
     ...(canary === undefined ? {} : { canary }),
   };
   const observed = fresh.map((observation): ObservationEvent => ({ ...envelope("observation", observation.id, ended), observation }));
-  const events = [...observed, { ...envelope("fetch", id, ended), record, ...(outcome.cursor === undefined ? {} : { cursor: outcome.cursor }), reports, problems }];
+  const events = [...observed, { ...envelope("fetch", id, ended), record, ...(outcome.cursor === undefined || waiting > 0 ? {} : { cursor: outcome.cursor }), reports, problems }];
   return { events, readings, waiting };
 }
 

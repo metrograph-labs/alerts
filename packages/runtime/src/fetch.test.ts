@@ -79,6 +79,18 @@ describe("the admission of a fetch (AL-145)", () => {
     expect(fetch.reports.map((report) => report.id)).toEqual(["report:a third product"]);
   });
 
+  it("keeps the cursor of the source when an observation waits, thus a later fetch gives it again", () => {
+    const stepWith = (admit: (reports: readonly Report[]) => boolean) =>
+      fetchStep({ source: SOURCE, procedures: { map: (given) => ({ reports: [reportOf(given.observation.body)], problems: [] }) }, started: T0, ended: T0 + 100, outcome: { ok: true, observations: [observation, second], complete: true, cursor: { page: "2" } }, known: () => false, admit });
+    const cursorOf = (step: ReturnType<typeof fetchStep>) => {
+      const fetch = step.events.at(-1);
+      if (fetch?.type !== "fetch") throw new Error("The last event is not the fetch event.");
+      return fetch.cursor;
+    };
+    expect(cursorOf(stepWith(() => true))).toEqual({ page: "2" });
+    expect(cursorOf(stepWith((reports) => reports[0]?.id !== "report:a second product"))).toBeUndefined();
+  });
+
   it("takes each new observation with no admission, and counts no waiting", () => {
     const step = fetchStep({ source: SOURCE, procedures: { map: () => ({ reports: [], problems: [] }) }, started: T0, ended: T0 + 100, outcome: { ok: true, observations: [observation, second], complete: true }, known: () => false });
     expect(step.waiting).toBe(0);
