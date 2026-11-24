@@ -166,6 +166,16 @@ describe("createUsgsFetch", () => {
     expect(two).toEqual(one);
   });
 
+  it("gives the newest full answer from the store for a 304, with its time of fetch", async () => {
+    const older = json(feedOf(FEATURES.slice(0, 3)), 200, { "last-modified": "Mon, 16 Nov 2026 03:20:00 GMT" });
+    const { fetch } = fetchWith([older, json(FEED, 200, { "last-modified": LAST_MODIFIED }), NOT_MODIFIED]);
+    await fetch({ watch: WATCH });
+    const full = await fetch({ watch: WATCH });
+    const replay = await fetch({ watch: WATCH });
+    expect(full.ok ? full.observations : []).toHaveLength(FEATURES.length);
+    expect(replay).toEqual(full);
+  });
+
   it("fails a 304 with no earlier full answer, and then sends no condition", async () => {
     const { fetch, sent } = fetchWith([NOT_MODIFIED]);
     expect(failureOf(await fetch({ watch: WATCH }))).toEqual({ kind: "network", message: `a 304 answer with no earlier full answer: ${URL_OF_FEED}` });

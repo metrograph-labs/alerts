@@ -9,6 +9,10 @@
  * - The store keeps the extra values of each answer, as its time of fetch and its latency. Thus a new read gives the same observations.
  * - A reply with `bytes` keeps its bytes as they are. Only the text body gets the compression.
  * - A failed compression or expansion rejects the `get` of the URL. The source then has no earlier full answer.
+ *
+ * The home of this store is polite-crawler: its `polite-crawler/api` keeps the last full answer of a GET (`keptStore`).
+ * Pull request 220 of `mark1russell7/crawler` adds this store there as `keptReplies`. After that release, the sources
+ * use `keptReplies`, and this module goes.
  */
 import type { Reply } from "polite-crawler/api";
 
