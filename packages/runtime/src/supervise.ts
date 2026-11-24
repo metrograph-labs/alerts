@@ -7,6 +7,8 @@
  * - `node src/main.ts supervise <folder>` starts the supervisor in a console. Ctrl-C stops it.
  * - `src/install.ts` installs the boot task that starts it.
  * - When the runtime stops again and again, the supervisor sends a notice to the receiver of the copy (`loop-notice.ts`).
+ * - On Windows, the end of the console stops the supervisor and the runtime (AL-141). A stop of the boot task ends only
+ *   its console, `conhost.exe`.
  */
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -17,7 +19,7 @@ import type { Logger, ServiceBuilder } from "@mark1russell7/service";
 import { discoveryOf, nodeHostPorts, removeDiscovery, superviseGroup, writeDiscovery } from "@mark1russell7/service/host";
 import { parseSecrets, readText, SECRETS_FILE } from "./config.ts";
 import { readCopySettings } from "./copy.ts";
-import { declareSupervisor, hostGroup, supervisorDiscovery, supervisorHome } from "./host.ts";
+import { declareSupervisor, hostGroup, supervisorDiscovery, supervisorHome, watchesConsole } from "./host.ts";
 import { WEBHOOK_USER_AGENT } from "./instance.ts";
 import { loopNotifier, loopReceiver, type LoopNotifier } from "./loop-notice.ts";
 import { outputOf, timedLogger, type Output } from "./output.ts";
@@ -75,8 +77,15 @@ export function supervisor(argument: string | undefined): ServiceBuilder {
   const group = superviseGroup(hostGroup({ home, root: ROOT, node: process.execPath }), ports);
   // The discovery file names this process. With it, the remove of the task stops the process tree.
   const discovery = supervisorDiscovery(home);
+  // A stop of the Windows boot task ends only its console. Then the input closes, and the supervisor stops the runtime and itself (AL-141).
+  const consoleWatch = watchesConsole(process.platform, process.stdin.isTTY);
   return declareSupervisor({
     start: async () => {
+      if (consoleWatch) {
+        // Node sees the end of an input only when the process reads it. A closed console gives the error EPIPE before the close.
+        process.stdin.on("error", () => undefined);
+        process.stdin.resume();
+      }
       notifier = await notifierOf(home, ports.clock, out);
       await writeDiscovery(discovery, discoveryOf({}, ports), ports);
       group.start();
@@ -86,5 +95,5 @@ export function supervisor(argument: string | undefined): ServiceBuilder {
       notifier?.stop();
       await removeDiscovery(discovery, ports);
     },
-  });
+  }, consoleWatch);
 }
