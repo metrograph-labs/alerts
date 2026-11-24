@@ -62,7 +62,7 @@ const originsOf = (source: (typeof adopted)[number]): readonly string[] => [...s
  * sources of different issuers, for example the providers of the CSAF adapter. Then each source has only its descriptors.
  */
 const descriptorsOf = (source: (typeof adopted)[number]): readonly SourceDescriptor[] =>
-  descriptorsOf(source).filter((descriptor) => descriptor.origins.some((origin) => originsOf(source).includes(origin)));
+  (DESCRIPTORS[source.adapter ?? ""] ?? []).filter((descriptor) => descriptor.origins.some((origin) => originsOf(source).includes(origin)));
 
 describe("the paths of the atlas and the descriptors of the adapters", () => {
   it("has the descriptors of each adopted adapter", () => {
