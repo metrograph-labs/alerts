@@ -323,6 +323,8 @@
   "system.log.recovered",
   "system.loop",
   "system.loop.block",
+  "system.place",
+  "system.place.stale",
   "system.quota",
   "system.quota.low",
   "system.quota.reserve",

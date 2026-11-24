@@ -28,7 +28,7 @@ import { fetchTransport, quotaGate, type Transport } from "polite-crawler/api";
 import { CONFIG_FILE, envSecrets } from "./config.ts";
 import { holdHome } from "./home-lock.ts";
 import { instanceCheck, openInstance, type Instance } from "./instance.ts";
-import { openCheckedRuntimeLog } from "./log.ts";
+import { openCheckedRuntimeLog, type RuntimeLog } from "./log.ts";
 import { loadPriors } from "./priors.ts";
 import { openReadingStore, READINGS_FILE } from "./readings.ts";
 import { checkStart, privateFiles, readStartTexts } from "./reload.ts";
@@ -182,6 +182,8 @@ export interface SnapshotWriteTime {
 export interface MeasuredRuntime {
   /** The instance of the start. A measure reads its state and its runtime here. */
   readonly instance: Instance;
+  /** The log of the instance. A measure counts its events and its transactions here (AL-168). */
+  readonly log: RuntimeLog;
   /**
    * The value of `performance.now()` at the end of `openInstance`, in milliseconds from the start of the process. After this
    * point, a live start does only small steps, and then its probe `/readiness` passes. The ready window of the supervisor
@@ -348,6 +350,7 @@ export async function openMeasuredRuntime(home: string, options: MeasuredOptions
     let closed = false;
     return {
       instance,
+      log,
       opened,
       first,
       snapshotWrites,

@@ -362,6 +362,8 @@ OwnBaseline: build/index.d.ts#OwnBaseline
 PART_NAME: build/index.d.ts#PART_NAME
 PATH_SYSTEMS: build/index.d.ts#PATH_SYSTEMS
 PERSON_SUBJECT: build/index.d.ts#PERSON_SUBJECT
+PLACE_KIND: build/index.d.ts#PLACE_KIND
+PLACE_SUBJECT: build/index.d.ts#PLACE_SUBJECT
 PRIORS_FORMAT: build/index.d.ts#PRIORS_FORMAT
 PairHistory: build/index.d.ts#PairHistory
 PairSurprise: build/index.d.ts#PairSurprise
@@ -470,6 +472,7 @@ SourceHealthView: build/index.d.ts#SourceHealthView
 SourceId: build/index.d.ts#SourceId
 SourceProcedures: build/index.d.ts#SourceProcedures
 SpendConfig: build/index.d.ts#SpendConfig
+StalePlace: build/index.d.ts#StalePlace
 Status: build/index.d.ts#Status
 StoreBound: build/index.d.ts#StoreBound
 StoreFill: build/index.d.ts#StoreFill
@@ -3377,6 +3380,12 @@ export declare const PATH_SYSTEMS: readonly string[];
 ### build/index.d.ts#PERSON_SUBJECT
 export declare const PERSON_SUBJECT = "alerts.person";
 
+### build/index.d.ts#PLACE_KIND
+export declare const PLACE_KIND = "system.place";
+
+### build/index.d.ts#PLACE_SUBJECT
+export declare const PLACE_SUBJECT = "alerts.place";
+
 ### build/index.d.ts#PRIORS_FORMAT
 export declare const PRIORS_FORMAT: ScorePriors["format"];
 
@@ -4140,6 +4149,13 @@ export interface SpendConfig {
   readonly timeZone: string;
 }
 
+### build/index.d.ts#StalePlace
+export interface StalePlace {
+  readonly place: PlaceId;
+  readonly label: string;
+  readonly persons: readonly PersonId[];
+}
+
 ### build/index.d.ts#Status
 export type Status = "actual" | "exercise" | "system" | "test" | "draft";
 
@@ -4265,6 +4281,7 @@ export interface SystemSnapshot {
   readonly observing?: readonly ObserveCondition[];
   readonly sourceClear?: SourceClearConfig;
   readonly redundancy?: readonly RedundancyState[];
+  readonly stale?: readonly StalePlace[];
 }
 
 ### build/index.d.ts#SystemStep
