@@ -4,7 +4,7 @@ import fc from "fast-check";
 import type { Exchange, Reply, Transport } from "polite-crawler/api";
 import { HostScheduler } from "polite-crawler/politeness";
 import { describe, expect, it } from "vitest";
-import { createEmscFetch, eventBody, eventFields, isEmscEvent, pastDay, QUERY_LIMIT, QUERY_PATH, queryPath, readAnswer } from "./fetch.ts";
+import { createEmscFetch, eventBody, eventFields, isEmscEvent, listingUrl, pastDay, QUERY_LIMIT, QUERY_PATH, queryPath, readAnswer } from "./fetch.ts";
 import { EVENT_FIELDS, REPORT_LIFE_MS } from "./map.ts";
 
 /** The real answer of EMSC: 53 of the 183 earthquakes of magnitude 2.5 or more of one day (`fixtures/README.md`). */
@@ -33,6 +33,7 @@ const WATCH: Watch = { places: [{ id: "a" as PlaceId, codes: [{ system: "iso3166
 
 const BASE = "https://emsc.test";
 const START = Date.parse("2026-11-16T05:28:21Z");
+const HOUR = 3_600_000;
 const URL_OF_QUERY = `${BASE}${QUERY_PATH}?format=json&minmag=2.5&start=2026-11-15T05:00:00&orderby=time&limit=500`;
 const ETAG = '"a5e1"';
 const json = (body: string, status = 200, headers: Record<string, string> = {}): Reply => ({
@@ -125,10 +126,21 @@ describe("readAnswer", () => {
     expect(read?.listed[0]?.observation).toMatchObject({ source: "emsc", fetched: START, contentType: "application/json", body: eventBody(first()), transport: { url: URL_OF_QUERY, status: 200, latency: 40 } });
   });
 
-  it("gives the same observation for the same event in two answers, at two times", () => {
-    const ids = (body: string, fetched: number): string[] => readAnswer(json(body), URL_OF_QUERY, fetched, 40)?.listed.map((listed) => listed.observation.id) ?? [];
+  it("gives the same observation for the same event in two answers, at two times and in two hours of the query (AL-173)", () => {
+    const ids = (body: string, fetched: number): string[] =>
+      readAnswer(json(body), `${BASE}${queryPath(fetched)}`, fetched, 40)?.listed.map((listed) => listed.observation.id) ?? [];
     const later = FEATURES.map((feature) => withProperties(feature, { lastupdate: "2026-11-16T06:00:00.0Z" }));
-    expect(ids(answerOf(later), START + 60_000)).toEqual(ids(ANSWER, START));
+    // The later answer comes from the query of the next hour: its start is one hour later.
+    expect(queryPath(START + HOUR)).not.toBe(queryPath(START));
+    expect(ids(answerOf(later), START + HOUR)).toEqual(ids(ANSWER, START));
+  });
+
+  it("takes only the start time out of the URL of the id", () => {
+    expect(listingUrl(URL_OF_QUERY)).toBe(`${BASE}${QUERY_PATH}?format=json&minmag=2.5&orderby=time&limit=500`);
+    expect(listingUrl(`${BASE}${queryPath(START + HOUR)}`)).toBe(listingUrl(URL_OF_QUERY));
+    expect(listingUrl(`${BASE}/q?start=1&a=2`)).toBe(`${BASE}/q?a=2`);
+    expect(listingUrl(`${BASE}/q?a=2&start=1`)).toBe(`${BASE}/q?a=2`);
+    expect(listingUrl(`${BASE}/q?restart=1`)).toBe(`${BASE}/q?restart=1`);
   });
 
   it("gives one observation for one event twice", () => {

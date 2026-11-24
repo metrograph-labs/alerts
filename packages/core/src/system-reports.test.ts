@@ -863,10 +863,13 @@ describe("the drift reports (AL-139)", () => {
     expect(codes(systemReports(restarted.lines, snapshot({ drift: [check(undefined, { since: START + HOUR })] }), START + HOUR + MAX_AGE).reports)).toEqual([["alert", "system.drift.unread"]]);
   });
 
-  it("gives the line changed in one copy and the unread line in each copy", () => {
+  it("gives each line of a drift in each copy, because each copy has its own checks", () => {
     const changed = [check({ changes: 1 })];
     expect(codes(systemReports(NO_SYSTEM_LINES, snapshot({ drift: changed, copy: "copy-a", copies: [copyWatch("copy-b", START)] }), START).reports)).toEqual([["alert", "system.drift.changed"]]);
-    expect(systemReports(NO_SYSTEM_LINES, snapshot({ drift: changed, copy: "copy-b", copies: [copyWatch("copy-a", START)] }), START).reports).toEqual([]);
+    expect(codes(systemReports(NO_SYSTEM_LINES, snapshot({ drift: changed, copy: "copy-b", copies: [copyWatch("copy-a", START)] }), START).reports)).toEqual([["alert", "system.drift.changed"]]);
+    // A restart with no read keeps the open line changed in each copy.
+    const opened = systemReports(NO_SYSTEM_LINES, snapshot({ drift: changed, copy: "copy-b", copies: [copyWatch("copy-a", START)] }), START);
+    expect(systemReports(opened.lines, snapshot({ drift: [check(undefined, { since: START + HOUR })], copy: "copy-b", copies: [copyWatch("copy-a", START + HOUR)] }), START + HOUR).reports).toEqual([]);
     const unread = systemReports(NO_SYSTEM_LINES, snapshot({ drift: [check()], copy: "copy-b", copies: [copyWatch("copy-a", START + MAX_AGE)] }), START + MAX_AGE);
     expect(codes(unread.reports)).toEqual([["alert", "system.drift.unread"]]);
   });

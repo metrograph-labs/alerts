@@ -134,8 +134,9 @@ interface Read {
 export function readAnswer(reply: Reply, url: string, fetched: Instant, latency: number): Read | undefined {
   const contentType = reply.headers["content-type"] ?? "application/json";
   const transport = { url, status: reply.status, latency };
+  const listing = listingUrl(url);
   const observation = (body: string): Observation => ({
-    id: observationId({ source: SOURCE_ID, contentType, url, body }),
+    id: observationId({ source: SOURCE_ID, contentType, url: listing, body }),
     source: SOURCE_ID,
     fetched,
     contentType,
@@ -160,6 +161,14 @@ export function readAnswer(reply: Reply, url: string, fetched: Instant, latency:
     if (!bodies.has(body)) bodies.set(body, eventTime(eventFields(feature)?.["time"]));
   }
   return { listed: [...bodies].map(([body, time]) => ({ time, observation: observation(body) })), complete };
+}
+
+/**
+ * This function gives the URL of a query with no start time. The start moves each hour. The id of an observation uses
+ * this URL, thus one body of an event keeps one observation id, and one report, in each hour (AL-173).
+ */
+export function listingUrl(url: string): string {
+  return url.replace(/([?&])start=[^&]*(&|$)/u, (_match, before: string, after: string) => (after === "&" ? before : ""));
 }
 
 /**
