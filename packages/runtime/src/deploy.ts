@@ -11,8 +11,8 @@
  *   The live slot does not change.
  * - `swap <a|b> <commit>` points the live path at the staged slot in one step. The runtime takes the new code at its next start.
  *   `node src/install.ts restart` from the live path starts it at once. A swap to the old slot goes back to it.
- *   A swap refuses a slot with a package link outside its folder (AL-144). It is a compare and swap (AL-167): it refuses
- *   when the live link names the target slot already, or when the target slot has another commit.
+ *   A swap refuses a slot with a package link outside its folder (AL-144). It is a compare and swap (AL-167). It refuses
+ *   a target slot that the live link names already, or a target slot with another commit.
  * - `stage`, `swap`, `relink`, `adopt` and `fold` hold the deploy lock in the host folder (AL-167). A second deploy on
  *   the host stops at its start. `status` takes no lock. It also tells the slot and the commit of the running runtime.
  * - `relink [a|b]` removes the `node_modules` folders of a slot and installs them again at its own path. With no

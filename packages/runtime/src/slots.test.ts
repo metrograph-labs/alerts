@@ -169,7 +169,8 @@ describe("the marks of a stage and the swap rule (AL-89)", () => {
     expect(swapRefusal({ ...facts, live: linkTo(undefined) })).toContain("adopt");
     expect(swapRefusal({ ...facts, head: undefined })).toContain("Slot b has no checkout");
     expect(swapRefusal({ ...facts, mark: undefined })).toContain("no stage");
-    expect(swapRefusal({ ...facts, head: OTHER_SHA })).toContain("no stage");
+    expect(swapRefusal({ ...facts, head: OTHER_SHA })).toContain("Slot b has the commit 2222222");
+    expect(swapRefusal({ ...facts, head: OTHER_SHA, target: { slot: "b", commit: OTHER_SHA.slice(0, 7) } })).toContain("no stage");
     expect(swapRefusal({ ...facts, mark: { ...goodMark, checks: ["install", "config"] } })).toContain("load");
     // A stage of the code before AL-112 step 2 wrote no file of the outage bundles. Thus a swap refuses its mark.
     expect(swapRefusal({ ...facts, mark: { ...goodMark, checks: ["install", "config", "load"] } })).toContain("bundles");

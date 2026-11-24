@@ -2,8 +2,8 @@
  * This module records the code that the runtime runs (AL-167). The probes of a deploy tell only that a runtime is ready.
  * They do not tell its code. On 2026-11-24 two swaps crossed, and the restarted runtime ran the old slot with good probes.
  *
- * - Each start writes the file `running.json` in the host folder: the process, the time, the slot of its real path and
- *   the commit of the stage of that slot.
+ * - Each start writes the file `running.json` in the host folder. The file has the process, the time and the slot of
+ *   the real path. It also has the commit of the stage of that slot.
  * - `install.ts restart` and `deploy.ts status` read the file, and compare its slot to the target of the live link.
  * - The file holds no path. The real path of the checkout names the folder of the user.
  */
