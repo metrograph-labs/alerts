@@ -17,7 +17,6 @@ export { GDELT_DESCRIPTOR } from "./descriptor.ts";
 export {
   BODY_TYPE,
   censusBody,
-  censusRegions,
   createGdeltFetch,
   cursorOf,
   EVENT_ARCHIVE_LIMITS,

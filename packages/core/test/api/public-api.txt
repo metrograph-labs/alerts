@@ -513,6 +513,7 @@ UNKNOWN_WEIGHT: build/index.d.ts#UNKNOWN_WEIGHT
 USE_KIND: build/index.d.ts#USE_KIND
 USE_STAGES: build/index.d.ts#USE_STAGES
 US_GALLON_L: build/index.d.ts#US_GALLON_L
+US_TERRITORIES: build/index.d.ts#US_TERRITORIES
 UnderPrior: build/index.d.ts#UnderPrior
 Urgency: build/index.d.ts#Urgency
 UseStage: build/index.d.ts#UseStage
@@ -955,6 +956,7 @@ watchSchema: build/index.d.ts#watchSchema
 watchedDrillMiss: build/index.d.ts#watchedDrillMiss
 watchedDrillReportAt: build/index.d.ts#watchedDrillReportAt
 watchedPlaceSchema: build/index.d.ts#watchedPlaceSchema
+watchedStates: build/index.d.ts#watchedStates
 whyLimitSchema: build/index.d.ts#whyLimitSchema
 whyLine: build/index.d.ts#whyLine
 whyRecordSchema: build/index.d.ts#whyRecordSchema
@@ -4374,6 +4376,9 @@ export declare const USE_STAGES: readonly UseStage[];
 ### build/index.d.ts#US_GALLON_L
 export declare const US_GALLON_L = 3.785411784;
 
+### build/index.d.ts#US_TERRITORIES
+export declare const US_TERRITORIES: ReadonlySet<string>;
+
 ### build/index.d.ts#UnderPrior
 export interface UnderPrior {
   readonly deaths: Estimate;
@@ -5745,6 +5750,9 @@ export declare function watchedDrillReportAt(watch: DrillWatch, copies: readonly
 
 ### build/index.d.ts#watchedPlaceSchema
 export declare const watchedPlaceSchema: z.ZodType<WatchedPlace, WatchedPlace>;
+
+### build/index.d.ts#watchedStates
+export declare function watchedStates(places: readonly WatchedPlace[]): readonly string[];
 
 ### build/index.d.ts#whyLimitSchema
 export declare const whyLimitSchema: z.ZodType<WhyLimit, WhyLimit>;

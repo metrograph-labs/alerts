@@ -8216,9 +8216,7 @@
   {
     "id": "faa-nas-status",
     "name": "FAA NAS Status airport status XML",
-    "classes": [
-      "transport.air.disruption"
-    ],
+    "classes": [],
     "dimensions": [
       "aviation-delays"
     ],
@@ -8226,15 +8224,15 @@
     "access": "api",
     "auth": "none",
     "terms": {
-      "url": null,
+      "url": "https://nasstatus.faa.gov/robots.txt",
       "automated": "unclear",
-      "redistribution": "unclear",
-      "note": "Terms not opened."
+      "redistribution": "allowed",
+      "note": "No published terms for the feed. robots.txt allows each path. The status is a work of the US government (17 U.S.C. 105)."
     },
     "cost": "free",
     "delay": "near real time (update time in the file)",
-    "history": "unknown",
-    "rateLimit": "unknown",
+    "history": "no",
+    "rateLimit": "No published limit. The adapter asks once each 2 minutes.",
     "calibration": null,
     "coverage": "US airports: ground delay programs, arrival and departure delays, closures (ground stops appear when active).",
     "origins": [
@@ -8243,11 +8241,11 @@
     "path": [
       "nasstatus.faa.gov"
     ],
-    "subjectIds": null,
+    "subjectIds": [],
     "risks": [],
-    "decision": "plan",
-    "adapter": null,
-    "reason": "Official airport programs and closures as XML.",
+    "decision": "adopt",
+    "adapter": "@mark1russell7/alerts-source-faa",
+    "reason": "Official US airport programs as XML with no key. The adapter counts the airports with a ground stop or a ground delay program, and the airports with a delay, in the US and in each watched state. A report for each program is AL-165.",
     "evidence": [
       "https://nasstatus.faa.gov/api/airport-status-information",
       "https://www.fly.faa.gov/What_s_New/XML_is_changing.jsp",
@@ -9710,7 +9708,9 @@
     "path": [
       "data.gdeltproject.org"
     ],
-    "subjectIds": ["point"],
+    "subjectIds": [
+      "point"
+    ],
     "risks": [],
     "decision": "adopt",
     "adapter": "@mark1russell7/alerts-source-gdelt",
