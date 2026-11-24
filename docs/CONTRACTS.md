@@ -2148,16 +2148,25 @@ The format:
 
 The runtime:
 
-- The intake is the procedure `alerts.position` at the path `/position`. It uses the token of the intake of the home, as `alerts.tell` does.
+- The intake is the procedure `alerts.position` on the listener of the intake of the operator (`tellHost`). It needs the entry `tell`.
+- Give this URL to the phone: `http://<host>:<port>/tell/alerts/position`. A proxy of the private network takes the calls to the loopback listener.
+- The phone sends the token of `tell.token` as the password of HTTP Basic auth. A call with the Bearer token also passes.
 - The intake reads the JSON of OwnTracks, an open phone app: `_type` `location`, `lat`, `lon`, `acc` in meters and `tst` in seconds.
-- The tracker id `tid` of OwnTracks is the `device` of the moving place. The intake refuses an unknown device.
-- The instance keeps the last fix of each moving place. At each pass, `passPlaces` gives the places of the view.
-- The store of shapes and the choice of the transit feeds get only the fixed places. Thus a fix changes no fetch.
-- A match of a moving place stays until the incident ends or the person acknowledges it. Thus a fix at the edge of an area does not send again.
-- A new fix gives the zone codes near its position from the outlines of the store. A fix outside each outline keeps the codes of the file.
-- The health route tells the age of the last fix of each moving place by its id. It tells no position.
-- A moving place with no fix in its age limit is not in the places of the pass. The health route then tells `stale`.
-- A stale moving place is a system problem for its person, with the label of the place and no position.
+- The intake ignores each other `_type`. It answers `[]`, the empty list of messages that OwnTracks reads.
+- The tracker id `tid` of OwnTracks is the `device` of the moving place. The intake refuses an unknown device with `BAD_REQUEST`.
+- The text of a refusal holds no position.
+- `nextFix` decides if the intake keeps a fix. The intake records the cause of the last refused fix of each place.
+- The file `fixes.json` of the home keeps the last fix of each moving place. The runtime writes it atomically with the mode 0600.
+- The runtime reads `fixes.json` at the start. It drops the fix of each place that is not a moving place of the configuration.
+- At the start of each pass, `passPlaces` gives the places of the pass. The coverage, the threats, the admission, the observe mode and the delivery read them.
+- The store of shapes, the choice of the transit feeds and the watch of each source get only the fixed places. Thus a fix changes no fetch.
+- A fix in or near an outline of the states of the file gives the zone codes near it. The search buffer is `bufferKm` plus `accuracyKm`.
+- A fix with no outline, or outside each outline, keeps the codes of the file.
+- The health route has a read for each moving place. It has the time of the last fix, `failed` for a stale place, and the cause of a refused fix.
+- The read holds no position.
+- A moving place with no fix in its age limit is not in the places of the pass.
+- A stale moving place is the private system report `system.place.stale` for the persons of the place. It has the label of the place and no position.
+- Only a copy that took a fix of the place gives this report. Thus a copy with no phone tells nothing.
 
 The privacy rules:
 
@@ -2168,6 +2177,7 @@ The privacy rules:
 
 The limits:
 
+- A match of a moving place does not stay after the fix leaves the area. A sticky match against the flaps at the edge of an area is the next part of AL-40.
 - Only the copy that takes the fixes watches a moving place. When that copy is down, no copy watches it.
 - A stop of the runtime loses the last fix when the home store does not have it. The next fix of the phone gives it again.
 - The phone app decides the time between two fixes. A long time between fixes makes the place stale.

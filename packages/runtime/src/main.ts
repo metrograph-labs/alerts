@@ -53,7 +53,7 @@ import { openShapeCache, SHAPES_FILE } from "@mark1russell7/alerts-shapes-nws";
 import { realClock, wallClock } from "@mark1russell7/algebra/clock";
 import type { ServiceBuilder } from "@mark1russell7/service";
 import { nodeHostPorts } from "@mark1russell7/service/host";
-import { errorMessage } from "@mark1russell7/text";
+import { countOf, errorMessage } from "@mark1russell7/text";
 import { redactSecrets } from "@mark1russell7/text/redact";
 import { SqliteHostStateStore } from "polite-crawler";
 import { fetchTransport, quotaGate } from "polite-crawler/api";
@@ -63,6 +63,7 @@ import { alertsHome, ConfigRefused, configPath, envSecrets } from "./config.ts";
 import { pageFolder, pageWarning, readPageState } from "./api.ts";
 import { COPY_TOKEN_KEY } from "./copy.ts";
 import { configFilesCall, EXCHANGE_TOKEN_LENGTH, exchangeCall, exchangeHost } from "./exchange-http.ts";
+import { createPositionIntake, FIXES_FILE, readFixes, writeFixes } from "./position-intake.ts";
 import { createTellIntake, tellHost, tellToken } from "./tell-intake.ts";
 import { heartbeat, heldOf, type PassSummary } from "./heartbeat.ts";
 import { holdHome } from "./home-lock.ts";
@@ -322,6 +323,16 @@ async function runtime(fold: boolean): Promise<ServiceBuilder | undefined> {
   // The intake of the messages of the operator (AL-92). Only the entry tell of config.json opens it.
   const tellConfig = config.config.tell;
   const tellIntake = tellConfig === undefined ? undefined : createTellIntake({ config: tellConfig, recipients: config.recipients, now: () => wall.now() });
+  // The intake of the fixes of the moving places (AL-40). It is on the listener of the intake of the operator. The file fixes.json
+  // gives the last fix of each moving place at the start. No line of the log holds a position.
+  const moving = config.config.places.some((place) => place.moving !== undefined);
+  const stored = tellIntake === undefined || !moving ? undefined : await readFixes(home, config.config);
+  if (stored?.problem !== undefined) out.error(stored.problem);
+  const positionIntake =
+    stored === undefined
+      ? undefined
+      : createPositionIntake({ config: config.config, fixes: stored.fixes, write: (fixes) => writeFixes(home, fixes), onFault: (error) => out.error(`The runtime did not write the file ${FIXES_FILE}: ${errorMessage(error)}`) });
+  if (moving && tellIntake === undefined) out.error("The configuration has a moving place, but no entry tell. This copy takes no fix, and it does not watch the moving places.");
   const instance = openInstance({
     config,
     secret,
@@ -342,6 +353,7 @@ async function runtime(fold: boolean): Promise<ServiceBuilder | undefined> {
     run: randomUUID(),
     copy,
     ...(tellIntake === undefined ? {} : { tell: tellIntake }),
+    ...(positionIntake === undefined ? {} : { position: positionIntake }),
     ...(token === undefined ? {} : { exchange: { call: exchangeCall({ token }), configHash: configHash(config.config) }, onExchange }),
     onPass,
     // The output gets no secret, also when an error quotes a request.
@@ -399,8 +411,9 @@ async function runtime(fold: boolean): Promise<ServiceBuilder | undefined> {
   const host = copies === undefined || copy.listen === undefined || token === undefined ? undefined : exchangeHost({ source: copies.source, token, listen: copy.listen, configFiles: configFilesOf({ copy, use: loaded.use, texts: loaded.texts, configHash: configHash(config.config) }) });
   const exchange = { ...(copies?.loop === undefined ? {} : { loop: copies.loop }), ...(host === undefined ? {} : { host }) };
   // The listener of the intake is on the loopback address. The runtime makes the file tell.token at its first start with the entry.
-  const tell = tellIntake === undefined || tellConfig === undefined ? undefined : tellHost({ intake: tellIntake, token: await tellToken(home), port: tellConfig.port });
+  const tell = tellIntake === undefined || tellConfig === undefined ? undefined : tellHost({ intake: tellIntake, token: await tellToken(home), port: tellConfig.port, ...(positionIntake === undefined ? {} : { position: positionIntake }) });
   if (tell !== undefined) out.log("The intake of the messages of the operator is on the loopback address.");
+  if (positionIntake !== undefined) out.log(`The intake of the fixes of the moving places is on the same listener. It has the last fixes of ${countOf(positionIntake.fixes().size, "place")}.`);
 
   // The built local page. The line tells the state of the page, and it holds no path.
   const runtimeRoot = fileURLToPath(new URL("..", import.meta.url));
