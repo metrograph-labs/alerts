@@ -1,11 +1,12 @@
 import { readFileSync } from "node:fs";
-import { observationId, type Cursor, type FetchOutcome, type Instant, type PlaceId, type Watch } from "@mark1russell7/alerts";
+import { observationId, readingProblems, type Cursor, type FetchOutcome, type Instant, type PlaceId, type Watch } from "@mark1russell7/alerts";
 import { redactSecrets } from "@mark1russell7/text/redact";
 import fc from "fast-check";
 import type { Exchange, Reply, Transport } from "polite-crawler/api";
 import { HostScheduler } from "polite-crawler/politeness";
 import { describe, expect, it } from "vitest";
 import { checkCanary } from "./check.ts";
+import { EIA_930_DESCRIPTOR } from "./descriptor.ts";
 import { BACKFILL_MS, coveredOf, createEia930Fetch, cursorOf, DATA_PATH, DATE_FORMAT, hoursOf, KEY_ERROR_CODES, LIVE_HOURS, MAX_PAGES, MAX_ROWS, PAGE_HOURS, queryPath, readPage } from "./fetch.ts";
 import { AGGREGATE_RESPONDENTS, API_UNIT, hourBody, HOUR_MS, mapObservation, periodText, SOURCE_ID } from "./map.ts";
 
@@ -87,12 +88,15 @@ describe("createEia930Fetch", () => {
     expect(observations[0]?.body).toBe(hourBody("2026-11-18T12", "CISO", 22311, 20375));
     for (const observation of observations) expect(`${observation.transport.url ?? ""} ${observation.body}`).not.toContain("eia-test-key");
 
-    // 6 hours have the demand 0, and 3 hours have a demand that equals the forecast: they give no reading.
+    // 6 hours have the demand 0, 3 hours have a demand that equals the forecast, and 7 hours have no forecast: they give no reading.
     const results = observations.map((observation) => mapObservation(observation));
     const readings = results.flatMap((result) => result.readings ?? []);
-    expect(readings).toHaveLength(47);
+    expect(readings).toHaveLength(40);
     expect(results.flatMap((result) => result.problems).filter((problem) => problem.path === "demand")).toHaveLength(9);
-    expect(new Set(readings.filter((reading) => reading.expected === undefined).map((reading) => reading.series))).toEqual(new Set(["SCEG"]));
+    // The hours of SCEG have no forecast: they give no reading and a note (AL-158). Each reading passes its declaration.
+    expect(results.flatMap((result) => result.problems).filter((problem) => problem.path === "forecast")).toHaveLength(7);
+    expect(readings.filter((reading) => reading.series === "SCEG")).toEqual([]);
+    expect(readings.flatMap((reading) => readingProblems(reading, EIA_930_DESCRIPTOR))).toEqual([]);
     expect(readings.filter((reading) => reading.series === "PJM").map((reading) => [periodText(reading.at), reading.value, reading.expected])).toEqual([
       ["2026-11-18T12", 102867, 104316],
       ["2026-11-18T13", 106151, 101667],
