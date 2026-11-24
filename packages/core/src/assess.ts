@@ -221,6 +221,12 @@ export const USE_KIND = "system.use";
 export const JOINT_KIND = "system.joint";
 
 /**
+ * The prefix of the kinds of the drift reports of the core (AL-139). `system.drift.changed` tells that the daily check of a
+ * copy host found a change: the host does not agree with its code. An adapter does not map a message to this prefix.
+ */
+export const DRIFT_KIND = "system.drift";
+
+/**
  * The prefix of the kinds of the redundancy reports of the core (AL-90). `system.redundancy.single` tells that a function of
  * the alert chain has a new single point of failure. An adapter does not map a message to this prefix.
  */
@@ -302,7 +308,7 @@ export const DEFAULT_ASSESS_POLICY: AssessPolicy = {
     { id: "system-escalation", kinds: [ESCALATION_KIND], statuses: ["system"], ...LOUD_SYSTEM_TABLE },
     // A message of the operator reaches only the persons of its addresses (AL-92). An urgent `needs-you` reaches `urgent`.
     { id: "system-tell", kinds: [TELL_KIND], statuses: ["system"], ...TELL_TABLE },
-    { id: "system", kinds: [HEALTH_KIND, COVERAGE_KIND, QUOTA_KIND, BALANCE_KIND, CLOCK_KIND, LOG_KIND, COPY_KIND, LOOP_KIND, DRILL_KIND, CHANNEL_KIND, STORE_KIND, LIMIT_KIND, USE_KIND, JOINT_KIND, REDUNDANCY_KIND], statuses: ["system"], ...SYSTEM_TABLE },
+    { id: "system", kinds: [HEALTH_KIND, COVERAGE_KIND, QUOTA_KIND, BALANCE_KIND, CLOCK_KIND, LOG_KIND, COPY_KIND, LOOP_KIND, DRILL_KIND, CHANNEL_KIND, STORE_KIND, LIMIT_KIND, USE_KIND, JOINT_KIND, DRIFT_KIND, REDUNDANCY_KIND], statuses: ["system"], ...SYSTEM_TABLE },
     // The service alerts of public transit are context. Their counts are indicator readings.
     { id: "context", kinds: CONTEXT_KINDS, ...CONTEXT_TABLE },
   ],

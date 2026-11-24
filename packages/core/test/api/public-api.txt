@@ -115,6 +115,11 @@ DEFAULT_THROTTLE: build/index.d.ts#DEFAULT_THROTTLE
 DIMENSIONS: build/index.d.ts#DIMENSIONS
 DIMENSION_IDS: build/index.d.ts#DIMENSION_IDS
 DOWN_STATES: build/index.d.ts#DOWN_STATES
+DRIFT_COMMAND_KINDS: build/index.d.ts#DRIFT_COMMAND_KINDS
+DRIFT_KIND: build/index.d.ts#DRIFT_KIND
+DRIFT_NAME: build/index.d.ts#DRIFT_NAME
+DRIFT_STAGES: build/index.d.ts#DRIFT_STAGES
+DRIFT_STEPS_SHOWN: build/index.d.ts#DRIFT_STEPS_SHOWN
 DRILL_KIND: build/index.d.ts#DRILL_KIND
 DRILL_PROBES: build/index.d.ts#DRILL_PROBES
 DRILL_SUBJECT: build/index.d.ts#DRILL_SUBJECT
@@ -134,6 +139,12 @@ DigestPlan: build/index.d.ts#DigestPlan
 DigestSend: build/index.d.ts#DigestSend
 DimensionCount: build/index.d.ts#DimensionCount
 DimensionId: build/index.d.ts#DimensionId
+DriftCheck: build/index.d.ts#DriftCheck
+DriftCommandConfig: build/index.d.ts#DriftCommandConfig
+DriftCommandKind: build/index.d.ts#DriftCommandKind
+DriftConfig: build/index.d.ts#DriftConfig
+DriftRead: build/index.d.ts#DriftRead
+DriftStage: build/index.d.ts#DriftStage
 DrillConfig: build/index.d.ts#DrillConfig
 DrillPath: build/index.d.ts#DrillPath
 DrillRun: build/index.d.ts#DrillRun
@@ -607,6 +618,10 @@ digestTimeOf: build/index.d.ts#digestTimeOf
 dimensionIdSchema: build/index.d.ts#dimensionIdSchema
 distinctShapes: build/index.d.ts#distinctShapes
 downChannels: build/index.d.ts#downChannels
+driftCommandConfigSchema: build/index.d.ts#driftCommandConfigSchema
+driftConfigSchema: build/index.d.ts#driftConfigSchema
+driftStages: build/index.d.ts#driftStages
+driftUnreadAt: build/index.d.ts#driftUnreadAt
 drillConfigSchema: build/index.d.ts#drillConfigSchema
 drillDue: build/index.d.ts#drillDue
 drillInCopy: build/index.d.ts#drillInCopy
@@ -970,6 +985,7 @@ export interface AlertConfig {
   readonly sendLimit?: SendLimitConfig;
   readonly throttle?: ThrottleConfig;
   readonly tell?: TellConfig;
+  readonly drift?: DriftConfig;
 }
 
 ### build/index.d.ts#Area
@@ -1729,6 +1745,21 @@ export declare const DIMENSION_IDS: readonly DimensionId[];
 ### build/index.d.ts#DOWN_STATES
 export declare const DOWN_STATES: readonly HealthState[];
 
+### build/index.d.ts#DRIFT_COMMAND_KINDS
+export declare const DRIFT_COMMAND_KINDS: readonly ["setup", "tofu"];
+
+### build/index.d.ts#DRIFT_KIND
+export declare const DRIFT_KIND = "system.drift";
+
+### build/index.d.ts#DRIFT_NAME
+export declare const DRIFT_NAME: RegExp;
+
+### build/index.d.ts#DRIFT_STAGES
+export declare const DRIFT_STAGES: readonly DriftStage[];
+
+### build/index.d.ts#DRIFT_STEPS_SHOWN
+export declare const DRIFT_STEPS_SHOWN = 10;
+
 ### build/index.d.ts#DRILL_KIND
 export declare const DRILL_KIND = "system.drill";
 
@@ -1859,6 +1890,39 @@ export interface DimensionCount {
 
 ### build/index.d.ts#DimensionId
 export type DimensionId = (typeof DIMENSIONS)[number]["id"];
+
+### build/index.d.ts#DriftCheck
+export interface DriftCheck {
+  readonly name: string;
+  readonly maxAge: Duration;
+  readonly since: Instant;
+  readonly read?: DriftRead;
+}
+
+### build/index.d.ts#DriftCommandConfig
+export interface DriftCommandConfig {
+  readonly name: string;
+  readonly kind: DriftCommandKind;
+  readonly argv: readonly string[];
+}
+
+### build/index.d.ts#DriftCommandKind
+export type DriftCommandKind = (typeof DRIFT_COMMAND_KINDS)[number];
+
+### build/index.d.ts#DriftConfig
+export interface DriftConfig {
+  readonly commands: readonly DriftCommandConfig[];
+}
+
+### build/index.d.ts#DriftRead
+export interface DriftRead {
+  readonly changes: number;
+  readonly steps: readonly string[];
+  readonly at: Instant;
+}
+
+### build/index.d.ts#DriftStage
+export type DriftStage = "changed" | "unread";
 
 ### build/index.d.ts#DrillConfig
 export interface DrillConfig {
@@ -3999,6 +4063,7 @@ export interface SystemSnapshot {
   readonly balances?: readonly ProviderBalance[];
   readonly uses?: readonly LimitUse[];
   readonly joint?: JointDown | null;
+  readonly drift?: readonly DriftCheck[] | null;
   readonly copy?: string;
   readonly copies?: readonly CopyWatch[];
   readonly steps?: readonly ClockStep[];
@@ -4566,6 +4631,18 @@ export declare function distinctShapes(shapes: readonly MapShape[]): MapShape[];
 
 ### build/index.d.ts#downChannels
 export declare function downChannels(lines: SystemLines, copy: string): ChannelId[];
+
+### build/index.d.ts#driftCommandConfigSchema
+export declare const driftCommandConfigSchema: z.ZodType<DriftCommandConfig, DriftCommandConfig>;
+
+### build/index.d.ts#driftConfigSchema
+export declare const driftConfigSchema: z.ZodType<DriftConfig, DriftConfig>;
+
+### build/index.d.ts#driftStages
+export declare function driftStages(check: DriftCheck, at: Instant): DriftStage[];
+
+### build/index.d.ts#driftUnreadAt
+export declare function driftUnreadAt(check: DriftCheck): Instant;
 
 ### build/index.d.ts#drillConfigSchema
 export declare const drillConfigSchema: z.ZodType<DrillConfig, DrillConfig>;

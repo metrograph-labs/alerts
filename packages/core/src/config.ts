@@ -133,6 +133,37 @@ export const LIMIT_ACCOUNT_KINDS: readonly ["user", "organization"] = ["user", "
 /** The kind of an account of a provider in a watch of a limit. */
 export type LimitAccountKind = (typeof LIMIT_ACCOUNT_KINDS)[number];
 
+/**
+ * The kinds of the command of a drift check (AL-139):
+ *
+ * - `setup`: a setup check in check mode. It writes a line `check: <step>: <reason>` for each step that changes, and it exits with 0.
+ * - `tofu`: a plan with `-detailed-exitcode`. The exit code 0 tells no change, and 2 tells one change or more.
+ */
+export const DRIFT_COMMAND_KINDS: readonly ["setup", "tofu"] = ["setup", "tofu"];
+
+/** The kind of the command of a drift check. */
+export type DriftCommandKind = (typeof DRIFT_COMMAND_KINDS)[number];
+
+/** The pattern of the name of a drift check: letters, digits, `.`, `_` and `-`, up to 64 characters. */
+export const DRIFT_NAME: RegExp = /^[A-Za-z0-9._-]{1,64}$/u;
+
+/** One command of the drift checks (AL-139). The values are private. Only the configuration holds them. */
+export interface DriftCommandConfig {
+  /** The name of the check in the reports, for example `host-a`. It is unique in the list. */
+  readonly name: string;
+  readonly kind: DriftCommandKind;
+  /** The program and its arguments. The runtime starts the program with no shell. */
+  readonly argv: readonly string[];
+}
+
+/**
+ * The drift checks of the copy hosts (AL-139). The runtime starts each command one time in each day, and a change or a
+ * failed read for 2 days gives a system report. Without this entry, the runtime starts no drift check.
+ */
+export interface DriftConfig {
+  readonly commands: readonly DriftCommandConfig[];
+}
+
 /** One subject of the sources that tells the state of a part of the stack of the alert chain (AL-90). */
 export interface ChainSubject {
   /** The system of the subject: for example `domain` for a status page. */
@@ -326,6 +357,8 @@ export interface AlertConfig {
   readonly throttle?: ThrottleConfig;
   /** The intake of the messages of the operator (AL-92). Without it, the runtime takes no message of the operator. */
   readonly tell?: TellConfig;
+  /** The drift checks of the copy hosts (AL-139). Without them, the runtime starts no drift check. */
+  readonly drift?: DriftConfig;
 }
 
 /** The name of the format of a part of the configuration. A change that breaks a part gets a new name. */

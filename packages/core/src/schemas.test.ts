@@ -85,6 +85,8 @@ import {
   addressValueSchema,
   alertConfigSchema,
   configPartSchema,
+  driftCommandConfigSchema,
+  driftConfigSchema,
   drillConfigSchema,
   expectationConfigSchema,
   limitConfigSchema,
@@ -446,6 +448,8 @@ const SCHEMA_NAMES = [
   "deliveryStateSchema",
   "deliveryStatusSchema",
   "dimensionIdSchema",
+  "driftCommandConfigSchema",
+  "driftConfigSchema",
   "drillConfigSchema",
   "drillPathSchema",
   "drillWindowSchema",
@@ -919,6 +923,19 @@ describe("the private configuration", () => {
     // An empty list starts the drill in no copy. The flip is a list of one copy.
     fails(drillConfigSchema, { ...drill, copies: [] });
     holds(drillConfigSchema, { ...drill, copies: ["home"] });
+  });
+
+  it("accepts the drift checks, and refuses a bad name, an empty argv, an unknown kind and two checks with one name (AL-139)", () => {
+    const command = { name: "host-a", kind: "setup", argv: ["check-host", "--check"] } as const;
+    holds(alertConfigSchema, { ...CONFIG, drift: { commands: [command, { name: "plan.b", kind: "tofu", argv: ["plan-host"] }] } });
+    fails(driftCommandConfigSchema, { ...command, name: "host a" });
+    fails(driftCommandConfigSchema, { ...command, name: "" });
+    fails(driftCommandConfigSchema, { ...command, argv: [] });
+    fails(driftCommandConfigSchema, { ...command, argv: [""] });
+    fails(driftCommandConfigSchema, { ...command, kind: "shell" });
+    fails(driftCommandConfigSchema, { ...command, shell: "check-host --check" });
+    fails(driftConfigSchema, { commands: [] });
+    fails(driftConfigSchema, { commands: [command, { ...command, kind: "tofu" }] });
   });
 
   it("checks the failure of a drill with the policy of a subject, and a real notice keeps its policy", () => {

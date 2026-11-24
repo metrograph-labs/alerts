@@ -457,6 +457,27 @@ A joint report (AL-148) tells the joint down time of the copies: the time in a w
 - A message names no key, no ping URL and no id of a check. The health route shows the read as `joint down time`.
 - A person gets the joint reports only when the person watches `{ system: "alerts.copy" }`.
 
+A drift report (AL-139) tells that a copy host does not agree with its code, or that its daily check cannot read. A drift report has no area. Its subject is `{ system: "alerts.copy", id: <name of the check> }` (`COPY_SUBJECT`). Its kind is `system.drift.<stage>`, and it gets `notice` at most. `driftStages` gives the stages of a `DriftCheck` at a time:
+
+| Stage | Condition | Severity, urgency |
+| --- | --- | --- |
+| `changed` | The last read that passed found one change or more | `moderate`, `expected` |
+| `unread` | No read passed for the maximum age or longer (`driftUnreadAt`) | `moderate`, `expected` |
+
+- Each entry of the field `drift.commands` of the configuration gives one check: a name, a kind and an `argv`. The runtime starts the program with no shell.
+- The kind `setup` is a setup check in check mode. It exits with 0, and each line `check: <step>: <reason>` is a change. Another exit code is a failed read.
+- The kind `tofu` is a plan with `-detailed-exitcode`. The exit code 0 tells no change, and 2 tells a change. Another exit code is a failed read.
+- The runtime starts each command one time in each day (`DRIFT_EVERY`). A failed read tries again after 1 hour. A command has a limit of 5 minutes.
+- The commands run one at a time, after the check of the pass. The pass does not wait for them, because a pass must end within its limit.
+- A read keeps the count of the changes, and the names that have only letters, digits, `.`, `_` and `-`. It keeps no other output of the command.
+- The headline names the check and its first 10 changes. The parameter `steps` holds each name of the read, up to 50.
+- A new list of changes gives an update. A read with no change ends `changed`. A read that passes ends `unread`. The maximum age is 2 days.
+- A check with no read keeps its open line `changed`. Thus a restart sends nothing. A snapshot with no field `drift` keeps each open line.
+- The value `null` of `drift` tells that the copy has no drift check. Then each open line ends. A check that leaves the configuration ends its lines.
+- With two copies, only one copy reports `changed` (see "The facts of a shared account"). Each copy reports its own `unread`.
+- A message of a failed read names the check. It holds no argument and no output. The health route shows each read as `drift of <name>`.
+- A person gets the drift reports only when the person watches `{ system: "alerts.copy" }`.
+
 A redundancy report (AL-90) tells that a function of the alert chain lost a path. An example is the push to a person when the carriers of the texts are down. A redundancy report has no area. Its subject is `{ system: "alerts.function", id: <part id> }` (`FUNCTION_SUBJECT`). Its kind is `system.redundancy.<stage>`, and it gets `notice` at most. The runtime gives a `RedundancyState` for each function from the open incidents of its parts. `redundancyStage` gives its stage:
 
 | Stage | Condition | Severity, urgency |
@@ -1487,6 +1508,7 @@ The function `openInstance` makes the instance of the owner from the private con
   - The date of each read is a date of the time zone of the cap.
 - The spend entry of Twilio also gives the watch of the balance: one read each day, and its floors.
 - Each entry of the field `limits` gives the watch of the use of one hard limit (AL-111). The section "The use report" tells its lines.
+- The field `drift` gives the drift checks of the copy hosts (AL-139). The section "System reports" tells their lines.
 - The field `chain` gives the stack of the alert chain (AL-90): a stack document with a layer of risks, and the subjects that tell the state of its parts. A live incident about a subject tells that its part is down. The runtime gives a `RedundancyState` for each goal of the layer.
 - The watch of a limit of GitHub reads the usage report of the account one time each day. The first read comes 20 minutes after the start.
 - The token of the reads is in the key `tokenKey` of the limit, or in `GITHUB_BILLING_TOKEN`. A fine-grained token needs Plan (read) of a user, or Administration (read) of an organization.

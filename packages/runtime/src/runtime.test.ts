@@ -8,6 +8,7 @@ import { openFoldSnapshot, type FoldSnapshot } from "@mark1russell7/sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import { balanceWatch, type BalanceReading } from "./balance.ts";
 import { limitWatch, type UseReading } from "./use.ts";
+import { DRIFT_LIMIT, driftWatch } from "./drift.ts";
 import { FOLD_TYPES, type RuntimeEvent } from "./events.ts";
 import { openRuntimeLog, type RuntimeLog } from "./log.ts";
 import { keepsAtBound, openRuntime, REPORT_LIMIT, type Pass, type RuntimeOptions } from "./runtime.ts";
@@ -607,6 +608,38 @@ describe("one pass of the runtime", () => {
     expect(useReports(await runtime.pass())).toEqual([]);
     expect(reads).toBe(2);
     expect(() => open([], { uses: [watch, watch] })).toThrow("the same id");
+    log.close();
+  });
+
+  it("starts the drift checks in a pass with no wait, and gives the line of a drift at the next pass (AL-139)", async () => {
+    let output = { exitCode: 0, stdout: "check: step.one: the file differs\nok: step.two\n" };
+    let release: () => void = () => undefined;
+    let runs = 0;
+    const run = async () => {
+      runs += 1;
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return output;
+    };
+    const watch = driftWatch({ commands: [{ name: "host-a", kind: "setup", argv: ["check-host"] }], run, every: 60_000 });
+    const driftReports = (pass: Pass) => pass.view.step.reports.filter((report) => report.kind.code.startsWith("system.drift.")).map((report) => [report.op, report.kind.code, report.headline]);
+    const { clock, runtime, log } = open([], { drift: watch });
+    // The command runs on after the pass. The wake of the pass is the latest end of the command.
+    const first = await runtime.pass();
+    expect(runs).toBe(1);
+    expect(driftReports(first)).toEqual([]);
+    expect(watch.nextReadAt()).toBe(T0 + DRIFT_LIMIT);
+    release();
+    await watch.settled();
+    expect(driftReports(await runtime.pass())).toEqual([["alert", "system.drift.changed", "The host check host-a found 1 change: step.one."]]);
+    output = { exitCode: 0, stdout: "ok: step.one\n" };
+    await clock.advance(60_000);
+    await runtime.pass();
+    release();
+    await watch.settled();
+    expect(driftReports(await runtime.pass())).toEqual([["cancel", "system.drift.changed", "Drift of a copy host: the condition ended."]]);
+    expect(runs).toBe(2);
     log.close();
   });
 

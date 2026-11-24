@@ -137,6 +137,8 @@ import {
   CONFIG_PART_FORMAT,
   COPY_FORMAT,
   copyProblems,
+  DRIFT_COMMAND_KINDS,
+  DRIFT_NAME,
   LIMIT_ACCOUNT_KINDS,
   loadConfig,
   mergeParts,
@@ -149,6 +151,8 @@ import {
   type CopyListen,
   type CopyPeer,
   type CopySettings,
+  type DriftCommandConfig,
+  type DriftConfig,
   type ExpectationConfig,
   type OutageConfig,
   type OutagePersonConfig,
@@ -1693,6 +1697,30 @@ export const tellConfigSchema: z.ZodType<TellConfig, TellConfig> = schemaOf<Tell
     .readonly(),
 );
 
+/** This schema checks one command of the drift checks (AL-139): a name for the reports, a kind, and the program with its arguments. */
+export const driftCommandConfigSchema: z.ZodType<DriftCommandConfig, DriftCommandConfig> = schemaOf<DriftCommandConfig>()(
+  z
+    .strictObject({
+      name: z.string().regex(DRIFT_NAME, "The name of a drift check is letters, digits, dots, underscores and hyphens, up to 64 characters."),
+      kind: z.enum(DRIFT_COMMAND_KINDS),
+      argv: z.array(z.string().min(1, "An argument of a drift check is a non-empty text.")).min(1, "A drift check names its program.").readonly(),
+    })
+    .readonly(),
+);
+
+/** This schema checks the drift checks of the copy hosts (AL-139): one command or more, each with its own name. */
+export const driftConfigSchema: z.ZodType<DriftConfig, DriftConfig> = schemaOf<DriftConfig>()(
+  z
+    .strictObject({
+      commands: z
+        .array(driftCommandConfigSchema)
+        .min(1, "The drift checks have one command or more.")
+        .readonly()
+        .refine((commands) => new Set(commands.map((command) => command.name)).size === commands.length, "Two drift checks have the same name."),
+    })
+    .readonly(),
+);
+
 /** This schema checks the policy of a down channel (AL-65). A run opens a line at 1 failed call or more. */
 export const channelDownConfigSchema: z.ZodType<ChannelDownConfig, ChannelDownConfig> = schemaOf<ChannelDownConfig>()(
   z.strictObject({ failures: z.number().int().min(1).exactOptional(), span: durationSchema.exactOptional() }).readonly(),
@@ -1734,6 +1762,7 @@ export const alertConfigSchema: z.ZodType<AlertConfig, AlertConfig> = schemaOf<A
       sendLimit: sendLimitConfigSchema.exactOptional(),
       throttle: throttleConfigSchema.exactOptional(),
       tell: tellConfigSchema.exactOptional(),
+      drift: driftConfigSchema.exactOptional(),
     })
     .readonly(),
 );

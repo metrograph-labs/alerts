@@ -1046,6 +1046,38 @@ export interface JointDown {
 }
 
 /**
+ * The stages of the drift check of one copy host (AL-139). Each stage is a line of system reports:
+ *
+ * - `changed`: the last read that passed found one change or more. Then the host does not agree with its code.
+ * - `unread`: no read passed for the maximum age or longer. Then the watch cannot see a drift of the host.
+ */
+export type DriftStage = "changed" | "unread";
+
+/** One read of the drift check of a copy host that passed (AL-139). */
+export interface DriftRead {
+  /** The count of the changes that the check found: steps of the setup or resources of a plan. The value 0 tells no drift. */
+  readonly changes: number;
+  /**
+   * The names of the changes, sorted, each one time. A name has only letters, digits, `.`, `_` and `-`. The list holds no
+   * other name, thus it can be shorter than `changes`. It holds no other text of the output of the command.
+   */
+  readonly steps: readonly string[];
+  readonly at: Instant;
+}
+
+/** The drift check of one copy host, at one time (AL-139). The private configuration names its command. */
+export interface DriftCheck {
+  /** The name of the check in the configuration. It has only letters, digits, `.`, `_` and `-`. */
+  readonly name: string;
+  /** The longest time with no read that passed. After it, the stage is `unread`. */
+  readonly maxAge: Duration;
+  /** The start of the watch. With no read, the time of `unread` counts from it. */
+  readonly since: Instant;
+  /** The last read that passed. */
+  readonly read?: DriftRead;
+}
+
+/**
  * The stages of a function of the alert chain (AL-90). Each stage is a line of system reports:
  *
  * - `single`: the down parts leave the function with a single point of failure that it did not have with no part down.
