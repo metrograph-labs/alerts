@@ -8,7 +8,7 @@ import { wallClock } from "@mark1russell7/algebra/clock";
 import { MeterProvider } from "@opentelemetry/sdk-metrics";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { collectReadings, PullMetricReader } from "@mark1russell7/otel-ts/pull";
-import { DEFAULT_LEVELS, LAB_AMOUNTS, LAB_PASS, LAB_READY, LAB_SNAPSHOT_WRITE, MEASURE_CONFIG, measureConfig, readSeedRecord, SEED_RECORD_FILE, seededLine, seedHome } from "./seed-home.ts";
+import { DEFAULT_LEVELS, LAB_AMOUNTS, LAB_PASS, LAB_READINGS, LAB_READY, LAB_SNAPSHOT_WRITE, MEASURE_CONFIG, measureConfig, readSeedRecord, SEED_RECORD_FILE, seededLine, seedHome } from "./seed-home.ts";
 import type { SeedStoreResult } from "./seed-store.ts";
 
 // A small home: approximately 1 hour of the live mix, with small cache files.
@@ -128,12 +128,13 @@ describe("capacity-app.json", () => {
     }
   });
 
-  it("names the pass line, the snapshot write line and the amounts line of the lab run, each kind and each event one time (CAP-65, AL-154)", () => {
+  it("names the pass line, the snapshot write line, the amounts line and the readings line of the lab run, each kind and each event one time (CAP-65, AL-154, AL-135)", () => {
     const lines = app.start.run.lines ?? [];
     expect(lines.map(({ kind, ev }) => ({ kind, ev }))).toEqual([
       { kind: "pass", ev: LAB_PASS },
       { kind: "write", ev: LAB_SNAPSHOT_WRITE },
       { kind: "amounts", ev: LAB_AMOUNTS },
+      { kind: "readings", ev: LAB_READINGS },
     ]);
     for (const each of lines) expect(each.title.length, each.ev).toBeGreaterThan(0);
     expect(app.start.seed.lines).toBeUndefined();

@@ -142,7 +142,8 @@
       "lines": [
         { "kind": "pass", "ev": "lab-pass", "title": "The end of a pass of the loop" },
         { "kind": "write", "ev": "lab-snapshot-write", "title": "A write of the start snapshot" },
-        { "kind": "amounts", "ev": "lab-amounts", "title": "The routes, the holds and the suppressions after a pass" }
+        { "kind": "amounts", "ev": "lab-amounts", "title": "The routes, the holds and the suppressions after a pass" },
+        { "kind": "readings", "ev": "lab-readings", "title": "One collection of the live metrics: the readings of the series of the contract" }
       ]
     }
   },
