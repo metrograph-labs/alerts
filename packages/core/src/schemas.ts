@@ -1833,6 +1833,7 @@ export const copySettingsSchema: z.ZodType<CopySettings, CopySettings> = schemaO
         .exactOptional(),
       configFrom: copyIdSchema.exactOptional(),
       leaveChannels: z.array(channelIdSchema).readonly().exactOptional(),
+      leaveSources: z.array(sourceIdSchema).readonly().exactOptional(),
     })
     .readonly(),
 );

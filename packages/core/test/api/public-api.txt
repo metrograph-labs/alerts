@@ -1556,6 +1556,7 @@ export interface CopySettings {
   readonly accounts?: Readonly<Record<string, number>>;
   readonly configFrom?: string;
   readonly leaveChannels?: readonly ChannelId[];
+  readonly leaveSources?: readonly SourceId[];
 }
 
 ### build/index.d.ts#CopyStage
