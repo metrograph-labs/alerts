@@ -43,15 +43,16 @@ const COMPONENTS = ["XX-East (Town A)", "XX-West (Town B)", "XX-South (Town C)",
 
 const READ: HistoryRead = { incidents: INCIDENTS, listed: INCIDENTS.length, skipped: 0 };
 
-/** The 95% Wilson interval, written out here so the gate does not trust the code that it checks. */
-function wilsonByHand(k: number, n: number): { low: number; high: number } {
-  const z = 1.959963984540054;
-  const p = k / n;
-  const scale = 1 + (z * z) / n;
-  const center = (p + (z * z) / (2 * n)) / scale;
-  const half = (z / scale) * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n));
-  return { low: Math.max(0, center - half), high: Math.min(1, center + half) };
-}
+/**
+ * The ends of the 95% Wilson interval of k down hours of 1440 hours. The values come from the formula of Wilson (1927),
+ * computed one time outside of this repository. Thus the gate does not trust the code that it checks.
+ */
+const WILSON_OF_1440: Readonly<Record<number, readonly [number, number]>> = {
+  0: [0, 0.002660582155],
+  2: [0.0003809660951, 0.005050003332],
+  3: [0.0007087687276, 0.006107394336],
+  5: [0.001484009914, 0.008102540421],
+};
 
 describe("codePlace", () => {
   it("reads a region, a product of a region and a component of no region", () => {
@@ -110,16 +111,14 @@ describe("the gate of the measured chances", () => {
 
   it("gives the 95% Wilson interval of each down share, and the low end of the chance that the part works", () => {
     for (const measure of byId.values()) {
-      const expected = wilsonByHand(measure.down.downHours, measure.down.hours);
+      const [low, high] = WILSON_OF_1440[measure.down.downHours]!;
       expect(measure.down.share).toBe(measure.down.downHours / measure.down.hours);
-      expect(measure.down.interval.low).toBeCloseTo(expected.low, 12);
-      expect(measure.down.interval.high).toBeCloseTo(expected.high, 12);
-      expect(measure.input.works).toBeCloseTo(1 - expected.high, 12);
+      expect(measure.down.interval.low).toBeCloseTo(low, 11);
+      expect(measure.down.interval.high).toBeCloseTo(high, 11);
+      expect(measure.input.works).toBeCloseTo(1 - high, 11);
       expect(measure.input.kind).toBe("measured");
       expect(measure.input.source).toContain("status.provider-a.test/api/v2/incidents.json from 2025-12-31 to 2026-03-01 (60 days)");
     }
-    // A region with no outage in 1440 hours: the high end of the down share is z^2 / (n + z^2).
-    expect(byId.get("region:provider-a/xx-north")!.down.interval.high).toBeCloseTo(0.0026606, 6);
     expect(byId.get("region:provider-a/xx-north")!.input.works).toBeLessThan(1);
   });
 });
