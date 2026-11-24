@@ -96,7 +96,7 @@ const measured = await openMeasuredRuntime(home, {
 });
 const ms = performance.now() - t0;
 // The log of the instance is the log of its runtime. The count of its calls of appendAll is the count of its transactions.
-const log = measured.instance.log;
+const log = measured.log;
 const openWrites = log.count() - seeded;
 let transactions = 0;
 const appendAll = log.appendAll.bind(log);
