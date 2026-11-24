@@ -178,6 +178,8 @@ export interface SeedHomeOptions {
   readonly levels?: Partial<SeedLevels>;
   /** The risk of each score rule of the level `score` (`MeasureParts.scoreRisk`). It is not a level of `capacity-app.json`. */
   readonly scoreRisk?: number;
+  /** The starts of the ids of the sources in observe mode (`SeedStoreOptions.observe`, AL-172). */
+  readonly observe?: readonly string[];
 }
 
 /** The record of a seeded home, in the file `SEED_RECORD_FILE`. */
@@ -216,6 +218,7 @@ export async function seedHome(dir: string, options: SeedHomeOptions): Promise<S
     transit: files.transit,
     near: { at: point, feeds: levels.feeds },
     open: { incidents: levels.incidents, areas: MEASURE_AREAS },
+    ...(options.observe === undefined ? {} : { observe: options.observe }),
   });
   writeFileSync(join(dir, CONFIG_FILE), JSON.stringify(config));
   const record: SeedRecord = { seed: options.seed, log: options.log, bytes: seeded.bytes, events: seeded.events, end: seeded.end, levels };
