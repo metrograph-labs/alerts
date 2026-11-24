@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-import { observationId, type Observation } from "@mark1russell7/alerts";
+import { DEFAULT_ASSESS_POLICY, observationId, tableLevel, type Observation } from "@mark1russell7/alerts";
 import { describe, expect, it } from "vitest";
 
 import { CONFLICT_KIND, GDELT_CREDIT, mapObservation, PLACE_RADIUS_KM, REPORT_LIFE_MS, severityOf, SOURCE_ID, UNREST_KIND, cameoLabel } from "./map.ts";
@@ -32,7 +32,7 @@ describe("mapObservation", () => {
       source: SOURCE_ID,
       key: "1334657169",
       certainty: "possible",
-      urgency: "unknown",
+      urgency: "past",
       response: ["monitor"],
       sent,
       received: fetched,
@@ -45,6 +45,14 @@ describe("mapObservation", () => {
     expect(haiti.description).toContain("It is not a confirmed report.");
     expect(haiti.parameters?.["credit"]).toEqual([GDELT_CREDIT]);
     expect(haiti.parameters?.["country"]).toEqual(["HA"]);
+  });
+
+  // A machine codes these events from the news, and some codes are wrong. A report of GDELT alone sends no push.
+  it("gives each report the digest at most under the first policy, also mass violence", () => {
+    const reports = kept.map((event) => mapObservation(observe(eventBody(event))).reports[0]!);
+    const worst = { ...reports[0]!, severity: severityOf("202", "20") };
+    expect(worst.severity).toBe("severe");
+    for (const report of [...reports, worst]) expect(tableLevel(DEFAULT_ASSESS_POLICY, report).level).toBe("digest");
   });
 
   it("gives the same report id for the same event", () => {

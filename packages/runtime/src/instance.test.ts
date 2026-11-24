@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
@@ -37,6 +38,7 @@ import { fakeSessions, NWWS_DESCRIPTOR } from "@mark1russell7/alerts-source-nwws
 import { SWPC_KINDS } from "@mark1russell7/alerts-source-swpc";
 import { CATALOG_URL, sourceIdOf, type CatalogCopy } from "@mark1russell7/alerts-source-gtfs-alerts";
 import { KEV_KINDS } from "@mark1russell7/alerts-source-cisa-kev";
+import { GDELT_DESCRIPTOR } from "@mark1russell7/alerts-source-gdelt";
 import { AWS_DESCRIPTOR } from "@mark1russell7/alerts-source-aws";
 import { AZURE_DESCRIPTOR } from "@mark1russell7/alerts-source-azure";
 import { BOM_SWS_DESCRIPTOR, bomTimeText } from "@mark1russell7/alerts-source-bom-sws";
@@ -48,7 +50,7 @@ import { DATE_FORMAT as EIA_DATE_FORMAT, EIA_930_DESCRIPTOR, HOUR_MS, periodEnd,
 import { memoryQuotaStore, quotaGate, type Exchange, type Transport } from "polite-crawler/api";
 import { DEFAULT_POLICY } from "polite-crawler/politeness";
 import { afterEach, describe, expect, it } from "vitest";
-import { ACCOUNT_SOURCES, BOM_SWS_KEY, CHECKS_KEY, EIA_KEY, CLOUDFLARE_RADAR_KEY, checksKeys, DAEMON_CHECK, daemonCheck, DELIVERY_TIMES, INSTANCE_CHANNELS, INSTANCE_CHECK, INSTANCE_EXPECTATIONS, instanceExpectations, INSTANCE_FETCH_LIMIT, INSTANCE_SOURCES, INSTANCE_TIMES, instanceCheck, instanceProblems, instanceServices, shownNode, shownServices, LOUD_PING_URL_KEY, LOUD_STEADY, nwwsKeys, nwwsSetup, openInstance, PING_URL_KEY, pingKeyOf, pingTargets, RANK_DELAY, RANK_FLOOR, SOURCE_POLICY, sourcePace, twilioSetup, USER_AGENT_NAME, instanceSenders, WEBHOOK_SECRET_KEY, WEBHOOK_USER_AGENT, webhookSetup, type Instance, type InstanceOptions } from "./instance.ts";
+import { ACCOUNT_SOURCES, BOM_SWS_KEY, readsGdelt, CHECKS_KEY, EIA_KEY, CLOUDFLARE_RADAR_KEY, checksKeys, DAEMON_CHECK, daemonCheck, DELIVERY_TIMES, INSTANCE_CHANNELS, INSTANCE_CHECK, INSTANCE_EXPECTATIONS, instanceExpectations, INSTANCE_FETCH_LIMIT, INSTANCE_SOURCES, INSTANCE_TIMES, instanceCheck, instanceProblems, instanceServices, shownNode, shownServices, LOUD_PING_URL_KEY, LOUD_STEADY, nwwsKeys, nwwsSetup, openInstance, PING_URL_KEY, pingKeyOf, pingTargets, RANK_DELAY, RANK_FLOOR, SOURCE_POLICY, sourcePace, twilioSetup, USER_AGENT_NAME, instanceSenders, WEBHOOK_SECRET_KEY, WEBHOOK_USER_AGENT, webhookSetup, type Instance, type InstanceOptions } from "./instance.ts";
 import { heartbeatGap } from "./heartbeat.ts";
 import { spendGates, spendQuota } from "./balance.ts";
 import { CLOCK_SKEW_LIMIT, COPY_TOKEN_KEY, EXCHANGE_EVERY, EXCHANGE_LIMIT } from "./copy.ts";
@@ -1160,6 +1162,42 @@ describe("openInstance", () => {
     expect(messageOf(() => open(phone("+15555550123"), withPhone(steps)))).toContain("Step 1 of life-safety of person-1 uses the channel twilio-call, and the instance has no sender on it.");
     // A number with no step only waits for its sender. The instance starts.
     expect(() => open(phone("+15555550123"), withPhone(pushOnly))).not.toThrow();
+  });
+});
+
+describe("the GDELT source of the instance (AL-19)", () => {
+  // The recorded file of 2026-11-23 20:00 UTC holds 5 real events. Each is far from the place of the tests.
+  const STAMP = "20261123200000";
+  const zip = new Uint8Array(readFileSync(join(dirname(createRequire(import.meta.url).resolve("@mark1russell7/alerts-source-gdelt/package.json")), "fixtures", `${STAMP}.export.CSV.zip`)));
+  const md5 = createHash("md5").update(zip).digest("hex");
+  const withGdelt = (net: ReturnType<typeof network>): Transport => async (exchange, signal) => {
+    const url = new URL(exchange.url);
+    if (url.hostname !== "data.gdeltproject.org") return net.transport(exchange, signal);
+    net.exchanges.push(exchange);
+    if (url.pathname === "/gdeltv2/lastupdate.txt") return { status: 200, statusText: "OK", headers: { "content-type": "text/plain" }, body: `${zip.length} ${md5} http://data.gdeltproject.org/gdeltv2/${STAMP}.export.CSV.zip
+` };
+    if (url.pathname === `/gdeltv2/${STAMP}.export.CSV.zip`) return { status: 200, statusText: "OK", headers: { "content-type": "application/zip" }, body: "", bytes: zip };
+    return { status: 404, statusText: "Not Found", headers: {}, body: "" };
+  };
+  const sharing: AlertConfig = { ...CONFIG, places: CONFIG.places.map((one) => ({ ...one, sharePosition: [GDELT_DESCRIPTOR.id] })) };
+
+  it("reads GDELT only when a place shares its position with it", () => {
+    expect(readsGdelt(CONFIG)).toBe(false);
+    expect(readsGdelt(sharing)).toBe(true);
+    expect(readsGdelt({ ...CONFIG, places: CONFIG.places.map((one) => ({ ...one, sharePosition: ["nws-api" as SourceId] })) })).toBe(false);
+  });
+
+  it("reads the newest file of GDELT, gives no report far from the places, and no request holds a position", async () => {
+    const net = network();
+    const { instance, clock } = open(store(SECRETS), sharing, 0, TEST_FETCH_LIMIT, { transport: withGdelt(net) });
+    expect(instance.runtime.config.sources.map((source) => source.id)).toContain(GDELT_DESCRIPTOR.id);
+    const pass = await finish(clock, instance.runtime.pass());
+    expect(pass.fetched).toContain(GDELT_DESCRIPTOR.id);
+    expect(pass.view?.health.find((health) => health.source === GDELT_DESCRIPTOR.id)?.state).toBe("healthy");
+    const gdelt = net.exchanges.filter((exchange) => new URL(exchange.url).hostname === "data.gdeltproject.org");
+    expect(gdelt.map((exchange) => new URL(exchange.url).pathname)).toEqual(["/gdeltv2/lastupdate.txt", `/gdeltv2/${STAMP}.export.CSV.zip`]);
+    for (const exchange of gdelt) for (const value of [LONGITUDE, LATITUDE]) expect(JSON.stringify(exchange)).not.toContain(String(value));
+    expect(pass.view?.incidents.filter((incident) => incident.kind.code.startsWith("security.")) ?? []).toEqual([]);
   });
 });
 

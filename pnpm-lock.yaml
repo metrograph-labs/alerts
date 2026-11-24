@@ -248,6 +248,9 @@ importers:
       '@mark1russell7/alerts-source-gcp':
         specifier: workspace:*
         version: link:../source-gcp
+      '@mark1russell7/alerts-source-gdelt':
+        specifier: workspace:*
+        version: link:../source-gdelt
       '@mark1russell7/alerts-source-gfz':
         specifier: workspace:*
         version: link:../source-gfz
@@ -659,6 +662,9 @@ importers:
       '@mark1russell7/alerts-source-gcp':
         specifier: workspace:*
         version: link:../source-gcp
+      '@mark1russell7/alerts-source-gdelt':
+        specifier: workspace:*
+        version: link:../source-gdelt
       '@mark1russell7/alerts-source-gfz':
         specifier: workspace:*
         version: link:../source-gfz

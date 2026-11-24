@@ -146,6 +146,12 @@ describe("readEventFile", () => {
     expect(readEventFile(archive, STAMP, { ...expected, md5: "0".repeat(32) })).toMatch(/MD5/);
   });
 
+  it("reads a compressed archive with the method deflate, as GDELT gives", () => {
+    const archive = new Uint8Array(readFileSync(new URL(`../fixtures/${STAMP}.export.CSV.zip`, import.meta.url)));
+    expect(archive[8]).toBe(8);
+    expect(readEventFile(archive, STAMP)).toMatchObject({ lines: 5, parsed: 5, reported: 3 });
+  });
+
   it("gives the text of the fault for bytes that are not one event file", () => {
     expect(readEventFile(new Uint8Array([1, 2, 3]), STAMP)).toMatch(/not valid/);
     expect(readEventFile(archiveOf(STAMP), stampAfter(15))).toMatch(/no file/);

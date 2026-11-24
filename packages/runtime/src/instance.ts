@@ -29,6 +29,7 @@ import {
   sourcePlaces,
   STORE_FILL_WINDOW,
   type Address,
+  type AlertConfig,
   type ChannelDescriptor,
   type ChannelId,
   type ChannelProcedures,
@@ -87,6 +88,7 @@ import { createCatalogFetch, createGtfsSource, type GtfsFeed, type GtfsFetchOpti
 import { createEnergyChartsSource, ENERGY_CHARTS_DESCRIPTOR } from "@mark1russell7/alerts-source-energy-charts";
 import { createEia930Source, type Eia930FetchOptions } from "@mark1russell7/alerts-source-eia-930";
 import { createKevSource, KEV_DESCRIPTOR } from "@mark1russell7/alerts-source-cisa-kev";
+import { createGdeltSource, GDELT_DESCRIPTOR } from "@mark1russell7/alerts-source-gdelt";
 import { createRadarAnomaliesSource, createRadarOutagesSource, type RadarSourceOptions } from "@mark1russell7/alerts-source-cloudflare-radar";
 import { AWS_DOMAIN, AWS_KIND, createAwsSource } from "@mark1russell7/alerts-source-aws";
 import { AZURE_DOMAIN, AZURE_KIND, createAzureSource } from "@mark1russell7/alerts-source-azure";
@@ -923,19 +925,28 @@ export interface Instance {
 }
 
 /**
+ * This function tells if the instance reads the events of GDELT: when a place shares its position with the source. The
+ * fetch keeps only the events near a place with a position, and no request holds a place. With no such place, each
+ * fetch gives no event, thus the instance does not read the source. A change of the configuration applies at the next start.
+ */
+export function readsGdelt(config: AlertConfig): boolean {
+  return sourcePlaces(config, GDELT_DESCRIPTOR.id).some((place) => place.at !== undefined);
+}
+
+/**
  * This function makes the instance. It throws when the configuration or the secret store has a
  * problem. A problem is a missing token, a key with a bad form, or a place that no regional source covers.
  * The message names ids, fields and the names of secrets, and no value.
  *
  * - The sources are the NWS API, IPAWS, the USGS, EMSC, the two tsunami warning centers, the SWPC, GFZ,
  *   Energy-Charts and CISA KEV. The stream of NWWS-OI is a source when the secrets have the keys of the account of the
- *   copy (`nwwsSetup`). BoM is a source when the secrets have its key (`BOM_SWS_KEY`), and so is EIA-930 (`EIA_KEY`). The outages and the traffic
+ *   copy (`nwwsSetup`). The events of GDELT are a source when a place shares its position with it (`readsGdelt`). BoM is a source when the secrets have its key (`BOM_SWS_KEY`), and so is EIA-930 (`EIA_KEY`). The outages and the traffic
  *   anomalies of Cloudflare Radar are sources when the secrets have its token (`CLOUDFLARE_RADAR_KEY`). Each status page that one of the
  *   persons can get is a source (`pagesFor`). The feed of Google Cloud, AWS or Azure is a source when one of the persons
  *   can get its reports (`watchReads`). The stack of the alert chain reads the pages and the feeds of its subjects too (`chainWatch`). Each transit feed of the copy of the catalog whose box meets a place is a source.
  * - Each source gets the codes of the places. It gets the position of a place only when the place shares it with that
- *   source. The USGS, EMSC, the centers, the SWPC, GFZ, BoM, Energy-Charts, EIA-930, CISA KEV, Radar, Google Cloud, AWS, Azure
- *   and the status pages ask for no place. The transit feeds also ask for no place.
+ *   source. The USGS, EMSC, the centers, the SWPC, GFZ, BoM, Energy-Charts, EIA-930, CISA KEV, GDELT, Radar, Google Cloud, AWS, Azure
+ *   and the status pages ask for no place. GDELT keeps only the events near the places on the machine of the instance. The transit feeds also ask for no place.
  * - The channels are Pushover, and the Twilio call channel when the secrets have its keys. Each time of the delivery comes
  *   from a fact of the channels.
  * - A spend entry of a channel gives its cap and the watch of the balance of its account.
@@ -973,6 +984,7 @@ export function openInstance(options: InstanceOptions): Instance {
     createEnergyChartsSource,
     ...(eiaKey === "" ? [] : [eiaFactory(eiaKey)]),
     createKevSource,
+    ...(readsGdelt(options.config.config) ? [createGdeltSource] : []),
     ...(radarToken === "" ? [] : radarFactories(radarToken)),
     ...feeds.map((feed) => feed.create),
     ...pages.map((page) => statusPageFactory(page)),
