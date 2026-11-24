@@ -305,6 +305,17 @@ A zone with no regions in the table, and a shape that `@mark1russell7/geo` refus
 
 The breadth gives counts and no decision. The threat level (AL-24) reads the counts.
 
+### The surprise of the signals
+
+The module `threat.ts` tells how rare the signals of one time are (AL-24). A unit is one source of evidence in one area, for example the rail delays near a place.
+
+- `breadthUnits` gives one unit for each dimension of a breadth with a read. A dimension with no read gives no unit.
+- `signalRate` gives the base rate of a unit from its history: the upper bound of the Wilson interval of its reads with a signal. A history with fewer than `MIN_READS` (30) reads gives no rate.
+- `surpriseOf` gives the chance of the count of the units with a signal, or more, when the units are independent. The law is the Poisson binomial law of their rates, from `@mark1russell7/rigor-statistics`. The surprise is `-log10` of that chance.
+- The result is a function of the sets of the units and of the histories. The order and a duplicate do not change it.
+
+A high surprise tells that a hidden common cause moves many units at one time. The surprise gives no level. The calculation of the level (AL-31) reads it.
+
 The runtime calculates the breadth at each pass, after the fetches and before the view. The field `breadth` of the pass holds it. `series-reads.ts` of the runtime keeps the read of each series of the store between the passes:
 
 - The read of a series changes only at three events. The series gets readings. The store deletes a reading of its window. The time passes the stale time of the latest reading, or the time of a later reading.
@@ -2264,7 +2275,8 @@ The file `schemas.ts` of the core has one zod 4 schema for each data type of the
 ## Open points
 
 - The threat level does not read the breadth of the signals yet. No source gives the table of the zones yet.
-- The breadth gives counts and no chance. A base rate of the signals of each dimension, from the history of the reads, gives the chance of a breadth.
+- The surprise of the signals has no history yet. The runtime does not keep the count of the reads with a signal of each unit.
+- The surprise weighs each unit the same. A statistic that weighs each unit by its rate is the next part of AL-24.
 - The atlas has no table of the regions of each zone yet. Until then, each series of a zone is in `unplaced`.
 - A fault of the store of the readings goes only to the output. The health payload does not show it yet.
 - The season of a baseline is in UTC. A change of the clock moves a local rush hour by 1 h in UTC. A season in the local time of the area, with the civil time of `@mark1russell7/algebra`, replaces it.
