@@ -110,7 +110,7 @@ export interface DownSum {
  * - A down span ends at the next up flip. An open span ends at `at`.
  * - Each span is clipped to the window. A span does not start before the flip before it.
  * - The state at the start of the window is the state after the last flip before it. With no such flip, the check is
- *   newer than the window: its first flip is the first up of a new check, thus it was not down. With no flip, it is the
+ *   newer than the window. Its first flip is the first up of a new check, thus it was not down. With no flip, it is the
  *   state of the check: only `down` is down for the whole window.
  * - A flip after `at` does not count. A second flip with the same state changes nothing.
  */
