@@ -1488,6 +1488,22 @@
     "round": 1
   },
   {
+    "id": "infra.power.physical-attack",
+    "subjectKinds": [
+      "place",
+      "entity"
+    ],
+    "examples": [
+      "Gunfire at two substations cuts the power of a county for days"
+    ],
+    "references": [
+      "CISA sectors: Energy",
+      "DOE OE-417: Electric Emergency Incident and Disturbance Report"
+    ],
+    "gap": "No live source. The OE-417 reports of the DOE list the physical attacks with a delay. A power outage adapter gives the cut, not its cause.",
+    "round": 23
+  },
+  {
     "id": "infra.power.psps",
     "subjectKinds": [
       "place",

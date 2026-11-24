@@ -1200,5 +1200,40 @@
       "members": 1757,
       "cause": "Round 22 adds research only. The dimension news-volume gets a second planned source, hacker-news-api, so the dimensions go from 8 to 9. Two later records have an unknown path, so the unknown paths go from 33 to 35. No adapter changed, so the layers stay."
     }
+  },
+  {
+    "round": 23,
+    "date": "2026-11-24",
+    "by": "One session, for a new hazard case of the package stack-hazards.",
+    "method": "No web search. The round adds 1 class for a new code of the taxonomy, with its gap. The code is a new case of a hazard list.",
+    "lists": [
+      "The hazard cases of @mark1russell7/stack-hazards: https://www.npmjs.com/package/@mark1russell7/stack-hazards"
+    ],
+    "queries": [],
+    "notes": [
+      "The new code is infra.power.physical-attack: gunfire, sabotage, vandalism or theft at a substation or a power line.",
+      "The OE-417 annual summaries of the DOE give the cases of this class with a duration. They are not a live source."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 109,
+      "cover": {
+        "adopted": 54,
+        "paths": 54,
+        "origins": 4
+      },
+      "total": {
+        "adopted": 146,
+        "paths": 146,
+        "origins": 67
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 35,
+      "dimensions": 9,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 23 adds 1 class for a new code of the taxonomy, with a gap. The classes go from 213 to 214, and the gaps from 108 to 109. No source changes."
+    }
   }
 ]
