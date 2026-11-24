@@ -40,7 +40,6 @@
     "id": "abb-psirt-csaf",
     "name": "ABB PSIRT CSAF provider",
     "classes": [
-      "cyber.vulnerability.published",
       "cyber.advisory.ics"
     ],
     "url": "https://psirt.abb.com/.well-known/csaf/provider-metadata.json",
@@ -54,8 +53,8 @@
     },
     "cost": "free",
     "delay": "unknown",
-    "history": "The ROLIE feed holds 87 entries.",
-    "rateLimit": "unknown",
+    "history": "The ROLIE feed holds 91 entries (2026-11-24).",
+    "rateLimit": "No published limit. The adapter reads the feed each hour, and at most 10 documents each fetch.",
     "calibration": null,
     "coverage": "ABB industrial and energy product advisories as signed CSAF with a ROLIE feed.",
     "origins": [
@@ -69,9 +68,9 @@
       "cve"
     ],
     "risks": [],
-    "decision": "plan",
-    "adapter": null,
-    "reason": "A trusted CSAF provider with SHA-256, SHA-512 and signature files. The ROLIE feed was updated on 2026-11-12.",
+    "decision": "adopt",
+    "adapter": "@mark1russell7/alerts-source-csaf",
+    "reason": "A trusted CSAF provider of ABB industrial and energy advisories with the label TLP:WHITE. Each report links to the original advisory.",
     "evidence": [
       "https://psirt.abb.com/.well-known/csaf/provider-metadata.json",
       "https://psirt.abb.com/csaf/abb-csaf-feed-tlp-white.json",
@@ -4458,22 +4457,21 @@
     "id": "cisa-csaf-github",
     "name": "CISA CSAF advisories (cisagov/CSAF)",
     "classes": [
-      "cyber.vulnerability.published",
       "cyber.advisory.ics"
     ],
     "url": "https://github.com/cisagov/CSAF",
     "access": "feed",
     "auth": "none",
     "terms": {
-      "url": null,
+      "url": "https://www.cisa.gov/notification",
       "automated": "unclear",
-      "redistribution": "unclear",
-      "note": "The repository page states no licence."
+      "redistribution": "allowed",
+      "note": "The repository states no license. Each advisory has the label TLP:WHITE (TLP:CLEAR): sharing with no limit, subject to copyright."
     },
     "cost": "free",
-    "delay": "unknown",
-    "history": "unknown",
-    "rateLimit": "No published limit.",
+    "delay": "minutes after CISA publishes the advisory",
+    "history": "The OT feed holds 4,017 entries (2026-11-24).",
+    "rateLimit": "No published limit. The adapter reads the feed each 30 minutes with an ETag, and at most 10 documents each fetch.",
     "calibration": null,
     "coverage": "CISA IT, OT and VA advisories as CSAF 2.0 in three TLP:WHITE ROLIE feeds, with republished vendor CSAF.",
     "origins": [
@@ -4487,9 +4485,9 @@
       "cve"
     ],
     "risks": [],
-    "decision": "plan",
-    "adapter": null,
-    "reason": "The atlas reads CISA advisories by RSS. The CSAF OT feed gives product trees, CVE ids and remediations as data for the same ICS advisories.",
+    "decision": "adopt",
+    "adapter": "@mark1russell7/alerts-source-csaf",
+    "reason": "The OT feed gives the CISA ICS advisories as data: CVE ids, CVSS scores, products and remediations. Each new or changed advisory gives a report.",
     "evidence": [
       "https://github.com/cisagov/CSAF",
       "https://www.cisa.gov/sites/default/files/csaf/provider-metadata.json"
@@ -19669,7 +19667,6 @@
     "id": "siemens-productcert-csaf",
     "name": "Siemens ProductCERT CSAF and Atom feed",
     "classes": [
-      "cyber.vulnerability.published",
       "cyber.advisory.ics"
     ],
     "url": "https://cert-portal.siemens.com/productcert/csaf/provider-metadata.json",
@@ -19682,9 +19679,9 @@
       "note": "Special provisions grant use, redistribution and modification to inform an organization or its customers. Each copy links to the original. Siemens can revoke them."
     },
     "cost": "free",
-    "delay": "unknown",
-    "history": "The Atom feed holds 106 or more entries. The ROLIE feed holds 65 or more entries.",
-    "rateLimit": "unknown",
+    "delay": "Siemens publishes on its monthly patch day, and between patch days for urgent flaws.",
+    "history": "The ROLIE feed holds 877 entries (2026-11-24).",
+    "rateLimit": "No published limit. The adapter reads the feed each hour, and at most 10 documents each fetch. robots.txt disallows only text and PDF files.",
     "calibration": null,
     "coverage": "Siemens SSA advisories for industrial, energy and building products, as signed CSAF with a ROLIE feed and an Atom feed.",
     "origins": [
@@ -19698,9 +19695,9 @@
       "cve"
     ],
     "risks": [],
-    "decision": "plan",
-    "adapter": null,
-    "reason": "A trusted CSAF provider with hashes and signatures. The Atom feed at /productcert/rss/advisories.atom gives a light poll target. Siemens often publishes before CISA republishes.",
+    "decision": "adopt",
+    "adapter": "@mark1russell7/alerts-source-csaf",
+    "reason": "A trusted CSAF provider. Siemens often publishes before CISA republishes. Each report links to the original advisory, as the terms ask.",
     "evidence": [
       "https://cert-portal.siemens.com/productcert/csaf/provider-metadata.json",
       "https://cert-portal.siemens.com/productcert/csaf/ssa-feed-tlp-white.json",
