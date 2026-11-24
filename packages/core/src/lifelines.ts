@@ -108,6 +108,15 @@ export const NEEDS: readonly CitedNeed[] = [
     note: "The amount of Ready.gov is at least one gallon for each person each day, for drinking and sanitation.",
   },
   {
+    code: "food.infant-formula",
+    lifeline: "food-hydration-shelter",
+    level: "life",
+    unit: "kcal",
+    perPersonDay: 589,
+    source: { title: "National Academies: Dietary Reference Intakes for Energy (2023)", url: "https://nap.nationalacademies.org/26818", date: "2023-03-28" },
+    note: "The amount is the largest Estimated Energy Requirement below 6 months: boys of 3 to 5 months, Table 7-5. Below 6 months, formula is the only food of an infant with no breast milk.",
+  },
+  {
     code: "food.energy",
     lifeline: "food-hydration-shelter",
     level: "health",
