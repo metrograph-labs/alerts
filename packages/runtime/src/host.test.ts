@@ -27,6 +27,7 @@ import {
   RUNTIME_GRACE,
   RUNTIME_PROFILE,
   RUNTIME_PROGRAM,
+  PROBE_TIMEOUT,
   runtimeReady,
   runtimeDiscovery,
   shutdownCap,
@@ -114,6 +115,15 @@ describe("the host of the instance", () => {
     expect(ready?.measured).toEqual({ ...READY_MEASURE, cap: { value: 600_000, unit: "ms" } });
     expect(ready?.grow).toBeUndefined();
     expect(msOf(READY_MEASURE.floor)).toBe(msOf(READY_WITHIN));
+  });
+
+  it("gives the readiness probe the time of the liveness probe, thus a slow first pass does not stop a start (AL-159)", () => {
+    const program = hostGroup(OPTIONS).programs[0];
+    expect(program?.ready?.timeout).toEqual(PROBE_TIMEOUT);
+    expect(program?.alive?.timeout).toEqual(PROBE_TIMEOUT);
+    // The ready window holds many probes of this time.
+    expect(msOf(PROBE_TIMEOUT)).toBe(2000);
+    expect(msOf(PROBE_TIMEOUT)).toBeLessThan(msOf(FIRST_READY_WINDOW) / 10);
   });
 
   it("gives the install the window of the next start from the measured starts of the host", () => {

@@ -42,7 +42,7 @@ import { pageWarning, readPageState } from "./api.ts";
 import { alertsHome, configPath, readText, SECRETS_FILE } from "./config.ts";
 import { readCopySettings } from "./copy.ts";
 import { checkOfPingUrl, checksRequest, checkTimesProblem, heartbeatGap } from "./heartbeat.ts";
-import { discoveryPid, hostFileText, hostReadyWindow, hostTask, readinessProbe, RUNTIME_GRACE, runtimeDiscovery, supervisorDiscovery } from "./host.ts";
+import { discoveryPid, hostFileText, hostReadyWindow, hostTask, PROBE_TIMEOUT, readinessProbe, RUNTIME_GRACE, runtimeDiscovery, supervisorDiscovery } from "./host.ts";
 import { checksKeys, daemonCheck, INSTANCE_TIMES, LOUD_STEADY, USER_AGENT_NAME } from "./instance.ts";
 import { checkStart, GOOD_FILE, privateFiles, readStartTexts, requestRestart, restartUse, type RestartOutcome } from "./reload.ts";
 import { liveRoot } from "./slots.ts";
@@ -77,8 +77,8 @@ function report(outcome: ServiceOutcome): number {
   }
 }
 
-// The longest time of one readiness probe of the status.
-const PROBE_TIMEOUT_MS = 2000;
+// The longest time of one readiness probe of the status: the time of each probe of the supervisor.
+const PROBE_TIMEOUT_MS = valueIn(PROBE_TIMEOUT, "ms");
 
 // The ready window of the supervisor: the window of the measured starts of this host.
 const READY_WINDOW_MS = hostReadyWindow(home, hostFileText).ms;

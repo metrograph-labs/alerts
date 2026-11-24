@@ -80,6 +80,12 @@ export const HOST_PORTS: { readonly port: number; readonly probePort: number } =
 /** The supervisor waits this time for the first ready probe of the runtime: its startup budget and one readiness interval. */
 export const READY_WITHIN: Quantity = add(STARTUP_BUDGET, READINESS.interval);
 
+/**
+ * The longest answer time of each probe of the runtime. The readiness probe and the liveness probe use the same time. Thus the
+ * supervisor does not stop a start as not ready when the liveness probe accepts the same answer as alive (AL-159).
+ */
+export const PROBE_TIMEOUT: Quantity = s(2);
+
 /** The ready window of each start before the host has measured starts. A start on a slow host fits in it. */
 export const FIRST_READY_WINDOW: Quantity = s(120);
 
@@ -97,7 +103,7 @@ export const READY_MEASURE: ReadyMeasure = { after: 5, keep: 20, floor: READY_WI
  */
 export function runtimeReady(probePort: number = HOST_PORTS.probePort, within: Quantity = FIRST_READY_WINDOW): ReadySpec {
   const cap = ms(Math.max(valueIn(READY_MEASURE.cap, "ms"), valueIn(within, "ms")));
-  return { probe: readinessProbe(probePort), interval: ms(500), timeout: ms(250), within, measured: { ...READY_MEASURE, cap } };
+  return { probe: readinessProbe(probePort), interval: ms(500), timeout: PROBE_TIMEOUT, within, measured: { ...READY_MEASURE, cap } };
 }
 
 /** This function gives the readiness probe of the runtime on its probe port. The supervisor and the install use it. */
@@ -212,7 +218,7 @@ export function hostGroup(options: HostOptions): GroupSpec {
         env: { ALERTS_HOME: options.home, PORT: String(port), PROBE_PORT: String(probePort), SERVICE_PROFILE: "daemon" },
         ipc: true,
         ready: runtimeReady(probePort, options.readyWithin),
-        alive: { probe: { kind: "http", url: `${probes}/liveness` }, interval: s(10), timeout: s(2), failures: 3 },
+        alive: { probe: { kind: "http", url: `${probes}/liveness` }, interval: s(10), timeout: PROBE_TIMEOUT, failures: 3 },
         stop: { grace: RUNTIME_GRACE, message: STOP_MESSAGE },
         listen: { port, url: `http://127.0.0.1:${port}/` },
       },
