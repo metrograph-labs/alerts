@@ -51,10 +51,12 @@ export function measureConfig(persons: number, parts: MeasureParts = {}): AlertC
   if (!(Number.isInteger(persons) && persons >= 1)) throw new RangeError(`The count of the persons is ${String(persons)}, not a whole number above 0.`);
   const ids = Array.from({ length: persons }, (_, index) => `person-${String(index + 1)}` as PersonId);
   const scored = parts.score ?? 0;
+  const risk = parts.scoreRisk ?? MEASURE_SCORE.risk;
+  if (!(Number.isFinite(risk) && risk > 0)) throw new RangeError(`The risk of the score rule is ${String(risk)}, not a number above 0.`);
   return {
     format: CONFIG_FORMAT,
     places: [(parts.gdelt ?? 0) > 0 ? { ...MEASURE_PLACE, sharePosition: [GDELT] } : MEASURE_PLACE],
-    people: ids.map((person, index) => ({ watch: { person, places: [place], rules: [], ...(index < scored ? { score: MEASURE_SCORE } : {}) } })),
+    people: ids.map((person, index) => ({ watch: { person, places: [place], rules: [], ...(index < scored ? { score: { risk } } : {}) } })),
     ...((parts.chain ?? 0) > 0 ? { chain: MEASURE_CHAIN } : {}),
     contacts: ids.map((person) => ({ person, channel: pushover, address: { user: { secret: "PUSHOVER_USER_KEY" } } })),
     policies: [policy("life-safety"), policy("urgent"), policy("notice")],
@@ -70,6 +72,11 @@ export interface MeasureParts {
   readonly gdelt?: number;
   /** The persons with a score rule, from the first person (`PersonWatch.score`). Default: 0. */
   readonly score?: number;
+  /**
+   * The risk of each score rule. Default: the risk of `MEASURE_SCORE`. A risk that no alert of the fakes reaches gives a
+   * score rule that raises no level. Thus a measure gets the cost of the score with the sends of the base (AL-168).
+   */
+  readonly scoreRisk?: number;
   /** The configuration has the stack of the alert chain of `MEASURE_CHAIN`: 1. Default: 0. */
   readonly chain?: number;
 }
@@ -169,6 +176,8 @@ export interface SeedHomeOptions {
   readonly files?: { readonly shapes: number; readonly transit: number };
   /** The levels of the configuration. Each level that is absent has its value in `DEFAULT_LEVELS`. */
   readonly levels?: Partial<SeedLevels>;
+  /** The risk of each score rule of the level `score` (`MeasureParts.scoreRisk`). It is not a level of `capacity-app.json`. */
+  readonly scoreRisk?: number;
 }
 
 /** The record of a seeded home, in the file `SEED_RECORD_FILE`. */
@@ -198,7 +207,7 @@ export async function seedHome(dir: string, options: SeedHomeOptions): Promise<S
   const levels: SeedLevels = { ...DEFAULT_LEVELS, ...options.levels };
   for (const name of ["gdelt", "chain"] as const) if (levels[name] > 1) throw new RangeError(`The level ${name} is ${String(levels[name])}, not 0 or 1.`);
   if (levels.score > levels.persons) throw new RangeError(`The level score is ${String(levels.score)}, more than the persons.`);
-  const config = measureConfig(levels.persons, { gdelt: levels.gdelt, score: levels.score, chain: levels.chain });
+  const config = measureConfig(levels.persons, { gdelt: levels.gdelt, score: levels.score, chain: levels.chain, ...(options.scoreRisk === undefined ? {} : { scoreRisk: options.scoreRisk }) });
   await mkdir(dir, { recursive: true });
   const seeded = await seedStore(dir, {
     log: options.log,

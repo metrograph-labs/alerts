@@ -8,7 +8,7 @@ import { wallClock } from "@mark1russell7/algebra/clock";
 import { MeterProvider } from "@opentelemetry/sdk-metrics";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { collectReadings, PullMetricReader } from "@mark1russell7/otel-ts/pull";
-import { DEFAULT_LEVELS, LAB_AMOUNTS, LAB_PASS, LAB_READINGS, LAB_READY, LAB_SNAPSHOT_WRITE, MEASURE_CONFIG, measureConfig, readSeedRecord, SEED_RECORD_FILE, seededLine, seedHome } from "./seed-home.ts";
+import { DEFAULT_LEVELS, LAB_AMOUNTS, LAB_PASS, LAB_READINGS, LAB_READY, LAB_SNAPSHOT_WRITE, MEASURE_CONFIG, MEASURE_SCORE, measureConfig, readSeedRecord, SEED_RECORD_FILE, seededLine, seedHome } from "./seed-home.ts";
 import type { SeedStoreResult } from "./seed-store.ts";
 
 // A small home: approximately 1 hour of the live mix, with small cache files.
@@ -77,6 +77,13 @@ describe("seedHome with levels", { timeout: 30_000 }, () => {
     expect(leveled.transit?.near).toBe(LEVELS.feeds);
     expect(measureConfig(1)).toEqual(MEASURE_CONFIG);
     expect(() => measureConfig(0)).toThrow(RangeError);
+  });
+
+  it("gives the score rules the risk of the parts, and refuses a risk that is not above 0 (AL-168)", () => {
+    const risks = (config: ReturnType<typeof measureConfig>) => config.people.map((person) => person.watch.score?.risk);
+    expect(risks(measureConfig(3, { score: 2 }))).toEqual([MEASURE_SCORE.risk, MEASURE_SCORE.risk, undefined]);
+    expect(risks(measureConfig(3, { score: 2, scoreRisk: 1_000_000 }))).toEqual([1_000_000, 1_000_000, undefined]);
+    for (const scoreRisk of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) expect(() => measureConfig(2, { score: 1, scoreRisk })).toThrow(RangeError);
   });
 
   it("gives a start with a polled source for each feed, a route for each incident and person, and the levels in the live metrics", async () => {
