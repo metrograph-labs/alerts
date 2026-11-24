@@ -1,12 +1,16 @@
 /**
  * This file gives the front of the placement of the copies from the live offers (AL-53, `placement.ts`). It reads the
- * plan list of each provider record of `@mark1russell7/market-sources`. It reads no other source and opens no account.
+ * plan list of each provider record of `@mark1russell7/market-sources`, and the incident history of the status page of
+ * each provider. It reads no other source and opens no account.
  *
- * `node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--copies <n>] [--spend <provider>] [--terms <kind,kind>]`
+ * `node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>]`
  *
  * - `--min-memory-mib` is the least memory of a host of a copy, in MiB.
- * - The three `--assume-*` values are assumed chance inputs, from 0 to 1, for each provider, region and host. No measured
- *   source of these chances exists yet. The output marks each one as assumed.
+ * - The three `--assume-*` values are assumed chance inputs, from 0 to 1, for each provider, region and host. The script
+ *   reads the incident history of the status page of each provider of `HISTORY_SOURCES` (`placement-chances.ts`). It
+ *   gives a measured input to each provider and region with a history. Only the other fragments and the hosts get the
+ *   assumed inputs. The output marks each input as measured or assumed.
+ * - `--window-days` is the length of the window of the history, in days. The default is `DEFAULT_WINDOW_DAYS` (365).
  * - `--copies` is the count of copies. The default is 2.
  * - `--spend` names the spend entry of `config.json` that gives the limit of cost of a month (`monthlyUsd`). Without
  *   it, or without that entry, the front has no limit of cost.
@@ -25,10 +29,11 @@ import { writeFileAtomic } from "@procedures/fs/files";
 import { fetchTransport } from "polite-crawler/api";
 import { HostScheduler, realClock } from "polite-crawler/politeness";
 import { alertsHome, configPath } from "./config.ts";
+import { DEFAULT_WINDOW_DAYS, HISTORY_GAPS, HISTORY_SOURCES, MEASURE_USER_AGENT, measureProvider, readPageHistory, withMeasures, type ChanceMeasure } from "./placement-chances.ts";
 import { distinctRows, FRONT_FILE, FRONT_FORMAT, frontLevels, placementLayer, planCopies, spendLimitOf, type ChanceInput, type PlacementChances } from "./placement.ts";
 
 const USAGE =
-  "The command is: node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--copies <n>] [--spend <provider>] [--terms <kind,kind>]";
+  "The command is: node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>]";
 
 /** The User-Agent of each request. It names no person and no project. */
 const USER_AGENT = "alerts-placement";
@@ -44,6 +49,7 @@ interface Command {
   readonly copies: number;
   readonly spend: string | undefined;
   readonly terms: readonly PriceTerm["kind"][];
+  readonly windowDays: number;
 }
 
 // The command, or a problem of the command.
@@ -55,13 +61,15 @@ function command(args: readonly string[]): Command | string {
     if (name === undefined || !name.startsWith("--") || value === undefined || value.startsWith("--")) return `The argument ${String(name)} has no value.`;
     values.set(name.slice(2), value);
   }
-  const known = new Set(["min-memory-mib", "assume-provider", "assume-region", "assume-host", "copies", "spend", "terms"]);
+  const known = new Set(["min-memory-mib", "assume-provider", "assume-region", "assume-host", "copies", "spend", "terms", "window-days"]);
   const other = [...values.keys()].find((name) => !known.has(name));
   if (other !== undefined) return `The option --${other} is not known.`;
   const memory = Number(values.get("min-memory-mib"));
   if (!values.has("min-memory-mib") || !(memory >= 0)) return "The option --min-memory-mib needs a number of 0 or more.";
   const copies = Number(values.get("copies") ?? "2");
   if (!Number.isInteger(copies) || copies < 1) return "The option --copies needs a whole number of 1 or more.";
+  const windowDays = Number(values.get("window-days") ?? String(DEFAULT_WINDOW_DAYS));
+  if (!Number.isInteger(windowDays) || windowDays < 1) return "The option --window-days needs a whole number of 1 or more.";
   const assumed = (name: string): ChanceInput | string => {
     const text = values.get(`assume-${name}`);
     const works = Number(text);
@@ -77,7 +85,7 @@ function command(args: readonly string[]): Command | string {
   const terms = (values.get("terms") ?? "on-demand").split(",");
   const bad = terms.find((term) => !TERM_KINDS.some((kind) => kind === term));
   if (bad !== undefined) return `The price term ${bad} is not on-demand, spot or committed.`;
-  return { minMemoryMiB: memory, chances: { provider, region, host }, copies, spend: values.get("spend"), terms: terms as PriceTerm["kind"][] };
+  return { minMemoryMiB: memory, chances: { provider, region, host }, copies, spend: values.get("spend"), terms: terms as PriceTerm["kind"][], windowDays };
 }
 
 // The configuration as JSON, or undefined when the file is missing or is not JSON. Only its spend entries count.
@@ -118,13 +126,33 @@ if (typeof parsed === "string") {
     const tail = read.problems.length === 0 ? `${countOf(read.offers, "offer")}, ${countOf(read.notes, "note")}` : `failed: ${read.problems.join(" ")}`;
     console.log(`The source ${read.source}: ${tail}.`);
   }
+  const providers = new Set(offers.map((offer) => offer.offer.location.provider));
+  const measureTransport = fetchTransport({ userAgent: MEASURE_USER_AGENT });
+  const measures: ChanceMeasure[] = [];
+  const gaps: { readonly provider: string; readonly reason: string }[] = HISTORY_GAPS.filter((gap) => providers.has(gap.provider)).map((gap) => ({ ...gap }));
+  const readAt = Date.now();
+  for (const source of HISTORY_SOURCES.filter((each) => providers.has(each.provider))) {
+    const outcome = await readPageHistory(source, { scheduler, now: () => Date.now() }, measureTransport);
+    const measured = outcome.ok ? measureProvider(source, outcome.history, readAt, parsed.windowDays) : { ok: false as const, reason: outcome.problem };
+    if (measured.ok) measures.push(...measured.measures);
+    else gaps.push({ provider: source.provider, reason: measured.reason });
+  }
+  const known = new Set([...HISTORY_SOURCES, ...HISTORY_GAPS].map((each) => each.provider));
+  for (const provider of [...providers].filter((each) => !known.has(each)).sort()) gaps.push({ provider, reason: "No status page history of this provider is known." });
+  const chances = withMeasures(parsed.chances, measures);
+  console.log(`The status page histories gave ${countOf(measures.length, "measured input")}. The other fragments and the hosts use the assumed inputs.`);
+  for (const gap of gaps) console.log(`The provider ${gap.provider} keeps the assumed inputs: ${gap.reason}`);
   if (offers.length === 0) {
     console.error("No source gave an offer. The script writes no front.");
     process.exitCode = 1;
   } else {
     const at = new Date();
     const today = at.toISOString().slice(0, 10);
-    const build = placementLayer({ offers, needs: { minMemoryMiB: parsed.minMemoryMiB, terms: parsed.terms, currency: "USD" }, chances: parsed.chances, copies: parsed.copies, costLimit });
+    const build = placementLayer({ offers, needs: { minMemoryMiB: parsed.minMemoryMiB, terms: parsed.terms, currency: "USD" }, chances, copies: parsed.copies, costLimit });
+    const measuredIds = new Set(measures.map((measure) => measure.input.id));
+    const shared = build.layer.shared ?? [];
+    const measuredShared = shared.filter((shared) => measuredIds.has(shared.id)).length;
+    console.log(`The layer has ${countOf(shared.length, "shared fragment")}: ${String(measuredShared)} with a measured input, ${String(shared.length - measuredShared)} with an assumed input.`);
     const plan = planCopies(build, today);
     const rows = distinctRows(plan.front);
     const levels = frontLevels(rows);
@@ -141,8 +169,10 @@ if (typeof parsed === "string") {
     const front = {
       format: FRONT_FORMAT,
       at: at.toISOString(),
-      inputs: { needs: { minMemoryMiB: parsed.minMemoryMiB, terms: parsed.terms, currency: "USD" }, copies: parsed.copies, chances: parsed.chances, spend: parsed.spend ?? null, costLimit: costLimit ?? null },
+      inputs: { needs: { minMemoryMiB: parsed.minMemoryMiB, terms: parsed.terms, currency: "USD" }, copies: parsed.copies, windowDays: parsed.windowDays, chances, spend: parsed.spend ?? null, costLimit: costLimit ?? null },
       reads,
+      measures: measures.map((measure) => ({ id: measure.input.id, works: measure.input.works, window: { from: new Date(measure.window.from).toISOString(), to: new Date(measure.window.to).toISOString() }, down: measure.down })),
+      gaps,
       offers: build.offers,
       skipped: build.skipped,
       candidates,
