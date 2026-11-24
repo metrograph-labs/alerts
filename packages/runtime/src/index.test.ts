@@ -137,6 +137,10 @@ describe("the declaration of the service", () => {
     expect(routes(undefined, undefined, undefined, () => EMPTY_INTERESTS)).toEqual([["api", ["GET /status", "GET /interests"]]]);
   });
 
+  it("ends the shutdown of each profile with the stage that stops the context of the traces (AL-133)", () => {
+    for (const [name, profile] of Object.entries(PROFILES)) expect([name, profile.phases?.at(-1)?.name]).toEqual([name, "flush the output"]);
+  });
+
   it("declares the worker of the deploy of the outage call beside the passes, and each rule still holds", () => {
     const loop = loopOf();
     const outage = outageDeployWorker({ deploy: async () => ({ ok: false, stage: "service", errors: ["The test makes no deploy."] }), clock: realClock, wall: wallClock(), limit: loop.times.passLimit });
