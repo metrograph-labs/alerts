@@ -1596,6 +1596,14 @@ The live path of the checkout is a link to one of two checkouts, the slots `<liv
 - A swap stops no process. The runtime takes the new code at its next start. `node src/install.ts restart` from the live path starts it at once.
 - A swap back to older code is a rollback. Do it only when the new code wrote no new kind of event to the log.
 
+The package links of each slot resolve in that slot (AL-144):
+
+- On Windows, pnpm makes junctions with absolute targets. A checkout that moves to slot `a` keeps links to the live path.
+- After a swap to slot `b`, those links name slot `b`. Then each start from slot `a` fails with a missing package.
+- Thus `adopt` installs slot `a` again at its new path when a link names the old path.
+- A swap refuses when a link of either slot resolves outside its slot. `deploy.ts relink [a|b]` installs a slot again at its path.
+- For the live slot, stop the boot task before `relink`.
+
 The two slots keep each start on the code of one commit:
 
 - A checkout and an install in the live tree do not stop the runtime. The runtime keeps its code until its next start.
@@ -1614,6 +1622,7 @@ The supervisor keeps the code of its own start:
 - `stage` and `swap` compare these parts in the two slots. Each of them prints the parts that change, or one line that tells no change.
 - A change of a part needs a restart of the boot task. On Linux, the boot task is a user unit of systemd.
 - The restart of the boot task is a step of the operator. Until that restart, the old supervisor starts each runtime with its old ready window.
+- A supervisor older than AL-89 starts each runtime from the real path of its slot, not through the link. Thus it starts the old code until that restart. `stage` and `swap` tell it.
 
 A deploy has these steps, in this order:
 

@@ -701,6 +701,12 @@ importers:
       '@mark1russell7/lag':
         specifier: ^0.5.2
         version: 0.5.2(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)))
+      '@mark1russell7/market':
+        specifier: ^0.3.2
+        version: 0.3.2
+      '@mark1russell7/market-sources':
+        specifier: ^0.3.10
+        version: 0.3.10(@opentelemetry/api@1.10.0)(ws@8.23.0)
       '@mark1russell7/optional':
         specifier: ^1.5.0
         version: 1.5.0
@@ -722,6 +728,9 @@ importers:
       '@mark1russell7/sqlite':
         specifier: ^0.6.0
         version: 0.6.0
+      '@mark1russell7/stack-placement':
+        specifier: ^0.1.3
+        version: 0.1.3
       '@mark1russell7/stack-risk':
         specifier: ^0.2.3
         version: 0.2.3
@@ -2307,6 +2316,10 @@ packages:
     resolution: {integrity: sha512-xi68H+YBJRYNx17d6qIrqYtsXXu/TONHKXnvm7lNYUAY4eFFw4goGu1pjh8ctcluaBaAigc7KQ58St5Vxgw5FQ==}
     engines: {node: '>=22.12'}
 
+  '@mark1russell7/guidebook@0.1.1':
+    resolution: {integrity: sha512-DTENTIjb1CiMoONeBqmvbWO9MeFxGAF8bPjfSFg7AMf8dcdTiIMAKtFcr4aPMf8DS/bml+3UzwtmPQqbDVSRpQ==}
+    engines: {node: '>=22.12'}
+
   '@mark1russell7/interval@0.1.0':
     resolution: {integrity: sha512-gxOyU9JQ4ikiomiisbOmNPwwKuOtWqQ6hPWcJANOWvIipjwQu2aYOvCeLokYpMEoCEhJHoY5FxzBGpn/mbgx+A==}
     engines: {node: '>=22'}
@@ -2325,6 +2338,14 @@ packages:
   '@mark1russell7/layout-contract@0.11.1':
     resolution: {integrity: sha512-1ERbIJoHmYNBWg4Wdv1Nxseec/FuKO+YU8yHJ87U4NpbVNBK6ffngMufjTVTZ0NmpwgcSJkv3TdpPHawVWHiiQ==}
     engines: {node: '>=22.12'}
+
+  '@mark1russell7/market-sources@0.3.10':
+    resolution: {integrity: sha512-/IJoNzLrxPSIJNnbo1hZTGlP5RwynocAV/aNMeAY3+sR0Rc7rWtci9/FrYdu6oLwFuBdRZ5KJwmVNLyUZY8ihA==}
+    engines: {node: '>=22'}
+
+  '@mark1russell7/market@0.3.2':
+    resolution: {integrity: sha512-XzVaSib3lVtzWlFdXuDy6VQTfGdO89IhNFylY6yW/BdoNwxb31uFec0to+WyFJM3w+tXyu0kCKfUno3m6N6Eww==}
+    engines: {node: '>=22'}
 
   '@mark1russell7/optional@1.5.0':
     resolution: {integrity: sha512-QpVjyHD/1JYriLVVJr4P6QpDJJN9q2BiM6CFu0q1hnyEEaH5RlrIMQSsrsKKzyED29VnT08xmliR65WbTkNTFw==}
@@ -2348,6 +2369,15 @@ packages:
 
   '@mark1russell7/quantity@0.4.3':
     resolution: {integrity: sha512-XtD9tiGDit51uR5ATtCHarXCfAS6004slKst+AGcAPVxd1wcIpi+OVlsxb/PIkkr2NOFL/oG3QCF0kdEWHhu/w==}
+    engines: {node: '>=22.19'}
+    peerDependencies:
+      zod: ^4.1.0
+    peerDependenciesMeta:
+      zod:
+        optional: true
+
+  '@mark1russell7/quantity@0.4.4':
+    resolution: {integrity: sha512-gDAAYNqx/HeeOUF5AE0JHUoxZiMctwZZTcdE/q080lZMfCGRjTdy21bY29ZZjeTg7mK5IjVK/ls3bVdMbL408w==}
     engines: {node: '>=22.19'}
     peerDependencies:
       zod: ^4.1.0
@@ -2553,6 +2583,10 @@ packages:
     resolution: {integrity: sha512-4QytFosiFp6rvX6H2sUlIwicf/fYDLo9wonEDIFheC0qnDKB8L3QYGrspQJ519b9U0CVo/ZtZkmPMl1vKQt/hQ==}
     engines: {node: '>=22.13'}
 
+  '@mark1russell7/stack-placement@0.1.3':
+    resolution: {integrity: sha512-a+yKc2M80kaiowFC26gUCYYPuNlkbuhb/nUFCI1zuWLDIwfMG/RgK9qbrytEaiL/F6NIY3CzM2uiapAj84ILgg==}
+    engines: {node: '>=22'}
+
   '@mark1russell7/stack-risk@0.2.3':
     resolution: {integrity: sha512-swUktYvDEkGJynSwT4c3/bcgY0hMlzMdQPRN4Nz6pY5pKldPCSmTnpZZdV3UnJ1+R80CoZP4qiXFYy5GIjIAJg==}
     engines: {node: '>=22'}
@@ -2565,6 +2599,10 @@ packages:
     resolution: {integrity: sha512-V58Mtpt7WOW2wRBreSuuIO4am0WOdrJq8603+NNtqyI5EY0/LpPiQFxEDx+yNOgkN5ddnpPTkjalRTmBF+9GXQ==}
     engines: {node: '>=22'}
     hasBin: true
+
+  '@mark1russell7/strategy-search@0.1.2':
+    resolution: {integrity: sha512-xySDH50GJDw6e1NkR60KvdE0SNb+2BZ9n8DqzTcTp4SRI3V12TMDjkSnqs0YEseaxVPAyDWqtkuyJgx7Xz7CCA==}
+    engines: {node: '>=22'}
 
   '@mark1russell7/strategy-space@0.1.1':
     resolution: {integrity: sha512-6AP7wcNFOepPp+/w0Z/b8+a5CKjCP9nmUeGflgWtNvGlzBogVhPQMLM417gqzARTCMH4gc6WtNaIYEhkjkefYA==}
@@ -2582,6 +2620,10 @@ packages:
     resolution: {integrity: sha512-7ebtLlCmT6KYhbpoI2SZHXCQC6/7Rc660SvKwQvfslseSQrXMRlmBj+1/F5KOCep6aB+LtvGWg+HmTKi6uZjyQ==}
     engines: {node: '>=22.12'}
     hasBin: true
+
+  '@mark1russell7/text@0.0.16':
+    resolution: {integrity: sha512-hq2AWdtbKtXlibTTcVA/6GQAxgPj+6U3Hdmkh1I4sRMQZn/SiKh1k78UtcMgtcLJxwHHG9GVs2O2VNQxJP7R1Q==}
+    engines: {node: '>=22.12'}
 
   '@mark1russell7/text@0.0.17':
     resolution: {integrity: sha512-jFqqVfCTQ0N65qvMP/gANAbnqB7ewpA3IeNxPeQTuF3IoSZkTgTl92PE47F5IOOfgz0Q0dF723crrYB8T6pR3g==}
@@ -4809,6 +4851,8 @@ snapshots:
       '@mark1russell7/optional': 1.5.0
       '@mark1russell7/predicates': 0.1.5
 
+  '@mark1russell7/guidebook@0.1.1': {}
+
   '@mark1russell7/interval@0.1.0': {}
 
   '@mark1russell7/lag@0.5.2(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)))':
@@ -4827,6 +4871,36 @@ snapshots:
       '@mark1russell7/typeset': 0.7.1
     transitivePeerDependencies:
       - zod
+
+  '@mark1russell7/market-sources@0.3.10(@opentelemetry/api@1.10.0)(ws@8.23.0)':
+    dependencies:
+      '@mark1russell7/market': 0.3.2
+      '@mark1russell7/quantity': 0.4.4(zod@4.6.7)
+      '@mark1russell7/text': 0.0.16
+      polite-crawler: 0.7.10(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
+      zod: 4.6.7
+    transitivePeerDependencies:
+      - '@grpc/grpc-js'
+      - '@huggingface/transformers'
+      - '@napi-rs/canvas'
+      - '@opentelemetry/api'
+      - amqplib
+      - canvas
+      - ioredis
+      - mongodb
+      - pg
+      - playwright-core
+      - ws
+
+  '@mark1russell7/market@0.3.2':
+    dependencies:
+      '@mark1russell7/guidebook': 0.1.1
+      '@mark1russell7/quantity': 0.4.4(zod@4.6.7)
+      '@mark1russell7/strategy-search': 0.1.2
+      '@mark1russell7/strategy-space': 0.1.1
+      '@mark1russell7/vex': 0.19.1(zod@4.6.7)
+      '@mark1russell7/vex-domains': 0.19.1(zod@4.6.7)
+      zod: 4.6.7
 
   '@mark1russell7/optional@1.5.0': {}
 
@@ -4862,6 +4936,12 @@ snapshots:
   '@mark1russell7/predicates@0.1.5': {}
 
   '@mark1russell7/quantity@0.4.3(zod@4.6.7)':
+    dependencies:
+      '@mark1russell7/rational': 0.1.3
+    optionalDependencies:
+      zod: 4.6.7
+
+  '@mark1russell7/quantity@0.4.4(zod@4.6.7)':
     dependencies:
       '@mark1russell7/rational': 0.1.3
     optionalDependencies:
@@ -4985,6 +5065,13 @@ snapshots:
 
   '@mark1russell7/sqlite@0.6.0': {}
 
+  '@mark1russell7/stack-placement@0.1.3':
+    dependencies:
+      '@mark1russell7/strategy-search': 0.1.2
+      '@mark1russell7/strategy-space': 0.1.1
+      '@mark1russell7/system-stack': 0.1.8
+      zod: 4.6.7
+
   '@mark1russell7/stack-risk@0.2.3':
     dependencies:
       '@mark1russell7/collections': 0.11.2(zod@4.6.7)
@@ -5003,10 +5090,15 @@ snapshots:
       '@mark1russell7/files': 0.0.4
       typescript: 6.0.3
 
+  '@mark1russell7/strategy-search@0.1.2':
+    dependencies:
+      '@mark1russell7/rigor-generators': 0.2.0
+      '@mark1russell7/strategy-space': 0.1.1
+
   '@mark1russell7/strategy-space@0.1.1':
     dependencies:
       '@mark1russell7/rigor-generators': 0.2.0
-      '@mark1russell7/rigor-statistics': 0.2.19
+      '@mark1russell7/rigor-statistics': 0.2.8
 
   '@mark1russell7/system-stack@0.1.6':
     dependencies:
@@ -5023,6 +5115,8 @@ snapshots:
   '@mark1russell7/template-cli@0.1.9':
     dependencies:
       '@clack/prompts': 1.9.0
+
+  '@mark1russell7/text@0.0.16': {}
 
   '@mark1russell7/text@0.0.17': {}
 
