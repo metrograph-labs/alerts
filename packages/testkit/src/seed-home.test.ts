@@ -7,7 +7,7 @@ import { CONFIG_FILE, openMeasuredRuntime, RUNTIME_METRICS } from "@mark1russell
 import { wallClock } from "@mark1russell7/algebra/clock";
 import { MeterProvider } from "@opentelemetry/sdk-metrics";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { collectReadings, LabMetricReader } from "./lab-readings.ts";
+import { collectReadings, PullMetricReader } from "@mark1russell7/otel-ts/pull";
 import { DEFAULT_LEVELS, LAB_PASS, LAB_READY, LAB_SNAPSHOT_WRITE, MEASURE_CONFIG, measureConfig, readSeedRecord, SEED_RECORD_FILE, seededLine, seedHome } from "./seed-home.ts";
 import type { SeedStoreResult } from "./seed-store.ts";
 
@@ -82,7 +82,7 @@ describe("seedHome with levels", { timeout: 30_000 }, () => {
   it("gives a start with a polled source for each feed, a route for each incident and person, and the levels in the live metrics", async () => {
     const home = join(dir, "levels");
     const record = readSeedRecord(home);
-    const reader = new LabMetricReader();
+    const reader = new PullMetricReader();
     const meter = new MeterProvider({ readers: [reader] }).getMeter("alerts-runtime");
     const measured = await openMeasuredRuntime(home, { wall: wallClock({ start: record.end }), startSnapshot: true, transitLimit: record.levels.feeds, meter });
     try {
@@ -98,7 +98,7 @@ describe("seedHome with levels", { timeout: 30_000 }, () => {
       const each = new Set(Array.from({ length: LEVELS.persons }, (_, index) => system.filter((route) => route.person === `person-${String(index + 1)}`).length));
       expect(each.size).toBe(1);
       // The gauges of the live metrics give the levels of the seed (AL-132). The start fetches nothing, thus no report is new.
-      const read = new Map((await collectReadings(reader, record.end)).readings.map((reading) => [reading.series, reading.value]));
+      const read = new Map((await collectReadings(reader, record.end, { attributes: "sum" })).readings.map((reading) => [reading.series, reading.value]));
       expect([RUNTIME_METRICS.feeds, RUNTIME_METRICS.persons, RUNTIME_METRICS.incidents].map((series) => read.get(series))).toEqual([LEVELS.feeds, LEVELS.persons, LEVELS.incidents]);
       expect([RUNTIME_METRICS.event, RUNTIME_METRICS.update].map((series) => read.get(series))).toEqual([0, 0]);
     } finally {

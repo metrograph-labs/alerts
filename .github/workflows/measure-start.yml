@@ -24,7 +24,7 @@ on:
   workflow_dispatch:
     inputs:
       cases:
-        description: The cases, as a list of <alerts>x<persons> with spaces
+        description: The cases, as a list of <alerts>x<persons> or <alerts>x<persons>x<feeds> with spaces
         default: "0x1 1000x1 1000x10 4000x1 4000x10"
 
 permissions:
@@ -59,7 +59,8 @@ jobs:
         run: |
           mkdir -p "$GITHUB_WORKSPACE/start"
           for case in $CASES; do
-            node --expose-gc scripts/live-heap.ts "${case%x*}" "${case#*x}" --profile | tee -a "$GITHUB_WORKSPACE/start/records.jsonl"
+            IFS=x read -r alerts persons feeds <<< "$case"
+            node --expose-gc scripts/live-heap.ts "$alerts" "$persons" --profile --feeds="${feeds:-0}" | tee -a "$GITHUB_WORKSPACE/start/records.jsonl"
           done
       - name: Measure the memory of the watch of long blocks
         working-directory: packages/testkit

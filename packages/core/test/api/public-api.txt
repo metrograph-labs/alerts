@@ -285,6 +285,7 @@ MAP_FORMAT: build/index.d.ts#MAP_FORMAT
 MAP_VIEW: build/index.d.ts#MAP_VIEW
 MAX_PLACE_CODES: build/index.d.ts#MAX_PLACE_CODES
 MEASURE_ID: build/index.d.ts#MEASURE_ID
+MIN_READS: build/index.d.ts#MIN_READS
 MOVES: build/index.d.ts#MOVES
 MandatoryRule: build/index.d.ts#MandatoryRule
 MapIncident: build/index.d.ts#MapIncident
@@ -443,6 +444,9 @@ Severity: build/index.d.ts#Severity
 ShadowDifference: build/index.d.ts#ShadowDifference
 ShadowScore: build/index.d.ts#ShadowScore
 ShapeLookup: build/index.d.ts#ShapeLookup
+SignalHistory: build/index.d.ts#SignalHistory
+SignalRate: build/index.d.ts#SignalRate
+SignalUnit: build/index.d.ts#SignalUnit
 Significance: build/index.d.ts#Significance
 SourceClearConfig: build/index.d.ts#SourceClearConfig
 SourceClearPolicy: build/index.d.ts#SourceClearPolicy
@@ -463,6 +467,7 @@ SubjectSystem: build/index.d.ts#SubjectSystem
 SubjectWatch: build/index.d.ts#SubjectWatch
 Suppression: build/index.d.ts#Suppression
 SuppressionReason: build/index.d.ts#SuppressionReason
+Surprise: build/index.d.ts#Surprise
 SystemLine: build/index.d.ts#SystemLine
 SystemLines: build/index.d.ts#SystemLines
 SystemSnapshot: build/index.d.ts#SystemSnapshot
@@ -553,6 +558,7 @@ basemapToleranceKm: build/index.d.ts#basemapToleranceKm
 blockClass: build/index.d.ts#blockClass
 blockSizeText: build/index.d.ts#blockSizeText
 breadthOf: build/index.d.ts#breadthOf
+breadthUnits: build/index.d.ts#breadthUnits
 canReach: build/index.d.ts#canReach
 canaryResultSchema: build/index.d.ts#canaryResultSchema
 canonicalKind: build/index.d.ts#canonicalKind
@@ -881,6 +887,7 @@ shiftEscalationStart: build/index.d.ts#shiftEscalationStart
 shiftHealth: build/index.d.ts#shiftHealth
 shiftMerge: build/index.d.ts#shiftMerge
 shiftReport: build/index.d.ts#shiftReport
+signalRate: build/index.d.ts#signalRate
 significanceSchema: build/index.d.ts#significanceSchema
 simplifyBasemap: build/index.d.ts#simplifyBasemap
 sourceClearAt: build/index.d.ts#sourceClearAt
@@ -905,6 +912,7 @@ subjectKindSchema: build/index.d.ts#subjectKindSchema
 subjectNode: build/index.d.ts#subjectNode
 subjectSchema: build/index.d.ts#subjectSchema
 subjectWatchSchema: build/index.d.ts#subjectWatchSchema
+surpriseOf: build/index.d.ts#surpriseOf
 systemReports: build/index.d.ts#systemReports
 tableLevel: build/index.d.ts#tableLevel
 tellConfigSchema: build/index.d.ts#tellConfigSchema
@@ -2851,6 +2859,9 @@ export declare const MAX_PLACE_CODES = 1e3;
 ### build/index.d.ts#MEASURE_ID
 export declare const MEASURE_ID: RegExp;
 
+### build/index.d.ts#MIN_READS
+export declare const MIN_READS = 30;
+
 ### build/index.d.ts#MOVES
 export declare const MOVES: readonly Move[];
 
@@ -3906,6 +3917,26 @@ export type ShadowScore = {
 ### build/index.d.ts#ShapeLookup
 export type ShapeLookup = (code: RegionCode) => readonly MapShape[] | undefined;
 
+### build/index.d.ts#SignalHistory
+export interface SignalHistory {
+  readonly unit: string;
+  readonly reads: number;
+  readonly signals: number;
+}
+
+### build/index.d.ts#SignalRate
+export interface SignalRate {
+  readonly unit: string;
+  readonly rate: number;
+  readonly reads: number;
+}
+
+### build/index.d.ts#SignalUnit
+export interface SignalUnit {
+  readonly unit: string;
+  readonly signal: boolean;
+}
+
 ### build/index.d.ts#Significance
 export type Significance = "warning" | "watch" | "advisory" | "statement" | "outlook" | "observation";
 
@@ -4061,6 +4092,16 @@ export interface Suppression {
 
 ### build/index.d.ts#SuppressionReason
 export type SuppressionReason = "same-level" | "lower-level";
+
+### build/index.d.ts#Surprise
+export interface Surprise {
+  readonly units: number;
+  readonly signals: number;
+  readonly p: number;
+  readonly surprise: number;
+  readonly rare: readonly SignalRate[];
+  readonly noRate: readonly string[];
+}
 
 ### build/index.d.ts#SystemLine
 export interface SystemLine {
@@ -4450,6 +4491,9 @@ export declare function blockSizeText(size: Duration): string;
 
 ### build/index.d.ts#breadthOf
 export declare function breadthOf(series: readonly SeriesSignal[]): Breadth;
+
+### build/index.d.ts#breadthUnits
+export declare function breadthUnits(breadth: Breadth, scope: string): SignalUnit[];
 
 ### build/index.d.ts#canReach
 export declare function canReach(input: RelevanceInput, graph: InterestGraph, policy: RelevancePolicy, options?: RelevanceOptions): boolean;
@@ -5446,6 +5490,9 @@ export declare function shiftMerge(state: MergeState, size: Duration): MergeStat
 ### build/index.d.ts#shiftReport
 export declare function shiftReport(report: Report, size: Duration): Report;
 
+### build/index.d.ts#signalRate
+export declare function signalRate(history: SignalHistory, minReads?: number): SignalRate | undefined;
+
 ### build/index.d.ts#significanceSchema
 export declare const significanceSchema: z.ZodType<Significance, Significance>;
 
@@ -5517,6 +5564,9 @@ export declare const subjectSchema: z.ZodType<Subject, Subject>;
 
 ### build/index.d.ts#subjectWatchSchema
 export declare const subjectWatchSchema: z.ZodType<SubjectWatch, SubjectWatch>;
+
+### build/index.d.ts#surpriseOf
+export declare function surpriseOf(units: readonly SignalUnit[], histories: readonly SignalHistory[], minReads?: number): Surprise;
 
 ### build/index.d.ts#systemReports
 export declare function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: Instant): SystemStep;

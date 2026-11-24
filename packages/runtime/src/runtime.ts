@@ -31,7 +31,7 @@ import { readSnapshot, snapshotKey, snapshotRows, type StartRead, type StartSnap
 import { retention, type RetentionOptions } from "./retention.ts";
 import type { ReadWatch } from "./schedule.ts";
 import { seriesReads } from "./series-reads.ts";
-import { fold, foldScratch, rebuild, type ExchangeCursor, type RuntimeState } from "./state.ts";
+import { fold, foldScratch, rebuild, recordBatch, recordScratch, type ExchangeCursor, type RecordScratch, type RuntimeState } from "./state.ts";
 import { earliest, nextFetch, systemEvent, systemView, type SystemView, type ViewConfig } from "./view.ts";
 
 /** The parts of the worker of the exchange that a pass reads (AL-16). `exchangeWorker` gives them. */
@@ -342,7 +342,13 @@ export function openRuntime(options: RuntimeOptions): Runtime {
   // The fold retires on a cadence of the event time (AL-109). Thus the retention is a part of the context of the fold.
   const config: ViewConfig = { ...options.view, sources: options.sources.map((source) => source.describe()), retention: options.retention ?? {} };
   const ids = config.sources.map((source) => source.id);
-  const repeated = ids.find((id, at) => ids.indexOf(id) !== at);
+  // A set finds a repeated id in O(n) (AL-136).
+  const known = new Set<string>();
+  const repeated = ids.find((id) => {
+    if (known.has(id)) return true;
+    known.add(id);
+    return false;
+  });
   if (repeated !== undefined) throw new Error(`Two sources have the id ${repeated}.`);
 
   // The index of the times of entry is a fold of the same events as the state. The start reads only the types of the fold
@@ -381,18 +387,25 @@ export function openRuntime(options: RuntimeOptions): Runtime {
       // A fault of the metrics does not stop the pass.
     }
   };
+  // The record scratch of the fetches of the pass in progress (AL-136). Without a pass, each batch has its own record scratch.
+  // RULE: a reader that keeps a state across a pause ends this scope first (`writeStartSnapshot`). Thus no fold changes a record of the kept state.
+  let passRecords: RecordScratch | undefined;
   const append = (events: readonly RuntimeEvent[], kept?: (accepted: readonly RuntimeEvent[], before: MergeState) => void): readonly string[] => {
     const before = state.own.merge;
     let draft = state;
     // Only the last state of the batch becomes the state. Thus the folds of the batch grow its lists in place (AL-150).
     const scratch = foldScratch();
+    const records = passRecords ?? recordScratch();
     const accepted: RuntimeEvent[] = [];
     // The merge state after each retirement of the fold, with the position of its event.
     const retirements: { readonly at: number; readonly merge: Pick<MergeState, "reports"> }[] = [];
-    const conflicts = log.appendAll(events, (event) => {
-      draft = fold(draft, event, config, (merge) => retirements.push({ at: accepted.length, merge }), scratch);
-      accepted.push(event);
-    });
+    // A failed write puts back each record that the batch changed in place. Thus the state stays as it was.
+    const conflicts = recordBatch(records, () =>
+      log.appendAll(events, (event) => {
+        draft = fold(draft, event, config, (merge) => retirements.push({ at: accepted.length, merge }), scratch, records);
+        accepted.push(event);
+      }),
+    );
     state = draft;
     // The index gets the events only after the write. Thus a failed write, and the write again, move no stamp two times.
     // The rebuild gives the index each event before its fold, thus each prune comes after the event of its retirement.
@@ -625,7 +638,10 @@ export function openRuntime(options: RuntimeOptions): Runtime {
       if (last === undefined || last.seq !== head || first === undefined) throw new Error("The last event of the log has a type that this build does not know.");
       const key = snapshotKey(config, { first, recoveries: log.counts().get("recovered") ?? 0 });
       // The cut: the mark, the state and a copy of the index, in this turn of the loop. A fold gives a new state and does not
-      // change the state before it, thus the rows of the cut do not change in the pauses of the write.
+      // change the state before it, thus the rows of the cut do not change in the pauses of the write. The folds of a pass
+      // change the records of each source of the last state in place (AL-136). Thus the cut ends the record scratch of the
+      // pass: the next fold copies each record one time, and the records of the cut do not change.
+      if (passRecords !== undefined) passRecords = recordScratch();
       const mark: FoldMark = { seq: head, id: last.event.id };
       const cut = { state, entries: entries.snapshot() };
       const write = store.writeInChunks(key, mark, snapshotRows(cut), chunks);
@@ -652,7 +668,14 @@ export function openRuntime(options: RuntimeOptions): Runtime {
       // The probes of the down channels run next to the fetches. A probe does not throw, and it ends at the call limit.
       const probes = channels?.probe(start, lastFetchSuccess(state.health));
       // Each fetch ends before the pass ends, also when one of them fails. Thus no fetch of a pass runs on in the next pass.
-      const settled = await Promise.allSettled(due.map(({ source, descriptor }) => fetchOne(source, descriptor, stop)));
+      // The fetches of the pass share one record scratch (AL-136). Thus n fetches of n sources copy each record of the sources one time, not n times.
+      passRecords = recordScratch();
+      let settled: PromiseSettledResult<readonly string[]>[];
+      try {
+        settled = await Promise.allSettled(due.map(({ source, descriptor }) => fetchOne(source, descriptor, stop)));
+      } finally {
+        passRecords = undefined;
+      }
       await checks;
       await probes;
       await options.copies?.ready();
