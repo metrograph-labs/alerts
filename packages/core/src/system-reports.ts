@@ -261,6 +261,30 @@ export interface StoreFill {
   readonly sources: readonly SourceId[];
 }
 
+/**
+ * The fill of a store with a bound (AL-145). At the bound, the store keeps out the entries of low priority. They wait
+ * outside until the store has space again.
+ */
+export interface StoreBound {
+  /** The id of the store, as `state`. */
+  readonly store: string;
+  /** The family of the entries, as `reports`. */
+  readonly family: string;
+  /** The count of the entries of the family at the time of the snapshot. */
+  readonly entries: number;
+  /** The bound of the count of the entries. */
+  readonly limit: number;
+  /** The count of the entries that wait outside the store at the time of the snapshot. */
+  readonly waiting: number;
+  /** The sources of the entries that wait. A person who watches one of them gets the report. */
+  readonly sources: readonly SourceId[];
+}
+
+/** This function tells if a store is at its bound: it has `limit` entries or more, or an entry waits outside it. */
+export function atBound(bound: StoreBound): boolean {
+  return bound.entries >= bound.limit || bound.waiting > 0;
+}
+
 /** The time after a start in which each family of a store gets its first entry (AL-86). */
 export const STORE_FILL_WINDOW: Duration = 60 * 60 * 1000;
 
@@ -379,6 +403,11 @@ export interface SystemSnapshot {
    * stays a condition while its family has no entry, also after a restart. With no list, each open line of a store stays open.
    */
   readonly stores?: readonly StoreFill[];
+  /**
+   * The stores with a bound (AL-145). A store at its bound (`atBound`) is a condition. With no list, each open line of a
+   * bound stays open.
+   */
+  readonly bounds?: readonly StoreBound[];
   /**
    * The drills of the copy. A run that waits for its acknowledgment is a condition, and a failed last run is a condition.
    * With no drills, each open line of a drill stays open.
@@ -742,6 +771,7 @@ export function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: 
     const name = storeName(fill);
     if (fill.entries === 0 && (at >= storeEmptyAt(fill) || lines.open[name] !== undefined)) conditions.set(name, storeCondition(fill, titles));
   }
+  for (const bound of snapshot.bounds ?? []) if (atBound(bound)) conditions.set(boundName(bound), boundCondition(bound, titles));
   for (const state of snapshot.redundancy ?? []) {
     const stage = redundancyStage(state);
     if (stage !== undefined) conditions.set(redundancyName(state.function.id, stage), redundancyCondition(state, stage));
@@ -767,6 +797,7 @@ export function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: 
     if (condition === undefined && snapshot.channels === undefined && name.startsWith(CHANNEL_LINE)) continue;
     if (condition === undefined && snapshot.observing === undefined && name.startsWith(OBSERVE_LINE)) continue;
     if (condition === undefined && snapshot.stores === undefined && name.startsWith(STORE_LINE)) continue;
+    if (condition === undefined && snapshot.bounds === undefined && name.startsWith(BOUND_LINE)) continue;
     if (condition === undefined && snapshot.redundancy === undefined && name.startsWith(REDUNDANCY_LINE)) continue;
     const draft = condition === undefined ? (line === undefined ? undefined : cancelOf(line)) : condition;
     if (draft === undefined) continue;
@@ -938,6 +969,12 @@ const STORE_LINE = "store/";
 
 function storeName(fill: StoreFill): string {
   return `${STORE_LINE}${encodeURIComponent(fill.store)}/${encodeURIComponent(fill.family)}`;
+}
+
+const BOUND_LINE = "bound/";
+
+function boundName(bound: StoreBound): string {
+  return `${BOUND_LINE}${encodeURIComponent(bound.store)}/${encodeURIComponent(bound.family)}`;
 }
 
 function coverageName(place: PlaceId, kind: string): string {
@@ -1681,6 +1718,28 @@ function storeCondition(fill: StoreFill, titles: ReadonlyMap<SourceId, string>):
     description: "The store did not fill in the time. Its sources can be down, or the store gets no turn to fetch. Each feature that reads the family works without it.",
     instruction: "Examine the health of the sources of the store and the log of its refreshes.",
     parameters: { entries: [String(fill.entries)], within: [String(fill.within)] },
+  };
+}
+
+// A full store keeps out only the entries of low priority, thus it gets `notice` at most (AL-145). The counts are not facts.
+// Thus a change of a count gives no update, and the line ends when the store has space and no entry waits.
+function boundCondition(bound: StoreBound, titles: ReadonlyMap<SourceId, string>): Condition {
+  const code = `${STORE_KIND}.full`;
+  return {
+    facts: { store: bound.store, family: bound.family },
+    kind: { code, label: kindLabel(code) },
+    severity: "moderate",
+    urgency: "expected",
+    response: ["assess"],
+    areas: [],
+    about: [
+      { system: STORE_SUBJECT, id: `${bound.store}/${bound.family}`, label: `Store ${bound.store}, family ${bound.family}` },
+      ...bound.sources.map((source) => ({ system: SOURCE_SUBJECT, id: source, label: titles.get(source) ?? source })),
+    ],
+    headline: `The store ${bound.store} is at its bound of ${countOf(bound.limit, "entry", "entries")} of the family ${bound.family}.`,
+    description: `The store has ${countOf(bound.entries, "entry", "entries")}. The new entries of low priority wait outside it: ${bound.waiting.toLocaleString("en")} at this time. Each entry at a watched place and each update of a known entry still goes in.`,
+    instruction: "Examine the sources of the new entries. A source with a flood of entries can be broken.",
+    parameters: { entries: [String(bound.entries)], limit: [String(bound.limit)], waiting: [String(bound.waiting)] },
   };
 }
 

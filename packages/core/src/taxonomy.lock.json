@@ -329,6 +329,7 @@
   "system.redundancy.stopped",
   "system.store",
   "system.store.empty",
+  "system.store.full",
   "system.tell",
   "system.tell.done-you-asked",
   "system.tell.live",

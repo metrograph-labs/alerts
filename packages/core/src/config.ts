@@ -288,6 +288,11 @@ export interface AlertConfig {
    */
   readonly rankFloor?: Duration;
   /**
+   * The bound of the count of the reports in the state of the runtime (AL-145). At the bound, a new report of low priority
+   * waits outside the state. Without it, the runtime gives its default, `REPORT_LIMIT` of the runtime.
+   */
+  readonly reportLimit?: number;
+  /**
    * The policy of the assessment: the statuses, the tables of the levels and the relevance policy. When it is absent,
    * the default policy of the core applies. A policy here replaces the full default policy.
    */

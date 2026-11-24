@@ -438,6 +438,7 @@ SourceId: build/index.d.ts#SourceId
 SourceProcedures: build/index.d.ts#SourceProcedures
 SpendConfig: build/index.d.ts#SpendConfig
 Status: build/index.d.ts#Status
+StoreBound: build/index.d.ts#StoreBound
 StoreFill: build/index.d.ts#StoreFill
 Subject: build/index.d.ts#Subject
 SubjectEntry: build/index.d.ts#SubjectEntry
@@ -523,6 +524,7 @@ assessWithShadow: build/index.d.ts#assessWithShadow
 assessedLevelSchema: build/index.d.ts#assessedLevelSchema
 assessmentSchema: build/index.d.ts#assessmentSchema
 assessmentWhy: build/index.d.ts#assessmentWhy
+atBound: build/index.d.ts#atBound
 audienceKey: build/index.d.ts#audienceKey
 audienceOf: build/index.d.ts#audienceOf
 balanceFloors: build/index.d.ts#balanceFloors
@@ -959,6 +961,7 @@ export interface AlertConfig {
   readonly outage?: OutageConfig;
   readonly rankDelay?: RankDelays;
   readonly rankFloor?: Duration;
+  readonly reportLimit?: number;
   readonly assess?: AssessPolicy;
   readonly drills?: readonly DrillConfig[];
   readonly optIn?: readonly OptInConfig[];
@@ -3903,6 +3906,16 @@ export interface SpendConfig {
 ### build/index.d.ts#Status
 export type Status = "actual" | "exercise" | "system" | "test" | "draft";
 
+### build/index.d.ts#StoreBound
+export interface StoreBound {
+  readonly store: string;
+  readonly family: string;
+  readonly entries: number;
+  readonly limit: number;
+  readonly waiting: number;
+  readonly sources: readonly SourceId[];
+}
+
 ### build/index.d.ts#StoreFill
 export interface StoreFill {
   readonly store: string;
@@ -3992,6 +4005,7 @@ export interface SystemSnapshot {
   readonly recoveries?: readonly LogRecovery[];
   readonly blocks?: readonly LoopBlock[];
   readonly stores?: readonly StoreFill[];
+  readonly bounds?: readonly StoreBound[];
   readonly drills?: readonly DrillSnapshot[];
   readonly drillWatches?: readonly DrillWatch[];
   readonly exhausted?: readonly Exhaustion[];
@@ -4303,6 +4317,9 @@ export declare const assessmentSchema: z.ZodType<Assessment, Assessment>;
 
 ### build/index.d.ts#assessmentWhy
 export declare function assessmentWhy(assessment: Pick<Assessment, "reasons" | "places">): WhyRecord | undefined;
+
+### build/index.d.ts#atBound
+export declare function atBound(bound: StoreBound): boolean;
 
 ### build/index.d.ts#audienceKey
 export declare function audienceKey(item: Audience): string;

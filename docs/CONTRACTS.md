@@ -496,6 +496,24 @@ A store report has no area. Its kind is `system.store.empty` (AL-86), with the s
 - The first entry of the family ends the line with a cancel. A snapshot with no list of stores keeps each open line of a store.
 - A store that gets no turn after a start, as a refresh that waits for the good start, fails the check.
 
+The merge state of the runtime has a bound of reports (AL-145). Each report stays in the memory while its incident is live. A flood of new reports thus fills the heap. The default bound is `REPORT_LIMIT` (10,000 reports), and the field `reportLimit` of the configuration replaces it:
+
+- A report and its parts take approximately 9 to 11 kB of the heap. A pass also makes a route of approximately 1.2 kB for each live incident and each person.
+- With 10 persons, 10,000 reports take approximately 230 MB at the peak of a pass. That is less than half of the heap of a host with 1 GB.
+- The fetch step asks for the admission of each new observation (`admit` of `fetchStep`). The count includes the system reports.
+- At the bound, a new observation goes in only when one of its reports has priority (`keepsAtBound`). A report with priority is an update or a cancel, a report for named persons, or a report at a watched place (`matchPlaces`).
+- Thus a full state keeps out only the new reports of other areas. The delivery sends those reports to no person.
+- A refused observation does not go into the log. It stays new, thus a later fetch gives it again, and it goes in when the state has space.
+- The bound does not refuse an import from another copy, a system report or a fold of the log at a start.
+
+A bound report has no area. Its kind is `system.store.full`, with the severity `moderate` and the urgency `expected`. Thus it gets `notice` at most:
+
+- The runtime gives a `StoreBound` with the store `state`, the family `reports`, the count of the entries, the bound and the count of the waiting observations.
+- The condition is a count at the bound, or a waiting observation (`atBound`). The line is `bound/<store>/<family>`.
+- The subjects are the store (`STORE_SUBJECT`) and each source with a waiting observation at the open of the line.
+- The facts of the line are the store and the family. A change of the counts alone gives no update.
+- A count below the bound with no waiting observation ends the line with a cancel. A snapshot with no list of bounds keeps each open line of a bound.
+
 A copy report has no area. Its subject is `{ system: "alerts.copy", id: <copy id> }` (`COPY_SUBJECT`). Its kind is `system.copy.<stage>`, with the severity `moderate` and the urgency `expected`. Thus it gets `notice` at most. `copyStages` gives the stages of a `CopyWatch` at a time, and each stage is one line:
 
 | Stage | Condition |

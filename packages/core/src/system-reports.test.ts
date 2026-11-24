@@ -56,6 +56,7 @@ import {
   STORE_FILL_WINDOW,
   STORE_SUBJECT,
   storeEmptyAt,
+  atBound,
   stepSizeText,
   systemReports,
   threats,
@@ -63,6 +64,7 @@ import {
   useStages,
   useUnreadAt,
   type LogRecovery,
+  type StoreBound,
   type StoreFill,
   type SystemLines,
   type SystemSnapshot,
@@ -1255,6 +1257,51 @@ describe("the store reports (AL-86)", () => {
     expect(levels(step.reports, OPERATOR, END)).toEqual(["notice"]);
     expect(levels(step.reports, NEIGHBOR, END)).toEqual(["none"]);
     expect(levels(step.reports, { ...NEIGHBOR, subjects: [{ system: STORE_SUBJECT }] }, END)).toEqual(["notice"]);
+  });
+});
+
+describe("the bound reports (AL-145)", () => {
+  const AT = Date.UTC(2026, 10, 24, 12);
+  const state: StoreBound = { store: "state", family: "reports", entries: 9_000, limit: 10_000, waiting: 0, sources: [] };
+  const codes = (reports: readonly Report[]) => reports.map((report) => [report.op, report.kind.code, report.about[0]!.id]);
+
+  it("gives an alert when the store reaches its bound or an entry waits, and no update for a new count", () => {
+    expect(unknownKinds(["system.store.full"])).toEqual([]);
+    expect(atBound(state)).toBe(false);
+    expect(atBound({ ...state, entries: 10_000 })).toBe(true);
+    expect(atBound({ ...state, waiting: 1 })).toBe(true);
+    expect(systemReports(NO_SYSTEM_LINES, snapshot({ bounds: [state] }), AT).reports).toEqual([]);
+    const full = systemReports(NO_SYSTEM_LINES, snapshot({ bounds: [{ ...state, entries: 10_000, waiting: 250, sources: [API.id] }] }), AT);
+    expect(full.reports).toMatchObject([
+      {
+        op: "alert",
+        status: "system",
+        kind: { code: "system.store.full", label: "Full store" },
+        severity: "moderate",
+        urgency: "expected",
+        areas: [],
+        about: [
+          { system: STORE_SUBJECT, id: "state/reports" },
+          { system: SOURCE_SUBJECT, id: API.id, label: "The API" },
+        ],
+        headline: "The store state is at its bound of 10,000 entries of the family reports.",
+        parameters: { entries: ["10000"], limit: ["10000"], waiting: ["250"] },
+      },
+    ]);
+    expect(Object.keys(full.lines.open)).toEqual(["bound/state/reports"]);
+    // A new count is not a fact. Thus the line gives no update.
+    expect(systemReports(full.lines, snapshot({ bounds: [{ ...state, entries: 10_000, waiting: 900 }] }), AT + 60_000).reports).toEqual([]);
+    // With no list, the line stays open.
+    expect(systemReports(full.lines, snapshot(), AT + 120_000).reports).toEqual([]);
+    // Space in the store and no entry that waits end the line.
+    expect(codes(systemReports(full.lines, snapshot({ bounds: [state] }), AT + 180_000).reports)).toEqual([["cancel", "system.store.full", "state/reports"]]);
+  });
+
+  it("goes as a notice to the person who watches a source of the waiting entries or the store", () => {
+    const step = systemReports(NO_SYSTEM_LINES, snapshot({ bounds: [{ ...state, waiting: 1, sources: [API.id] }] }), AT);
+    expect(levels(step.reports, OPERATOR, AT)).toEqual(["notice"]);
+    expect(levels(step.reports, NEIGHBOR, AT)).toEqual(["none"]);
+    expect(levels(step.reports, { ...NEIGHBOR, subjects: [{ system: STORE_SUBJECT }] }, AT)).toEqual(["notice"]);
   });
 });
 

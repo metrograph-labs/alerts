@@ -6,7 +6,7 @@ import { RANK_DELAY_LIMIT } from "./escalation.ts";
 import { DRILL_SUBJECT } from "./system-reports.ts";
 import type { Expectation } from "./lateness.ts";
 import { composeInterests, placesLayer, servicesLayer, workLayer } from "./interest-defaults.ts";
-import { personConfigSchema, rankDelaysSchema } from "./schemas.ts";
+import { alertConfigSchema, personConfigSchema, rankDelaysSchema } from "./schemas.ts";
 
 const SEEDS = seedsFrom(process.env["SEED"], [1, 2, 3, 4, 5, 6, 7, 8]);
 const MINUTE = 60_000;
@@ -348,6 +348,14 @@ describe("loadConfig", () => {
       "Two watches of a limit have the id github:example/actions.",
       "The watch of the limit github:someone/actions is for the account of a user, and it has no monthly limit.",
     ]);
+  });
+
+  it("takes a bound of the reports that is an integer of 1 or more (AL-145)", () => {
+    const parse = (reportLimit: number) => alertConfigSchema.safeParse({ format: CONFIG_FORMAT, places: [], people: [], contacts: [], policies: [], reportLimit });
+    expect(parse(10_000).success).toBe(true);
+    expect(parse(1).success).toBe(true);
+    expect(parse(0).error?.issues.map((issue) => issue.message)).toEqual(["The bound of the reports is 1 or more."]);
+    expect(parse(2.5).success).toBe(false);
   });
 
   it("checks the table of rank delays: the schema refuses an unknown level, and the load refuses a value out of its bounds", () => {

@@ -450,6 +450,7 @@ export const TAXONOMY: Readonly<Record<string, KindEntry>> = {
   [`${TELL_KIND}.done-you-asked`]: entry("Done", "A message of the operator: a request of the person is done."),
   [`${TELL_KIND}.live`]: entry("Live", "A message of the operator: a change is live."),
   [`${STORE_KIND}.empty`]: entry("Empty store", "A family of a store has no entry in the time after a start. Each feature that reads the family works without it."),
+  [`${STORE_KIND}.full`]: entry("Full store", "A store is at its bound. The new entries of low priority wait outside it until it has space again."),
   [LIMIT_KIND]: entry("Send limit of the system", "The most new alerts that one person gets in one window. The digest tells each alert that the limit holds."),
   [`${LIMIT_KIND}.held`]: entry("Alerts held", "The send limit holds new alerts for the person. The next digest tells each one. The limit does not hold a life-safety warning."),
   [USE_KIND]: entry("Use of a hard limit", "The used amount of a month of a paid provider account, as a share of its hard limit."),

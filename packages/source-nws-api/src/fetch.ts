@@ -4,7 +4,7 @@
  */
 
 import { observationId, type Cursor, type FetchFailure, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch } from "@mark1russell7/alerts";
-import { createRequester, problemDetail } from "@mark1russell7/alerts-fetch";
+import { answerStore, createRequester, problemDetail } from "@mark1russell7/alerts-fetch";
 import { isUgcCode, WEA_EVENT_CODES } from "@mark1russell7/alerts-format-nws";
 import { isRecord } from "@mark1russell7/optional/read";
 import type { Condition, Pace, Reply, Transport } from "polite-crawler/api";
@@ -165,7 +165,8 @@ type QueryResult = { readonly ok: true; readonly read: Read } | { readonly ok: f
  *
  * Each query is a conditional GET (`poll` of polite-crawler), with the ETag and the date of the last
  * full answer of its URL. A 304 answer has no body. Then the query gives the observations of the
- * last full answer again, unchanged. No message is new, so the log gets no new fact.
+ * last full answer again, unchanged. No message is new, so the log gets no new fact. The fetch keeps the last full
+ * answer of each URL as compressed bytes (`answerStore`, AL-145), and it reads the answer again at a 304.
  *
  * The requester of `@mark1russell7/alerts-fetch` sends each query. It reads the problem text of the
  * NWS API (RFC 9457) into the message of a failure.
@@ -184,28 +185,31 @@ export function createNwsFetch(options: NwsFetchOptions): (input: NwsFetchInput,
   const now = options.pace.now;
   // One store of conditions, because each query sends the same accept header
   const conditions = new Map<string, Condition>();
-  // The read of the last full answer of each URL. A 304 answer gives it again.
-  const lastRead = new Map<string, Read>();
+  // The last full answer of each URL, with its time of fetch and its latency. A 304 answer gives its read again.
+  const lastAnswer = answerStore<{ readonly fetched: Instant; readonly latency: number }>();
 
   async function query(path: string, signal: FetchSignal | undefined): Promise<QueryResult> {
     const requested = await requester.get({ path, what: `the alerts ${path}`, conditions }, signal);
     if (!requested.ok) return { ok: false, failure: requested.failure };
     const { url, answer, latency } = requested;
     if (answer.classified.outcome === "not-modified") {
-      const previous = lastRead.get(url);
-      if (previous !== undefined) return { ok: true, read: previous };
+      const previous = await lastAnswer.get(url).catch(() => undefined);
+      const read = previous === undefined ? undefined : readAnswer(previous.reply, url, previous.extra.fetched, previous.extra.latency);
+      if (read !== undefined) return { ok: true, read };
+      lastAnswer.delete(url);
       // A 304 with no earlier full answer: the next request of the URL sends no condition
       conditions.delete(url);
       return { ok: false, failure: { kind: "network", message: `a 304 answer with no earlier full answer: ${url}` } };
     }
-    const read = readAnswer(answer.reply, url, now(), latency);
+    const fetched = now();
+    const read = readAnswer(answer.reply, url, fetched, latency);
     if (read === undefined) {
       // poll keeps the condition of each 2xx answer. A body that does not parse must not be the base of a later 304.
       conditions.delete(url);
-      lastRead.delete(url);
+      lastAnswer.delete(url);
       return { ok: false, failure: { kind: "network", message: `truncated or malformed body: ${url}` } };
     }
-    lastRead.set(url, read);
+    lastAnswer.keep(url, answer.reply, { fetched, latency });
     return { ok: true, read };
   }
 
