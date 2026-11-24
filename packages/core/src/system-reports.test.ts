@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { assess, PERSON_SUBJECT } from "./assess.ts";
 import { CONFIG_FORMAT } from "./config.ts";
 import { messageOf } from "./delivery.ts";
-import type { ChannelId, ChannelQuota, CopyRead, CopyWatch, Coverage, HealthState, Incident, Observation, PersonId, PersonWatch, PlaceId, LimitUse, ProviderBalance, RedundancyState, Report, ReportId, SourceDescriptor, SourceHealth, SourceId, WatchedPlace } from "./contracts.ts";
+import type { ChannelId, ChannelQuota, CopyRead, CopyWatch, Coverage, HealthState, Incident, JointDown, Observation, PersonId, PersonWatch, PlaceId, LimitUse, ProviderBalance, RedundancyState, Report, ReportId, SourceDescriptor, SourceHealth, SourceId, WatchedPlace } from "./contracts.ts";
 import { SYSTEM_SOURCE } from "./contracts.ts";
 import { DRILL_WATCH_GRACE, type DrillConfig, type DrillRun, type DrillWatch } from "./drill.ts";
 import type { Lateness } from "./lateness.ts";
@@ -30,6 +30,8 @@ import {
   drillWatchAt,
   FUNCTION_SUBJECT,
   gapGrade,
+  jointStages,
+  jointUnreadAt,
   HELD_SHOWN,
   heldText,
   latestIn,
@@ -681,6 +683,95 @@ describe("the use reports (AL-111)", () => {
     const full = systemReports(NO_SYSTEM_LINES, snapshot({ uses: [use({ used: 11, level: 1 })] }), START);
     expect(levels(full.reports, WATCHER, START)).toEqual(["notice", "notice", "notice"]);
     expect(levels(full.reports, OPERATOR, START)).toEqual(["none", "none", "none"]);
+  });
+});
+
+describe("the joint reports (AL-148)", () => {
+  const MINUTE = 60_000;
+  const HOUR = 60 * MINUTE;
+  const START = Date.UTC(2026, 10, 15, 12);
+  const WATCHER: PersonWatch = { ...NEIGHBOR, subjects: [{ system: COPY_SUBJECT }] };
+  const codes = (reports: readonly Report[]) => reports.map((report) => [report.op, report.kind.code]);
+  const joint = (read?: { readonly down: number; readonly spans?: number; readonly at?: number }, fields: Partial<JointDown> = {}): JointDown => ({
+    window: 7 * 24 * HOUR,
+    limit: 10 * MINUTE,
+    maxAge: 6 * HOUR,
+    since: START,
+    ...(read === undefined ? {} : { read: { down: read.down, spans: read.spans ?? 1, at: read.at ?? START } }),
+    ...fields,
+  });
+  const copyWatch = (copy: string, read: number): CopyWatch => ({ copy, skewLimit: 2_000, maxAge: 60_000, since: START, read: { at: read, skew: 0, sameConfig: true } });
+
+  it("reaches over above the limit, and unread at the maximum age", () => {
+    expect(jointStages(joint({ down: 10 * MINUTE }), START)).toEqual([]);
+    expect(jointStages(joint({ down: 10 * MINUTE + 1 }), START)).toEqual(["over"]);
+    // The age counts from the last read, or from the start of the watch with no read. An old read keeps its stage.
+    expect(jointStages(joint(), START + 6 * HOUR - 1)).toEqual([]);
+    expect(jointStages(joint(), START + 6 * HOUR)).toEqual(["unread"]);
+    expect(jointStages(joint({ down: HOUR }), START + 7 * HOUR)).toEqual(["over", "unread"]);
+    expect(jointUnreadAt(joint({ down: 0, at: START + HOUR }))).toBe(START + 7 * HOUR);
+    expect(unknownKinds(["system.joint", "system.joint.over", "system.joint.unread"])).toEqual([]);
+  });
+
+  it("gives one alert over the limit, no update for a new sum, and a cancel under the limit", () => {
+    const over = systemReports(NO_SYSTEM_LINES, snapshot({ joint: joint({ down: 816 * MINUTE, spans: 3 }) }), START);
+    expect(over.reports).toMatchObject([
+      {
+        op: "alert",
+        status: "system",
+        kind: { code: "system.joint.over", label: "Joint down time over its limit" },
+        severity: "moderate",
+        urgency: "expected",
+        areas: [],
+        about: [{ system: COPY_SUBJECT, id: "all" }],
+        headline: "No copy could tell the person for 816.0 min in the last 7 days. The limit is 10.0 min.",
+        parameters: { stage: ["over"], down: [String(816 * MINUTE)], spans: ["3"], limit: [String(10 * MINUTE)] },
+      },
+    ]);
+    expect(Object.keys(over.lines.open)).toEqual(["joint/over"]);
+    // A new sum over the limit is no new fact.
+    expect(systemReports(over.lines, snapshot({ joint: joint({ down: 20 * MINUTE, at: START + HOUR }) }), START + HOUR).reports).toEqual([]);
+    const under = systemReports(over.lines, snapshot({ joint: joint({ down: 9 * MINUTE, at: START + 2 * HOUR }) }), START + 2 * HOUR);
+    expect(codes(under.reports)).toEqual([["cancel", "system.joint.over"]]);
+    expect(under.lines.open).toEqual({});
+    const rebuilt = addSystemReports(NO_SYSTEM_LINES, [...over.reports, ...under.reports], [...over.observations, ...under.observations]);
+    expect(rebuilt.open).toEqual(under.lines.open);
+  });
+
+  it("gives the unread line when no read passes, ends it at the next read, and ends each line with no watch", () => {
+    const unread = systemReports(NO_SYSTEM_LINES, snapshot({ joint: joint() }), START + 6 * HOUR);
+    expect(unread.reports).toMatchObject([
+      { op: "alert", kind: { code: "system.joint.unread" }, headline: `The joint down time of the copies has no read since the start of the watch at ${new Date(START).toISOString()}.` },
+    ]);
+    const read = systemReports(unread.lines, snapshot({ joint: joint({ down: 0, at: START + 6 * HOUR }) }), START + 6 * HOUR);
+    expect(codes(read.reports)).toEqual([["cancel", "system.joint.unread"]]);
+    const over = systemReports(NO_SYSTEM_LINES, snapshot({ joint: joint({ down: HOUR }) }), START);
+    // With no field, the open line stays. With no watch, it ends.
+    expect(systemReports(over.lines, snapshot(), START + 1).reports).toEqual([]);
+    expect(codes(systemReports(over.lines, snapshot({ joint: null }), START + 1).reports)).toEqual([["cancel", "system.joint.over"]]);
+  });
+
+  it("keeps the open line over with no read, thus a restart sends nothing", () => {
+    const over = systemReports(NO_SYSTEM_LINES, snapshot({ joint: joint({ down: HOUR }) }), START);
+    const restarted = systemReports(over.lines, snapshot({ joint: joint(undefined, { since: START + HOUR }) }), START + HOUR);
+    expect(restarted.reports).toEqual([]);
+    expect(restarted.lines.open).toEqual(over.lines.open);
+    // The stage unread of the restarted watch comes next to the open line over.
+    expect(codes(systemReports(restarted.lines, snapshot({ joint: joint(undefined, { since: START + HOUR }) }), START + 7 * HOUR).reports)).toEqual([["alert", "system.joint.unread"]]);
+  });
+
+  it("gives the line over in one copy and the unread line in each copy", () => {
+    const over = joint({ down: HOUR });
+    expect(codes(systemReports(NO_SYSTEM_LINES, snapshot({ joint: over, copy: "copy-a", copies: [copyWatch("copy-b", START)] }), START).reports)).toEqual([["alert", "system.joint.over"]]);
+    expect(systemReports(NO_SYSTEM_LINES, snapshot({ joint: over, copy: "copy-b", copies: [copyWatch("copy-a", START)] }), START).reports).toEqual([]);
+    const unread = systemReports(NO_SYSTEM_LINES, snapshot({ joint: joint(), copy: "copy-b", copies: [copyWatch("copy-a", START + 6 * HOUR)] }), START + 6 * HOUR);
+    expect(codes(unread.reports)).toEqual([["alert", "system.joint.unread"]]);
+  });
+
+  it("goes at notice at most to the person who watches the copies", () => {
+    const over = systemReports(NO_SYSTEM_LINES, snapshot({ joint: joint({ down: HOUR }) }), START);
+    expect(levels(over.reports, WATCHER, START)).toEqual(["notice"]);
+    expect(levels(over.reports, OPERATOR, START)).toEqual(["none"]);
   });
 });
 

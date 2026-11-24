@@ -106,6 +106,7 @@ import type { RestTransport } from "@procedures/gh";
 import type { Meter } from "@opentelemetry/api";
 import type { UseRead } from "@mark1russell7/stack-spend";
 import { limitProblems, limitWatches, type LimitWatch } from "./use.ts";
+import { jointReader, jointWatch, type JointWatch } from "./joint.ts";
 import { chainProblems, chainWatch, readChain } from "./chain.ts";
 import { balanceWatch, SPEND_UNIT, spendEntryOf, spendGates, spendQuota, spendUnits, spendWatch, type BalanceWatch, type SpendGates, type SpendWatch } from "./balance.ts";
 import { spendUseReads } from "./spend-use.ts";
@@ -190,8 +191,9 @@ export function pingTargets(secret: (key: string) => string | undefined, copy: C
 }
 
 /**
- * The name of the key of `secrets.env` that holds the key of the management API of Healthchecks.io. Only
- * the status of `install.ts` reads it. The runtime does not use it.
+ * The name of the key of `secrets.env` that holds the key of the management API of Healthchecks.io. The status of
+ * `install.ts` reads it. The runtime reads the joint down time of the copies with it (AL-148). With no key or no
+ * `LOUD_PING_URL_KEY`, the runtime has no watch of the joint down time and no line of it.
  */
 export const CHECKS_KEY = "HEALTHCHECKS_API_KEY";
 
@@ -759,6 +761,11 @@ export interface InstanceOptions {
   readonly webhook?: WebhookFetch;
   /** The transport of the billing reads of GitHub (AL-111). The default is the transport of `@procedures/gh`. A test gives a fake. */
   readonly github?: RestTransport;
+  /**
+   * The transport of the reads of the management API of Healthchecks.io (AL-148). The default is `transport`. A test gives a
+   * fake. The instance reads only when the secrets have `CHECKS_KEY` and `LOUD_PING_URL_KEY`.
+   */
+  readonly checks?: Transport;
   /** The store of the file of the outage bundles. The entry gives the file of the slot. Without it, each deploy makes the bundles. */
   readonly outageBundles?: BundleStore;
   /**
@@ -892,6 +899,8 @@ export interface Instance {
   readonly balances: readonly BalanceWatch[];
   /** The watches of the use of the hard limits of the paid provider accounts (AL-111). */
   readonly uses: readonly LimitWatch[];
+  /** The watch of the joint down time of the copies (AL-148), when the secrets have `CHECKS_KEY` and `LOUD_PING_URL_KEY`. */
+  readonly joint?: JointWatch;
   /** The watch of the STOP and START replies of the texts, when the instance has the text channel and an opt-in list. */
   readonly replies?: ReplyWatch;
   /** The watch of the spend that Twilio reports for the month of the cap, when the configuration has a spend entry for Twilio. */
@@ -1093,6 +1102,7 @@ export function openInstance(options: InstanceOptions): Instance {
   ];
   const balances = twilio?.watch === undefined ? [] : [twilio.watch];
   const uses = limitWatches(config.limits ?? [], options.secret, options.github);
+  const joint = jointOf(options, clock, wall);
   const replies = twilio?.replies;
   const spent = twilio?.spend;
   const reads = [...(replies === undefined ? [] : [replies]), ...(spent === undefined ? [] : [spent])];
@@ -1181,6 +1191,8 @@ export function openInstance(options: InstanceOptions): Instance {
     balances,
     // Each level of the use of a hard limit is a line of system reports (AL-111).
     ...(uses.length === 0 ? {} : { uses }),
+    // Each stage of the joint down time of the copies is a line of system reports (AL-148).
+    ...(joint === undefined ? {} : { joint }),
     // Each family of a store with no entry at the end of its window after the start is a line of system reports (AL-86).
     stores: () => shapes.fill(startedAt, STORE_FILL_WINDOW, shapeSources(runtime.config.sources).map((source) => source.id)),
     // Each block of the event loop of 1 s or more is a line of system reports (AL-88).
@@ -1264,7 +1276,7 @@ export function openInstance(options: InstanceOptions): Instance {
       copies: worker?.watches() ?? [],
       quotas: quotas(),
       balances: balances.flatMap((watch) => watch.balance() ?? []),
-      reads: [...reads, ...uses].map((watch) => watch.health()),
+      reads: [...reads, ...uses, ...(joint === undefined ? [] : [joint])].map((watch) => watch.health()),
       channels: runtime.channels(),
       channelDown: channelDownPolicy(runtime.config.channelDown),
     });
@@ -1309,6 +1321,7 @@ export function openInstance(options: InstanceOptions): Instance {
     quotas,
     balances,
     uses,
+    ...(joint === undefined ? {} : { joint }),
     ...(replies === undefined ? {} : { replies }),
     ...(spent === undefined ? {} : { spend: spent }),
     ...(twilio?.useReads === undefined ? {} : { useReads: useReadsAt(twilio.useReads, options.wall) }),
@@ -1319,6 +1332,16 @@ export function openInstance(options: InstanceOptions): Instance {
     ...(outage === undefined ? {} : { outage }),
     ...(copies === undefined ? {} : { copies }),
   };
+}
+
+// The watch of the joint down time of the copies (AL-148). It needs the key of the management API and the loud check.
+// The host of the API has a scheduler of its own, on the clocks of the instance.
+function jointOf(options: InstanceOptions, clock: Clock, wall: WallClock): JointWatch | undefined {
+  const key = options.secret(CHECKS_KEY) ?? "";
+  const url = options.secret(LOUD_PING_URL_KEY) ?? "";
+  if (key === "" || url === "") return undefined;
+  const read = jointReader({ key, url, pace: sourcePace(clock, wall, 1), transport: options.checks ?? options.transport, userAgent: USER_AGENT_NAME });
+  return jointWatch({ read });
 }
 
 /** This function gives the use reads of the cap at the time of each call. */

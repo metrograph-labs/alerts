@@ -1458,6 +1458,18 @@ describe("the Twilio call channel of the instance", () => {
     expect(open().instance.uses).toEqual([]);
   });
 
+  it("makes the watch of the joint down time only with the key of the API and the loud check (AL-148)", () => {
+    // Made-up values. The fake transport answers no request, and the test starts no pass.
+    const keys = { HEALTHCHECKS_API_KEY: "key-test-0000", HEALTHCHECKS_LOUD_PING_URL: "https://hc-ping.com/00000000-0000-4000-8000-000000000001" };
+    const checks: Transport = async () => ({ status: 401, statusText: "Unauthorized", headers: {}, body: "" });
+    const { instance } = open(store({ ...SECRETS, ...keys }), undefined, undefined, undefined, { checks });
+    expect(instance.joint).toBeDefined();
+    // The health has the state of the reads, with no sum and no message.
+    expect(instance.health().reads).toContainEqual({ what: "joint down time", at: null, failed: false, next: null });
+    expect(open(store({ ...SECRETS, HEALTHCHECKS_API_KEY: keys.HEALTHCHECKS_API_KEY })).instance.joint).toBeUndefined();
+    expect(open(store({ ...SECRETS, HEALTHCHECKS_LOUD_PING_URL: keys.HEALTHCHECKS_LOUD_PING_URL })).instance.joint).toBeUndefined();
+  });
+
   it("does not start with some keys of Twilio, a key of a bad form, or a call with no cap, and no problem holds a value", () => {
     const keys = (extra: Readonly<Record<string, string>>): SecretLookup => store({ ...SECRETS, ...TWILIO, ...extra });
     const partial = messageOf(() => open(keys({ TWILIO_API_KEY_SECRET: "" }), calling([SPEND])));

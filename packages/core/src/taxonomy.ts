@@ -11,8 +11,8 @@
  * its plain name and its summary here, and in no other place. A new code comes here first, in its pull request.
  */
 import { compareCodeUnits } from "@mark1russell7/text/order";
-import { BALANCE_KIND, CHANNEL_KIND, CLOCK_KIND, COPY_KIND, COVERAGE_KIND, DRILL_KIND, ESCALATION_KIND, HEALTH_KIND, LIMIT_KIND, LOG_KIND, LOOP_KIND, QUOTA_KIND, STORE_KIND, REDUNDANCY_KIND, TELL_KIND, USE_KIND } from "./assess.ts";
-import type { BalanceStage, Category, CopyStage, HealthState, QuotaStage, RedundancyStage, UseStage } from "./contracts.ts";
+import { BALANCE_KIND, CHANNEL_KIND, CLOCK_KIND, COPY_KIND, COVERAGE_KIND, DRILL_KIND, ESCALATION_KIND, HEALTH_KIND, JOINT_KIND, LIMIT_KIND, LOG_KIND, LOOP_KIND, QUOTA_KIND, STORE_KIND, REDUNDANCY_KIND, TELL_KIND, USE_KIND } from "./assess.ts";
+import type { BalanceStage, Category, CopyStage, HealthState, JointStage, QuotaStage, RedundancyStage, UseStage } from "./contracts.ts";
 
 /** One code of the taxonomy: its plain name and one plain sentence about it. */
 export interface KindEntry {
@@ -86,6 +86,12 @@ const REDUNDANCY_ENTRIES: Readonly<Record<RedundancyStage, KindEntry>> = {
 const USE_ENTRIES: Readonly<Record<UseStage, KindEntry>> = {
   level: entry("Use of a hard limit at a level", "The used share of a hard limit of a paid provider account reached a level in the month: for example 50, 80 or 100 %."),
   unread: entry("Use of a hard limit not read", "No read of the use of a hard limit passed for the maximum age, so a level is not seen."),
+};
+
+// The joint down time kinds of the core: one for each stage of the watch of the joint down time of the copies (AL-148).
+const JOINT_ENTRIES: Readonly<Record<JointStage, KindEntry>> = {
+  over: entry("Joint down time over its limit", "In the window of the watch, no copy of the alert system could tell the person for longer than the limit."),
+  unread: entry("Joint down time not read", "No read of the joint down time of the copies passed for the maximum age, so a long down time is not seen."),
 };
 
 // The copy kinds of the core: one for each stage of the watch of another copy of the system.
@@ -448,6 +454,8 @@ export const TAXONOMY: Readonly<Record<string, KindEntry>> = {
   [`${LIMIT_KIND}.held`]: entry("Alerts held", "The send limit holds new alerts for the person. The next digest tells each one. The limit does not hold a life-safety warning."),
   [USE_KIND]: entry("Use of a hard limit", "The used amount of a month of a paid provider account, as a share of its hard limit."),
   ...Object.fromEntries(Object.entries(USE_ENTRIES).map(([stage, value]) => [`${USE_KIND}.${stage}`, value])),
+  [JOINT_KIND]: entry("Joint down time of the copies", "The time in a window in which no copy of the alert system could tell the person."),
+  ...Object.fromEntries(Object.entries(JOINT_ENTRIES).map(([stage, value]) => [`${JOINT_KIND}.${stage}`, value])),
   [REDUNDANCY_KIND]: entry("Redundancy of the alert chain", "The paths of a function of the alert chain, from the open incidents of its parts."),
   ...Object.fromEntries(Object.entries(REDUNDANCY_ENTRIES).map(([stage, value]) => [`${REDUNDANCY_KIND}.${stage}`, value])),
   [`${ESCALATION_KIND}.exhausted`]: entry("Exhausted escalation", "A person did not acknowledge a real warning in the time of the policy. The people who watch the person get this report."),

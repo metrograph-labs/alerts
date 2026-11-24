@@ -437,6 +437,26 @@ A use report (AL-111) tells the use of a hard limit of a paid provider account i
 - With two copies, only one copy reports `level` (see "The facts of a shared account"). Each copy reports its own `unread`.
 - A person gets the use reports only when the person watches `{ system: "alerts.limit" }`.
 
+A joint report (AL-148) tells the joint down time of the copies: the time in a window in which no copy could tell the person. A joint report has no area. Its subject is `{ system: "alerts.copy", id: "all" }` (`COPY_SUBJECT`). Its kind is `system.joint.<stage>`, and it gets `notice` at most. `jointStages` gives the stages of a `JointDown` at a time:
+
+| Stage | Condition | Severity, urgency |
+| --- | --- | --- |
+| `over` | The joint down time of the last read is longer than the limit | `moderate`, `expected` |
+| `unread` | No read passed for the maximum age or longer (`jointUnreadAt`) | `moderate`, `expected` |
+
+- The target is 0.999 of each 7 days in which some copy can tell the person. Thus the limit is 10 minutes of joint down time in 7 days.
+- The copies share the loud check of Healthchecks.io (see "The outside heartbeat"). It gets only success pings. Thus it is down only when no copy can tell the person.
+- The runtime reads the flips of the loud check with the management API, once in each hour (`JOINT_EVERY`). A failed read tries again after 15 minutes.
+- A down span starts at its down flip less the period and the grace of the check. It ends at the next up flip, or at the read. The window clips it.
+- The state at the start of the window comes from the flips: the last flip before the window, or else the first flip in it. With no flip, it is the state of the check.
+- A new sum over the limit gives no update. A read with a sum of the limit or less ends `over`. A read that passes ends `unread`.
+- A watch with no read keeps its open line `over`. Thus a restart sends nothing. A snapshot with no field `joint` keeps each open line.
+- The value `null` of `joint` tells that the copy has no watch. Then each open line ends.
+- The runtime has a watch only when `secrets.env` has `HEALTHCHECKS_API_KEY` and `HEALTHCHECKS_LOUD_PING_URL`. With no key, it has no watch and no line.
+- With two copies, only one copy reports `over` (see "The facts of a shared account"). Each copy reports its own `unread`.
+- A message names no key, no ping URL and no id of a check. The health route shows the read as `joint down time`.
+- A person gets the joint reports only when the person watches `{ system: "alerts.copy" }`.
+
 A redundancy report (AL-90) tells that a function of the alert chain lost a path. An example is the push to a person when the carriers of the texts are down. A redundancy report has no area. Its subject is `{ system: "alerts.function", id: <part id> }` (`FUNCTION_SUBJECT`). Its kind is `system.redundancy.<stage>`, and it gets `notice` at most. The runtime gives a `RedundancyState` for each function from the open incidents of its parts. `redundancyStage` gives its stage:
 
 | Stage | Condition | Severity, urgency |
@@ -1659,6 +1679,7 @@ The runtime cannot tell the person that it stopped. A check of Healthchecks.io t
 - `heartbeatGap` gives the longest time between two success pings. It adds the period of the pings, two pass limits, the longest wait of the loop and the ping limit. Each failed pass adds a pass limit and a wait. The check lets one failed pass go.
 - The period plus the grace of the check must be this gap or more: 430 seconds for the instance. `install.ts status` reads the check with `HEALTHCHECKS_API_KEY`, and fails when it is shorter.
 - A new check alerts only after its first ping. Thus the first install checks that the check is up.
+- The runtime also reads the flips of the loud check with `HEALTHCHECKS_API_KEY`. The section "System reports" tells the joint report (AL-148).
 
 ### The chain of tries
 
