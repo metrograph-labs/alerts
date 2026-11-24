@@ -377,6 +377,52 @@ export function frontLevels(front: readonly PlacementRow[]): readonly FrontLevel
 }
 
 /**
+ * This function gives the chance input of one shared fragment: the override of the fragment, or the input of its kind.
+ * A fragment `provider:...` gets the provider input, and each other fragment gets the region input.
+ */
+export function fragmentInput(chances: PlacementChances, fragment: string): ChanceInput {
+  const override = (chances.overrides ?? []).find((item) => item.id === fragment);
+  if (override !== undefined) return override;
+  return fragment.startsWith("provider:") ? chances.provider : chances.region;
+}
+
+function usesOf(layer: PlacementLayer, slot: string, key: string): readonly string[] {
+  return layer.slots.find((each) => each.id === slot)?.candidates.find((candidate) => candidate.key === key)?.uses ?? [];
+}
+
+/**
+ * This function gives the shared fragments of a row whose chance input is of the kind `assumed`, sorted. The host input
+ * is not a fragment: the caller tells its kind one time. A row with no such fragment uses measured inputs only.
+ *
+ * `worksChance` of `stack-risk` marks only the parts with no chance in a layer. Each fragment of a placement layer
+ * has a chance, thus that mark does not tell the kind of an input. This function tells it.
+ */
+export function assumedInputs(layer: PlacementLayer, chances: PlacementChances, row: PlacementRow): readonly string[] {
+  const found = new Set<string>();
+  for (const [slot, key] of Object.entries(row.choice)) {
+    if (key === null) continue;
+    for (const fragment of usesOf(layer, slot, key)) if (fragmentInput(chances, fragment).kind === "assumed") found.add(fragment);
+  }
+  return [...found].sort();
+}
+
+/**
+ * This function gives the build with the candidates whose shared fragments all have a measured input. It keeps the
+ * shared fragments of these candidates only. It gives `undefined` when no candidate stays.
+ *
+ * The front of this build is not a filter of the full front. A row with an assumed input can beat a row of measured
+ * inputs. Then that row of measured inputs is not on the full front, but it can be on this one.
+ */
+export function measuredBuild(build: PlacementBuild, chances: PlacementChances): PlacementBuild | undefined {
+  const measured = (candidate: Candidate): boolean => (candidate.uses ?? []).every((fragment) => fragmentInput(chances, fragment).kind === "measured");
+  const slots = build.layer.slots.map((slot) => ({ ...slot, candidates: slot.candidates.filter(measured) }));
+  if (slots.every((slot) => slot.candidates.length === 0)) return undefined;
+  const used = new Set(slots.flatMap((slot) => slot.candidates.flatMap((candidate) => candidate.uses ?? [])));
+  const shared = (build.layer.shared ?? []).filter((each) => used.has(each.id));
+  return { ...build, layer: { ...build.layer, slots, shared } };
+}
+
+/**
  * This function gives the limit of cost of a month of the copies from the private configuration. The limit is the field
  * `monthlyUsd` of the spend entry of `provider`. It gives `undefined` when the configuration has no such entry, or when the entry
  * has no valid value.

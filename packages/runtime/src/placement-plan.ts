@@ -10,6 +10,8 @@
  *   reads the incident history of the status page of each provider of `HISTORY_SOURCES` (`placement-chances.ts`). It
  *   gives a measured input to each provider and region with a history. Only the other fragments and the hosts get the
  *   assumed inputs. The output marks each input as measured or assumed.
+ * - Each row of the front names its shared fragments with an assumed input. A second front, `measured`, uses only the
+ *   candidates with measured inputs.
  * - `--window-days` is the length of the window of the history, in days. The default is `DEFAULT_WINDOW_DAYS` (365).
  * - `--copies` is the count of copies. The default is 2.
  * - `--spend` names the spend entry of `config.json` that gives the limit of cost of a month (`monthlyUsd`). Without
@@ -30,7 +32,20 @@ import { fetchTransport } from "polite-crawler/api";
 import { HostScheduler, realClock } from "polite-crawler/politeness";
 import { alertsHome, configPath } from "./config.ts";
 import { DEFAULT_WINDOW_DAYS, HISTORY_GAPS, HISTORY_SOURCES, MEASURE_USER_AGENT, measureProvider, readPageHistory, withMeasures, type ChanceMeasure } from "./placement-chances.ts";
-import { distinctRows, FRONT_FILE, FRONT_FORMAT, frontLevels, placementLayer, planCopies, spendLimitOf, type ChanceInput, type PlacementChances } from "./placement.ts";
+import {
+  assumedInputs,
+  distinctRows,
+  FRONT_FILE,
+  FRONT_FORMAT,
+  frontLevels,
+  measuredBuild,
+  placementLayer,
+  planCopies,
+  spendLimitOf,
+  type ChanceInput,
+  type PlacementBuild,
+  type PlacementChances,
+} from "./placement.ts";
 
 const USAGE =
   "The command is: node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>]";
@@ -86,6 +101,32 @@ function command(args: readonly string[]): Command | string {
   const bad = terms.find((term) => !TERM_KINDS.some((kind) => kind === term));
   if (bad !== undefined) return `The price term ${bad} is not on-demand, spot or committed.`;
   return { minMemoryMiB: memory, chances: { provider, region, host }, copies, spend: values.get("spend"), terms: terms as PriceTerm["kind"][], windowDays };
+}
+
+// The front of a build: its search, its levels and the assumed fragments of each row. It prints each level.
+function frontOf(build: PlacementBuild, chances: PlacementChances, today: string, title: string) {
+  const plan = planCopies(build, today);
+  const rows = distinctRows(plan.front);
+  const levels = frontLevels(rows);
+  const candidates = build.layer.slots[0]?.candidates.length ?? 0;
+  const keysOf = (row: (typeof rows)[number]): string => Object.values(row.choice).filter((value): value is string => value !== null).join(" + ");
+  console.log(`${title}: ${countOf(candidates, "candidate")} for each slot. The search is ${plan.method}. The front has ${countOf(rows.length, "choice")} in ${countOf(levels.length, "level")}.`);
+  for (const level of levels) {
+    const shown = level.rows.slice(0, SHOWN).map(keysOf).join(", ");
+    const more = level.rows.length > SHOWN ? ` and ${String(level.rows.length - SHOWN)} more` : "";
+    const assumed = level.rows.filter((row) => assumedInputs(build.layer, chances, row).length > 0).length;
+    console.log(`- ${level.cost.toFixed(2)} USD a month, chance ${level.chance.toFixed(9)}, ${countOf(level.rows.length, "choice")} (${String(assumed)} with an assumed input): ${shown}${more}`);
+  }
+  return {
+    candidates,
+    method: plan.method,
+    breaks: plan.breaks,
+    levels: levels.map((level) => ({
+      cost: level.cost,
+      chance: level.chance,
+      choices: level.rows.map((row) => ({ choice: row.choice, sources: row.sources, bound: row.bound, importance: row.importance, assumed: row.assumed, assumedInputs: assumedInputs(build.layer, chances, row) })),
+    })),
+  };
 }
 
 // The configuration as JSON, or undefined when the file is missing or is not JSON. Only its spend entries count.
@@ -153,19 +194,11 @@ if (typeof parsed === "string") {
     const shared = build.layer.shared ?? [];
     const measuredShared = shared.filter((shared) => measuredIds.has(shared.id)).length;
     console.log(`The layer has ${countOf(shared.length, "shared fragment")}: ${String(measuredShared)} with a measured input, ${String(shared.length - measuredShared)} with an assumed input.`);
-    const plan = planCopies(build, today);
-    const rows = distinctRows(plan.front);
-    const levels = frontLevels(rows);
-    const candidates = build.layer.slots[0]?.candidates.length ?? 0;
-    const keysOf = (row: (typeof rows)[number]): string => Object.values(row.choice).filter((value): value is string => value !== null).join(" + ");
-    console.log(
-      `The layer has ${countOf(candidates, "candidate")} for each slot. The search is ${plan.method}. The front has ${countOf(rows.length, "choice")} in ${countOf(levels.length, "level")}.`,
-    );
-    for (const level of levels) {
-      const shown = level.rows.slice(0, SHOWN).map(keysOf).join(", ");
-      const more = level.rows.length > SHOWN ? ` and ${String(level.rows.length - SHOWN)} more` : "";
-      console.log(`- ${level.cost.toFixed(2)} USD a month, chance ${level.chance.toFixed(9)}, ${countOf(level.rows.length, "choice")}: ${shown}${more}`);
-    }
+    console.log(`The host input is ${chances.host.kind} for each row.`);
+    const full = frontOf(build, chances, today, "The full front");
+    const onlyMeasured = measuredBuild(build, chances);
+    const measured = onlyMeasured === undefined ? null : frontOf(onlyMeasured, chances, today, "The front of measured inputs");
+    if (measured === null) console.log("No candidate has measured inputs only. The file has no front of measured inputs.");
     const front = {
       format: FRONT_FORMAT,
       at: at.toISOString(),
@@ -175,14 +208,9 @@ if (typeof parsed === "string") {
       gaps,
       offers: build.offers,
       skipped: build.skipped,
-      candidates,
-      method: plan.method,
-      breaks: plan.breaks,
-      levels: levels.map((level) => ({
-        cost: level.cost,
-        chance: level.chance,
-        choices: level.rows.map((row) => ({ choice: row.choice, sources: row.sources, bound: row.bound, importance: row.importance, assumed: row.assumed })),
-      })),
+      host: chances.host.kind,
+      ...full,
+      measured,
     };
     const path = join(home, FRONT_FILE);
     await writeFileAtomic(path, `${JSON.stringify(front, null, 2)}\n`, { mode: 0o600 });
