@@ -8,7 +8,7 @@ import { wallClock } from "@mark1russell7/algebra/clock";
 import { MeterProvider } from "@opentelemetry/sdk-metrics";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { collectReadings, LabMetricReader } from "./lab-readings.ts";
-import { DEFAULT_LEVELS, LAB_READY, MEASURE_CONFIG, measureConfig, readSeedRecord, SEED_RECORD_FILE, seededLine, seedHome } from "./seed-home.ts";
+import { DEFAULT_LEVELS, LAB_PASS, LAB_READY, LAB_SNAPSHOT_WRITE, MEASURE_CONFIG, measureConfig, readSeedRecord, SEED_RECORD_FILE, seededLine, seedHome } from "./seed-home.ts";
 import type { SeedStoreResult } from "./seed-store.ts";
 
 // A small home: approximately 1 hour of the live mix, with small cache files.
@@ -110,7 +110,7 @@ describe("seedHome with levels", { timeout: 30_000 }, () => {
 describe("capacity-app.json", () => {
   const app = JSON.parse(readFileSync(join(ROOT, "capacity-app.json"), "utf8")) as {
     readonly variables: readonly { readonly id: string; readonly kind: string }[];
-    readonly start: Readonly<Record<"seed" | "run", { readonly argv: readonly string[]; readonly cwd: string; readonly ready?: { readonly text: string } }>>;
+    readonly start: Readonly<Record<"seed" | "run", { readonly argv: readonly string[]; readonly cwd: string; readonly ready?: { readonly text: string }; readonly lines?: readonly { readonly kind: string; readonly ev: string; readonly title: string }[] }>>;
     readonly metrics: readonly { readonly id: string }[];
   };
 
@@ -126,6 +126,16 @@ describe("capacity-app.json", () => {
     for (const variable of app.variables.filter((each) => each.kind === "store")) {
       expect(line.amounts, variable.id).toHaveProperty(variable.id);
     }
+  });
+
+  it("names the pass line and the snapshot write line of the lab run, each kind and each event one time (CAP-65)", () => {
+    const lines = app.start.run.lines ?? [];
+    expect(lines.map(({ kind, ev }) => ({ kind, ev }))).toEqual([
+      { kind: "pass", ev: LAB_PASS },
+      { kind: "write", ev: LAB_SNAPSHOT_WRITE },
+    ]);
+    for (const each of lines) expect(each.title.length, each.ev).toBeGreaterThan(0);
+    expect(app.start.seed.lines).toBeUndefined();
   });
 
   it("waits for the ready line of the lab run, and the seed sets each store variable", () => {

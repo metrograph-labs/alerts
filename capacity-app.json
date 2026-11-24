@@ -84,7 +84,11 @@
       "ready": {
         "kind": "line",
         "text": "\"ev\":\"lab-ready\""
-      }
+      },
+      "lines": [
+        { "kind": "pass", "ev": "lab-pass", "title": "The end of a pass of the loop" },
+        { "kind": "write", "ev": "lab-snapshot-write", "title": "A write of the start snapshot" }
+      ]
     }
   },
   "services": [
