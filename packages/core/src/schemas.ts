@@ -428,11 +428,9 @@ export const reportSchema: z.ZodType<Report, Report> = schemaOf<Report>()(
       observation: observationIdSchema,
       parameters: z.record(z.string(), z.array(z.string()).readonly()).readonly(),
     })
-    .readonly()
-    .refine((report) => report.areas.length > 0 || report.about.length > 0 || (report.addresses?.length ?? 0) > 0, {
-      error: "A report has one area or more, one subject or more, or one address or more.",
-      path: ["areas"],
-    }),
+    // A report with no area, no subject and no address has no place: a cancel, or a space weather event of the whole
+    // Earth. It reaches no person by a place. The map gives a fatal problem when it cannot read an area (AL-157).
+    .readonly(),
 );
 
 // =============================================================================

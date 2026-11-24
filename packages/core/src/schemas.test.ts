@@ -740,10 +740,11 @@ describe("the round trip of real values", () => {
 });
 
 describe("the value rules", () => {
-  it("a report has one area or more, or one subject or more", () => {
-    fails(reportSchema, { ...WARNING, areas: [], about: [] });
+  it("a report with no area, no subject and no address has no place, and the schema accepts it (AL-157)", () => {
     holds(reportSchema, { ...WARNING, areas: [{ type: "code", system: "ugc", code: "KSZ083" }], about: [] });
     holds(reportSchema, { ...WARNING, areas: [], about: [{ system: SOURCE_SUBJECT, id: "nws-api" }] });
+    holds(reportSchema, { ...WARNING, areas: [], about: [] });
+    holds(reportSchema, { ...WARNING, areas: [], about: [], op: "cancel", references: ["KEY-1"] });
   });
 
   it("a private report has one address or more, and the addresses replace the area (AL-92)", () => {
