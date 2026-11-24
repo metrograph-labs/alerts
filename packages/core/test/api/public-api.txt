@@ -22,6 +22,7 @@ Assessment: build/index.d.ts#Assessment
 Audience: build/index.d.ts#Audience
 BALANCE_KIND: build/index.d.ts#BALANCE_KIND
 BALANCE_STAGES: build/index.d.ts#BALANCE_STAGES
+BILLING_FIELD: build/index.d.ts#BILLING_FIELD
 BalanceHealth: build/index.d.ts#BalanceHealth
 BalanceRead: build/index.d.ts#BalanceRead
 BalanceStage: build/index.d.ts#BalanceStage
@@ -84,6 +85,9 @@ ConfigPart: build/index.d.ts#ConfigPart
 ContactConfig: build/index.d.ts#ContactConfig
 ContactLookup: build/index.d.ts#ContactLookup
 ContactServices: build/index.d.ts#ContactServices
+CopyBilling: build/index.d.ts#CopyBilling
+CopyBillingConfig: build/index.d.ts#CopyBillingConfig
+CopyBillingState: build/index.d.ts#CopyBillingState
 CopyHealth: build/index.d.ts#CopyHealth
 CopyListen: build/index.d.ts#CopyListen
 CopyMeasureOptions: build/index.d.ts#CopyMeasureOptions
@@ -583,6 +587,7 @@ configuredExpectations: build/index.d.ts#configuredExpectations
 contactChannels: build/index.d.ts#contactChannels
 contactConfigSchema: build/index.d.ts#contactConfigSchema
 contextSource: build/index.d.ts#contextSource
+copyBillingConfigSchema: build/index.d.ts#copyBillingConfigSchema
 copyHealthSchema: build/index.d.ts#copyHealthSchema
 copyIdSchema: build/index.d.ts#copyIdSchema
 copyListenSchema: build/index.d.ts#copyListenSchema
@@ -1111,6 +1116,9 @@ export declare const BALANCE_KIND = "system.balance";
 ### build/index.d.ts#BALANCE_STAGES
 export declare const BALANCE_STAGES: readonly BalanceStage[];
 
+### build/index.d.ts#BILLING_FIELD
+export declare const BILLING_FIELD: RegExp;
+
 ### build/index.d.ts#BalanceHealth
 export interface BalanceHealth {
   readonly balance: ProviderBalance;
@@ -1453,6 +1461,22 @@ export interface ContactLookup {
 ### build/index.d.ts#ContactServices
 export type ContactServices = (channel: ChannelId, address: Address) => readonly NodeKey[];
 
+### build/index.d.ts#CopyBilling
+export interface CopyBilling {
+  readonly state: CopyBillingState;
+  readonly at: Instant;
+}
+
+### build/index.d.ts#CopyBillingConfig
+export interface CopyBillingConfig {
+  readonly argv: readonly string[];
+  readonly field: string;
+  readonly stoppedWhen: readonly (string | number | boolean)[];
+}
+
+### build/index.d.ts#CopyBillingState
+export type CopyBillingState = "stopped" | "on" | "unread";
+
 ### build/index.d.ts#CopyHealth
 export interface CopyHealth {
   readonly copy: string;
@@ -1478,6 +1502,7 @@ export interface CopyMeasureOptions {
 export interface CopyPeer {
   readonly id: string;
   readonly url: string;
+  readonly billing?: CopyBillingConfig;
 }
 
 ### build/index.d.ts#CopyRead
@@ -1518,6 +1543,7 @@ export interface CopyWatch {
   readonly read?: CopyRead;
   readonly drills?: Readonly<Record<string, Instant>>;
   readonly unsteadySince?: Instant;
+  readonly billing?: CopyBilling;
 }
 
 ### build/index.d.ts#CorrelationKey
@@ -4526,6 +4552,9 @@ export declare const contactConfigSchema: z.ZodType<ContactConfig, ContactConfig
 
 ### build/index.d.ts#contextSource
 export declare function contextSource(source: SourceDescriptor): boolean;
+
+### build/index.d.ts#copyBillingConfigSchema
+export declare const copyBillingConfigSchema: z.ZodType<CopyBillingConfig, CopyBillingConfig>;
 
 ### build/index.d.ts#copyHealthSchema
 export declare const copyHealthSchema: z.ZodType<CopyHealth, CopyHealth>;

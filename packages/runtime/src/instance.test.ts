@@ -1481,6 +1481,21 @@ describe("the Twilio call channel of the instance", () => {
     expect(open().instance.drift).toBeUndefined();
   });
 
+  it("makes the billing watch only for a peer with the field billing, and the watches of the copies carry its reads (AL-70)", () => {
+    // The fake runner and the fake exchange start no program and no call, and the test starts no pass.
+    const billingRunner = async () => ({ exitCode: 0, stdout: '{"enabled":false}' });
+    const exchange = { call: async () => Promise.reject(new Error("The copy is down.")), configHash: "hash-1" };
+    const billing = { argv: ["cloudctl", "billing"], field: "enabled", stoppedWhen: [false] };
+    const copy: CopySettings = { ...CLOUD, peers: [{ id: "home", url: "http://home.example:4751", billing }] };
+    const { instance } = open(store(SECRETS), CONFIG, undefined, undefined, { copy, exchange, billingRunner });
+    expect(instance.billing).toBeDefined();
+    expect(instance.billing?.watches().map((watch) => watch.copy)).toEqual(["home"]);
+    // The health has the state of the reads of each copy, with no state and no message.
+    expect(instance.health().reads).toContainEqual({ what: "billing of home", at: null, failed: false, next: null });
+    expect(open(store(SECRETS), CONFIG, undefined, undefined, { copy: CLOUD, exchange, billingRunner }).instance.billing).toBeUndefined();
+    expect(open(store(SECRETS), CONFIG, undefined, undefined, { copy, billingRunner }).instance.billing).toBeUndefined();
+  });
+
   it("does not start with some keys of Twilio, a key of a bad form, or a call with no cap, and no problem holds a value", () => {
     const keys = (extra: Readonly<Record<string, string>>): SecretLookup => store({ ...SECRETS, ...TWILIO, ...extra });
     const partial = messageOf(() => open(keys({ TWILIO_API_KEY_SECRET: "" }), calling([SPEND])));

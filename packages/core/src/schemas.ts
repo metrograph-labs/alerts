@@ -135,6 +135,7 @@ import { compareCodeUnits } from "@mark1russell7/text/order";
 import {
   CONFIG_FORMAT,
   CONFIG_PART_FORMAT,
+  BILLING_FIELD,
   COPY_FORMAT,
   copyProblems,
   DRIFT_COMMAND_KINDS,
@@ -148,6 +149,7 @@ import {
   type ConfigPart,
   type ContactConfig,
   type NamedPart,
+  type CopyBillingConfig,
   type CopyListen,
   type CopyPeer,
   type CopySettings,
@@ -1789,9 +1791,29 @@ export const copyListenSchema: z.ZodType<CopyListen, CopyListen> = schemaOf<Copy
   z.strictObject({ host: z.string().min(1, "The address is a non-empty text."), port: z.int().min(1).max(65535, "The port is 1 to 65535.") }).readonly(),
 );
 
-/** This schema checks another copy of the system: its id and the URL of its exchange. */
+/** This schema checks the billing read of the host of another copy (AL-70): the program with its arguments, the field and the stop values. */
+export const copyBillingConfigSchema: z.ZodType<CopyBillingConfig, CopyBillingConfig> = schemaOf<CopyBillingConfig>()(
+  z
+    .strictObject({
+      argv: z.array(z.string().min(1, "An argument of a billing read is a non-empty text.")).min(1, "A billing read names its program.").readonly(),
+      field: z.string().regex(BILLING_FIELD, "The field of a billing read is names with dots between them, each of letters, digits, underscores and hyphens."),
+      stoppedWhen: z
+        .array(z.union([z.string(), z.number(), z.boolean()]))
+        .min(1, "A billing read has one value of a stop or more.")
+        .readonly(),
+    })
+    .readonly(),
+);
+
+/** This schema checks another copy of the system: its id, the URL of its exchange and the billing read of its host. */
 export const copyPeerSchema: z.ZodType<CopyPeer, CopyPeer> = schemaOf<CopyPeer>()(
-  z.strictObject({ id: copyIdSchema, url: z.string().refine(isExchangeUrl, "The URL of a copy is an http or https URL with no user, no query and no fragment.") }).readonly(),
+  z
+    .strictObject({
+      id: copyIdSchema,
+      url: z.string().refine(isExchangeUrl, "The URL of a copy is an http or https URL with no user, no query and no fragment."),
+      billing: copyBillingConfigSchema.exactOptional(),
+    })
+    .readonly(),
 );
 
 /** This schema checks the JSON of the settings of one copy, the file `copy.json`. Then `copyProblems` checks the ranks and the ids. */

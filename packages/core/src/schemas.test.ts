@@ -110,6 +110,7 @@ import {
   checkWith,
   contactConfigSchema,
   copyListenSchema,
+  copyBillingConfigSchema,
   copyPeerSchema,
   copySettingsSchema,
   correlationKeySchema,
@@ -434,6 +435,7 @@ const SCHEMA_NAMES = [
   "channelRunSchema",
   "configPartSchema",
   "contactConfigSchema",
+  "copyBillingConfigSchema",
   "copyHealthSchema",
   "copyIdSchema",
   "copyListenSchema",
@@ -1038,6 +1040,16 @@ describe("the private configuration", () => {
     for (const bad of [{ format: "alerts-copy/2" }, { id: "Home" }, { id: "" }, { id: "-home" }, { id: "a".repeat(33) }, { rank: -1 }, { rank: 0.5 }, { pingKey: "lower" }, { pingKey: "" }, { extra: 1 }]) fails(copySettingsSchema, { ...home, ...bad });
     for (const bad of [{ port: 0 }, { port: 65536 }, { port: 1.5 }, { host: "" }]) fails(copyListenSchema, { host: "100.64.0.1", port: 4751, ...bad });
     for (const url of ["ftp://cloud.example:4751", "http://user@cloud.example:4751", "http://cloud.example:4751/?q=1", "http://cloud.example:4751/#f", "cloud.example:4751", "http://", "http://-cloud.example"]) fails(copyPeerSchema, { id: "cloud", url });
+  });
+
+  it("checks the billing read of the host of another copy (AL-70)", () => {
+    const billing = { argv: ["cloudctl", "billing", "describe", "--format=json"], field: "billing.enabled", stoppedWhen: [false] };
+    const peer = { id: "cloud", url: "http://cloud.example.ts.net:4751", billing };
+    holds(copyPeerSchema, peer);
+    holds(copySettingsSchema, { format: COPY_FORMAT, id: "home", rank: 0, peers: [peer] });
+    holds(copyBillingConfigSchema, { ...billing, field: "state", stoppedWhen: ["CLOSED", "SUSPENDED", 0] });
+    for (const bad of [{ argv: [] }, { argv: [""] }, { argv: "cloudctl" }, { field: "" }, { field: "a..b" }, { field: ".a" }, { field: "a b" }, { field: "a[0]" }, { stoppedWhen: [] }, { stoppedWhen: [null] }, { stoppedWhen: [{}] }, { stoppedWhen: false }, { extra: 1 }]) fails(copyBillingConfigSchema, { ...billing, ...bad });
+    fails(copyPeerSchema, { ...peer, billing: { argv: ["cloudctl"] } });
   });
 
   it("finds the problems of the ranks, the ids and the address of a copy, and the problems hold no URL", () => {
