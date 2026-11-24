@@ -1201,6 +1201,19 @@ describe("the GDELT source of the instance (AL-19)", () => {
     for (const exchange of gdelt) for (const value of [LONGITUDE, LATITUDE]) expect(JSON.stringify(exchange)).not.toContain(String(value));
     expect(pass.view?.incidents.filter((incident) => incident.kind.code.startsWith("security.")) ?? []).toEqual([]);
   });
+
+  it("does not read GDELT when the copy leaves the source to the other copies (AL-160)", async () => {
+    const net = network();
+    const copy: CopySettings = { ...CLOUD, leaveSources: [GDELT_DESCRIPTOR.id] };
+    const { instance, clock } = open(store(SECRETS), sharing, 0, TEST_FETCH_LIMIT, { transport: withGdelt(net), copy });
+    expect(instance.runtime.config.sources.map((source) => source.id)).not.toContain(GDELT_DESCRIPTOR.id);
+    const pass = await finish(clock, instance.runtime.pass());
+    expect(pass.fetched).not.toContain(GDELT_DESCRIPTOR.id);
+    expect(net.exchanges.filter((exchange) => new URL(exchange.url).hostname === "data.gdeltproject.org")).toEqual([]);
+    // An id that names no source of the instance changes nothing.
+    const other = open(store(SECRETS), sharing, 0, TEST_FETCH_LIMIT, { transport: withGdelt(network()), copy: { ...CLOUD, leaveSources: ["no-such-source" as SourceId] } });
+    expect(other.instance.runtime.config.sources.map((source) => source.id)).toContain(GDELT_DESCRIPTOR.id);
+  });
 });
 
 describe("the webhook channel of the instance (AL-55)", () => {

@@ -505,6 +505,12 @@ export interface CopySettings {
    * An example is a receiver that only the loopback of one computer reaches.
    */
   readonly leaveChannels?: readonly ChannelId[];
+  /**
+   * The sources that this copy leaves to the other copies (AL-160). The copy does not read them, and the exchange gives
+   * it their reports. An example is a source with a cost of memory that the host of the copy cannot hold.
+   * An id that names no source of the instance changes nothing.
+   */
+  readonly leaveSources?: readonly SourceId[];
 }
 
 /** The settings of a runtime with no file `copy.json`: the only copy, with rank 0 and no exchange. */
@@ -522,6 +528,7 @@ const ALL_INTERFACES: ReadonlySet<string> = new Set(["0.0.0.0", "::", "[::]", "*
  * - A copy with other copies has the address `listen`, and the address is not an address of all interfaces.
  * - The field `configFrom` names a copy of `peers`.
  * - The field `leaveChannels` names each channel one time, and only a copy with other copies has it.
+ * - The field `leaveSources` names each source one time, and only a copy with other copies has it.
  */
 export function copyProblems(settings: CopySettings): string[] {
   const problems: string[] = [];
@@ -540,6 +547,11 @@ export function copyProblems(settings: CopySettings): string[] {
   if (left.length > 0 && peers.length === 0) problems.push("leaveChannels: a copy with no other copies sends on each channel. Thus it leaves no channel.");
   left.forEach((channel, at) => {
     if (left.indexOf(channel) < at) problems.push(`leaveChannels[${String(at)}]: the channel ${channel} is in the list already.`);
+  });
+  const leftSources = settings.leaveSources ?? [];
+  if (leftSources.length > 0 && peers.length === 0) problems.push("leaveSources: a copy with no other copies reads each source. Thus it leaves no source.");
+  leftSources.forEach((source, at) => {
+    if (leftSources.indexOf(source) < at) problems.push(`leaveSources[${String(at)}]: the source ${source} is in the list already.`);
   });
   if (peers.length > 0 && settings.listen === undefined) problems.push("A copy with other copies needs the address listen of its exchange.");
   if (settings.listen !== undefined && ALL_INTERFACES.has(settings.listen.host)) problems.push("listen.host: the exchange does not listen on all the interfaces. Give the tailnet address of the computer.");
