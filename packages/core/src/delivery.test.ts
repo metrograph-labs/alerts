@@ -121,6 +121,24 @@ const summary = (routes: readonly Route[]) =>
   routes.map((entry) => ({ level: entry.policy.level, state: entry.plan.state, fresh: entry.fresh, sends: entry.plan.sends.map((send) => send.step), cancels: entry.plan.cancels.map((d) => d.key) }));
 
 describe("route", () => {
+  it("reads the parts of each person one time, not one time for each person (AL-136)", () => {
+    // Each read of the field person of a delivery counts. A filter for each person reads the square of the persons.
+    const count = 300;
+    let reads = 0;
+    const counted = (item: Delivery): Delivery =>
+      new Proxy(item, {
+        get(target, key, receiver) {
+          if (key === "person") reads += 1;
+          return Reflect.get(target, key, receiver) as unknown;
+        },
+      });
+    const people = Array.from({ length: count }, (_, index) => `person-${String(index + 1)}` as PersonId);
+    const deliveries = people.map((one) => counted({ ...delivery("life-safety", 0, T0 - MINUTE), person: one, key: messageKey({ incident: anchor, level: "life-safety", person: one, step: 0 }) }));
+    const routes = route(input({ recipients: people.map((one) => recipient(one)), merge: { deliveries } }));
+    expect(routes).toHaveLength(count);
+    expect(reads).toBeLessThanOrEqual(4 * count);
+  });
+
   it("starts a new escalation at the assessed level, and sends its first step", () => {
     const routes = route(input());
     expect(summary(routes)).toEqual([{ level: "life-safety", state: "sent", fresh: true, sends: [0], cancels: [] }]);

@@ -1,5 +1,5 @@
 import type { Duration, HealthPayload, HistoryPayload, Instant, InterestsPayload, MapPayload } from "@mark1russell7/alerts";
-import { add, type Quantity } from "@mark1russell7/quantity";
+import { max, type Quantity } from "@mark1russell7/quantity";
 import { daemon, kubernetes, localDev, service } from "@mark1russell7/service";
 import type { Profile, ServiceBuilder, Timing, WorkerLoop } from "@mark1russell7/service";
 import { probeServer } from "@mark1russell7/service/http";
@@ -120,7 +120,7 @@ export interface Options {
   readonly tell?: { declare(svc: ServiceBuilder): ServiceBuilder };
   /**
    * The context of the traces (`startTelemetry`, AL-82). The service stops it in the last stage, `flush the output`. Thus each
-   * span ends before the process exits. The profile `pod` has no such stage, thus its stop does not stop the context (AL-133).
+   * span ends before the process exits. Each profile has this stage.
    */
   readonly telemetry?: { shutdown(): Promise<void> };
 }
@@ -141,11 +141,12 @@ export interface ServiceExchange {
 
 /**
  * This function gives a profile whose drain also holds the pass in flight. The cap of the drain is
- * the cap of the profile plus `passLimit`. Thus a shutdown does not cut a pass.
+ * the larger of the cap of the profile and `passLimit`. A pass ends within `passLimit`, and the
+ * drain waits for it and for the other work of the drain together. Thus a shutdown does not cut a pass.
  */
 export const holdingPasses = (profile: Profile, passLimit: Duration): Profile => ({
   ...profile,
-  phases: profile.phases?.map((phase) => (phase.name === "drain" ? { ...phase, cap: add(phase.cap, { value: passLimit, unit: "ms" }) } : phase)),
+  phases: profile.phases?.map((phase) => (phase.name === "drain" ? { ...phase, cap: max(phase.cap, { value: passLimit, unit: "ms" }) } : phase)),
 });
 
 /** This function adds the worker of the deploy of the outage call, when the instance has one. */

@@ -68,6 +68,12 @@ export const SEED_RECORD_FILE = "seed-record.json";
 /** The event of the line that the lab run writes when its runtime operates. The ready signal of `capacity-app.json` waits for it. */
 export const LAB_READY = "lab-ready";
 
+/** The event of the line of each pass of the lab run after the ready line. The line kind `pass` of `capacity-app.json` names it (CAP-65). */
+export const LAB_PASS = "lab-pass";
+
+/** The event of the line of each write of the snapshot of the start in the lab run. The line kind `write` of `capacity-app.json` names it (CAP-65). */
+export const LAB_SNAPSHOT_WRITE = "lab-snapshot-write";
+
 /** The levels of the configuration of a home (AL-126). They are the level variables of `capacity-app.json`. */
 export interface SeedLevels {
   /**

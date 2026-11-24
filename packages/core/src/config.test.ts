@@ -227,6 +227,27 @@ describe("loadConfig", () => {
     expect(contactChannels(only, "person-3" as PersonId, CHANNELS)).toEqual([]);
   });
 
+  it("reads each contact one time for the channels of all the persons, not one time for each person (AL-136)", () => {
+    // Each read of the field person of a contact counts. A filter for each person reads the square of the persons.
+    const count = 300;
+    let reads = 0;
+    const people = Array.from({ length: count }, (_, index) => `person-${String(index + 1)}` as PersonId);
+    const all = people.flatMap((one) =>
+      contacts(one).map(
+        (contact) =>
+          new Proxy(contact, {
+            get(target, key, receiver) {
+              if (key === "person") reads += 1;
+              return Reflect.get(target, key, receiver) as unknown;
+            },
+          }),
+      ),
+    );
+    const listed = { contacts: all };
+    for (const one of people) expect(contactChannels(listed, one, CHANNELS)).toHaveLength(2);
+    expect(reads).toBeLessThanOrEqual(2 * all.length);
+  });
+
   it("finds an unknown work, a service that is not an entity and a changed default, and keeps the watch", () => {
     const work = person(p1, [home], { defaults: { works: ["astronomy"] } });
     const service = person(p1, [home], { defaults: { services: [`place:${home}` as NodeKey] } });
