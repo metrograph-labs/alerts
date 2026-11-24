@@ -7,9 +7,9 @@
  */
 
 import { observationId, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch } from "@mark1russell7/alerts";
-import { answerStore, createRequester } from "@mark1russell7/alerts-fetch";
+import { createRequester } from "@mark1russell7/alerts-fetch";
 import { isRecord, type Fields } from "@mark1russell7/optional/read";
-import type { Condition, Conditions, Pace, Reply, Transport } from "polite-crawler/api";
+import { keptReplies, type Condition, type Conditions, type Pace, type Reply, type Transport } from "polite-crawler/api";
 
 import { EVENT_FIELDS, eventTime, REPORT_LIFE_MS, SOURCE_ID } from "./map.ts";
 
@@ -188,7 +188,8 @@ function lastUrlStore(): Conditions & { clear(): void } {
  * Each fetch is one conditional GET (`poll` of polite-crawler) of the query of the past day, with the ETag of the last
  * full answer. A 304 answer has no body. Then the fetch gives the observations of the last full answer again, with
  * only the events of the past day. The fetch gives no cursor: the answer holds each event of the past day. The fetch
- * keeps the last full answer as compressed bytes (`answerStore`), and it reads the answer again at a 304.
+ * keeps the last full answer as compressed bytes (`keptReplies` of `polite-crawler/api`), and it reads the answer again
+ * at a 304.
  */
 export function createEmscFetch(options: EmscFetchOptions): (input: EmscFetchInput, signal?: FetchSignal) => Promise<FetchOutcome> {
   const requester = createRequester({
@@ -204,7 +205,7 @@ export function createEmscFetch(options: EmscFetchOptions): (input: EmscFetchInp
   const conditions = lastUrlStore();
   // The last full answer, with its time of fetch and its latency. A 304 answer gives its read again. The path of the
   // query changes each hour, so the store keeps only the answer of the last URL.
-  const lastAnswer = answerStore<{ readonly fetched: Instant; readonly latency: number }>();
+  const lastAnswer = keptReplies<{ readonly fetched: Instant; readonly latency: number }>();
   let keptUrl: string | undefined;
   const forget = (): void => {
     if (keptUrl !== undefined) lastAnswer.delete(keptUrl);
