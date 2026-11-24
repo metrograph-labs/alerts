@@ -165,6 +165,17 @@ describe("createNwsFetch", () => {
       expect(mainOf(second)).toEqual(mainOf(first));
     });
 
+    it("gives the observations of the newest full answer for a 304, with its time of fetch (AL-145)", async () => {
+      const older = json(collection(), 200, { etag: '"v1"' });
+      const newer = json(collection("nws-flw.json"), 200, { etag: '"v2"' });
+      const { fetch } = fetchWith({ [MAIN]: inTurn(older, newer, NOT_MODIFIED), [CANARY_PATH]: canary });
+      await fetch({ watch });
+      const full = await fetch({ watch });
+      const replay = await fetch({ watch });
+      expect(mainOf(full)).toHaveLength(1);
+      expect(mainOf(replay)).toEqual(mainOf(full));
+    });
+
     it("sends no condition after a body that does not parse", async () => {
       const cut = json('{"type":"FeatureCollection","features":[', 200, { etag: '"v1"' });
       const { fetch, sent } = fetchWith({ [MAIN]: inTurn(cut, NOT_MODIFIED), [CANARY_PATH]: canary });

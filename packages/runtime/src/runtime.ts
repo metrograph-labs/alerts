@@ -5,9 +5,10 @@
  * that it gets.
  */
 import { isFrameClock, type WallClock } from "@mark1russell7/algebra/clock";
-import { channelDownPolicy, DEFAULT_SEND_LIMITS, downChannels, heldPersons, indicatorBreadth, knowsReport, limitShare, observeConditions, ONLY_COPY, type ChannelQuota, type ChannelSnapshot, type CopyWatch, type DrillWatch, type Duration, type EntryTimes, type Exhaustion, type FetchOutcome, type HeldPerson, type Incident, type IndicatorBreadth, type Instant, type LatenessFolds, type LoopBlock, type MergeState, type ObserveCondition, type Report, type ReportId, type SourceDescriptor, type SourceId, type StoreFill, type SourceProcedures, type Watch, type ZoneRegions } from "@mark1russell7/alerts";
+import { channelDownPolicy, DEFAULT_SEND_LIMITS, downChannels, heldPersons, indicatorBreadth, knowsReport, limitShare, matchPlaces, observeConditions, ONLY_COPY, type StoreBound, type WatchedPlace, type ChannelQuota, type ChannelSnapshot, type CopyWatch, type DrillWatch, type Duration, type EntryTimes, type Exhaustion, type FetchOutcome, type HeldPerson, type Incident, type IndicatorBreadth, type Instant, type LatenessFolds, type LoopBlock, type MergeState, type ObserveCondition, type Report, type ReportId, type SourceDescriptor, type SourceId, type StoreFill, type SourceProcedures, type Watch, type ZoneRegions } from "@mark1russell7/alerts";
 import type { ChunkOptions, FoldMark, FoldSnapshot } from "@mark1russell7/sqlite";
 import { errorMessage } from "@mark1russell7/text";
+import { compareCodeUnits } from "@mark1russell7/text/order";
 import type { BalanceWatch } from "./balance.ts";
 import type { LimitWatch } from "./use.ts";
 import { channelWatch, lastFetchSuccess } from "./channel-watch.ts";
@@ -18,6 +19,7 @@ import { envelope, EVENT_TYPES, FOLD_TYPES, unknownEvents, type RuntimeEvent } f
 import { blockEvent } from "./loop-watch.ts";
 import { importPage, sharePage, type ExchangePage, type ReceivedPage } from "./exchange.ts";
 import { fetchStep } from "./fetch.ts";
+import { openIncidents } from "./metrics.ts";
 import { limited } from "./limit.ts";
 import type { RuntimeLog } from "./log.ts";
 import { cutIncidents, modeEvents, modeStatus, observeStep, type ModeStatus, type ObserveParts } from "./observe.ts";
@@ -71,6 +73,11 @@ export interface RuntimeOptions {
    * default is `SNAPSHOT_MISSES`.
    */
   readonly snapshotMisses?: number;
+  /**
+   * The bound of the count of the reports in the merge state (AL-145). The default is `REPORT_LIMIT`. At the bound, a fetch
+   * keeps out each new observation of low priority (`keepsAtBound`), and the view has the line `system.store.full`.
+   */
+  readonly reportLimit?: number;
   /**
    * The retention of old incidents (AL-47). The fold retires on a cadence of the event time (AL-109), thus the retention goes
    * into the context of the fold, `config`. The defaults come from the core.
@@ -163,6 +170,27 @@ export interface RuntimeOptions {
 /** The action of the store of the readings that gave a fault: a write, a delete or a read of the series. */
 export type ReadingsAction = "add" | "prune" | "read";
 
+/**
+ * The default bound of the count of the reports in the merge state (AL-145). A report and its parts take approximately
+ * 9 to 11 kB of the heap. The measure used the fake feeds of the testkit and 1 to 10 persons. A pass also makes one route of
+ * approximately 1.2 kB for each live incident and each person. With 10 persons, 10,000 reports take approximately 230 MB
+ * at the peak of a pass. That is less than half of the heap of a host with 1 GB of memory.
+ */
+export const REPORT_LIMIT = 10_000;
+
+/** The store and the family of the bound of the reports in the line `system.store.full` (AL-145). */
+export const STATE_STORE = "state";
+export const REPORT_FAMILY = "reports";
+
+/**
+ * This function tells if a new report goes into a state at its bound (AL-145). An update or a cancel of an earlier report
+ * goes in. A report for named persons goes in. A report with an area that covers a watched place (`matchPlaces`) goes in. Thus a
+ * full state keeps out only the new reports of other areas: the reports that the delivery sends to no person.
+ */
+export function keepsAtBound(report: Report, places: readonly WatchedPlace[]): boolean {
+  return report.references.length > 0 || (report.addresses?.length ?? 0) > 0 || matchPlaces(report, places).length > 0;
+}
+
 /** The result of one pass. */
 export interface Pass {
   /** The time of the view. */
@@ -191,6 +219,26 @@ export interface Pass {
   readonly breadth?: IndicatorBreadth;
   /** The mode of each source with a mode (AL-73), with the verdict of each source that observes. It has no person. */
   readonly modes?: readonly ModeStatus[];
+}
+
+/**
+ * The part of a pass that a reader keeps after the pass ends (AL-145). It has the routes of the delivery step only as a
+ * count: `open`. The routes are one for each live incident and each person, thus a kept list of them grows with the
+ * product of the two. The next pass makes its routes again from the state.
+ */
+export interface KeptPass extends Omit<Pass, "delivery"> {
+  /** The delivery step of the pass with no routes, when the runtime has a delivery. */
+  readonly delivery?: Omit<DeliveryStep, "routes">;
+  /** The count of the open incidents of the routes of the pass (`openIncidents`). It is 0 with no delivery. */
+  readonly open: number;
+}
+
+/** This function gives the part of a pass that a reader keeps (`KeptPass`). It does not change the pass. */
+export function keptPass(pass: Pass): KeptPass {
+  const { delivery, ...rest } = pass;
+  if (delivery === undefined) return { ...rest, open: 0 };
+  const { routes, ...step } = delivery;
+  return { ...rest, delivery: step, open: openIncidents(routes) };
 }
 
 /** The result of `take`: the import of one page of another copy. */
@@ -421,6 +469,24 @@ export function openRuntime(options: RuntimeOptions): Runtime {
 
   const limit = options.snapshotMisses ?? SNAPSHOT_MISSES;
   if (!Number.isInteger(limit) || limit < 1) throw new Error(`The count of snapshot misses is ${limit}, not an integer of 1 or more.`);
+  const reportLimit = options.reportLimit ?? REPORT_LIMIT;
+  if (!Number.isInteger(reportLimit) || reportLimit < 1) throw new Error(`The bound of the reports is ${reportLimit}, not an integer of 1 or more.`);
+  // The count of the new observations of each source that wait outside the log at its last fetch that passed (AL-145).
+  const waiting = new Map<SourceId, number>();
+  // The admission of one fetch. It counts the reports of the state and the reports that the fetch took before.
+  const admission = (): ((reports: readonly Report[]) => boolean) => {
+    let count = state.merge.reports.length;
+    return (reports) => {
+      if (count + reports.length > reportLimit && !reports.some((report) => keepsAtBound(report, config.places))) return false;
+      count += reports.length;
+      return true;
+    };
+  };
+  const readBounds = (): StoreBound[] => {
+    const sources = [...waiting].filter(([, count]) => count > 0).map(([source]) => source);
+    const count = sources.reduce((sum, source) => sum + (waiting.get(source) ?? 0), 0);
+    return [{ store: STATE_STORE, family: REPORT_FAMILY, entries: state.merge.reports.length, limit: reportLimit, waiting: count, sources: sources.sort(compareCodeUnits) }];
+  };
 
   const fetchOne = async (source: SourceProcedures, descriptor: SourceDescriptor, stop: AbortSignal | undefined): Promise<readonly string[]> => {
     const started = clock.now();
@@ -443,7 +509,8 @@ export function openRuntime(options: RuntimeOptions): Runtime {
     // A failure after the stop is the stop, not a fault of the source. The log keeps no fetch, and the cursor stays.
     if (stopped && !outcome.ok) return [];
     const ended = clock.now();
-    const fetched = fetchStep({ source: descriptor.id, descriptor, procedures: source, started, ended, outcome, known: (id) => log.has(id), frame: state.steps.length });
+    const fetched = fetchStep({ source: descriptor.id, descriptor, procedures: source, started, ended, outcome, known: (id) => log.has(id), frame: state.steps.length, admit: admission() });
+    if (outcome.ok) waiting.set(descriptor.id, fetched.waiting);
     // The readings go first. A failed write of the log leaves the observations new, thus the next fetch gives their readings
     // again, and the store keeps each key once.
     if (fetched.readings.length > 0) {
@@ -598,7 +665,7 @@ export function openRuntime(options: RuntimeOptions): Runtime {
       const stores = readStores();
       // The persons with a hold of the send limit (AL-81). With no delivery, no person has a hold, and each open line stays.
       const held = dispatcher === undefined ? undefined : heldOf(at);
-      const view = systemView(state, config, at, { drills: drilled.snapshots, ...(quotas === undefined ? {} : { quotas }), ...(stores === undefined ? {} : { stores }), balances: watches.flatMap((watch) => watch.balance() ?? []), uses: uses.flatMap((watch) => watch.use() ?? []), ...(options.copies === undefined ? {} : { copies: options.copies.watches(), copy: self, drillWatches: options.drillWatches ?? [] }), ...(folds === undefined ? {} : { folds }), ...(exhausted === undefined ? {} : { exhausted }), ...(held === undefined ? {} : { held }), ...(channels === undefined ? {} : { channels: channels.snapshots() }), ...(observing === undefined ? {} : { observing }) });
+      const view = systemView(state, config, at, { drills: drilled.snapshots, ...(quotas === undefined ? {} : { quotas }), ...(stores === undefined ? {} : { stores }), bounds: readBounds(), balances: watches.flatMap((watch) => watch.balance() ?? []), uses: uses.flatMap((watch) => watch.use() ?? []), ...(options.copies === undefined ? {} : { copies: options.copies.watches(), copy: self, drillWatches: options.drillWatches ?? [] }), ...(folds === undefined ? {} : { folds }), ...(exhausted === undefined ? {} : { exhausted }), ...(held === undefined ? {} : { held }), ...(channels === undefined ? {} : { channels: channels.snapshots() }), ...(observing === undefined ? {} : { observing }) });
       folds = view.folds;
       const event = systemEvent(view);
       if (event !== undefined) conflicts.push(...append([event]));

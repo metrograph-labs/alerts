@@ -1725,6 +1725,7 @@ export const alertConfigSchema: z.ZodType<AlertConfig, AlertConfig> = schemaOf<A
       outage: outageConfigSchema.exactOptional(),
       rankDelay: rankDelaysSchema.exactOptional(),
       rankFloor: durationSchema.exactOptional(),
+      reportLimit: z.number().int().min(1, "The bound of the reports is 1 or more.").exactOptional(),
       assess: assessPolicySchema.exactOptional(),
       drills: z.array(drillConfigSchema).readonly().exactOptional(),
       optIn: z.array(optInConfigSchema).readonly().exactOptional(),

@@ -4,6 +4,11 @@
  * The fatal and lossy problems of the last passed fetch give the health. The log keeps only the new observations and
  * their reports, thus a read that repeats does not make the file larger. The readings of the new observations go to the
  * store of the readings, not to the log.
+ *
+ * A bound of the state (AL-145) can keep a new observation out of the log: `admit` refuses its reports. Then the step
+ * writes neither the observation nor its reports, and the observation stays new. The fetch event then keeps no cursor, thus
+ * the cursor of the source stays. A later fetch gives the observation again, also from a source that reads from a cursor, and
+ * it goes in when the state has space.
  */
 import {
   checkWith,
@@ -44,6 +49,11 @@ export interface FetchInput {
   readonly known: (id: ObservationId) => boolean;
   /** The count of the steps of the wall clock in the log. The id of the fetch has its frame tag. The default is 0. */
   readonly frame?: number;
+  /**
+   * This function tells if the state takes the reports of a new observation (AL-145). The step asks once for each new
+   * observation, in the order of the fetch. The default takes each observation.
+   */
+  readonly admit?: (reports: readonly Report[]) => boolean;
 }
 
 /** The events and the readings of one fetch. The log keeps the events, and the store of the readings keeps the readings. */
@@ -51,6 +61,8 @@ export interface FetchStep {
   readonly events: (ObservationEvent | FetchEvent)[];
   /** The readings of the new observations that pass their checks, in the order of the map. */
   readonly readings: readonly Reading[];
+  /** The count of the new observations that `admit` refused. They wait outside the log. */
+  readonly waiting: number;
 }
 
 /** This function gives the events of one fetch: one event for each new observation, then the fetch event. */
@@ -69,12 +81,13 @@ export function fetchStep(input: FetchInput): FetchStep {
   const id = `fetch:${source}:${started}${frameTag(input.frame ?? 0)}`;
   if (!outcome.ok) {
     const record: FetchRecord = { source, at: started, took, failure: outcome.failure, fresh: 0, fatal: 0 };
-    return { events: [{ ...envelope("fetch", id, ended), record, reports: [], problems: [] }], readings: [] };
+    return { events: [{ ...envelope("fetch", id, ended), record, reports: [], problems: [] }], readings: [], waiting: 0 };
   }
   // A fetch can give an observation twice. Each id counts once.
   const unique = [...new Map(outcome.observations.map((observation) => [observation.id, observation])).values()];
-  const fresh = unique.filter((observation) => !input.known(observation.id));
-  const isFresh = new Set(fresh.map((observation) => observation.id));
+  const isFresh = new Set(unique.filter((observation) => !input.known(observation.id)).map((observation) => observation.id));
+  const fresh: Observation[] = [];
+  let waiting = 0;
   let fatal = 0;
   let lossy = 0;
   const reports: Report[] = [];
@@ -87,6 +100,11 @@ export function fetchStep(input: FetchInput): FetchStep {
     fatal += found.filter((problem) => problem.fatal).length;
     lossy += found.filter((problem) => problem.lossy === true).length;
     if (!isFresh.has(observation.id)) continue;
+    if (input.admit !== undefined && !input.admit(result.reports)) {
+      waiting += 1;
+      continue;
+    }
+    fresh.push(observation);
     reports.push(...result.reports);
     problems.push(...found);
     readings.push(...checked.readings);
@@ -102,8 +120,8 @@ export function fetchStep(input: FetchInput): FetchStep {
     ...(canary === undefined ? {} : { canary }),
   };
   const observed = fresh.map((observation): ObservationEvent => ({ ...envelope("observation", observation.id, ended), observation }));
-  const events = [...observed, { ...envelope("fetch", id, ended), record, ...(outcome.cursor === undefined ? {} : { cursor: outcome.cursor }), reports, problems }];
-  return { events, readings };
+  const events = [...observed, { ...envelope("fetch", id, ended), record, ...(outcome.cursor === undefined || waiting > 0 ? {} : { cursor: outcome.cursor }), reports, problems }];
+  return { events, readings, waiting };
 }
 
 // A lossy problem at a path: the map lost a value of the message.

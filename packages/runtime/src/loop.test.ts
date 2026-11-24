@@ -3,6 +3,7 @@ import type { Instant } from "@mark1russell7/alerts";
 import { detachedLifecycle } from "@mark1russell7/service/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { createLoop, loopTimes, shortestFetchLimit, type LoopTimes, type RuntimeLoop } from "./loop.ts";
+import type { DeliveryStep } from "./delivery.ts";
 import type { Pass } from "./runtime.ts";
 
 const SECOND = 1000;
@@ -108,6 +109,18 @@ describe("createLoop", () => {
     expect(starts).toEqual([T0, T0 + 30 * SECOND, T0 + 60 * SECOND]);
     expect(loop.last()?.at).toBe(T0 + 60 * SECOND);
     expect(errors).toEqual([]);
+  });
+
+  it("keeps the last pass with a count of its open incidents and no routes (AL-145)", async () => {
+    const kind = { code: "met.tornado", label: "Tornado" };
+    // Two persons get the one incident, thus the step has two routes.
+    const route = { incident: { anchor: "report-a", kind } } as unknown as DeliveryStep["routes"][number];
+    const delivery = { routes: [route, route], sent: [], duplicates: [], stopped: [], acknowledged: [], cancelled: [], failures: [], conflicts: [], overdue: [], exhausted: [] } satisfies DeliveryStep;
+    const { loop } = await start((at) => ({ ...pass(at, at + 30 * SECOND), delivery }));
+    const last = loop.last();
+    expect(last?.open).toBe(1);
+    expect(last?.delivery).toEqual({ sent: [], duplicates: [], stopped: [], acknowledged: [], cancelled: [], failures: [], conflicts: [], overdue: [], exhausted: [] });
+    expect(delivery.routes).toHaveLength(2);
   });
 
   it("starts a pass at a wake, and keeps a wake during a pass for the end of that pass", async () => {
