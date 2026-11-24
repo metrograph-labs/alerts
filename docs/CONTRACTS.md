@@ -1574,6 +1574,7 @@ The module `host.ts` gives the host of the live instance as data. A boot task st
 - `node src/install.ts install` installs the boot task, and starts it. A boot task needs an elevated shell one time. `remove` stops the supervisor and removes the task. `status` gives the state of the task, the result of one readiness probe and the times of the outside check. It exits with 1 when the runtime is not ready or the check is too short.
 - After each install, and after each change of `config.json` or `secrets.env`, start `status` when the ready wait passed. A runtime that is not ready sends no alert, and only its log tells it.
 - The boot task starts the supervisor at the start of the computer, before a logon. It starts the supervisor again 1 minute after a stop.
+- On Windows, the boot task starts the supervisor in a headless console (`conhost.exe`). A stop of the task ends only that console. Then the input of the supervisor closes, and the supervisor stops the runtime and itself (AL-141).
 - The supervisor starts the runtime with the profile `daemon` on the ports 4750 and 4751. The runtime is ready when `/readiness` passes, in its startup budget plus one readiness interval.
 - The supervisor uses `/liveness` each 10 seconds. After 3 failures in sequence, it stops the runtime and starts it again. A stuck loop fails the liveness.
 - A stop goes as the message `shutdown` on the IPC channel, because a Windows process cannot catch a signal of its parent. Then the runtime drains its pass.

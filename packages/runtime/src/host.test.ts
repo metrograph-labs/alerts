@@ -34,6 +34,7 @@ import {
   SUPERVISOR_PROFILE,
   supervisorDiscovery,
   supervisorHome,
+  watchesConsole,
 } from "./host.ts";
 import { STOP_MESSAGE } from "./index.ts";
 import { INSTANCE_TIMES } from "./instance.ts";
@@ -168,6 +169,17 @@ describe("the host of the instance", () => {
     const description = declareSupervisor({ start: () => undefined, stop: async () => undefined }).describe();
     expect(description.dependencies.map((dependency) => dependency.name)).toEqual(["group"]);
     expect(capOf(description.shutdown.phases, "tear down dependencies")).toBeGreaterThan(msOf(RUNTIME_GRACE));
+  });
+
+  it("stops the supervisor at the end of its input only when a Windows console started it (AL-141)", () => {
+    const group = { start: () => undefined, stop: async () => undefined };
+    expect(declareSupervisor(group, true).describe().shutdown.triggers).toEqual(["stdin-close"]);
+    expect(declareSupervisor(group).describe().shutdown.triggers ?? []).toEqual([]);
+    // A stop of the boot task ends only the headless console. A Linux unit gives an input that is not a console.
+    expect(watchesConsole("win32", true)).toBe(true);
+    expect(watchesConsole("win32", undefined)).toBe(false);
+    expect(watchesConsole("win32", false)).toBe(false);
+    expect(watchesConsole("linux", true)).toBe(false);
   });
 
   it("starts the runtime with the folder, the ports, the daemon profile and an IPC channel", async () => {
