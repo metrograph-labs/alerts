@@ -874,6 +874,19 @@ export interface ContactLookup {
   readonly services: ContactServices;
 }
 
+// The contacts of each person, one index for each list of contacts. A start reads the channels of each person, thus a
+// filter of the whole list for each person costs the square of the persons (AL-136).
+const contactIndex = new WeakMap<readonly ContactConfig[], ReadonlyMap<string, readonly ContactConfig[]>>();
+
+function contactsOf(contacts: readonly ContactConfig[], person: PersonId): readonly ContactConfig[] {
+  let index = contactIndex.get(contacts);
+  if (index === undefined) {
+    index = Map.groupBy(contacts, (contact) => contact.person as string);
+    contactIndex.set(contacts, index);
+  }
+  return index.get(person) ?? [];
+}
+
 /**
  * This function gives the channels of the contacts of a person, in the order of `channels`. Each such descriptor has a
  * contact of the person in the configuration. The layer `delivery` takes the services of these channels.
@@ -888,7 +901,7 @@ export function contactChannels(
   channels: readonly ChannelDescriptor[],
   lookup?: ContactLookup,
 ): readonly ChannelDescriptor[] {
-  const contacts = config.contacts.filter((contact) => contact.person === person);
+  const contacts = contactsOf(config.contacts, person);
   const ids = new Set<string>(contacts.map((contact) => contact.channel));
   const found = channels.filter((channel) => ids.has(channel.id));
   if (lookup === undefined) return found;
