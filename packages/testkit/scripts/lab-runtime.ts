@@ -32,14 +32,12 @@ import { openMeasuredRuntime, type SnapshotWriteTime } from "@mark1russell7/aler
 import { delay, wallClock } from "@mark1russell7/algebra/clock";
 import { MeterProvider } from "@opentelemetry/sdk-metrics";
 import { collectReadings, LAB_READINGS, LabMetricReader } from "../src/lab-readings.ts";
-import { LAB_READY, readSeedRecord } from "../src/seed-home.ts";
+import { LAB_PASS, LAB_READY, LAB_SNAPSHOT_WRITE, readSeedRecord } from "../src/seed-home.ts";
 
 const [home, feeds, channels] = process.argv.slice(2);
 if (home === undefined) throw new Error("Give the home folder of the seed.");
 if ((feeds === undefined) !== (channels === undefined)) throw new Error("Give the URLs of the two fakes, or no URL.");
 const record = readSeedRecord(home);
-/** The event of the line of one write of the snapshot of the start. The app `capacity-app.json` names it. */
-const LAB_SNAPSHOT_WRITE = "lab-snapshot-write";
 const wall = wallClock({ start: record.end });
 const line = (fields: Readonly<Record<string, unknown>>): void => {
   process.stdout.write(`${JSON.stringify(fields)}\n`);
@@ -79,7 +77,7 @@ for (;;) {
   await delay(wall, wakeAt === undefined ? retry : Math.max(0, wakeAt - wall.now()));
   const started = performance.now();
   const pass = await measured.pass();
-  line({ ev: "lab-pass", at: pass.at, ms: Math.round(performance.now() - started), fetched: pass.fetched.length });
+  line({ ev: LAB_PASS, at: pass.at, ms: Math.round(performance.now() - started), fetched: pass.fetched.length });
   await readings();
   wakeAt = pass.wakeAt;
 }
