@@ -358,6 +358,8 @@ PART_NAME: build/index.d.ts#PART_NAME
 PATH_SYSTEMS: build/index.d.ts#PATH_SYSTEMS
 PERSON_SUBJECT: build/index.d.ts#PERSON_SUBJECT
 PRIORS_FORMAT: build/index.d.ts#PRIORS_FORMAT
+PairHistory: build/index.d.ts#PairHistory
+PairSurprise: build/index.d.ts#PairSurprise
 ParsedConfig: build/index.d.ts#ParsedConfig
 PartText: build/index.d.ts#PartText
 PassedFetch: build/index.d.ts#PassedFetch
@@ -800,6 +802,8 @@ outageAudit: build/index.d.ts#outageAudit
 outageConfigSchema: build/index.d.ts#outageConfigSchema
 outagePersonConfigSchema: build/index.d.ts#outagePersonConfigSchema
 ownBaselineSchema: build/index.d.ts#ownBaselineSchema
+pairHistories: build/index.d.ts#pairHistories
+pairSurprises: build/index.d.ts#pairSurprises
 parentKind: build/index.d.ts#parentKind
 parseConfig: build/index.d.ts#parseConfig
 parseCopySettings: build/index.d.ts#parseCopySettings
@@ -873,6 +877,7 @@ route: build/index.d.ts#route
 ruleSteps: build/index.d.ts#ruleSteps
 runOpens: build/index.d.ts#runOpens
 schemaOf: build/index.d.ts#schemaOf
+scopeOf: build/index.d.ts#scopeOf
 scoreFactorSchema: build/index.d.ts#scoreFactorSchema
 scorePriorsSchema: build/index.d.ts#scorePriorsSchema
 scoreRuleResult: build/index.d.ts#scoreRuleResult
@@ -3336,6 +3341,27 @@ export declare const PERSON_SUBJECT = "alerts.person";
 ### build/index.d.ts#PRIORS_FORMAT
 export declare const PRIORS_FORMAT: ScorePriors["format"];
 
+### build/index.d.ts#PairHistory
+export interface PairHistory {
+  readonly a: string;
+  readonly b: string;
+  readonly reads: number;
+  readonly signalsA: number;
+  readonly signalsB: number;
+  readonly joint: number;
+}
+
+### build/index.d.ts#PairSurprise
+export interface PairSurprise {
+  readonly a: string;
+  readonly b: string;
+  readonly reads: number;
+  readonly joint: number;
+  readonly rate: number;
+  readonly surprise: number;
+  readonly together: number;
+}
+
 ### build/index.d.ts#ParsedConfig
 export interface ParsedConfig {
   readonly config: AlertConfig;
@@ -4144,6 +4170,7 @@ export interface Surprise {
   readonly rare: readonly SignalRate[];
   readonly noRate: readonly string[];
   readonly weighted?: WeightedSurprise;
+  readonly pairs?: readonly PairSurprise[];
 }
 
 ### build/index.d.ts#SystemLine
@@ -4967,7 +4994,7 @@ export declare const indicatorAreaSchema: z.ZodType<IndicatorArea, IndicatorArea
 export declare function indicatorBreadth(series: readonly SeriesSignal[], places: readonly WatchedPlace[], zones?: readonly ZoneRegions[]): IndicatorBreadth;
 
 ### build/index.d.ts#indicatorSurprise
-export declare function indicatorSurprise(breadth: IndicatorBreadth, histories: readonly SignalHistory[], minReads?: number): IndicatorSurprise;
+export declare function indicatorSurprise(breadth: IndicatorBreadth, histories: readonly SignalHistory[], minReads?: number, pairs?: readonly PairHistory[]): IndicatorSurprise;
 
 ### build/index.d.ts#indicatorUnits
 export declare function indicatorUnits(breadth: IndicatorBreadth): SignalUnit[];
@@ -5259,6 +5286,12 @@ export declare const outagePersonConfigSchema: z.ZodType<OutagePersonConfig, Out
 ### build/index.d.ts#ownBaselineSchema
 export declare const ownBaselineSchema: z.ZodType<OwnBaseline, OwnBaseline>;
 
+### build/index.d.ts#pairHistories
+export declare function pairHistories(buckets: readonly BucketReads[]): PairHistory[];
+
+### build/index.d.ts#pairSurprises
+export declare function pairSurprises(units: readonly SignalUnit[], pairs: readonly PairHistory[], minReads?: number): PairSurprise[];
+
 ### build/index.d.ts#parentKind
 export declare function parentKind(code: string): string | null;
 
@@ -5477,6 +5510,9 @@ export declare function runOpens(run: ChannelRun, policy: ChannelDownPolicy): bo
 
 ### build/index.d.ts#schemaOf
 export declare function schemaOf<T>(): <S extends z.ZodType<T, T>>(schema: S & Exact<S, T>) => z.ZodType<T, T>;
+
+### build/index.d.ts#scopeOf
+export declare function scopeOf(unit: string): string;
 
 ### build/index.d.ts#scoreFactorSchema
 export declare const scoreFactorSchema: z.ZodType<ScoreFactor, ScoreFactor>;

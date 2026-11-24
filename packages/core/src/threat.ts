@@ -19,10 +19,18 @@
  *   `weightedBernoulliTest`, thus the weighted surprise does not tell more than the data gives.
  * - When each unit has the same rate, the weighted p is the p of the count.
  *
+ * The pairs of units of one scope give the links between the domains (`pairHistories`, `pairSurprises`):
+ *
+ * - The history of a pair counts the buckets with a read of the two units. It also counts the buckets with a signal of each and of both.
+ * - A pair can have two signals at the time of the read. Then `rate` is the upper bound of the Wilson interval of its joint
+ *   signals. Its surprise tells how rare the two signals are together.
+ * - The value `together` is the chance of the joint count or more when the two units are independent. A low value tells
+ *   that a common cause moves the two units. Thus their two signals are not two independent signs.
+ *
  * A high surprise tells that the independent model fails: a hidden common cause moves many units at one time. The
  * surprise gives no decision and no level. The calculation of the level (AL-31) reads it.
  */
-import { poissonBinomialTest, WEIGHTED_TAIL_CELLS, WEIGHTED_TAIL_MAX_WORK, weightedBernoulliTest, wilson } from "@mark1russell7/rigor-statistics";
+import { binomialTest, poissonBinomialTest, WEIGHTED_TAIL_CELLS, WEIGHTED_TAIL_MAX_WORK, weightedBernoulliTest, wilson } from "@mark1russell7/rigor-statistics";
 import { compareCodeUnits } from "@mark1russell7/text/order";
 import type { Breadth, IndicatorBreadth } from "./breadth.ts";
 import type { Duration, Instant, PlaceId } from "./contracts.ts";
@@ -67,6 +75,42 @@ export interface Surprise {
   readonly noRate: readonly string[];
   /** The surprise of the signals, with a weight for each unit from its rate. A group of more than `MAX_WEIGHTED_UNITS` units has none. */
   readonly weighted?: WeightedSurprise;
+  /** The pairs of the units with two signals, from `pairSurprises`. Only a call with the histories of the pairs gives this field. */
+  readonly pairs?: readonly PairSurprise[];
+}
+
+/** The joint history of two units of one scope. */
+export interface PairHistory {
+  /** The first unit of the pair. It comes before `b` in the order of the code units. */
+  readonly a: string;
+  readonly b: string;
+  /** The count of the buckets with a read of the two units. */
+  readonly reads: number;
+  /** The count of these buckets with a signal of `a`. */
+  readonly signalsA: number;
+  /** The count of these buckets with a signal of `b`. */
+  readonly signalsB: number;
+  /** The count of these buckets with a signal of the two units. */
+  readonly joint: number;
+}
+
+/** The surprise of two units of one scope with a signal at one time. */
+export interface PairSurprise {
+  readonly a: string;
+  readonly b: string;
+  /** The count of the buckets with a read of the two units. */
+  readonly reads: number;
+  /** The count of these buckets with a signal of the two units. */
+  readonly joint: number;
+  /** The upper bound of the Wilson interval of the joint signals, from 0 to 1. */
+  readonly rate: number;
+  /** The value `-log10(rate)`, 0 or more. */
+  readonly surprise: number;
+  /**
+   * The chance of `joint` or more joint signals in `reads` buckets when the two units are independent, from 0 to 1. The
+   * rate of each unit is the upper bound of its Wilson interval in these buckets. Thus a low value does not come from a short history.
+   */
+  readonly together: number;
 }
 
 /** The surprise of the sum of the weights of the units with a signal. The weight of a unit is `-ln(rate)`. */
@@ -142,6 +186,50 @@ export function surpriseOf(units: readonly SignalUnit[], histories: readonly Sig
   return weighted === undefined ? found : { ...found, weighted };
 }
 
+/** This function gives the scope of a unit id: the part before the last `/`. An id with no `/` has the empty scope. */
+export function scopeOf(unit: string): string {
+  const at = unit.lastIndexOf("/");
+  return at < 0 ? "" : unit.slice(0, at);
+}
+
+/**
+ * This function gives the surprise of each pair of units with two signals, from the histories of the pairs. The result is
+ * a function of the set of the units and of the set of the histories: the order does not change it.
+ *
+ * - A pair has two units of one scope. A unit id counts one time. When an id has two units, a signal counts.
+ * - A pair with fewer than `minReads` joint reads gives no surprise.
+ * - When a pair has two histories, the history with more reads counts. Equal reads keep the higher count of joint signals.
+ * - The order is from the lowest rate. Equal rates keep the order of the code units of the ids.
+ */
+export function pairSurprises(units: readonly SignalUnit[], pairs: readonly PairHistory[], minReads: number = MIN_READS): PairSurprise[] {
+  const signal = new Map<string, boolean>();
+  for (const item of units) signal.set(item.unit, (signal.get(item.unit) ?? false) || item.signal);
+  const history = new Map<string, PairHistory>();
+  for (const item of pairs) {
+    checkPair(item);
+    const key = `${item.a}\n${item.b}`;
+    const old = history.get(key);
+    if (old === undefined || item.reads > old.reads || (item.reads === old.reads && item.joint > old.joint)) history.set(key, item);
+  }
+  const found: PairSurprise[] = [];
+  for (const item of history.values()) {
+    if (signal.get(item.a) !== true || signal.get(item.b) !== true || item.reads < Math.max(1, minReads)) continue;
+    const rate = wilson(item.joint, item.reads).high;
+    const expected = wilson(item.signalsA, item.reads).high * wilson(item.signalsB, item.reads).high;
+    const together = boundP(binomialTest(item.joint, item.reads, Math.min(1, expected), "greater"));
+    found.push({ a: item.a, b: item.b, reads: item.reads, joint: item.joint, rate, surprise: Math.max(0, -Math.log10(boundP(rate))), together });
+  }
+  return found.sort((x, y) => x.rate - y.rate || compareCodeUnits(x.a, y.a) || compareCodeUnits(x.b, y.b));
+}
+
+function checkPair(item: PairHistory): void {
+  const counts = [item.reads, item.signalsA, item.signalsB, item.joint];
+  const fits = counts.every(whole) && item.signalsA <= item.reads && item.signalsB <= item.reads && item.joint <= Math.min(item.signalsA, item.signalsB);
+  if (!fits || compareCodeUnits(item.a, item.b) >= 0 || scopeOf(item.a) !== scopeOf(item.b)) {
+    throw new RangeError(`The pair ${item.a} and ${item.b} needs two ids of one scope in order, and whole counts that fit.`);
+  }
+}
+
 function boundP(p: number): number {
   return Math.min(1, Math.max(SMALLEST_P, p));
 }
@@ -201,11 +289,18 @@ export function indicatorUnits(breadth: IndicatorBreadth): SignalUnit[] {
   return [...breadthUnits(breadth.world, WORLD_SCOPE), ...breadth.places.flatMap((place) => breadthUnits(place, placeScope(place.place)))];
 }
 
-/** This function gives the surprise of the signals of the world and of each place, from the histories of the units. */
-export function indicatorSurprise(breadth: IndicatorBreadth, histories: readonly SignalHistory[], minReads: number = MIN_READS): IndicatorSurprise {
+/**
+ * This function gives the surprise of the signals of the world and of each place, from the histories of the units. With
+ * the histories of the pairs, each surprise also has its field `pairs`.
+ */
+export function indicatorSurprise(breadth: IndicatorBreadth, histories: readonly SignalHistory[], minReads: number = MIN_READS, pairs?: readonly PairHistory[]): IndicatorSurprise {
+  const of = (units: readonly SignalUnit[]): Surprise => {
+    const found = surpriseOf(units, histories, minReads);
+    return pairs === undefined ? found : { ...found, pairs: pairSurprises(units, pairs, minReads) };
+  };
   return {
-    world: surpriseOf(breadthUnits(breadth.world, WORLD_SCOPE), histories, minReads),
-    places: breadth.places.map((place) => ({ place: place.place, ...surpriseOf(breadthUnits(place, placeScope(place.place)), histories, minReads) })),
+    world: of(breadthUnits(breadth.world, WORLD_SCOPE)),
+    places: breadth.places.map((place) => ({ place: place.place, ...of(breadthUnits(place, placeScope(place.place))) })),
   };
 }
 
@@ -256,4 +351,42 @@ export function signalHistories(buckets: readonly BucketReads[]): SignalHistory[
     }
   }
   return [...counts].sort(([a], [b]) => compareCodeUnits(a, b)).map(([unit, count]) => ({ unit, reads: count.reads, signals: count.signals }));
+}
+
+/**
+ * This function gives the joint history of each pair of units of one scope from the reads of the buckets. The order is the
+ * order of the code units of `a` and then `b`. The result is a function of the set of the reads: the order and a duplicate do not
+ * change it. The rules of a bucket are the rules of `signalHistories`.
+ *
+ * Cost: O(buckets × k²), with k the count of the units of one scope in one bucket.
+ */
+export function pairHistories(buckets: readonly BucketReads[]): PairHistory[] {
+  const seen = new Map<Instant, Map<string, boolean>>();
+  for (const item of buckets) {
+    const units = seen.get(item.bucket) ?? new Map<string, boolean>();
+    for (const one of item.units) units.set(one.unit, (units.get(one.unit) ?? false) || one.signal);
+    seen.set(item.bucket, units);
+  }
+  const counts = new Map<string, { a: string; b: string; reads: number; signalsA: number; signalsB: number; joint: number }>();
+  for (const units of seen.values()) {
+    const scopes = new Map<string, [string, boolean][]>();
+    for (const entry of units) scopes.set(scopeOf(entry[0]), [...(scopes.get(scopeOf(entry[0])) ?? []), entry]);
+    for (const members of scopes.values()) {
+      members.sort(([x], [y]) => compareCodeUnits(x, y));
+      for (let i = 0; i < members.length; i += 1) {
+        for (let j = i + 1; j < members.length; j += 1) {
+          const [a, signalA] = members[i]!;
+          const [b, signalB] = members[j]!;
+          const key = `${a}\n${b}`;
+          const count = counts.get(key) ?? { a, b, reads: 0, signalsA: 0, signalsB: 0, joint: 0 };
+          count.reads += 1;
+          if (signalA) count.signalsA += 1;
+          if (signalB) count.signalsB += 1;
+          if (signalA && signalB) count.joint += 1;
+          counts.set(key, count);
+        }
+      }
+    }
+  }
+  return [...counts.values()].sort((x, y) => compareCodeUnits(x.a, y.a) || compareCodeUnits(x.b, y.b));
 }
