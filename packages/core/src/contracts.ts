@@ -1012,6 +1012,40 @@ export interface LimitUse {
 }
 
 /**
+ * The stages of the joint down time of the copies (AL-148). Each stage is a line of system reports:
+ *
+ * - `over`: the joint down time in the window of the last read is longer than the limit.
+ * - `unread`: no read passed for the maximum age or longer. Then the watch cannot see the joint down time.
+ */
+export type JointStage = "over" | "unread";
+
+/** One read of the joint down time of the copies that passed (AL-148). */
+export interface JointDownRead {
+  /** The joint down time in the window before the read: the time in which no copy could tell the person. */
+  readonly down: Duration;
+  /** The count of the down spans in the window. */
+  readonly spans: number;
+  readonly at: Instant;
+}
+
+/**
+ * The watch of the joint down time of the copies, at one time (AL-148). The copies share one outside check. The check
+ * gets only the success pings of each copy, thus it is down only when no copy can tell the person.
+ */
+export interface JointDown {
+  /** The window of the sum before each read: for example 7 days. */
+  readonly window: Duration;
+  /** The longest joint down time in the window. Above it, the stage is `over`. */
+  readonly limit: Duration;
+  /** The longest time with no read that passed. After it, the stage is `unread`. */
+  readonly maxAge: Duration;
+  /** The start of the watch. With no read, the time of `unread` counts from it. */
+  readonly since: Instant;
+  /** The last read that passed. */
+  readonly read?: JointDownRead;
+}
+
+/**
  * The stages of a function of the alert chain (AL-90). Each stage is a line of system reports:
  *
  * - `single`: the down parts leave the function with a single point of failure that it did not have with no part down.

@@ -404,14 +404,14 @@ describe("the check of Healthchecks.io", () => {
 
   it("finds the check of the ping URL, and gives its times in milliseconds", () => {
     const other = { ...check, ping_url: "https://hc-ping.com/11111111-1111-4111-8111-111111111111", timeout: 86400 };
-    expect(checkOfPingUrl(answer([other, { ...check, ping_url: `${URL_OF_CHECK}/` }]), URL_OF_CHECK)).toEqual({ ok: true, check: { status: "up", timeout: 60 * SECOND, grace: 400 * SECOND } });
+    expect(checkOfPingUrl(answer([other, { ...check, ping_url: `${URL_OF_CHECK}/` }]), URL_OF_CHECK)).toEqual({ ok: true, check: { status: "up", timeout: 60 * SECOND, grace: 400 * SECOND, id: "00000000-0000-4000-8000-000000000000" } });
   });
 
   it("compares the URLs in linear time, also for a long run of slashes from the server", { timeout: 2_000 }, () => {
     const slashes = "/".repeat(100_000);
     const hostile = { ...check, ping_url: `${slashes}x` };
     const found = checkOfPingUrl(answer([hostile, { ...check, ping_url: `${URL_OF_CHECK}${slashes}` }]), URL_OF_CHECK);
-    expect(found).toEqual({ ok: true, check: { status: "up", timeout: 60 * SECOND, grace: 400 * SECOND } });
+    expect(found).toEqual({ ok: true, check: { status: "up", timeout: 60 * SECOND, grace: 400 * SECOND, id: "00000000-0000-4000-8000-000000000000" } });
     expect(checkOfPingUrl(answer([hostile]), `${slashes}x${slashes}`)).toMatchObject({ ok: true });
     expect(checkOfPingUrl(answer([hostile]), `${slashes}y`)).toMatchObject({ ok: false });
   });
