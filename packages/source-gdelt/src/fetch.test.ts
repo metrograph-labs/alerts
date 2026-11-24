@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 import type { FetchOutcome, PlaceId, Watch, WatchedPlace } from "@mark1russell7/alerts";
-import { crc32 } from "@mark1russell7/files/archive";
+import { writeZipEntries } from "@mark1russell7/files/archive";
 import type { Exchange, Reply, Transport } from "polite-crawler/api";
 import { HostScheduler } from "polite-crawler/politeness";
 import { describe, expect, it } from "vitest";
@@ -25,52 +25,11 @@ const place = (id: string, at?: readonly [number, number], bufferKm = 0): Watche
 /** The places of the tests: the cities of the three kept events. The requests hold no place. */
 const WATCH: Watch = { places: [place("dhaka", [90.4086, 23.7231]), place("port-au-prince", [-72.335, 18.5392]), place("gaza", [34.3333, 31.4167])] };
 
-/** This function writes a ZIP archive whose entries are stored with no compression. It is only for the tests. */
-function storedZip(entries: readonly { readonly name: string; readonly text: string }[]): Uint8Array {
-  const locals: Buffer[] = [];
-  const centrals: Buffer[] = [];
-  let offset = 0;
-  for (const { name, text } of entries) {
-    const nameBytes = Buffer.from(name, "utf8");
-    const data = Buffer.from(text, "utf8");
-    const crc = crc32(data);
-    const local = Buffer.alloc(30);
-    local.writeUInt32LE(0x04034b50, 0);
-    local.writeUInt16LE(20, 4);
-    local.writeUInt16LE(0x21, 12);
-    local.writeUInt32LE(crc, 14);
-    local.writeUInt32LE(data.length, 18);
-    local.writeUInt32LE(data.length, 22);
-    local.writeUInt16LE(nameBytes.length, 26);
-    const central = Buffer.alloc(46);
-    central.writeUInt32LE(0x02014b50, 0);
-    central.writeUInt16LE(20, 4);
-    central.writeUInt16LE(20, 6);
-    central.writeUInt16LE(0x21, 14);
-    central.writeUInt32LE(crc, 16);
-    central.writeUInt32LE(data.length, 20);
-    central.writeUInt32LE(data.length, 24);
-    central.writeUInt16LE(nameBytes.length, 28);
-    central.writeUInt32LE(offset, 42);
-    locals.push(local, nameBytes, data);
-    centrals.push(central, nameBytes);
-    offset += 30 + nameBytes.length + data.length;
-  }
-  const directory = Buffer.concat(centrals);
-  const end = Buffer.alloc(22);
-  end.writeUInt32LE(0x06054b50, 0);
-  end.writeUInt16LE(entries.length, 8);
-  end.writeUInt16LE(entries.length, 10);
-  end.writeUInt32LE(directory.length, 12);
-  end.writeUInt32LE(offset, 16);
-  return new Uint8Array(Buffer.concat([...locals, directory, end]));
-}
-
 /** This function gives the time `YYYYMMDDHHMMSS` that is `minutes` after the time of the fixture. */
 const stampAfter = (minutes: number): string => new Date(addedTime(STAMP)! + minutes * MIN).toISOString().replace(/\D/g, "").slice(0, 14);
 
 /** This function gives the archive of an event file of the time `stamp`, with the real lines and that time of addition. */
-const archiveOf = (stamp: string): Uint8Array => storedZip([{ name: `${stamp}.export.CSV`, text: TEXT.replaceAll("\t20261123200000\t", `\t${stamp}\t`) }]);
+const archiveOf = (stamp: string): Uint8Array => writeZipEntries([{ name: `${stamp}.export.CSV`, bytes: new TextEncoder().encode(TEXT.replaceAll("\t20261123200000\t", `\t${stamp}\t`)), method: 0 }]);
 
 /** This function gives the text of `lastupdate.txt` for an archive, in the real format. */
 const lastUpdateOf = (stamp: string, archive: Uint8Array, md5 = createHash("md5").update(archive).digest("hex")): string =>
