@@ -16,6 +16,7 @@ import { isRecord } from "@mark1russell7/optional/read";
 import { canonicalHash } from "@mark1russell7/rigor-generators";
 import { openFoldSnapshot, openOrQuarantine, type FoldKey, type FoldMark, type FoldRow, type FoldSnapshotFile, type Quarantined } from "@mark1russell7/sqlite";
 import type { EntrySnapshot } from "./entries.ts";
+import type { RuntimeEvent } from "./events.ts";
 import { retention } from "./retention.ts";
 import { withJoins, type FoldContext, type RuntimeState } from "./state.ts";
 
@@ -25,6 +26,26 @@ import { withJoins, type FoldContext, type RuntimeState } from "./state.ts";
  * until the change raises the version.
  */
 export const FOLD_VERSION = 2;
+
+/**
+ * The upgrade of a snapshot of an old fold to the fold of `FOLD_VERSION`, with no fold of the log (AL-153). The field `since`
+ * holds the event types that only the new fold reads. The upgrade is exact only when the log has no event of these types at or
+ * before the mark of the snapshot. Then the two folds read the same events, and the upgrade adds the new parts of the state.
+ */
+export interface SnapshotUpgrade {
+  readonly since: readonly RuntimeEvent["type"][];
+  readonly upgrade: (snapshot: StartSnapshot) => StartSnapshot;
+}
+
+/**
+ * The upgrades of the snapshots of old folds, by the version of the old fold. A start with no snapshot of `FOLD_VERSION` reads
+ * the snapshot of an old fold with an upgrade. Thus a deploy that raises the version does not fold the whole log at its start.
+ * A gate test pins each upgrade to the digests of the two versions.
+ */
+export const SNAPSHOT_UPGRADES: Readonly<Record<number, SnapshotUpgrade>> = {
+  // Version 2 (AL-88) adds the blocks of the event loop. Only a `loop` event adds a block.
+  1: { since: ["loop"], upgrade: (snapshot) => ({ ...snapshot, state: { ...snapshot.state, blocks: [] } }) },
+};
 
 /** The content of a snapshot: the state and the entry index at the position of its mark. */
 export interface StartSnapshot {
@@ -187,12 +208,15 @@ export interface StartRead {
   readonly events: number;
   /** The name of the error of the read of the snapshot. Then the open folded the whole log. */
   readonly fault?: string;
+  /** The version of the old fold of the snapshot that the open upgraded (AL-153). It is undefined for a snapshot of `FOLD_VERSION`. */
+  readonly upgraded?: number;
 }
 
 /** This function gives the line of the output for the read of the log at a start. The line has counts and positions only. */
 export function startReadText(start: StartRead): string {
   const folded = `${String(start.events)} events`;
-  if (start.snapshot !== undefined) return `The start read the snapshot at the position ${String(start.snapshot.seq)} of the log, and it folded the ${folded} after it.`;
+  const upgraded = start.upgraded === undefined ? "" : ` It upgraded the snapshot from the fold version ${String(start.upgraded)}.`;
+  if (start.snapshot !== undefined) return `The start read the snapshot at the position ${String(start.snapshot.seq)} of the log, and it folded the ${folded} after it.${upgraded}`;
   if (start.fault !== undefined) return `The read of the snapshot failed (${start.fault}). The start folded the ${folded} of the whole log.`;
   return `The start had no snapshot of this log and of this configuration. It folded the ${folded} of the whole log.`;
 }
