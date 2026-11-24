@@ -2125,6 +2125,46 @@ The core matches the area of a report to a place with one rule for each source. 
 - A position in a shape has the distance 0. The reason `place` of the assessment has `distanceKm` when the distance is in the buffer. A match by a shape only has no codes.
 - `@mark1russell7/geo` gives the distances. An edge of a polygon is a straight line in longitude and latitude, as in GeoJSON (RFC 7946).
 
+### A moving place (AL-40, proposed)
+
+A watched place has a fixed position. A moving place gets its position from the phone of its person. Thus the relevance and the rule of the life-safety warnings also cover the place where the person is at that time.
+
+The format:
+
+- A moving place is a place of the configuration with the field `moving`: `{ "device": <id>, "maxAgeMinutes": <minutes> }`. It has no `at`.
+- Its `codes` give the states and the country where the person can be. The runtime adds the zone codes near each fix.
+- A moving place has no `sharePosition`. The load refuses the field on a moving place. Thus no source gets the position.
+- A source gets the codes of a moving place with no position. Thus the sources fetch the states where the person can be.
+- `localPlaces` does not give a moving place. A moving place goes into a pass only from a fix.
+- A fix is one reading: `PositionFix` `{ place, at, accuracyKm, observedAt }`. The core gives the type and its pure rules.
+- The function `movingPlace(place, fix, now, codes)` of the core gives the `WatchedPlace` at the fix, or `undefined`.
+- It gives `undefined` with no fix, with a fix older than `maxAgeMinutes`, and with a fix in the future by more than one minute.
+- The buffer of the place at a fix is `bufferKm` plus `accuracyKm`. Thus an imprecise fix widens the match, on the safe side.
+- A person watches a moving place as a fixed place: by its id in `places`, in the interest graph and in a rule of `mandatory`.
+
+The runtime:
+
+- The intake is the procedure `alerts.position` at the path `/position`. Each call needs the token of the file `position.token` of the home.
+- The intake reads the JSON of OwnTracks, an open phone app: `_type` `location`, `lat`, `lon`, `acc` in meters and `tst` in seconds.
+- The tracker id `tid` of OwnTracks is the `device` of the moving place. The intake refuses an unknown device.
+- The places of a pass come from the fixed places and the last fix of each moving place. The fixed places do not change in a process.
+- A new fix gives the zone codes near its position from the outlines of the store. A fix outside each outline keeps the codes of the file.
+- The health route tells the age of the last fix of each moving place by its id. It tells no position.
+- A moving place with no fix in its age limit is not in the places of the pass. The health route then tells `stale`.
+
+The privacy rules:
+
+- The fix stays on the copy that takes it. It is in memory and in the home store of that copy only.
+- The exchange, the sync of the configuration and the map payload do not carry a fix. A mirror and the cloud copy do not get it.
+- No log, no problem text and no why line holds a position of a fix. A why line names the place by its label.
+- The phone sends the fix over the private network of its person, to a copy on a machine of that person.
+
+The limits:
+
+- Only the copy that takes the fixes watches a moving place. When that copy is down, no copy watches it.
+- A stop of the runtime loses the last fix when the home store does not have it. The next fix of the phone gives it again.
+- The phone app decides the time between two fixes. A long time between fixes makes the place stale.
+
 ### The fire zones of the NWS (AL-33)
 
 The NWS has three kinds of UGC zones in a state: the counties (`KSC173`), the forecast zones and the fire weather zones. A forecast zone and a fire zone can have one code (`KSZ083`) and different outlines. Thus the two kinds have two region systems: `ugc` for the counties and the forecast zones, and `ugc-fire` for the fire zones.

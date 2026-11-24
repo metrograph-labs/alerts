@@ -23,6 +23,7 @@ import { sendLimitProblems, type SendLimitConfig } from "./send-limit.ts";
 import { throttleProblems, type ThrottleConfig } from "./throttle.ts";
 import type { LinkPolicy } from "./link.ts";
 import { kindOfNode, placeNode, placeOfNode, type WhyLabels } from "./why.ts";
+import { movingProblems } from "./moving.ts";
 
 /** The name of the format of a configuration. A change that breaks a configuration gets a new name. */
 export const CONFIG_FORMAT = "alerts-config/1";
@@ -49,6 +50,19 @@ export interface PlaceConfig {
   readonly bufferKm: number;
   /** The sources that get the position of the place. When it is absent, no source gets it. */
   readonly sharePosition?: readonly SourceId[];
+  /**
+   * The rule of a moving place (AL-40). A moving place gets its position from the fixes of a phone, not from `at`. Its
+   * `codes` give the states and the country where the person can be. `movingPlace` gives the place at a fix.
+   */
+  readonly moving?: MovingRule;
+}
+
+/** The rule of a moving place: the device that sends its fixes, and the age limit of a fix. */
+export interface MovingRule {
+  /** The id that the phone sends with each fix, for example the tracker id of OwnTracks. */
+  readonly device: string;
+  /** A fix older than this limit gives no place. */
+  readonly maxAgeMinutes: number;
 }
 
 /**
@@ -638,6 +652,7 @@ export function loadConfig(config: AlertConfig, channels: readonly ChannelDescri
     places.add(place.id);
     // The core matches by the region codes only, until the home of geography has the tests of shapes.
     if (place.codes.length === 0) problems.push(`The place ${place.id} has no region code, so no incident matches it.`);
+    problems.push(...movingProblems(place, config.places));
   }
 
   const people = new Set<string>();
@@ -980,7 +995,7 @@ function relevanceProblems(watch: PersonWatch, own: ReadonlySet<string>): string
  * instance, with each position. Do not give these places to a source: use `sourcePlaces`.
  */
 export function localPlaces(config: AlertConfig): WatchedPlace[] {
-  return config.places.map((place) => watchedPlace(place, true));
+  return config.places.filter((place) => place.moving === undefined).map((place) => watchedPlace(place, true));
 }
 
 /** This function gives the places of the configuration for one source. A place has a position only when it shares it with that source. */
