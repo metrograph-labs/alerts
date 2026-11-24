@@ -10,10 +10,14 @@
  *   Windows cannot rename a link over a junction, thus the swap removes the junction and makes the new one. A start
  *   in that short gap fails, and the supervisor starts the runtime again.
  * - The supervisor loads its own files only at its start. Thus a change of them needs a restart of the boot task.
+ * - A supervisor older than AL-89 starts each runtime from the real path of its slot, not through the link. Thus it
+ *   starts the old code until the restart of the boot task.
+ * - The package links of a slot must resolve in the slot (AL-144). On Windows, pnpm makes junctions with absolute
+ *   targets. Thus `adopt` installs slot a again at its new path, and a swap refuses a slot with a link outside it.
  */
 import { createHash } from "node:crypto";
 import type { Stats } from "node:fs";
-import { lstat, readlink, rename, rmdir, symlink, unlink } from "node:fs/promises";
+import { lstat, readdir, readlink, rename, rmdir, symlink, unlink } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { runCommand, type CommandResult } from "@procedures/shell/command";
 
@@ -209,21 +213,110 @@ export function withMark(file: DeployFile, slot: SlotName, mark: StageMark | und
   return { format: 1, marks };
 }
 
-/** The facts that decide a swap: the live slot, the mark of the target slot, its commit and its changes. */
+/** A package link of a slot: the path of the link, and its target as `readlink` gives it. */
+export interface PackageLink {
+  readonly path: string;
+  readonly target: string;
+}
+
+/**
+ * This function tells if `path` is the folder `folder` or a path in it. On Windows, the case and a long-path prefix do
+ * not count.
+ */
+export function insideFolder(folder: string, path: string, platform: NodeJS.Platform = process.platform): boolean {
+  const plain = (value: string): string => {
+    const full = resolve(value.replace(/^\\\\\?\\/u, "")).replace(/(.)[\\/]+$/u, "$1");
+    return platform === "win32" ? full.toLowerCase().replace(/\//gu, "\\") : full;
+  };
+  const root = plain(folder);
+  const full = plain(path);
+  const separator = platform === "win32" ? "\\" : "/";
+  return full === root || full.startsWith(root.endsWith(separator) ? root : `${root}${separator}`);
+}
+
+/**
+ * This function gives the package links of a slot that resolve outside the folder of the slot (AL-144). A relative
+ * target starts at the folder of the link. On Windows, pnpm makes junctions with absolute targets. Thus a checkout that
+ * moves to a slot keeps links to its old path, and a link at that path can name the other slot.
+ */
+export function foreignLinks(slot: string, links: readonly PackageLink[], platform: NodeJS.Platform = process.platform): readonly PackageLink[] {
+  return links.filter((link) => !insideFolder(slot, resolve(dirname(link.path), link.target.replace(/^\\\\\?\\/u, "")), platform));
+}
+
+/**
+ * This function reads the package links of a slot. They are the links in `node_modules` of the checkout and of each
+ * package, also in each scope folder. It does not go into the store of pnpm.
+ */
+export async function readPackageLinks(slot: string): Promise<readonly PackageLink[]> {
+  const folders = [join(slot, "node_modules")];
+  for (const name of await namesIn(join(slot, "packages"))) folders.push(join(slot, "packages", name, "node_modules"));
+  const links: PackageLink[] = [];
+  const add = async (path: string): Promise<boolean> => {
+    const stat = await lstatOrNone(path);
+    if (stat?.isSymbolicLink() !== true) return false;
+    links.push({ path, target: await readlink(path) });
+    return true;
+  };
+  for (const folder of folders) {
+    for (const name of await namesIn(folder)) {
+      if (name.startsWith(".")) continue;
+      const path = join(folder, name);
+      if ((await add(path)) || !name.startsWith("@")) continue;
+      for (const inner of await namesIn(path)) await add(join(path, inner));
+    }
+  }
+  return links;
+}
+
+/** This function gives the names in a folder, or no name when the folder does not exist. */
+async function namesIn(folder: string): Promise<readonly string[]> {
+  try {
+    return await readdir(folder);
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT" || code === "ENOTDIR") return [];
+    throw error;
+  }
+}
+
+/** The package links of the two slots that resolve outside their own slot (`foreignLinks`). */
+export interface ForeignLinks {
+  readonly live: readonly PackageLink[];
+  readonly target: readonly PackageLink[];
+}
+
+/** The facts that decide a swap: the live slot, the mark of the target slot, its commit, its changes and the foreign links. */
 export interface SwapFacts {
   readonly live: LiveState;
   readonly mark: StageMark | undefined;
   readonly head: string | undefined;
   readonly clean: boolean;
+  readonly foreign?: ForeignLinks | undefined;
 }
+
+/** This function gives one example of a foreign link for a message. */
+const linkExample = (links: readonly PackageLink[]): string => {
+  const first = links[0];
+  return first === undefined ? "" : `, for example ${first.path} -> ${first.target}`;
+};
 
 /**
  * This function gives the reason that a swap to the other slot cannot go, or undefined. The live path must be a link to
  * a slot. The other slot needs a mark of its present commit with each check, and no change in its tree.
+ * No package link of the two slots can resolve outside its own slot (AL-144). After a swap, such a link names the
+ * other slot, and a start from that slot fails.
  */
 export function swapRefusal(facts: SwapFacts): string | undefined {
   if (facts.live.kind !== "link" || facts.live.slot === undefined) return "The live path is not a link to a slot. Start `deploy.ts adopt` first.";
-  const slot = otherSlot(facts.live.slot);
+  const from = facts.live.slot;
+  const slot = otherSlot(from);
+  const foreign = facts.foreign;
+  if (foreign !== undefined && foreign.target.length > 0) {
+    return `Slot ${slot} has ${foreign.target.length} package links outside its folder${linkExample(foreign.target)}. Start \`deploy.ts relink\` first.`;
+  }
+  if (foreign !== undefined && foreign.live.length > 0) {
+    return `Slot ${from} has ${foreign.live.length} package links outside its folder${linkExample(foreign.live)}. After the swap, a start from slot ${from} fails. Stop the boot task, start \`deploy.ts relink ${from}\`, and start the task.`;
+  }
   if (facts.head === undefined) return `Slot ${slot} has no checkout. Start \`deploy.ts stage <commit>\` first.`;
   if (facts.mark === undefined || facts.mark.sha !== facts.head) return `Slot ${slot} has no stage of its commit. Start \`deploy.ts stage <commit>\` first.`;
   const missing = STAGE_CHECKS.filter((check) => !facts.mark?.checks.includes(check));

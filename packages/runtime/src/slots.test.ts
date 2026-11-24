@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -7,6 +7,8 @@ import {
   adoptLive,
   checkoutOf,
   entryRoot,
+  foreignLinks,
+  insideFolder,
   installArgs,
   liveRoot,
   loadStep,
@@ -14,6 +16,7 @@ import {
   parseDeployFile,
   pnpmCall,
   readLive,
+  readPackageLinks,
   runStep,
   samePath,
   SERVICE_PACKAGE,
@@ -162,6 +165,73 @@ describe("the marks of a stage and the swap rule (AL-89)", () => {
     // A stage of the code before AL-112 step 2 wrote no file of the outage bundles. Thus a swap refuses its mark.
     expect(swapRefusal({ ...facts, mark: { ...goodMark, checks: ["install", "config", "load"] } })).toContain("bundles");
     expect(swapRefusal({ ...facts, clean: false })).toContain("changes");
+  });
+
+  it("refuses a swap when a package link of either slot resolves outside its slot (AL-144)", () => {
+    const facts = { live: linkTo("a"), mark: goodMark, head: SHA, clean: true };
+    const bad = [{ path: "/x/live-a/node_modules/pkg", target: "/x/live/node_modules/.pnpm/pkg" }];
+    expect(swapRefusal({ ...facts, foreign: { live: [], target: [] } })).toBeUndefined();
+    expect(swapRefusal({ ...facts, foreign: { live: [], target: bad } })).toContain("Slot b has 1 package links outside its folder");
+    expect(swapRefusal({ ...facts, foreign: { live: bad, target: [] } })).toContain("relink a");
+  });
+});
+
+describe("the package links of a slot (AL-144)", () => {
+  it("tells a path in a folder from a path next to it, on each platform", () => {
+    expect(insideFolder("/x/live-a", "/x/live-a/node_modules/pkg", "linux")).toBe(true);
+    expect(insideFolder("/x/live-a", "/x/live-a", "linux")).toBe(true);
+    // The live path is a prefix of the name of the slot, but not a folder of it.
+    expect(insideFolder("/x/live", "/x/live-a/node_modules", "linux")).toBe(false);
+    expect(insideFolder("/x/live-a", "/x/live/node_modules", "linux")).toBe(false);
+    expect(insideFolder("D:\\git\\live-a", "\\\\?\\d:\\GIT\\live-a\\node_modules\\pkg", "win32")).toBe(true);
+    expect(insideFolder("D:\\git\\live-a", "D:\\git\\live\\node_modules\\pkg", "win32")).toBe(false);
+  });
+
+  it("gives the links whose target is outside the slot, and starts a relative target at the folder of the link", () => {
+    const links = [
+      { path: "/x/live-a/node_modules/one", target: "/x/live-a/node_modules/.pnpm/one" },
+      { path: "/x/live-a/node_modules/two", target: ".pnpm/two" },
+      { path: "/x/live-a/node_modules/three", target: "/x/live/node_modules/.pnpm/three" },
+      { path: "/x/live-a/packages/core/node_modules/four", target: "../../../../live-b/node_modules/.pnpm/four" },
+    ];
+    expect(foreignLinks("/x/live-a", links, "linux").map((link) => link.path)).toEqual([
+      "/x/live-a/node_modules/three",
+      "/x/live-a/packages/core/node_modules/four",
+    ]);
+  });
+
+  describe("on the file system", () => {
+    let top = "";
+    beforeEach(async () => {
+      top = await mkdtemp(join(tmpdir(), "alerts-links-"));
+    });
+    afterEach(async () => {
+      await rm(top, { recursive: true, force: true });
+    });
+
+    it("finds the links that an adopt leaves on the old path of the checkout", async () => {
+      const slots = slotsOf(join(top, "live"));
+      const store = join(slots.live, "node_modules", ".pnpm", "pkg");
+      await mkdir(store, { recursive: true });
+      await mkdir(join(slots.live, "node_modules", "@scope"), { recursive: true });
+      await mkdir(join(slots.live, "packages", "core", "node_modules"), { recursive: true });
+      // An install on Windows makes junctions with absolute targets, as these links.
+      await symlink(store, join(slots.live, "node_modules", "pkg"), "junction");
+      await symlink(store, join(slots.live, "node_modules", "@scope", "inner"), "junction");
+      await symlink(store, join(slots.live, "packages", "core", "node_modules", "pkg"), "junction");
+      expect(foreignLinks(slots.live, await readPackageLinks(slots.live))).toEqual([]);
+
+      await adoptLive(slots);
+      const links = await readPackageLinks(slots.a);
+      expect(links).toHaveLength(3);
+      // Each link still names the live path. After a swap to slot b, it names slot b.
+      expect(foreignLinks(slots.a, links)).toHaveLength(3);
+    });
+
+    it("reads no link from a slot with no node_modules", async () => {
+      await mkdir(join(top, "empty"));
+      expect(await readPackageLinks(join(top, "empty"))).toEqual([]);
+    });
   });
 });
 
