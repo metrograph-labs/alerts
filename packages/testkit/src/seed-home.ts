@@ -75,8 +75,8 @@ export const LAB_PASS = "lab-pass";
 export const LAB_SNAPSHOT_WRITE = "lab-snapshot-write";
 
 /**
- * The event of the line of the amounts of the lab run (AL-154): the routes, the holds of the send limit and the suppressions
- * of the throttle. The line kind `amounts` of `capacity-app.json` names it. The start laws read each amount as a variable.
+ * The event of the line of the amounts of the lab run (AL-154). The amounts are the routes, the holds of the send limit
+ * and the suppressions of the throttle. The line kind `amounts` of `capacity-app.json` names it. The start laws read each amount as a variable.
  */
 export const LAB_AMOUNTS = "lab-amounts";
 
