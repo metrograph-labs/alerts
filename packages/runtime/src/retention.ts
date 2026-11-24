@@ -9,6 +9,7 @@
  */
 import {
   incidents,
+  OBSERVE_WINDOW,
   QUIET_HORIZON,
   reportPasses,
   retirements,
@@ -63,21 +64,23 @@ export function retention(options: RetentionOptions = {}): Required<RetentionOpt
  * needs each of these incidents:
  *
  * - An incident with an escalation, a hold or a suppression of this copy. The digest tells the holds and the suppressions later.
- * - An incident with a report of a source in observe mode. The verdict of the source counts its reports over its window.
+ * - An incident with a report of a source in observe mode, for the observe window after the receipt of the report. The
+ *   verdict of the source counts only the reports of its window (`OBSERVE_WINDOW`). After the window, the report is quiet (AL-172).
  * - An incident with a report that starts the check of an expectation. The limit of the lateness reads the whole horizon.
  *
  * An incident with a delivery or an acknowledgment keeps the horizon in the core, thus this function does not examine them.
  */
-export function quietKeeps(state: RuntimeState, expectations: readonly Expectation[]): (incident: Incident) => boolean {
+export function quietKeeps(state: RuntimeState, expectations: readonly Expectation[], at: Instant): (incident: Incident) => boolean {
   const held = new Set<ReportId>();
   for (const each of [...state.starts, ...state.holds, ...state.suppressions]) held.add(each.incident);
   const observing = observingSources(state);
+  const counted = at - OBSERVE_WINDOW;
   const reports = new Map(state.merge.reports.map((report) => [report.id, report]));
   const needed = (id: ReportId): boolean => {
     if (held.has(id)) return true;
     const report = reports.get(id);
     if (report === undefined) return false;
-    return observing.has(report.source) || expectations.some((expectation) => expectation.from === report.source && reportPasses(expectation.when, report));
+    return (observing.has(report.source) && report.received >= counted) || expectations.some((expectation) => expectation.from === report.source && reportPasses(expectation.when, report));
   };
   return (incident) => incident.reports.some(needed);
 }
@@ -101,7 +104,7 @@ export function retiredEvent(
   expectations: readonly Expectation[] = [],
 ): RetiredEvent | undefined {
   const found = incidents(state.merge, at, { link });
-  const reports = retirements(state.merge, found, at, horizon, { horizon: quiet, keeps: quietKeeps(state, expectations) });
+  const reports = retirements(state.merge, found, at, horizon, { horizon: quiet, keeps: quietKeeps(state, expectations, at) });
   const gone = new Set(reports);
   // A delivery key does not name its incident, thus the event names the cancelled keys of the deliveries of the incidents.
   const keys = new Set(state.merge.deliveries.filter((delivery) => gone.has(delivery.incident)).map((delivery) => delivery.key));
