@@ -10,7 +10,7 @@ import type { Cancel, Clock, WallClock } from "@mark1russell7/algebra/clock";
 import type { Duration, Instant } from "@mark1russell7/alerts";
 import { workerLoop, type WorkerLoop } from "@mark1russell7/service";
 import { SpanStatusCode, trace, type Tracer } from "@opentelemetry/api";
-import type { Pass } from "./runtime.ts";
+import { keptPass, type KeptPass, type Pass } from "./runtime.ts";
 import { SERVICE_NAME } from "./telemetry.ts";
 
 const ms = (value: number) => ({ value, unit: "ms" });
@@ -105,8 +105,8 @@ export interface RuntimeLoop {
    * The runtime gets it as its option `wake`.
    */
   wake(): void;
-  /** This method gives the last pass that ended, or `undefined` before the first pass. */
-  last(): Pass | undefined;
+  /** This method gives the kept part of the last pass that ended (`keptPass`), or `undefined` before the first pass. */
+  last(): KeptPass | undefined;
   /**
    * This method tells why the loop is stuck, or it gives `undefined`. The liveness check of the
    * service reads it. The loop is stuck when a pass runs longer than `passLimit`, or when no pass
@@ -126,7 +126,7 @@ export function createLoop(options: LoopOptions): RuntimeLoop {
   const { clock, times } = options;
   const tracer = options.tracer ?? trace.getTracer(SERVICE_NAME);
   let timer: Cancel | undefined;
-  let last: Pass | undefined;
+  let last: KeptPass | undefined;
   // The start of the pass in flight, and the latest time for the next pass to start.
   let running: Instant | undefined;
   let due: Instant | undefined;
@@ -173,7 +173,7 @@ export function createLoop(options: LoopOptions): RuntimeLoop {
         } finally {
           running = undefined;
         }
-        last = pass;
+        last = keptPass(pass);
         if (pass.wakeAt === undefined) return undefined;
         if (!(pass.wakeAt > pass.at)) {
           options.onError?.(new Error(`The pass at ${pass.at} gave the wake time ${pass.wakeAt}, which is not after it.`), 0);

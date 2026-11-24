@@ -10,7 +10,7 @@ import { balanceWatch, type BalanceReading } from "./balance.ts";
 import { limitWatch, type UseReading } from "./use.ts";
 import { FOLD_TYPES, type RuntimeEvent } from "./events.ts";
 import { openRuntimeLog, type RuntimeLog } from "./log.ts";
-import { openRuntime, type Pass, type RuntimeOptions } from "./runtime.ts";
+import { keepsAtBound, openRuntime, REPORT_LIMIT, type Pass, type RuntimeOptions } from "./runtime.ts";
 import type { StartRead } from "./start-snapshot.ts";
 import { rebuild, type RuntimeState } from "./state.ts";
 import type { ViewConfig } from "./view.ts";
@@ -399,6 +399,86 @@ describe("a restart from the snapshot of the start (AL-105)", () => {
       store.close();
       log.close();
     }
+  });
+});
+
+describe("the bound of the reports (AL-145)", () => {
+  // The body of a fake report: its key, the code of its area, and the key of the report that it updates.
+  interface Body {
+    readonly key: string;
+    readonly code: string;
+    readonly updates?: string;
+  }
+  const bodyOf = (key: string, code: string, updates?: string): Body => ({ key, code, ...(updates === undefined ? {} : { updates }) });
+  const reportOf = (seen: Observation): Report => {
+    const body = JSON.parse(seen.body) as Body;
+    const made = report(seen.source, body.key, T0, seen);
+    const references = body.updates === undefined ? [] : [reportId({ source: seen.source, key: body.updates, sent: T0 })];
+    return { ...made, references, areas: [{ type: "code", system: "ugc", code: body.code }] };
+  };
+  // A source that gives the bodies of the list at each fetch.
+  function listed(read: () => readonly Body[]): SourceProcedures {
+    return {
+      describe: () => descriptor(API, MINUTE),
+      fetch: () => Promise.resolve({ ok: true, observations: read().map((body) => observation(API, body.key, T0, body)), complete: true }),
+      map: ({ observation: seen }) => ({ reports: [reportOf(seen)], problems: [] }),
+    };
+  }
+  // The keys of the reports of the source. The merge state also has the system reports, and the bound counts them too.
+  const sourceKeys = (state: RuntimeState) => state.merge.reports.filter((entry) => entry.source === API).map((entry) => entry.key);
+  const fullLines = (state: RuntimeState) => Object.values(state.lines.open).filter((line) => line.kind.code === "system.store.full");
+
+  it("keeps out a new report of another area at the bound, takes an update and a report of a watched place, and tells the waiting reports", async () => {
+    const log = openRuntimeLog(":memory:");
+    let bodies: Body[] = [bodyOf("far-1", "KSZ001"), bodyOf("far-2", "KSZ002")];
+    const clock = fakeWallClock(T0);
+    const options = { log, clock, sources: [listed(() => bodies)], watch: () => ({ places: [KANSAS], kinds: ["met"] as const }), view: VIEW, run: "run-0" };
+    try {
+      const runtime = openRuntime({ ...options, reportLimit: 2 });
+      const first = await runtime.pass();
+      expect(sourceKeys(runtime.state()).sort()).toEqual(["far-1", "far-2"]);
+      // The state is at its bound, thus the line opens. A change of the counts alone gives no update of the line.
+      const full = first.view.step.reports.filter((entry) => entry.kind.code === "system.store.full");
+      expect(full.map((entry) => entry.parameters)).toEqual([{ entries: ["2"], limit: ["2"], waiting: ["0"] }]);
+      expect(fullLines(runtime.state()).map((line) => JSON.parse(line.facts) as unknown)).toEqual([{ store: "state", family: "reports" }]);
+
+      bodies = [...bodies, bodyOf("far-3", "KSZ003"), bodyOf("near-1", "KSZ083"), bodyOf("update-1", "KSZ001", "far-1")];
+      await clock.advance(MINUTE);
+      await runtime.pass();
+      expect(sourceKeys(runtime.state()).sort()).toEqual(["far-1", "far-2", "near-1", "update-1"]);
+      expect(log.has(`${API}:far-3` as ObservationId)).toBe(false);
+      expect(fullLines(runtime.state())).toHaveLength(1);
+
+      // A runtime with a higher bound reads the same log. The waiting report is new to it, thus it goes in at the first fetch.
+      await clock.advance(MINUTE);
+      const wider = openRuntime({ ...options, run: "run-1" });
+      await wider.pass();
+      expect(sourceKeys(wider.state())).toContain("far-3");
+      expect(fullLines(wider.state())).toEqual([]);
+    } finally {
+      log.close();
+    }
+  });
+
+  it("refuses a bound that is not an integer of 1 or more, and gives the default of 10,000", () => {
+    const log = openRuntimeLog(":memory:");
+    try {
+      expect(() => openRuntime({ log, clock: fakeWallClock(T0), sources: [], watch: () => ({ places: [KANSAS], kinds: ["met"] }), view: VIEW, run: "run-0", reportLimit: 0 })).toThrow(
+        "The bound of the reports is 0, not an integer of 1 or more.",
+      );
+    } finally {
+      log.close();
+    }
+    expect(REPORT_LIMIT).toBe(10_000);
+  });
+
+  it("takes at the bound an update, a report for named persons and a report of a watched place, and no other report", () => {
+    const seen = observation(API, "far-1", T0, bodyOf("far-1", "KSZ001"));
+    const far = reportOf(seen);
+    expect(keepsAtBound(far, [KANSAS])).toBe(false);
+    expect(keepsAtBound({ ...far, references: ["an earlier report"] }, [KANSAS])).toBe(true);
+    expect(keepsAtBound({ ...far, addresses: ["person:a"] } as Report, [KANSAS])).toBe(true);
+    expect(keepsAtBound({ ...far, areas: [{ type: "code", system: "ugc", code: "KSZ083" }] }, [KANSAS])).toBe(true);
   });
 });
 

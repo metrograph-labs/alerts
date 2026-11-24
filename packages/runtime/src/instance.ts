@@ -116,11 +116,11 @@ import { overdueLimit, type DeliveryOptions } from "./delivery.ts";
 import { copyDrills, watchedDrills } from "./drills.ts";
 import type { RuntimeLog } from "./log.ts";
 import { createLoop, loopTimes, shortestFetchLimit, type LoopTimes, type RuntimeLoop } from "./loop.ts";
-import { openIncidents, runtimeMetrics } from "./metrics.ts";
+import { runtimeMetrics } from "./metrics.ts";
 import { outageDeploy, outageDeployWorker, outageSetup, type OutageDeployWorker } from "./outage.ts";
 import { exchangeLoop, exchangeWorker, type EntriesSource, type ExchangeCall, type ExchangeRound, type ExchangeWorker } from "./peers.ts";
 import { channelQuota } from "./quota.ts";
-import { openRuntime, type Pass, type Runtime, type RuntimeOptions } from "./runtime.ts";
+import { keptPass, openRuntime, type KeptPass, type Pass, type Runtime, type RuntimeOptions } from "./runtime.ts";
 import { START_SNAPSHOT_EVERY, START_SNAPSHOT_FLOOR } from "./start-snapshot.ts";
 import { addZoneCodes, keepShapes, placeCodesKey, refreshUntil, shapeSources, type InstanceShapes, type ShapeOutcome, type ZoneCodeCounts } from "./shapes.ts";
 import { chooseFeeds, feedsKey, keepTransit, type InstanceTransit, type TransitCache, type TransitOutcome } from "./transit.ts";
@@ -153,7 +153,7 @@ export const LOUD_STEADY: Duration = 5 * 60_000;
  * This function tells if a start is steady: its passes span `LOUD_STEADY` or more (AL-108). It is the rule of the first
  * success ping to the loud check. The answer of the exchange tells it to each other copy.
  */
-export const steadyPasses = (first: Pass | undefined, last: Pass | undefined): boolean => first !== undefined && last !== undefined && last.at - first.at >= LOUD_STEADY;
+export const steadyPasses = (first: Pick<Pass, "at"> | undefined, last: Pick<Pass, "at"> | undefined): boolean => first !== undefined && last !== undefined && last.at - first.at >= LOUD_STEADY;
 
 /**
  * This function gives the key of `secrets.env` with the address of the first check of a copy. Each copy has its own
@@ -1127,10 +1127,11 @@ export function openInstance(options: InstanceOptions): Instance {
     throttle: throttleOf(config.throttle),
   };
 
-  // The last pass of the runtime, from the loop or from a direct call of `pass`. The map reads it.
-  let latest: Pass | undefined;
-  // The first pass of this start. The answer of the exchange tells that the copy is steady after `LOUD_STEADY` of passes (AL-108).
-  let first: Pass | undefined;
+  // The kept part of the last pass of the runtime, from the loop or from a direct call of `pass`. The map reads it. It has
+  // no routes: they grow with the live incidents and the persons (AL-145).
+  let latest: KeptPass | undefined;
+  // The time of the first pass of this start. The answer of the exchange tells that the copy is steady after `LOUD_STEADY` of passes (AL-108).
+  let first: Pick<Pass, "at"> | undefined;
   // The live metrics (AL-132). Each collection reads the levels: the feeds of the start, the persons and the open incidents of the routes of the last pass.
   const metrics =
     options.meter === undefined
@@ -1138,7 +1139,7 @@ export function openInstance(options: InstanceOptions): Instance {
       : runtimeMetrics(options.meter, () => ({
           feeds: chosen.feeds.length,
           persons: options.config.recipients.length,
-          incidents: openIncidents(latest?.delivery?.routes ?? []),
+          incidents: latest?.open ?? 0,
         }));
   // The start of this instance. Each family of a store gets its first entry in its window after this time (AL-86).
   const startedAt = wall.now();
@@ -1170,6 +1171,8 @@ export function openInstance(options: InstanceOptions): Instance {
     run: options.run,
     copy: copy.id,
     delivery,
+    // The bound of the reports of the state (AL-145). Without the field, the runtime gives `REPORT_LIMIT`.
+    ...(config.reportLimit === undefined ? {} : { reportLimit: config.reportLimit }),
     // The drills of the live paths that this copy starts (AL-43). Each person keeps the quiet window of the configuration.
     drills: copyDrills(config.drills ?? [], recipients, copy.id, copy.rank),
     // The drills of the other copies, in the watch of this copy. A copy that stops for a full window tells nothing.
@@ -1200,8 +1203,8 @@ export function openInstance(options: InstanceOptions): Instance {
     // The two start at a pass after the good start (AL-75). The entry marks the start after this function, thus the pass that
     // makes the start good starts neither of them.
     onPass: async (pass) => {
-      latest = pass;
-      first ??= pass;
+      latest = keptPass(pass);
+      first ??= { at: pass.at };
       if (options.startGood?.() ?? true) {
         shapes.afterPass(pass.view.incidents, refreshUntil(runtime.config.sources, (descriptor) => nextFetch(runtime.state(), descriptor)));
         transit?.afterPass();
