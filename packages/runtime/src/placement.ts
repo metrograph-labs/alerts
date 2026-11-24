@@ -9,19 +9,22 @@
  * - Each candidate is an offer: a provider, a region and a plan, with its cost of a month.
  * - Each provider and each region is a shared fragment. Thus two copies on one provider share one cause of failure.
  * - Nobody picks a provider or a price. Each offer that meets the needs is a candidate.
+ * - A base stack gives the needs that all copies share, for example the push services and the feeds. These needs limit
+ *   the gain of each new copy, thus the front tells the true gain.
  *
  * The chances are inputs. Each input tells if it is measured or assumed, and its source. This module holds no chance
  * and no limit of cost. The caller reads the limit of cost from the private configuration at run time.
  */
 
 import { meteredCost, type MeteredObservation, type PriceTerm } from "@mark1russell7/market";
-import { arrayOf, numberOf, textOf } from "@mark1russell7/optional/read";
+import { arrayOf, isRecord, numberOf, textOf } from "@mark1russell7/optional/read";
 import { OBJECTIVE_STEPS, PLACEMENT_SCHEMA, planPlacement, type Candidate, type PlacementLayer, type PlacementPlan, type PlacementRow, type PlanOptions, type Shared } from "@mark1russell7/stack-placement";
 import { RISK_SCHEMA, worksChance, type RiskLayer } from "@mark1russell7/stack-risk";
 import { riskAddOn } from "@mark1russell7/stack-risk/add-on";
 import { monthTotal, type SpendLayer } from "@mark1russell7/stack-spend";
 import { spendAddOn } from "@mark1russell7/stack-spend/add-on";
-import { readLayer, type Stack, type StackJoiner } from "@mark1russell7/system-stack";
+import { readLayer, type Need, type Part, type Stack, type StackJoiner } from "@mark1russell7/system-stack";
+import { parseStack } from "@mark1russell7/system-stack/schema";
 
 /** The id of the function of the base stack: a message gets out of some copy. */
 export const PLACEMENT_PART = "send";
@@ -101,6 +104,55 @@ export type FixedCopy =
   | { readonly kind: "cloud"; readonly provider: string; readonly region: string }
   | { readonly kind: "site"; readonly site: string };
 
+/** One chance input of one part of a base stack. */
+export interface PartChance extends ChanceInput {
+  /** The id of the part. */
+  readonly part: string;
+}
+
+/**
+ * The function of the system and the needs that all copies share. Each copy of the alert system needs the same push
+ * services, call services and feeds. The front of a placement with a base tells the gain of each copy past these needs.
+ */
+export interface PlacementBase {
+  /** The stack of the function and of its shared needs. A layer `risk/1` of the stack keeps its goals. */
+  readonly stack: Stack;
+  /** The id of the function to keep in work. Its needs get one more need: some slot works. */
+  readonly part: string;
+  /** The ids of the parts of the stack that are copies. The placement replaces each need of the function that names only these parts. */
+  readonly copies?: readonly string[] | undefined;
+  /** The chance input of each part of the stack. A part with needs and no input works when its needs hold. */
+  readonly chances?: readonly PartChance[] | undefined;
+}
+
+/**
+ * This function reads a base input from a JSON value: `{ stack, part, copies?, chances? }`. Each chance has `part`,
+ * `works`, `kind` (`measured` or `assumed`) and `source`. It gives the base, or a problem as a text.
+ */
+export function readBase(value: unknown): PlacementBase | string {
+  if (!isRecord(value)) return "The base is not an object.";
+  const stack = parseStack(value["stack"]);
+  if (!stack.ok) return `The stack of the base has faults: ${stack.errors.join(" ")}`;
+  const part = textOf(value, "part");
+  if (part === undefined) return "The base has no text part.";
+  const copyList: unknown = value["copies"] ?? [];
+  if (!Array.isArray(copyList) || !copyList.every((each) => typeof each === "string")) return "The copies of the base are not a list of texts.";
+  const chanceList: unknown = value["chances"] ?? [];
+  if (!Array.isArray(chanceList)) return "The chances of the base are not a list.";
+  const chances: PartChance[] = [];
+  for (const item of chanceList as readonly unknown[]) {
+    const id = textOf(item, "part");
+    const works = numberOf(item, "works");
+    const kind = textOf(item, "kind");
+    const source = textOf(item, "source");
+    if (id === undefined || works === undefined || (kind !== "measured" && kind !== "assumed") || source === undefined) {
+      return "Each chance of the base needs part, works, kind (measured or assumed) and source.";
+    }
+    chances.push({ part: id, works, kind, source });
+  }
+  return { stack: stack.stack, part, copies: copyList as readonly string[], chances };
+}
+
 /** The inputs of a placement layer. */
 export interface PlacementInput {
   /** The live offers, for example from the plan client of `@mark1russell7/market-sources`. */
@@ -118,6 +170,8 @@ export interface PlacementInput {
   readonly fixed?: readonly FixedCopy[] | undefined;
   /** The largest expected cost of a month, from the private configuration. Without it, the layer has no limit of cost. */
   readonly costLimit?: number | undefined;
+  /** The function and the needs that all copies share. Without it, the function needs only some slot. */
+  readonly base?: PlacementBase | undefined;
 }
 
 /** The reasons to skip an offer. */
@@ -325,8 +379,13 @@ export function placementLayer(input: PlacementInput): PlacementBuild {
   const picks = [...best.values()].sort((a, b) => (a.provider === b.provider ? (a.region < b.region ? -1 : 1) : a.provider < b.provider ? -1 : 1));
   const shared: Shared[] = [];
   const seen = new Set<string>();
+  const baseIds = new Set((input.base?.stack.parts ?? []).map((part) => part.id));
+  const taken = (id: string): void => {
+    if (baseIds.has(id)) throw new RangeError(`The part ${id} of the base stack is also a slot or a shared fragment.`);
+  };
   const add = (id: string, kind: string): void => {
     if (seen.has(id)) return;
+    taken(id);
     seen.add(id);
     shared.push(sharedOf(id, kind, fragmentInput(chances, id)));
   };
@@ -348,19 +407,90 @@ export function placementLayer(input: PlacementInput): PlacementBuild {
     candidates: picks.map((pick) => candidateOf(slotId(index), pick, chances, needs.currency)),
   }));
   const slots = [...fixedSlots, ...newSlots];
+  for (const slot of slots) taken(slot.id);
+  const some: Need = { any: slots.map((slot) => slot.id) };
+  const base = input.base === undefined ? sendStack(some) : baseStack(input.base, some);
   const layer: PlacementLayer = {
     schema: PLACEMENT_SCHEMA,
-    part: PLACEMENT_PART,
+    part: input.base?.part ?? PLACEMENT_PART,
     currency: needs.currency,
     slots,
     shared,
     ...(input.costLimit === undefined ? {} : { limits: { cost: input.costLimit, bound: input.costLimit } }),
   };
-  const base: Stack = {
-    schema: "stack/1",
-    parts: [{ id: PLACEMENT_PART, kind: "function", name: "A message gets out of some copy", needs: [{ any: slots.map((slot) => slot.id) }] }],
-  };
   return { layer, base, offers: input.offers.length, skipped, fixed: fixedSlots.map((slot) => slot.id) };
+}
+
+/** The base stack with no base input: the function `send` works when some slot works. */
+function sendStack(some: Need): Stack {
+  return { schema: "stack/1", parts: [{ id: PLACEMENT_PART, kind: "function", name: "A message gets out of some copy", needs: [some] }] };
+}
+
+/** This function tells if a need names only the parts of `ids`. */
+function namesOnly(need: Need, ids: ReadonlySet<string>): boolean {
+  if (typeof need === "string") return ids.has(need);
+  const list = "all" in need ? need.all : need.any;
+  return list.length > 0 && list.every((each) => namesOnly(each, ids));
+}
+
+/**
+ * This function gives the base stack of a base input. The function loses each need that names only copies, and gets
+ * the need of some slot. The layer `risk/1` keeps its goals and its chances, and gets the chance input of each part.
+ */
+function baseStack(base: PlacementBase, some: Need): Stack {
+  const found = base.stack.parts.find((part) => part.id === base.part);
+  if (found === undefined) throw new RangeError(`The base stack has no part ${base.part}.`);
+  const ids = new Set(base.stack.parts.map((part) => part.id));
+  const copies = new Set(base.copies ?? []);
+  for (const id of copies) if (!ids.has(id)) throw new RangeError(`The base stack has no copy ${id}.`);
+  const chances = base.chances ?? [];
+  const given = new Set<string>();
+  for (const item of chances) {
+    if (!ids.has(item.part)) throw new RangeError(`The base stack has no part ${item.part} for a chance input.`);
+    if (given.has(item.part)) throw new RangeError(`The part ${item.part} has two chance inputs.`);
+    given.add(item.part);
+    checkChance(item.part, item);
+  }
+  const needs = (found.needs ?? []).filter((need) => !namesOnly(need, copies));
+  const parts: Part[] = base.stack.parts.map((part) => (part.id === base.part ? { ...part, needs: [...needs, some] } : part));
+  // The gate of the plan reads the layer with the date of the plan. This step only adds the chance inputs to it.
+  const prior = base.stack.layers?.["risk/1"] as RiskLayer | undefined;
+  for (const item of prior?.chances ?? []) {
+    if (given.has(item.part)) throw new RangeError(`The part ${item.part} has two chance inputs.`);
+  }
+  const added = chances.map((item) => ({ part: item.part, works: item.works, source: sourceOf(item) }));
+  const layer: RiskLayer = { schema: RISK_SCHEMA, goals: prior?.goals ?? [], ...prior, chances: [...(prior?.chances ?? []), ...added] };
+  return { ...base.stack, parts, layers: { ...(base.stack.layers ?? {}), "risk/1": layer } };
+}
+
+function namesOf(need: Need): readonly string[] {
+  if (typeof need === "string") return [need];
+  return ("all" in need ? need.all : need.any).flatMap(namesOf);
+}
+
+/**
+ * This function gives the parts that the function of a base input needs, past its copies, whose chance input is
+ * assumed. It also gives such leaf parts with no input. Both lists are sorted. A leaf part with no input works at each
+ * time, thus the front is too high when one exists.
+ */
+export function baseAssumed(base: PlacementBase): { readonly assumed: readonly string[]; readonly missing: readonly string[] } {
+  const chances = new Map((base.chances ?? []).map((item) => [item.part, item]));
+  const byId = new Map(base.stack.parts.map((part) => [part.id, part]));
+  const copies = new Set(base.copies ?? []);
+  const reached = new Set<string>();
+  const visit = (id: string): void => {
+    if (reached.has(id) || copies.has(id)) return;
+    reached.add(id);
+    const needs = byId.get(id)?.needs ?? [];
+    const kept = id === base.part ? needs.filter((need) => !namesOnly(need, copies)) : needs;
+    for (const name of kept.flatMap(namesOf)) visit(name);
+  };
+  visit(base.part);
+  const parts = [...reached].filter((id) => id !== base.part).sort();
+  return {
+    assumed: parts.filter((id) => chances.get(id)?.kind === "assumed"),
+    missing: parts.filter((id) => (byId.get(id)?.needs ?? []).length === 0 && !chances.has(id)),
+  };
 }
 
 function layerOf<Layer>(stack: Stack, addOn: StackJoiner<Layer>): Layer | undefined {

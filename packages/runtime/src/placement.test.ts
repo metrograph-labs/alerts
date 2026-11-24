@@ -3,6 +3,8 @@ import { canonicalUnit } from "@mark1russell7/quantity";
 import { checkPlacement } from "@mark1russell7/stack-placement";
 import { describe, expect, it } from "vitest";
 import {
+  baseAssumed,
+  readBase,
   assumedInputs,
   choiceCount,
   distinctRows,
@@ -20,6 +22,7 @@ import {
   slotId,
   spendLimitOf,
   type FixedCopy,
+  type PlacementBase,
   type PlacementChances,
   type PlacementInput,
 } from "./placement.ts";
@@ -298,6 +301,79 @@ describe("the live copies", () => {
     expect(() => placementLayer(input(offers, { fixed }))).toThrow(RangeError);
     expect(() => placementLayer(input(offers, { chances, fixed: [fixed[1]!, fixed[1]!] }))).toThrow(RangeError);
     expect(() => fragmentInput(CHANCES, siteFragment("home"))).toThrow(RangeError);
+  });
+});
+
+describe("the needs that all copies share", () => {
+  // A made-up chain: the function needs a push path or a call path, and some copy. Each path needs one service.
+  const base: PlacementBase = {
+    stack: {
+      schema: "stack/1",
+      parts: [
+        { id: "notify", kind: "function", needs: [{ any: ["push-path", "call-path"] }, { any: ["copy-x", "copy-y"] }] },
+        { id: "push-path", kind: "path", needs: ["push-api"] },
+        { id: "call-path", kind: "path", needs: ["call-api", "carrier"] },
+        { id: "push-api", kind: "provider" },
+        { id: "call-api", kind: "provider" },
+        { id: "carrier", kind: "provider" },
+        { id: "copy-x", kind: "copy", needs: ["power-x"] },
+        { id: "power-x", kind: "power" },
+        { id: "copy-y", kind: "copy" },
+      ],
+      layers: { "risk/1": { schema: "risk/1", goals: [{ part: "notify", survives: 1 }] } },
+    },
+    part: "notify",
+    copies: ["copy-x", "copy-y"],
+    chances: [
+      { part: "push-api", works: 0.999, kind: "measured", source: "a made-up history" },
+      { part: "call-api", works: 0.99, kind: "assumed", source: "a test input" },
+    ],
+  };
+  const offers = [offer({ provider: "provider-a", region: "europe-west1", plan: "small", hourly: 0.005 })];
+  const fixed: readonly FixedCopy[] = [{ kind: "cloud", provider: "provider-c", region: "europe-west1" }];
+  const chances: PlacementChances = { ...CHANCES, overrides: [{ id: providerFragment("provider-c"), works: 0.9996, kind: "measured", source: "a made-up history" }] };
+
+  it("replaces the copies of the function with some slot, and keeps the goals of the stack", () => {
+    const build = placementLayer(input(offers, { chances, fixed, copies: 1, base }));
+    expect(build.layer.part).toBe("notify");
+    const notify = build.base.parts.find((part) => part.id === "notify");
+    expect(notify?.needs).toEqual([{ any: ["push-path", "call-path"] }, { any: [fixedSlotId(0), slotId(0)] }]);
+    expect(checkPlacement(build.layer, build.base).filter((fault) => fault.level === "error")).toEqual([]);
+  });
+
+  it("multiplies the chance of each row by the chance of the shared needs", () => {
+    const build = placementLayer(input(offers, { chances, fixed, copies: 1, base }));
+    const levels = frontLevels(distinctRows(planCopies(build, TODAY).front));
+    const plain = frontLevels(distinctRows(planCopies(placementLayer(input(offers, { chances, fixed, copies: 1 })), TODAY).front));
+    // The carrier has no input: it works at each time. The paths: 1 less the chance that both fail.
+    const shared = 1 - (1 - 0.999) * (1 - 0.99);
+    expect(levels.map((level) => level.cost)).toEqual(plain.map((level) => level.cost));
+    levels.forEach((level, index) => expect(level.chance).toBeCloseTo((plain[index]?.chance ?? 0) * shared, 12));
+    // No count of copies gets past the chance of the shared needs.
+    expect(levels.every((level) => level.chance < shared)).toBe(true);
+  });
+
+  it("names the assumed and the missing inputs past the copies", () => {
+    expect(baseAssumed(base)).toEqual({ assumed: ["call-api"], missing: ["carrier"] });
+  });
+
+  it("reads a base from JSON, and gives a problem for a bad field", () => {
+    const json: unknown = JSON.parse(JSON.stringify(base));
+    expect(readBase(json)).toEqual(base);
+    expect(readBase({ ...base, part: 1 })).toBe("The base has no text part.");
+    expect(readBase({ ...base, copies: [1] })).toBe("The copies of the base are not a list of texts.");
+    expect(readBase({ ...base, chances: [{ part: "push-api", works: 0.9, kind: "guess", source: "x" }] })).toContain("Each chance of the base");
+    expect(readBase({ ...base, stack: { parts: [] } })).toContain("The stack of the base has faults");
+    expect(readBase([])).toBe("The base is not an object.");
+  });
+
+  it("refuses an unknown part, two inputs of one part, and an id of a slot in the stack", () => {
+    expect(() => placementLayer(input(offers, { base: { ...base, part: "other" } }))).toThrow(RangeError);
+    expect(() => placementLayer(input(offers, { base: { ...base, copies: ["copy-z"] } }))).toThrow(RangeError);
+    const twice = [...(base.chances ?? []), { part: "push-api", works: 0.9, kind: "assumed" as const, source: "a test input" }];
+    expect(() => placementLayer(input(offers, { base: { ...base, chances: twice } }))).toThrow(RangeError);
+    const clash: PlacementBase = { ...base, stack: { ...base.stack, parts: [...base.stack.parts, { id: slotId(0), kind: "host" }] } };
+    expect(() => placementLayer(input(offers, { base: clash }))).toThrow(RangeError);
   });
 });
 

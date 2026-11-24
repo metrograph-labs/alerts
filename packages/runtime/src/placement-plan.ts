@@ -3,7 +3,7 @@
  * plan list of each provider record of `@mark1russell7/market-sources`, and the incident history of the status page of
  * each provider. It reads no other source and opens no account.
  *
- * `node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>]`
+ * `node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--base <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>]`
  *
  * - `--min-memory-mib` is the least memory of a host of a copy, in MiB.
  * - The three `--assume-*` values are assumed chance inputs, from 0 to 1, for each provider, region and host. The script
@@ -17,6 +17,9 @@
  *   name with no slash is a copy at a site, for example a home computer. Each is a fixed slot with no cost. The front
  *   then gives the gain of each next copy beside them. The names go only to the private front file.
  * - `--assume-site` is the assumed chance input of each site of a fixed copy. A fixed copy at a site needs it.
+ * - `--base` names a private JSON file with the function and the needs that all copies share (`readBase` of
+ *   `placement.ts`). These needs limit the gain of each copy. The output names each of their inputs that is assumed or
+ *   missing.
  * - `--copies` is the count of new copies. The default is 2.
  * - `--spend` names the spend entry of `config.json` that gives the limit of cost of a month (`monthlyUsd`). Without
  *   it, or without that entry, the front has no limit of cost.
@@ -41,8 +44,11 @@ import {
   distinctRows,
   FRONT_FILE,
   FRONT_FORMAT,
+  baseAssumed,
   frontLevels,
   measuredBuild,
+  readBase,
+  type PlacementBase,
   type FixedCopy,
   placementLayer,
   planCopies,
@@ -53,7 +59,7 @@ import {
 } from "./placement.ts";
 
 const USAGE =
-  "The command is: node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>]";
+  "The command is: node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--base <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>]";
 
 /** The User-Agent of each request. It names no person and no project. */
 const USER_AGENT = "alerts-placement";
@@ -68,6 +74,7 @@ interface Command {
   readonly chances: PlacementChances;
   readonly copies: number;
   readonly fixed: readonly FixedCopy[];
+  readonly base: string | undefined;
   readonly spend: string | undefined;
   readonly terms: readonly PriceTerm["kind"][];
   readonly windowDays: number;
@@ -82,7 +89,7 @@ function command(args: readonly string[]): Command | string {
     if (name === undefined || !name.startsWith("--") || value === undefined || value.startsWith("--")) return `The argument ${String(name)} has no value.`;
     values.set(name.slice(2), value);
   }
-  const known = new Set(["min-memory-mib", "assume-provider", "assume-region", "assume-host", "assume-site", "fixed", "copies", "spend", "terms", "window-days"]);
+  const known = new Set(["min-memory-mib", "assume-provider", "assume-region", "assume-host", "assume-site", "fixed", "base", "copies", "spend", "terms", "window-days"]);
   const other = [...values.keys()].find((name) => !known.has(name));
   if (other !== undefined) return `The option --${other} is not known.`;
   const memory = Number(values.get("min-memory-mib"));
@@ -117,7 +124,7 @@ function command(args: readonly string[]): Command | string {
   const bad = terms.find((term) => !TERM_KINDS.some((kind) => kind === term));
   if (bad !== undefined) return `The price term ${bad} is not on-demand, spot or committed.`;
   const chances: PlacementChances = { provider, region, host, ...(site === undefined ? {} : { site }) };
-  return { minMemoryMiB: memory, chances, copies, fixed, spend: values.get("spend"), terms: terms as PriceTerm["kind"][], windowDays };
+  return { minMemoryMiB: memory, chances, copies, fixed, base: values.get("base"), spend: values.get("spend"), terms: terms as PriceTerm["kind"][], windowDays };
 }
 
 // The front of a build: its search, its levels and the assumed fragments of each row. It prints each level.
@@ -164,6 +171,19 @@ if (typeof parsed === "string") {
 } else {
   const home = alertsHome(process.env, process.cwd());
   const costLimit = parsed.spend === undefined ? undefined : spendLimitOf(await readConfig(configPath(process.env, process.cwd())), parsed.spend);
+  const baseRead = parsed.base === undefined ? undefined : readBase(await readConfig(parsed.base));
+  if (typeof baseRead === "string") {
+    console.error(`The base file has a problem: ${baseRead}`);
+    process.exit(2);
+  }
+  const base: PlacementBase | undefined = baseRead;
+  if (base === undefined) console.log("No base is named. The front leaves out the needs that all copies share.");
+  else {
+    const open = baseAssumed(base);
+    console.log(`The base has ${countOf(base.stack.parts.length, "part")} and ${countOf((base.chances ?? []).length, "chance input")}.`);
+    console.log(`Shared needs with an assumed input: ${open.assumed.length === 0 ? "none" : open.assumed.join(", ")}.`);
+    console.log(`Shared needs with no input, thus a chance of 1: ${open.missing.length === 0 ? "none" : open.missing.join(", ")}.`);
+  }
   if (parsed.spend === undefined) console.log("No spend entry is named. The front has no limit of cost.");
   else if (costLimit === undefined) console.log(`The configuration has no valid spend entry ${parsed.spend}. The front has no limit of cost.`);
   const scheduler = new HostScheduler(realClock, PLAN_PROVIDERS.length);
@@ -215,7 +235,7 @@ if (typeof parsed === "string") {
   } else {
     const at = new Date();
     const today = at.toISOString().slice(0, 10);
-    const build = placementLayer({ offers, needs: { minMemoryMiB: parsed.minMemoryMiB, terms: parsed.terms, currency: "USD" }, chances, copies: parsed.copies, fixed: parsed.fixed, costLimit });
+    const build = placementLayer({ offers, needs: { minMemoryMiB: parsed.minMemoryMiB, terms: parsed.terms, currency: "USD" }, chances, copies: parsed.copies, fixed: parsed.fixed, costLimit, base });
     if (parsed.fixed.length > 0) console.log(`Fixed slots with no cost: ${countOf(parsed.fixed.length, "live copy", "live copies")}. The first level of the front with the cost 0 is no new copy.`);
     const measuredIds = new Set(measures.map((measure) => measure.input.id));
     const shared = build.layer.shared ?? [];
@@ -233,6 +253,7 @@ if (typeof parsed === "string") {
         needs: { minMemoryMiB: parsed.minMemoryMiB, terms: parsed.terms, currency: "USD" },
         copies: parsed.copies,
         fixed: parsed.fixed,
+        base: base === undefined ? null : { part: base.part, copies: base.copies ?? [], chances: base.chances ?? [], ...baseAssumed(base) },
         windowDays: parsed.windowDays,
         chances,
         spend: parsed.spend ?? null,
