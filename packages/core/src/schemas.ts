@@ -1709,7 +1709,7 @@ export const driftCommandConfigSchema: z.ZodType<DriftCommandConfig, DriftComman
     .readonly(),
 );
 
-/** This schema checks the drift checks of the copy hosts (AL-139): one command or more, each with its own name. */
+/** This schema checks the drift checks of the host of one copy (AL-139): one command or more, each with its own name. */
 export const driftConfigSchema: z.ZodType<DriftConfig, DriftConfig> = schemaOf<DriftConfig>()(
   z
     .strictObject({
@@ -1763,7 +1763,6 @@ export const alertConfigSchema: z.ZodType<AlertConfig, AlertConfig> = schemaOf<A
       sendLimit: sendLimitConfigSchema.exactOptional(),
       throttle: throttleConfigSchema.exactOptional(),
       tell: tellConfigSchema.exactOptional(),
-      drift: driftConfigSchema.exactOptional(),
     })
     .readonly(),
 );
@@ -1835,6 +1834,7 @@ export const copySettingsSchema: z.ZodType<CopySettings, CopySettings> = schemaO
       configFrom: copyIdSchema.exactOptional(),
       leaveChannels: z.array(channelIdSchema).readonly().exactOptional(),
       leaveSources: z.array(sourceIdSchema).readonly().exactOptional(),
+      drift: driftConfigSchema.exactOptional(),
     })
     .readonly(),
 );

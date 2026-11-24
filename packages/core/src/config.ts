@@ -163,7 +163,7 @@ export type DriftCommandKind = (typeof DRIFT_COMMAND_KINDS)[number];
 /** The pattern of the name of a drift check: letters, digits, `.`, `_` and `-`, up to 64 characters. */
 export const DRIFT_NAME: RegExp = /^[A-Za-z0-9._-]{1,64}$/u;
 
-/** One command of the drift checks (AL-139). The values are private. Only the configuration holds them. */
+/** One command of the drift checks (AL-139). The values are private. Only the settings of the copy hold them. */
 export interface DriftCommandConfig {
   /** The name of the check in the reports, for example `host-a`. It is unique in the list. */
   readonly name: string;
@@ -173,8 +173,8 @@ export interface DriftCommandConfig {
 }
 
 /**
- * The drift checks of the copy hosts (AL-139). The runtime starts each command one time in each day, and a change or a
- * failed read for 2 days gives a system report. Without this entry, the runtime starts no drift check.
+ * The drift checks of the host of one copy (AL-139). The runtime starts each command one time in each day, and a change
+ * or a failed read for 2 days gives a system report. The field `drift` of `CopySettings` holds them.
  */
 export interface DriftConfig {
   readonly commands: readonly DriftCommandConfig[];
@@ -373,8 +373,6 @@ export interface AlertConfig {
   readonly throttle?: ThrottleConfig;
   /** The intake of the messages of the operator (AL-92). Without it, the runtime takes no message of the operator. */
   readonly tell?: TellConfig;
-  /** The drift checks of the copy hosts (AL-139). Without them, the runtime starts no drift check. */
-  readonly drift?: DriftConfig;
 }
 
 /** The name of the format of a part of the configuration. A change that breaks a part gets a new name. */
@@ -527,6 +525,11 @@ export interface CopySettings {
    * An id that names no source of the instance changes nothing.
    */
   readonly leaveSources?: readonly SourceId[];
+  /**
+   * The drift checks of the host of this copy (AL-139). Without them, the copy starts no drift check. A command has the
+   * paths and the programs of one host. Thus the checks are a setting of the copy, and a mirror does not take them.
+   */
+  readonly drift?: DriftConfig;
 }
 
 /** The settings of a runtime with no file `copy.json`: the only copy, with rank 0 and no exchange. */

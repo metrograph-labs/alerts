@@ -791,7 +791,7 @@ export interface InstanceOptions {
   readonly checks?: Transport;
   /**
    * The runner of the commands of the drift checks (AL-139). The default is `commandRunner` of `drift.ts`. A test gives a
-   * fake. The instance starts the commands only when the configuration has the field `drift`.
+   * fake. The instance starts the commands only when the settings of the copy have the field `drift`.
    */
   readonly driftRunner?: DriftRunner;
   /**
@@ -934,7 +934,7 @@ export interface Instance {
   readonly uses: readonly LimitWatch[];
   /** The watch of the joint down time of the copies (AL-148), when the secrets have `CHECKS_KEY` and `LOUD_PING_URL_KEY`. */
   readonly joint?: JointWatch;
-  /** The drift watch of the copy hosts (AL-139), when the configuration has the field `drift`. */
+  /** The drift watch of the host of this copy (AL-139), when `copy.json` has the field `drift`. */
   readonly drift?: DriftWatch;
   /** The billing watch of the hosts of the other copies (AL-70), when a peer of `copy.json` has the field `billing`. */
   readonly billing?: BillingWatch;
@@ -1179,7 +1179,8 @@ export function openInstance(options: InstanceOptions): Instance {
   const balances = twilio?.watch === undefined ? [] : [twilio.watch];
   const uses = limitWatches(config.limits ?? [], options.secret, options.github);
   const joint = jointOf(options, clock, wall);
-  const drift = config.drift === undefined ? undefined : driftWatch({ commands: config.drift.commands, ...(options.driftRunner === undefined ? {} : { run: options.driftRunner }) });
+  // The drift checks are a setting of the copy (copy.json), not of the configuration: a mirror takes the configuration of another host.
+  const drift = copy.drift === undefined ? undefined : driftWatch({ commands: copy.drift.commands, ...(options.driftRunner === undefined ? {} : { run: options.driftRunner }) });
   // The billing watch reads the host of a down copy (AL-70). The loop exists before the first read, and only a pass starts a read.
   const billing =
     worker === undefined || !peers.some((peer) => peer.billing !== undefined)
