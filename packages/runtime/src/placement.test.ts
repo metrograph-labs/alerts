@@ -3,9 +3,12 @@ import { canonicalUnit } from "@mark1russell7/quantity";
 import { checkPlacement } from "@mark1russell7/stack-placement";
 import { describe, expect, it } from "vitest";
 import {
+  assumedInputs,
   choiceCount,
   distinctRows,
+  fragmentInput,
   frontLevels,
+  measuredBuild,
   memoryMiB,
   monthCost,
   placementLayer,
@@ -166,6 +169,65 @@ describe("the front of a placement", () => {
     expect(plan.front.length).toBeGreaterThan(0);
     expect(plan.front.every((row) => row.cost <= 10)).toBe(true);
     expect(plan.breaks.cost ?? 0).toBeGreaterThan(0);
+  });
+});
+
+describe("the kinds of the inputs of a front", () => {
+  // provider-b has a measured history for its provider and its region. provider-a has none.
+  const offers = [
+    offer({ provider: "provider-a", region: "europe-west1", plan: "small", hourly: 0.005 }),
+    offer({ provider: "provider-b", region: "europe-west1", plan: "small", hourly: 0.01 }),
+  ];
+  const measured = { kind: "measured" as const, source: "a made-up history" };
+  const chances: PlacementChances = {
+    ...CHANCES,
+    overrides: [
+      { id: providerFragment("provider-b"), works: 0.9995, ...measured },
+      { id: regionFragment("provider-b", "europe-west1"), works: 0.9993, ...measured },
+    ],
+  };
+
+  it("gives the override of a fragment, else the input of its kind", () => {
+    expect(fragmentInput(chances, providerFragment("provider-b")).kind).toBe("measured");
+    expect(fragmentInput(chances, providerFragment("provider-a"))).toBe(CHANCES.provider);
+    expect(fragmentInput(chances, regionFragment("provider-a", "europe-west1"))).toBe(CHANCES.region);
+  });
+
+  it("names the assumed fragments of each row", () => {
+    const build = placementLayer(input(offers, { chances }));
+    const rows = distinctRows(planCopies(build, TODAY).front);
+    const keys = (row: (typeof rows)[number]): string => Object.values(row.choice).filter((value) => value !== null).sort().join("+");
+    const onlyA = rows.find((row) => keys(row) === "provider-a/europe-west1");
+    const both = rows.find((row) => keys(row) === "provider-a/europe-west1+provider-b/europe-west1");
+    expect(onlyA).toBeDefined();
+    expect(both).toBeDefined();
+    if (onlyA === undefined || both === undefined) return;
+    expect(assumedInputs(build.layer, chances, onlyA)).toEqual([providerFragment("provider-a"), regionFragment("provider-a", "europe-west1")]);
+    expect(assumedInputs(build.layer, chances, both)).toEqual([providerFragment("provider-a"), regionFragment("provider-a", "europe-west1")]);
+    // The mark of stack-risk is empty for each row: each fragment has a chance. Thus it does not tell the kind.
+    expect(both.assumed ?? []).toEqual([]);
+  });
+
+  it("keeps only the candidates of measured inputs, with their shared fragments", () => {
+    const build = placementLayer(input(offers, { chances }));
+    const only = measuredBuild(build, chances);
+    expect(only).toBeDefined();
+    if (only === undefined) return;
+    expect(only.layer.slots.every((slot) => slot.candidates.map((candidate) => candidate.key).join() === "provider-b/europe-west1")).toBe(true);
+    expect((only.layer.shared ?? []).map((each) => each.id).sort()).toEqual([providerFragment("provider-b"), regionFragment("provider-b", "europe-west1")]);
+    expect(checkPlacement(only.layer, only.base).filter((fault) => fault.level === "error")).toEqual([]);
+    const rows = distinctRows(planCopies(only, TODAY).front);
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.every((row) => assumedInputs(only.layer, chances, row).length === 0)).toBe(true);
+    // One copy on provider-b is on this front. Two copies on provider-a cost the same and beat it on the full front.
+    const full = distinctRows(planCopies(build, TODAY).front);
+    const one = (row: (typeof rows)[number]): boolean => Object.values(row.choice).filter((value) => value !== null).join() === "provider-b/europe-west1";
+    expect(rows.some(one)).toBe(true);
+    expect(full.some(one)).toBe(false);
+  });
+
+  it("gives no build when no candidate has measured inputs only", () => {
+    expect(measuredBuild(placementLayer(input(offers)), CHANCES)).toBeUndefined();
   });
 });
 
