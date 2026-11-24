@@ -19,7 +19,20 @@ import { pageProblems } from "./page.ts";
 export { descriptorOf } from "./descriptor.ts";
 export { createStatusPageFetch, incidentBody, pagePath, readSummary, STATUS_FIELDS, SUMMARY_PATH, SUMMARY_TIMEOUT_MS } from "./fetch.ts";
 export type { StatusPageFetchInput, StatusPageFetchOptions, Summary } from "./fetch.ts";
-export { COMPONENTS_PATH, HISTORY_LIMIT, HISTORY_PATH, readComponentNames, readHistory, type HistoryIncident, type HistoryRead } from "./history.ts";
+export {
+  COMPONENTS_PATH,
+  HISTORY_FILE_PATH,
+  HISTORY_LIMIT,
+  HISTORY_PATH,
+  readComponentNames,
+  readHistory,
+  readHistoryFile,
+  spanOf,
+  ZONE_OFFSETS,
+  type HistoryFileRead,
+  type HistoryIncident,
+  type HistoryRead,
+} from "./history.ts";
 export {
   COMPONENT_FIELDS,
   componentsOf,

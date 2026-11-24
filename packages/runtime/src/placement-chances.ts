@@ -29,15 +29,30 @@
  *   the down share. Thus a short window with no outage does not give a chance of 1.
  *
  * A provider with no usable feed keeps the assumed inputs. `HISTORY_GAPS` names each such provider and the reason.
+ *
+ * A chance of a base can name the status page of a shared need, for example a push service (`StatusRef` of
+ * `placement.ts`). `measureBase` reads the history of that page with the same method and the same pace. A page that
+ * stops crawlers under `/api/` gives the JSON of its public history page (`read: "history"`). That file names no
+ * component of an incident, thus a chance that names components keeps its input with that file.
  */
 
 import { GCP_BASE, GLOBAL_LOCATION, INCIDENTS_PATH, readIncidentHistory, VM_PRODUCTS, type PastIncident } from "@mark1russell7/alerts-source-gcp";
-import { COMPONENTS_PATH, HISTORY_LIMIT, HISTORY_PATH, readComponentNames, readHistory, type HistoryIncident, type HistoryRead } from "@mark1russell7/alerts-source-statuspage";
+import {
+  COMPONENTS_PATH,
+  HISTORY_FILE_PATH,
+  HISTORY_LIMIT,
+  HISTORY_PATH,
+  readComponentNames,
+  readHistory,
+  readHistoryFile,
+  type HistoryIncident,
+  type HistoryRead,
+} from "@mark1russell7/alerts-source-statuspage";
 import { wilson, Z95 } from "@mark1russell7/rigor-statistics";
 import { openDatabase } from "@mark1russell7/sqlite";
 import { errorMessage } from "@mark1russell7/text";
 import { send, statusLine, type Pace, type Transport } from "polite-crawler/api";
-import { providerFragment, regionFragment, siteFragment, type ChanceOverride, type PlacementChances } from "./placement.ts";
+import { providerFragment, regionFragment, siteFragment, type ChanceOverride, type PartChance, type PlacementBase, type PlacementChances, type StatusRef } from "./placement.ts";
 
 /** The impacts of an incident that count as a down time: the outages of a part or of all of a service. */
 export const DOWN_IMPACTS: readonly string[] = ["major", "critical"];
@@ -282,20 +297,39 @@ export function feedOf(source: HistorySource): string {
   return `${source.host}${source.kind === "google" ? INCIDENTS_PATH : HISTORY_PATH}`;
 }
 
-function sourceText(source: HistorySource, window: TimeWindow, down: DownShare): string {
+/** The feed of a history and the rule of its down time, for the text of a measure. */
+interface FeedRule {
+  /** The host and the path of the feed. */
+  readonly feed: string;
+  /** The rule of a down time. */
+  readonly rule: string;
+}
+
+function sourceText(feed: FeedRule, window: TimeWindow, down: DownShare): string {
   const days = Math.round((window.to - window.from) / DAY_MS);
   const low = 1 - down.interval.high;
   const high = 1 - down.interval.low;
   return (
-    `${feedOf(source)} from ${dayOf(window.from)} to ${dayOf(window.to)} (${String(days)} days): ` +
-    `${String(down.downHours)} of ${String(down.hours)} hours down (${DOWN_RULE[source.kind]}), ` +
+    `${feed.feed} from ${dayOf(window.from)} to ${dayOf(window.to)} (${String(days)} days): ` +
+    `${String(down.downHours)} of ${String(down.hours)} hours down (${feed.rule}), ` +
     `works ${(1 - down.share).toFixed(6)}, 95% Wilson interval ${low.toFixed(6)} to ${high.toFixed(6)}, the input is the low end`
   );
 }
 
-function measureOf(id: string, source: HistorySource, incidents: readonly HistoryIncident[], window: TimeWindow): ChanceMeasure {
+function measureOf(id: string, feed: FeedRule, incidents: readonly HistoryIncident[], window: TimeWindow): ChanceMeasure {
   const down = downShare(downTime(incidents, window), window);
-  return { input: { id, works: 1 - down.interval.high, kind: "measured", source: sourceText(source, window, down) }, down, window };
+  return { input: { id, works: 1 - down.interval.high, kind: "measured", source: sourceText(feed, window, down) }, down, window };
+}
+
+/**
+ * This function gives the window of a history, or a reason when the window is shorter than `MIN_WINDOW_DAYS` days.
+ * `host` names the page in the reason.
+ */
+export function usableWindow(history: PageHistory, host: string, now: number, days: number): { readonly ok: true; readonly window: TimeWindow } | { readonly ok: false; readonly reason: string } {
+  const window = historyWindow(history.read, now, days, history.since);
+  const span = (window.to - window.from) / DAY_MS;
+  if (span < MIN_WINDOW_DAYS) return { ok: false, reason: `The list of ${host} covers only ${span.toFixed(1)} days, less than ${String(MIN_WINDOW_DAYS)}.` };
+  return { ok: true, window };
 }
 
 /**
@@ -310,15 +344,14 @@ export function measureProvider(
   days: number = DEFAULT_WINDOW_DAYS,
   regions: readonly string[] = [],
 ): ProviderMeasure {
-  const window = historyWindow(history.read, now, days, history.since);
-  const span = (window.to - window.from) / DAY_MS;
-  if (span < MIN_WINDOW_DAYS) {
-    return { ok: false, reason: `The list of ${source.host} covers only ${span.toFixed(1)} days, less than ${String(MIN_WINDOW_DAYS)}.` };
-  }
+  const usable = usableWindow(history, source.host, now, days);
+  if (!usable.ok) return usable;
+  const { window } = usable;
+  const feed: FeedRule = { feed: feedOf(source), rule: DOWN_RULE[source.kind] };
   const down = history.read.incidents.filter(isDown);
   const places = (incident: HistoryIncident): readonly ComponentPlace[] => incident.components.map(source.placeOf);
   const providerDown = down.filter((incident) => incident.components.length === 0 || places(incident).some((place) => place.kind === "global"));
-  const measures = [measureOf(providerFragment(source.provider), source, providerDown, window)];
+  const measures = [measureOf(providerFragment(source.provider), feed, providerDown, window)];
   const tracked = history.components.flatMap((name) => {
     const place = source.placeOf(name);
     return place.kind === "region" ? [place.region] : [];
@@ -326,7 +359,7 @@ export function measureProvider(
   const all = source.kind === "google" ? [...tracked, ...regions] : tracked;
   for (const region of [...new Set(all)].sort()) {
     const regionDown = down.filter((incident) => places(incident).some((place) => place.kind === "region" && place.region === region));
-    measures.push(measureOf(regionFragment(source.provider, region), source, regionDown, window));
+    measures.push(measureOf(regionFragment(source.provider, region), feed, regionDown, window));
   }
   return { ok: true, measures };
 }
@@ -345,17 +378,17 @@ export function withMeasures(chances: PlacementChances, measures: readonly Chanc
 /** The history of one page, or the problem of its read. */
 export type HistoryOutcome = { readonly ok: true; readonly history: PageHistory } | { readonly ok: false; readonly problem: string };
 
-async function getJson(source: HistorySource, path: string, what: string, pace: Pace, transport: Transport, signal?: AbortSignal): Promise<{ readonly body: string } | { readonly problem: string }> {
+async function getJson(host: string, path: string, what: string, pace: Pace, transport: Transport, signal?: AbortSignal): Promise<{ readonly body: string } | { readonly problem: string }> {
   try {
     const answer = await send(
       pace,
       transport,
       {
-        source: `the status page ${source.host}`,
-        host: source.host,
+        source: `the status page ${host}`,
+        host,
         minIntervalMs: HISTORY_INTERVAL_MS,
         what,
-        exchange: { method: "GET", url: `https://${source.host}${path}`, headers: { accept: "application/json" }, body: null },
+        exchange: { method: "GET", url: `https://${host}${path}`, headers: { accept: "application/json" }, body: null },
       },
       signal,
     );
@@ -399,19 +432,116 @@ export function googleHistory(incidents: readonly PastIncident[], since: number 
  */
 export async function readPageHistory(source: HistorySource, pace: Pace, transport: Transport, signal?: AbortSignal): Promise<HistoryOutcome> {
   if (source.kind === "google") {
-    const file = await getJson(source, INCIDENTS_PATH, "the incident file", pace, transport, signal);
+    const file = await getJson(source.host, INCIDENTS_PATH, "the incident file", pace, transport, signal);
     if ("problem" in file) return { ok: false, problem: file.problem };
     const history = readIncidentHistory(file.body);
     if (history === undefined) return { ok: false, problem: "The incident file is not a list of incidents." };
     return { ok: true, history: googleHistory(history.incidents, history.since) };
   }
-  const incidents = await getJson(source, HISTORY_PATH, "the list of incidents", pace, transport, signal);
+  const incidents = await getJson(source.host, HISTORY_PATH, "the list of incidents", pace, transport, signal);
   if ("problem" in incidents) return { ok: false, problem: incidents.problem };
   const read = readHistory(incidents.body);
   if (read === undefined) return { ok: false, problem: "The list of incidents is not a list of Statuspage." };
-  const components = await getJson(source, COMPONENTS_PATH, "the list of components", pace, transport, signal);
+  const components = await getJson(source.host, COMPONENTS_PATH, "the list of components", pace, transport, signal);
   if ("problem" in components) return { ok: false, problem: components.problem };
   const names = readComponentNames(components.body);
   if (names === undefined) return { ok: false, problem: "The list of components is not a list of Statuspage." };
   return { ok: true, history: { read, components: names } };
+}
+
+/** The path of the feed of each kind of read of a status page of a base. */
+export const STATUS_PATHS: Readonly<Record<NonNullable<StatusRef["read"]>, string>> = { api: HISTORY_PATH, history: HISTORY_FILE_PATH };
+
+/** This function gives the feed of the status page of a base: its host and the path of its kind of read. */
+export function statusFeed(status: StatusRef): string {
+  return `${status.host}${STATUS_PATHS[status.read ?? "api"]}`;
+}
+
+/**
+ * This function reads the history of the status page of a part of a base through polite-crawler. It sends one request:
+ * the documented list of incidents (`api`), or the JSON of the public history page (`history`). The list of incidents
+ * names the components of each incident, thus it needs no list of components.
+ *
+ * It does not throw for a failure of the page: it gives the problem. It throws only when the signal aborts.
+ */
+export async function readStatusHistory(status: StatusRef, pace: Pace, transport: Transport, signal?: AbortSignal): Promise<HistoryOutcome> {
+  if (status.read === "history") {
+    const file = await getJson(status.host, HISTORY_FILE_PATH, "the history file", pace, transport, signal);
+    if ("problem" in file) return { ok: false, problem: file.problem };
+    const read = readHistoryFile(file.body);
+    if (read === undefined) return { ok: false, problem: "The history file is not a history file of Statuspage." };
+    return { ok: true, history: { read, components: [], since: read.since } };
+  }
+  const incidents = await getJson(status.host, HISTORY_PATH, "the list of incidents", pace, transport, signal);
+  if ("problem" in incidents) return { ok: false, problem: incidents.problem };
+  const read = readHistory(incidents.body);
+  if (read === undefined) return { ok: false, problem: "The list of incidents is not a list of Statuspage." };
+  return { ok: true, history: { read, components: [] } };
+}
+
+/** The measured chance of one part of a base, or the reason that it keeps its input. */
+export type PartMeasure = { readonly ok: true; readonly chance: PartChance; readonly measure: ChanceMeasure } | { readonly ok: false; readonly reason: string };
+
+/**
+ * This function gives the measured chance of a part of a base from the history of its status page. A down time is an
+ * incident of the impact `major` or `critical` that is not a scheduled maintenance. With components, only an incident
+ * that names one of them counts. The history file names no component, thus a chance with components keeps its input.
+ */
+export function measurePart(chance: PartChance, history: PageHistory, now: number, days: number = DEFAULT_WINDOW_DAYS): PartMeasure {
+  const status = chance.status;
+  if (status === undefined) return { ok: false, reason: "The chance names no status page." };
+  const components = status.components ?? [];
+  if (status.read === "history" && components.length > 0) {
+    return { ok: false, reason: `The history file of ${status.host} names no component of an incident, thus it cannot give the down time of ${components.join(", ")}.` };
+  }
+  const usable = usableWindow(history, status.host, now, days);
+  if (!usable.ok) return usable;
+  const named = new Set(components);
+  const down = history.read.incidents.filter((incident) => isDown(incident) && (named.size === 0 || incident.components.some((name) => named.has(name))));
+  const rule = named.size === 0 ? DOWN_RULE.statuspage : `${DOWN_RULE.statuspage}, of the components ${components.join(", ")}`;
+  const measure = measureOf(chance.part, { feed: statusFeed(status), rule }, down, usable.window);
+  return { ok: true, chance: { ...chance, works: measure.input.works, kind: "measured", source: measure.input.source }, measure };
+}
+
+/** The base with its measured chances, one line for each chance of the base, and the measures. */
+export interface BaseMeasure {
+  /** The base. Each measured chance replaces the chance of its part. */
+  readonly base: PlacementBase;
+  /** One line for each chance of the base: measured or kept, and the reason. */
+  readonly lines: readonly string[];
+  /** The measure of each measured part, by the id of the part. */
+  readonly measures: readonly ChanceMeasure[];
+}
+
+/**
+ * This function measures each chance of a base that names a status page. It reads each feed one time, with the pace
+ * of the caller. A chance with no status page, or with a failed read or a short window, keeps its input. It throws
+ * only when the signal aborts.
+ */
+export async function measureBase(base: PlacementBase, pace: Pace, transport: Transport, now: number, days: number = DEFAULT_WINDOW_DAYS, signal?: AbortSignal): Promise<BaseMeasure> {
+  const reads = new Map<string, HistoryOutcome>();
+  const chances: PartChance[] = [];
+  const lines: string[] = [];
+  const measures: ChanceMeasure[] = [];
+  for (const chance of base.chances ?? []) {
+    const status = chance.status;
+    if (status === undefined) {
+      chances.push(chance);
+      lines.push(`The base input ${chance.part} keeps its ${chance.kind} input: it names no status page.`);
+      continue;
+    }
+    const feed = statusFeed(status);
+    const outcome = reads.get(feed) ?? (await readStatusHistory(status, pace, transport, signal));
+    reads.set(feed, outcome);
+    const measured: PartMeasure = outcome.ok ? measurePart(chance, outcome.history, now, days) : { ok: false, reason: outcome.problem };
+    if (measured.ok) {
+      chances.push(measured.chance);
+      measures.push(measured.measure);
+      lines.push(`The base input ${chance.part} is measured: ${measured.chance.source}.`);
+    } else {
+      chances.push(chance);
+      lines.push(`The base input ${chance.part} keeps its ${chance.kind} input: ${measured.reason}`);
+    }
+  }
+  return { base: { ...base, chances }, lines, measures };
 }

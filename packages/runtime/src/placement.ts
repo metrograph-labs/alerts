@@ -18,6 +18,7 @@
  * and no limit of cost. The caller reads the limit of cost from the private configuration at run time.
  */
 
+import { isDomain } from "@mark1russell7/alerts-source-statuspage";
 import { meteredCost, type MeteredObservation, type PriceTerm } from "@mark1russell7/market";
 import { arrayOf, isRecord, numberOf, textOf } from "@mark1russell7/optional/read";
 import { OBJECTIVE_STEPS, PLACEMENT_SCHEMA, planPlacement, type Candidate, type PlacementLayer, type PlacementPlan, type PlacementRow, type PlanOptions, type Shared } from "@mark1russell7/stack-placement";
@@ -171,10 +172,25 @@ export type FixedCopy =
   | { readonly kind: "cloud"; readonly provider: string; readonly region: string }
   | { readonly kind: "site"; readonly site: string };
 
+/** The kinds of read of a status page: the documented list of incidents (`api`) or the JSON of the public history page (`history`). */
+export const STATUS_READS: readonly ["api", "history"] = ["api", "history"];
+
+/** The public status page of Atlassian Statuspage that measures one part of a base stack. */
+export interface StatusRef {
+  /** The host of the page, for example `status.service-a.test`. */
+  readonly host: string;
+  /** The kind of read. The default is `api`. A page that stops crawlers under `/api/` needs `history`. */
+  readonly read?: (typeof STATUS_READS)[number] | undefined;
+  /** The names of the components of the page that the part needs. Without them, each incident of the page counts. */
+  readonly components?: readonly string[] | undefined;
+}
+
 /** One chance input of one part of a base stack. */
 export interface PartChance extends ChanceInput {
   /** The id of the part. */
   readonly part: string;
+  /** The status page of the part. With it, the plan measures the input from the incident history of the page. */
+  readonly status?: StatusRef | undefined;
 }
 
 /**
@@ -193,8 +209,25 @@ export interface PlacementBase {
 }
 
 /**
+ * This function reads the status page of one chance of a base: `{ host, read?, components? }`. It gives the page,
+ * `undefined` when the chance has none, or a problem as a text.
+ */
+function statusOf(value: unknown, part: string): StatusRef | undefined | string {
+  if (value === undefined) return undefined;
+  const problem = `The status of the chance of ${part} needs a host name, read api or history, and a list of component names.`;
+  if (!isRecord(value)) return problem;
+  const host = textOf(value, "host");
+  const read = value["read"] ?? "api";
+  const components: unknown = value["components"] ?? [];
+  if (host === undefined || !isDomain(host) || !STATUS_READS.some((kind) => kind === read)) return problem;
+  if (!Array.isArray(components) || !components.every((each) => typeof each === "string")) return problem;
+  return { host, read: read as StatusRef["read"], components: components as readonly string[] };
+}
+
+/**
  * This function reads a base input from a JSON value: `{ stack, part, copies?, chances? }`. Each chance has `part`,
- * `works`, `kind` (`measured` or `assumed`) and `source`. It gives the base, or a problem as a text.
+ * `works`, `kind` (`measured` or `assumed`) and `source`. A chance can name its status page in `status` (`StatusRef`).
+ * It gives the base, or a problem as a text.
  */
 export function readBase(value: unknown): PlacementBase | string {
   if (!isRecord(value)) return "The base is not an object.";
@@ -215,7 +248,9 @@ export function readBase(value: unknown): PlacementBase | string {
     if (id === undefined || works === undefined || (kind !== "measured" && kind !== "assumed") || source === undefined) {
       return "Each chance of the base needs part, works, kind (measured or assumed) and source.";
     }
-    chances.push({ part: id, works, kind, source });
+    const status = statusOf(isRecord(item) ? item["status"] : undefined, id);
+    if (typeof status === "string") return status;
+    chances.push({ part: id, works, kind, source, ...(status === undefined ? {} : { status }) });
   }
   return { stack: stack.stack, part, copies: copyList as readonly string[], chances };
 }

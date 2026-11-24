@@ -21,6 +21,8 @@ import {
   HOUR_MS,
   isDown,
   locationPlace,
+  measureBase,
+  measurePart,
   measureProvider,
   measureSite,
   readFetchTimes,
@@ -28,7 +30,7 @@ import {
   withMeasures,
   type HistorySource,
 } from "./placement-chances.ts";
-import { siteFragment, type PlacementChances } from "./placement.ts";
+import { siteFragment, type PartChance, type PlacementBase, type PlacementChances, type StatusRef } from "./placement.ts";
 
 // Each incident is made up: neutral names, made-up places and times. No text of a real page.
 const NOW = Date.parse("2026-03-01T00:00:00.000Z");
@@ -314,5 +316,93 @@ describe("readPageHistory", () => {
     expect(refused).toEqual({ ok: false, problem: "the list of incidents gave 404 Not Found." });
     const wrong = await readPageHistory(SOURCE, pace(), async () => ({ status: 200, statusText: "OK", headers: {}, body: "<html>" }));
     expect(wrong).toEqual({ ok: false, problem: "The list of incidents is not a list of Statuspage." });
+  });
+});
+
+describe("the measured chances of the shared needs of a base", () => {
+  const clock = { now: () => 0, sleep: async () => {} };
+  const pace = () => ({ scheduler: new HostScheduler(clock, 1), now: clock.now });
+  const status = (host: string, read: "api" | "history", components: readonly string[] = []): StatusRef => ({ host, read, components });
+  const chance = (part: string, ref?: StatusRef): PartChance => ({ part, works: 0.99, kind: "assumed", source: "a test input", ...(ref === undefined ? {} : { status: ref }) });
+  // This history file is made up. It has the structure of the history file of a page, with neutral names.
+  const FILE = {
+    page_status: { page: { name: "Service A" } },
+    months: [
+      {
+        name: "February 2026",
+        year: 2026,
+        incidents: [
+          { code: "h1", name: "Made-up outage", impact: "critical", timestamp: "Feb <var data-var='date'>2</var>, <var data-var='time'>10:00</var> - <var data-var='time'>12:30</var> UTC" },
+          { code: "h2", name: "Made-up slow", impact: "minor", timestamp: "Feb 3, 10:00 - 20:00 UTC" },
+          { code: "h3", name: "Made-up work", impact: "maintenance", timestamp: "Feb 4, 10:00 - 20:00 UTC" },
+        ],
+      },
+    ],
+    start_time: "2026-01-01T00:00:00Z",
+    end_time: "2026-02-28T23:59:59Z",
+  };
+  const BASE: PlacementBase = {
+    stack: { schema: "stack/1", parts: [{ id: "notify", kind: "function", needs: ["push-api"] }, { id: "push-api", kind: "provider" }] },
+    part: "notify",
+    chances: [
+      chance("push-api", status("status.service-a.test", "api", ["XX-West (Town B)"])),
+      chance("push-api-2", status("status.service-a.test", "api")),
+      chance("call-api", status("status.service-b.test", "history")),
+      chance("call-region", status("status.service-b.test", "history", ["Component one"])),
+      chance("carrier"),
+      chance("mail-api", status("status.service-c.test", "api")),
+    ],
+  };
+
+  it("measures a part from the components that it names, with the method of the providers", () => {
+    const measured = measurePart(chance("push-api", status("status.provider-a.test", "api", ["XX-West (Town B)"])), { read: READ, components: [] }, NOW, 60);
+    if (!measured.ok) throw new Error(measured.reason);
+    expect(measured.measure.down).toMatchObject({ hours: 1440, downHours: 2 });
+    expect(measured.chance.kind).toBe("measured");
+    expect(measured.chance.works).toBeCloseTo(1 - WILSON_OF_1440[2]![1], 9);
+    expect(measured.chance.source).toContain("status.provider-a.test/api/v2/incidents.json from 2025-12-31 to 2026-03-01 (60 days): 2 of 1440 hours down (impact major or critical, of the components XX-West (Town B))");
+    expect(measured.chance.status?.host).toBe("status.provider-a.test");
+  });
+
+  it("keeps the input of a part with no status page, with components on a history file, or with a short window", () => {
+    expect(measurePart(chance("carrier"), { read: READ, components: [] }, NOW)).toEqual({ ok: false, reason: "The chance names no status page." });
+    const named = measurePart(chance("x", status("status.service-b.test", "history", ["Component one"])), { read: READ, components: [] }, NOW);
+    expect(named).toEqual({ ok: false, reason: "The history file of status.service-b.test names no component of an incident, thus it cannot give the down time of Component one." });
+    const short = measurePart(chance("x", status("status.service-b.test", "history")), { read: READ, components: [], since: NOW - 10 * DAY_MS }, NOW);
+    expect(short).toEqual({ ok: false, reason: "The list of status.service-b.test covers only 10.0 days, less than 30." });
+  });
+
+  it("reads each feed one time, measures each part with a status page, and gives one line for each input", async () => {
+    const urls: string[] = [];
+    const bodies: Record<string, { status: number; body: string }> = {
+      "https://status.service-a.test/api/v2/incidents.json": { status: 200, body: JSON.stringify({ incidents: INCIDENTS.map((each) => ({ id: each.id, impact: each.impact, created_at: new Date(each.start).toISOString(), resolved_at: each.end === undefined ? null : new Date(each.end).toISOString(), scheduled_for: each.scheduled ? "2026-01-01T00:00:00Z" : null, components: each.components.map((name) => ({ name })) })) }) },
+      "https://status.service-b.test/history.json": { status: 200, body: JSON.stringify(FILE) },
+      "https://status.service-c.test/api/v2/incidents.json": { status: 403, body: "" },
+    };
+    const outcome = await measureBase(BASE, pace(), async (exchange) => {
+      urls.push(exchange.url);
+      const answer = bodies[exchange.url] ?? { status: 404, body: "" };
+      return { status: answer.status, statusText: answer.status === 200 ? "OK" : "Forbidden", headers: {}, body: answer.body };
+    }, NOW, 60);
+    expect(urls).toEqual(["https://status.service-a.test/api/v2/incidents.json", "https://status.service-b.test/history.json", "https://status.service-c.test/api/v2/incidents.json"]);
+    expect(outcome.base.chances?.map((each) => [each.part, each.kind])).toEqual([
+      ["push-api", "measured"],
+      ["push-api-2", "measured"],
+      ["call-api", "measured"],
+      ["call-region", "assumed"],
+      ["carrier", "assumed"],
+      ["mail-api", "assumed"],
+    ]);
+    expect(outcome.measures.map((each) => [each.input.id, each.down.downHours])).toEqual([
+      ["push-api", 2],
+      ["push-api-2", 15],
+      ["call-api", 3],
+    ]);
+    expect(outcome.measures[2]?.window.from).toBe(at("2026-01-01T00:00:00Z"));
+    expect(outcome.lines).toHaveLength(6);
+    expect(outcome.lines[2]).toMatch(/^The base input call-api is measured: status\.service-b\.test\/history\.json from 2026-01-01 /u);
+    expect(outcome.lines[3]).toBe("The base input call-region keeps its assumed input: The history file of status.service-b.test names no component of an incident, thus it cannot give the down time of Component one.");
+    expect(outcome.lines[4]).toBe("The base input carrier keeps its assumed input: it names no status page.");
+    expect(outcome.lines[5]).toBe("The base input mail-api keeps its assumed input: the list of incidents gave 403 Forbidden.");
   });
 });

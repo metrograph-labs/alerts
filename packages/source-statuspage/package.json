@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/package",
   "name": "@mark1russell7/alerts-source-statuspage",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "The source adapter of the alert system for status pages of Atlassian Statuspage and incident.io: one event for each incident that is not resolved.",
   "type": "module",
