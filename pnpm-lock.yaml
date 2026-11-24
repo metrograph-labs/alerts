@@ -1826,6 +1826,9 @@ importers:
       '@mark1russell7/alerts-shapes-nws':
         specifier: workspace:*
         version: link:../shapes-nws
+      '@mark1russell7/alerts-source-gdelt':
+        specifier: workspace:*
+        version: link:../source-gdelt
       '@mark1russell7/alerts-source-gtfs-alerts':
         specifier: workspace:*
         version: link:../source-gtfs-alerts
@@ -1844,6 +1847,9 @@ importers:
       '@mark1russell7/algebra':
         specifier: ^0.9.9
         version: 0.9.9(zod@4.6.7)
+      '@mark1russell7/files':
+        specifier: ^0.0.5
+        version: 0.0.5
       '@mark1russell7/optional':
         specifier: ^1.5.0
         version: 1.5.0

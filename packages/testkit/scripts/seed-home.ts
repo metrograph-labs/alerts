@@ -3,7 +3,7 @@
  * with `seedHome`. The folder has a log at a byte size, the cache files of one live copy and a made-up configuration.
  * The file `capacity-app.json` at the root of the repository gives the folder, the size and the levels (AL-126).
  *
- * Usage: node scripts/seed-home.ts <home folder> <log size in bytes> [<feeds> <persons> <incidents>]. The levels are the
+ * Usage: node scripts/seed-home.ts <home> <log bytes> [<feeds> <persons> <incidents> <gdelt> <score> <chain>]. The levels are the
  * level variables of `capacity-app.json`, and each absent level has its value in `DEFAULT_LEVELS`. The script writes one
  * JSON line with the seed record. Its field `amounts` gives the bytes of the log, as the seed protocol of `capacity-app/1` tells.
  */
@@ -13,7 +13,7 @@ const [home, logText, ...levelTexts] = process.argv.slice(2);
 if (home === undefined || logText === undefined) throw new Error("Give the home folder and the size of the log in bytes.");
 const log = Number(logText);
 if (!Number.isFinite(log) || log <= 0) throw new RangeError(`The size of the log is "${logText}", not a number of bytes above 0.`);
-const names = ["feeds", "persons", "incidents"] as const;
+const names = ["feeds", "persons", "incidents", "gdelt", "score", "chain"] as const;
 if (levelTexts.length > names.length) throw new Error(`Give ${String(names.length)} levels at most: ${names.join(", ")}.`);
 const levels: Record<keyof SeedLevels, number> = { ...DEFAULT_LEVELS };
 levelTexts.forEach((text, index) => {
