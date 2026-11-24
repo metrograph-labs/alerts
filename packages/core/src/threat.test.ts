@@ -1,9 +1,9 @@
-import { binomialTest } from "@mark1russell7/rigor-statistics";
+import { binomialTest, poissonBinomialTest } from "@mark1russell7/rigor-statistics";
 import { describe, expect, it } from "vitest";
 import { random } from "@mark1russell7/rigor-generators";
 import type { Breadth, IndicatorBreadth } from "./breadth.ts";
 import type { PlaceId } from "./contracts.ts";
-import { breadthUnits, bucketOf, HISTORY_BUCKET, indicatorSurprise, indicatorUnits, MIN_READS, placeScope, signalHistories, signalRate, surpriseOf, type BucketReads, type SignalHistory, type SignalUnit } from "./threat.ts";
+import { breadthUnits, bucketOf, HISTORY_BUCKET, indicatorSurprise, indicatorUnits, MAX_WEIGHTED_UNITS, MIN_READS, placeScope, signalHistories, signalRate, surpriseOf, type BucketReads, type SignalHistory, type SignalUnit } from "./threat.ts";
 
 const ids = Array.from({ length: 12 }, (_, index) => `place-1/unit-${String(index).padStart(2, "0")}`);
 const history = (unit: string, reads = 1000, signals = 10): SignalHistory => ({ unit, reads, signals });
@@ -32,8 +32,9 @@ describe("the surprise of the signals (AL-24)", () => {
     const mixed = [history(ids[0]!, 1000, 300), ...ids.slice(1).map((unit) => history(unit))];
     const common = surpriseOf([{ unit: ids[0]!, signal: true }, ...ids.slice(1).map((unit) => ({ unit, signal: false }))], mixed);
     const rare = surpriseOf([{ unit: ids[1]!, signal: true }, ...ids.filter((unit) => unit !== ids[1]).map((unit) => ({ unit, signal: false }))], mixed);
-    // The count statistic weighs each unit the same. The weighted statistic is the next part of AL-24.
+    // The count statistic weighs each unit the same. The weighted statistic gives the rare signal more surprise.
     expect(rare.surprise).toBe(common.surprise);
+    expect(rare.weighted!.surprise).toBeGreaterThan(common.weighted!.surprise);
     expect(rare.rare[0]!.rate).toBeLessThan(common.rare[0]!.rate);
     const both = surpriseOf(units(2), mixed);
     expect(both.rare.map((item) => item.unit)).toEqual([ids[1], ids[0]]);
@@ -58,6 +59,55 @@ describe("the surprise of the signals (AL-24)", () => {
     expect(doubled).toEqual(base);
   });
 
+  it("gives the weighted p of the count when each unit has the same rate", () => {
+    for (const count of [0, 1, 4, 12]) {
+      const found = surpriseOf(units(count), histories);
+      expect(found.weighted!.p).toBeCloseTo(found.p, 12);
+      expect(found.weighted!.low).toBeCloseTo(found.p, 12);
+    }
+  });
+
+  it("weighs each unit by -ln(rate), and bounds the exact chance of the weight", () => {
+    const counts = [5, 20, 80, 200, 400];
+    const mixed = ids.slice(0, counts.length).map((unit, index) => history(unit, 1000, counts[index]!));
+    const signal = new Set([ids[0]!, ids[2]!]);
+    const found = surpriseOf(ids.slice(0, counts.length).map((unit) => ({ unit, signal: signal.has(unit) })), mixed);
+    const ps = mixed.map((item) => signalRate(item)!.rate);
+    const weights = ps.map((rate) => -Math.log(rate));
+    expect(found.weighted!.weight).toBeCloseTo(weights[0]! + weights[2]!, 12);
+    // The exact chance: the sum over each subset of the units with a weight of the threshold or more.
+    let exact = 0;
+    for (let mask = 0; mask < 1 << ps.length; mask += 1) {
+      let weight = 0;
+      let chance = 1;
+      for (let index = 0; index < ps.length; index += 1) {
+        const on = (mask >> index) & 1;
+        if (on === 1) weight += weights[index]!;
+        chance *= on === 1 ? ps[index]! : 1 - ps[index]!;
+      }
+      if (weight >= found.weighted!.weight * (1 - 1e-12)) exact += chance;
+    }
+    expect(found.weighted!.low).toBeLessThanOrEqual(exact + 1e-12);
+    expect(found.weighted!.p).toBeGreaterThanOrEqual(exact - 1e-12);
+    expect(found.weighted!.p - found.weighted!.low).toBeLessThan(0.01);
+    expect(found.weighted!.surprise).toBeCloseTo(-Math.log10(found.weighted!.p), 12);
+  });
+
+  it("gives more weighted surprise to two rare signals than to two common signals of the same group", () => {
+    const mixed = ids.map((unit, index) => history(unit, 1000, index < 6 ? 5 : 300));
+    const rareTwo = surpriseOf(ids.map((unit, index) => ({ unit, signal: index < 2 })), mixed);
+    const commonTwo = surpriseOf(ids.map((unit, index) => ({ unit, signal: index >= 10 })), mixed);
+    expect(rareTwo.p).toBe(commonTwo.p);
+    expect(rareTwo.weighted!.surprise).toBeGreaterThan(commonTwo.weighted!.surprise);
+    expect(rareTwo.weighted!.p).toBeLessThan(poissonBinomialTest(2, mixed.map((item) => signalRate(item)!.rate), "greater"));
+  });
+
+  it("gives a p of 1 for no unit with a rate and for no signal", () => {
+    expect(surpriseOf(units(3), []).weighted).toEqual({ weight: 0, low: 1, p: 1, surprise: 0 });
+    expect(surpriseOf(units(0), histories).weighted).toMatchObject({ weight: 0, p: 1, surprise: 0 });
+    expect(MAX_WEIGHTED_UNITS).toBe(32_768);
+  });
+
   it("keeps the surprise finite when the p is below the smallest normal double", () => {
     const many = Array.from({ length: 400 }, (_, index) => `u-${String(index)}`);
     const found = surpriseOf(
@@ -66,6 +116,7 @@ describe("the surprise of the signals (AL-24)", () => {
     );
     expect(Number.isFinite(found.surprise)).toBe(true);
     expect(found.surprise).toBeCloseTo(1022 * Math.log10(2), 6);
+    expect(found.weighted!.surprise).toBeCloseTo(1022 * Math.log10(2), 6);
   });
 
   it("refuses counts that are not whole, or more signals than reads", () => {
