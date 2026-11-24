@@ -25,11 +25,14 @@ const place = (id: string, at?: readonly [number, number], bufferKm = 0): Watche
 /** The places of the tests: the cities of the three kept events. The requests hold no place. */
 const WATCH: Watch = { places: [place("dhaka", [90.4086, 23.7231]), place("port-au-prince", [-72.335, 18.5392]), place("gaza", [34.3333, 31.4167])] };
 
+/** This function gives a ZIP archive of one text file, stored with no compression. */
+const textZip = (name: string, text: string): Uint8Array => writeZipEntries([{ name, bytes: new TextEncoder().encode(text), method: 0 }]);
+
 /** This function gives the time `YYYYMMDDHHMMSS` that is `minutes` after the time of the fixture. */
 const stampAfter = (minutes: number): string => new Date(addedTime(STAMP)! + minutes * MIN).toISOString().replace(/\D/g, "").slice(0, 14);
 
 /** This function gives the archive of an event file of the time `stamp`, with the real lines and that time of addition. */
-const archiveOf = (stamp: string): Uint8Array => writeZipEntries([{ name: `${stamp}.export.CSV`, bytes: new TextEncoder().encode(TEXT.replaceAll("\t20261123200000\t", `\t${stamp}\t`)), method: 0 }]);
+const archiveOf = (stamp: string): Uint8Array => textZip(`${stamp}.export.CSV`, TEXT.replaceAll("\t20261123200000\t", `\t${stamp}\t`));
 
 /** This function gives the text of `lastupdate.txt` for an archive, in the real format. */
 const lastUpdateOf = (stamp: string, archive: Uint8Array, md5 = createHash("md5").update(archive).digest("hex")): string =>
@@ -144,7 +147,7 @@ describe("the census of the regions (AL-142)", () => {
   });
 
   it("counts the events of a state with the place of the state only, and gives 0 to a region with no event", () => {
-    const archive = storedZip([{ name: `${STAMP}.export.CSV`, text: stateText(STAMP) }]);
+    const archive = textZip(`${STAMP}.export.CSV`, stateText(STAMP));
     const file = readEventFile(archive, STAMP, undefined, () => true, ["CA", "TX"]);
     expect(typeof file === "object" ? file.census : file).toEqual({ CA: 0, TX: 1 });
     expect(typeof file === "object" ? file.reported : file).toBe(3);
@@ -158,7 +161,7 @@ describe("the census of the regions (AL-142)", () => {
 
   it("gives one census for each file that a fetch reads, only for a watch with a US state", async () => {
     const routes = new Map<string, Reply>();
-    const archive = storedZip([{ name: `${STAMP}.export.CSV`, text: stateText(STAMP) }]);
+    const archive = textZip(`${STAMP}.export.CSV`, stateText(STAMP));
     routes.set(eventFilePath(STAMP), bytes(archive));
     routes.set(LAST_UPDATE_PATH, text(lastUpdateOf(STAMP, archive)));
     const { fetch, sent } = fetchWith(routes, { places: [statePlace("austin", "TX")] });
