@@ -37,6 +37,8 @@ export interface TopFunction {
   readonly selfMs: number;
   /** The share of the self time in `totalMs`. */
   readonly share: number;
+  /** The callers with the most of this self time, at most 3: the function and its place, and the self time under it. */
+  readonly callers: readonly { readonly fn: string; readonly selfMs: number }[];
 }
 
 /** The summary of a CPU profile, in milliseconds. */
@@ -93,19 +95,36 @@ export function profileSummary(profile: Profile, options: SummaryOptions = {}): 
   let totalUs = 0;
   let gcUs = 0;
   const self = new Map<string, number>();
+  // The self time of each function under each caller.
+  const callers = new Map<string, Map<string, number>>();
+  const keyOf = (node: ProfileNode): string => `${node.callFrame.functionName || "(anonymous)"} ${placeOf(node.callFrame)}`;
   for (const node of profile.nodes) {
     const us = selfUs.get(node.id) ?? 0;
     if (node.callFrame.functionName === "(garbage collector)") gcUs += us;
     if (!counts(node.id)) continue;
     totalUs += us;
-    const key = `${node.callFrame.functionName || "(anonymous)"} ${placeOf(node.callFrame)}`;
+    const key = keyOf(node);
     self.set(key, (self.get(key) ?? 0) + us);
+    const up = byId.get(parent.get(node.id) ?? -1);
+    if (up !== undefined && us > 0) {
+      const held = callers.get(key) ?? new Map<string, number>();
+      held.set(keyOf(up), (held.get(keyOf(up)) ?? 0) + us);
+      callers.set(key, held);
+    }
   }
   const ms = (us: number): number => Number((us / 1000).toFixed(1));
   const top = [...self.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, options.top ?? 25)
-    .map(([fn, us]) => ({ fn, selfMs: ms(us), share: Number((us / Math.max(1, totalUs)).toFixed(3)) }));
+    .map(([fn, us]) => ({
+      fn,
+      selfMs: ms(us),
+      share: Number((us / Math.max(1, totalUs)).toFixed(3)),
+      callers: [...(callers.get(fn) ?? new Map<string, number>()).entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([caller, held]) => ({ fn: caller, selfMs: ms(held) })),
+    }));
   // A function counts one time on each path: a node with an ancestor of the same name adds nothing.
   const step: Record<string, number> = {};
   for (const name of options.steps ?? []) {
