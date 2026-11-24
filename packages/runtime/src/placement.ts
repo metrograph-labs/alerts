@@ -11,6 +11,8 @@
  * - Nobody picks a provider or a price. Each offer that meets the needs is a candidate.
  * - A base stack gives the needs that all copies share, for example the push services and the feeds. These needs limit
  *   the gain of each new copy, thus the front tells the true gain.
+ * - A joint measure of the live copies gives their common cause of failure (AL-147). Each copy needs the common cause.
+ *   Thus a new copy does not get the gain of an independent copy.
  *
  * The chances are inputs. Each input tells if it is measured or assumed, and its source. This module holds no chance
  * and no limit of cost. The caller reads the limit of cost from the private configuration at run time.
@@ -19,7 +21,7 @@
 import { meteredCost, type MeteredObservation, type PriceTerm } from "@mark1russell7/market";
 import { arrayOf, isRecord, numberOf, textOf } from "@mark1russell7/optional/read";
 import { OBJECTIVE_STEPS, PLACEMENT_SCHEMA, planPlacement, type Candidate, type PlacementLayer, type PlacementPlan, type PlacementRow, type PlanOptions, type Shared } from "@mark1russell7/stack-placement";
-import { RISK_SCHEMA, worksChance, type RiskLayer } from "@mark1russell7/stack-risk";
+import { RISK_SCHEMA, sharedCauseFit, worksChance, type RiskLayer } from "@mark1russell7/stack-risk";
 import { riskAddOn } from "@mark1russell7/stack-risk/add-on";
 import { monthTotal, type SpendLayer } from "@mark1russell7/stack-spend";
 import { spendAddOn } from "@mark1russell7/stack-spend/add-on";
@@ -84,6 +86,71 @@ export interface PlacementChances {
   readonly site?: ChanceInput | undefined;
   /** The inputs of single providers or regions. */
   readonly overrides?: readonly ChanceOverride[] | undefined;
+  /** The joint measure of the live copies (AL-147). With it, each copy needs the common cause of the live copies. */
+  readonly joint?: JointMeasure | undefined;
+}
+
+/**
+ * The measure of the live copies together, for example from the heartbeat flips of each copy and of the loud check
+ * (AL-148). Two copies fail together more often than two independent copies: a release, a feed or a bug of a start
+ * stops each copy. `sharedCauseFit` of `stack-risk` divides the measure into a common cause and a part of each copy.
+ */
+export interface JointMeasure {
+  /** The chance that each live copy works, in the order of the fixed copies of the input. */
+  readonly works: readonly ChanceInput[];
+  /** The chance that some live copy works. */
+  readonly anyWorks: ChanceInput;
+}
+
+// One chance input from a JSON value: works from 0 to 1, kind and source. It gives undefined for a value that is not one.
+function chanceInputOf(value: unknown): ChanceInput | undefined {
+  const works = numberOf(value, "works");
+  const kind = textOf(value, "kind");
+  const source = textOf(value, "source");
+  if (works === undefined || !(works >= 0 && works <= 1) || (kind !== "measured" && kind !== "assumed") || source === undefined) return undefined;
+  return { works, kind, source };
+}
+
+/**
+ * This function reads a joint measure from a JSON value: `{ works, anyWorks }`. `works` is a list with one chance input
+ * for each fixed copy, and `anyWorks` is one chance input. Each input has `works`, `kind` and `source`. It gives the
+ * measure, or a problem as a text.
+ */
+export function readJoint(value: unknown): JointMeasure | string {
+  const list: unknown = isRecord(value) ? value["works"] : undefined;
+  if (!Array.isArray(list) || list.length === 0) return "The joint measure has no list works.";
+  const works: ChanceInput[] = [];
+  for (const item of list as readonly unknown[]) {
+    const input = chanceInputOf(item);
+    if (input === undefined) return "Each input of works needs works from 0 to 1, kind (measured or assumed) and source.";
+    works.push(input);
+  }
+  const anyWorks = chanceInputOf(isRecord(value) ? value["anyWorks"] : undefined);
+  if (anyWorks === undefined) return "The input anyWorks needs works from 0 to 1, kind (measured or assumed) and source.";
+  return { works, anyWorks };
+}
+
+/** The id of the shared fragment of the common cause of the copies. */
+export const COMMON_FRAGMENT = "common:copies";
+
+/** The fit of a joint measure: the input of the common cause, and the chance of the own part of each live copy. */
+export interface JointFit {
+  readonly common: ChanceInput;
+  /** The chance that the own part of each live copy works, in the order of the fixed copies. */
+  readonly own: readonly number[];
+}
+
+/**
+ * This function gives the fit of the joint measure of the chances, or `undefined` with no joint measure. The fit is
+ * measured when each input of the measure is measured.
+ */
+export function jointFit(chances: PlacementChances): JointFit | undefined {
+  const { joint } = chances;
+  if (joint === undefined) return undefined;
+  const fit = sharedCauseFit({ works: joint.works.map((item) => item.works), anyWorks: joint.anyWorks.works });
+  const inputs = [...joint.works, joint.anyWorks];
+  const kind: ChanceKind = inputs.every((item) => item.kind === "measured") ? "measured" : "assumed";
+  return { common: { works: fit.shared, kind, source: `the common cause of the live copies, from ${joint.anyWorks.source}` }, own: fit.own };
 }
 
 /** The needs of a copy. An offer that does not meet them is not a candidate. */
@@ -277,13 +344,14 @@ function riskOf(part: string, input: ChanceInput): RiskLayer {
 function candidateOf(slot: string, pick: OfferPick, chances: PlacementChances, currency: string): Candidate {
   const provider = providerFragment(pick.provider);
   const region = regionFragment(pick.provider, pick.region);
+  const uses = [provider, region, ...(chances.joint === undefined ? [] : [COMMON_FRAGMENT])];
   const spend: SpendLayer = { schema: "spend/1", currency, kinds: [], proofDays: 30, services: [{ part: slot, billing: "fixed", price: pick.cost }] };
   return {
     key: `${pick.provider}/${pick.region}`,
     cost: pick.cost,
-    uses: [provider, region],
+    uses,
     source: pick.offer,
-    stack: { schema: "stack/1", parts: [{ id: slot, kind: "host", needs: [provider, region] }], layers: { "risk/1": riskOf(slot, chances.host), "spend/1": spend } },
+    stack: { schema: "stack/1", parts: [{ id: slot, kind: "host", needs: [...uses] }], layers: { "risk/1": riskOf(slot, chances.host), "spend/1": spend } },
   };
 }
 
@@ -295,15 +363,27 @@ function fixedUses(copy: FixedCopy): readonly string[] {
   return copy.kind === "cloud" ? [providerFragment(copy.provider), regionFragment(copy.provider, copy.region)] : [siteFragment(copy.site)];
 }
 
-function fixedCandidate(slot: string, copy: FixedCopy, chances: PlacementChances, currency: string): Candidate {
-  const uses = fixedUses(copy);
+/**
+ * The input of the host of a fixed copy. With a joint measure, the measure of the copy holds each of its causes. Thus the
+ * host gets the rest of its own part: the own part over the chance of its fragments, at most 1.
+ */
+function fixedHost(copy: FixedCopy, index: number, chances: PlacementChances, fit: JointFit | undefined): ChanceInput {
+  const measure = chances.joint?.works[index];
+  const own = fit?.own[index];
+  if (measure === undefined || own === undefined) return chances.host;
+  const fragments = fixedUses(copy).reduce((product, fragment) => product * fragmentInput(chances, fragment).works, 1);
+  return { works: fragments > 0 ? Math.min(1, own / fragments) : 1, kind: measure.kind, source: `the own part of ${measure.source}` };
+}
+
+function fixedCandidate(slot: string, copy: FixedCopy, host: ChanceInput, common: boolean, currency: string): Candidate {
+  const uses = [...fixedUses(copy), ...(common ? [COMMON_FRAGMENT] : [])];
   const spend: SpendLayer = { schema: "spend/1", currency, kinds: [], proofDays: 30, services: [{ part: slot, billing: "fixed", price: 0 }] };
   return {
     key: fixedKey(copy),
     cost: 0,
     uses,
     source: "a live copy",
-    stack: { schema: "stack/1", parts: [{ id: slot, kind: "host", needs: [...uses] }], layers: { "risk/1": riskOf(slot, chances.host), "spend/1": spend } },
+    stack: { schema: "stack/1", parts: [{ id: slot, kind: "host", needs: [...uses] }], layers: { "risk/1": riskOf(slot, host), "spend/1": spend } },
   };
 }
 
@@ -319,7 +399,8 @@ function fixedCandidate(slot: string, copy: FixedCopy, chances: PlacementChances
  *
  * @throws RangeError when the count of copies is not a whole number of 1 or more. It also throws when the least memory
  * or the limit of cost is less than 0, or when a chance input is not valid. It also throws when two fixed copies have
- * one key, or when a fixed copy at a site has no site input and no override.
+ * one key, or when a fixed copy at a site has no site input and no override. It also throws when a joint measure does not
+ * have one input for each fixed copy.
  */
 export function placementLayer(input: PlacementInput): PlacementBuild {
   const { needs, chances } = input;
@@ -332,6 +413,11 @@ export function placementLayer(input: PlacementInput): PlacementBuild {
   if (chances.site !== undefined) checkChance("site", chances.site);
   for (const item of chances.overrides ?? []) checkChance(item.id, item);
   const fixed = input.fixed ?? [];
+  if (chances.joint !== undefined) {
+    if (chances.joint.works.length !== fixed.length || fixed.length === 0) throw new RangeError("The joint measure does not have one input for each fixed copy.");
+    chances.joint.works.forEach((item, index) => checkChance(`joint ${String(index + 1)}`, item));
+    checkChance("joint any", chances.joint.anyWorks);
+  }
   const keys = new Set<string>();
   for (const copy of fixed) {
     const key = fixedKey(copy);
@@ -400,7 +486,12 @@ export function placementLayer(input: PlacementInput): PlacementBuild {
     add(providerFragment(pick.provider), "provider");
     add(regionFragment(pick.provider, pick.region), "region");
   }
-  const fixedSlots = fixed.map((copy, index) => ({ id: fixedSlotId(index), candidates: [fixedCandidate(fixedSlotId(index), copy, chances, needs.currency)] }));
+  const fit = jointFit(chances);
+  if (fit !== undefined) add(COMMON_FRAGMENT, "common");
+  const fixedSlots = fixed.map((copy, index) => ({
+    id: fixedSlotId(index),
+    candidates: [fixedCandidate(fixedSlotId(index), copy, fixedHost(copy, index, chances, fit), fit !== undefined, needs.currency)],
+  }));
   const newSlots = Array.from({ length: input.copies }, (_, index) => ({
     id: slotId(index),
     ...(index === 0 && fixed.length === 0 ? {} : { optional: true }),
@@ -588,6 +679,11 @@ export function frontLevels(front: readonly PlacementRow[]): readonly FrontLevel
 export function fragmentInput(chances: PlacementChances, fragment: string): ChanceInput {
   const override = (chances.overrides ?? []).find((item) => item.id === fragment);
   if (override !== undefined) return override;
+  if (fragment === COMMON_FRAGMENT) {
+    const fit = jointFit(chances);
+    if (fit === undefined) throw new RangeError(`The fragment ${fragment} has no joint measure.`);
+    return fit.common;
+  }
   if (fragment.startsWith("site:")) {
     if (chances.site === undefined) throw new RangeError(`The site fragment ${fragment} has no input.`);
     return chances.site;

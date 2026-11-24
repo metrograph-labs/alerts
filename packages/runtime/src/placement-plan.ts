@@ -3,7 +3,7 @@
  * plan list of each provider record of `@mark1russell7/market-sources`, and the incident history of the status page of
  * each provider. It reads no other source and opens no account.
  *
- * `node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--site-log <site=file,site=file>] [--base <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>]`
+ * `node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--site-log <site=file,site=file>] [--base <file>] [--joint <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>]`
  *
  * - `--min-memory-mib` is the least memory of a host of a copy, in MiB.
  * - The three `--assume-*` values are assumed chance inputs, from 0 to 1, for each provider, region and host. The script
@@ -23,6 +23,8 @@
  * - `--base` names a private JSON file with the function and the needs that all copies share (`readBase` of
  *   `placement.ts`). These needs limit the gain of each copy. The output names each of their inputs that is assumed or
  *   missing.
+ * - `--joint` names a private JSON file with the joint measure of the live copies (`readJoint` of `placement.ts`), in the
+ *   order of `--fixed`. The fit gives a common cause that each copy needs, thus a new copy is not an independent copy.
  * - `--copies` is the count of new copies. The default is 2.
  * - `--spend` names the spend entry of `config.json` that gives the limit of cost of a month (`monthlyUsd`). Without
  *   it, or without that entry, the front has no limit of cost.
@@ -61,7 +63,9 @@ import {
   baseAssumed,
   frontLevels,
   measuredBuild,
+  jointFit,
   readBase,
+  readJoint,
   type PlacementBase,
   type FixedCopy,
   placementLayer,
@@ -73,7 +77,7 @@ import {
 } from "./placement.ts";
 
 const USAGE =
-  "The command is: node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--site-log <site=file,site=file>] [--base <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>]";
+  "The command is: node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--site-log <site=file,site=file>] [--base <file>] [--joint <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>]";
 
 /** The User-Agent of each request. It names no person and no project. */
 const USER_AGENT = "alerts-placement";
@@ -89,6 +93,7 @@ interface Command {
   readonly copies: number;
   readonly fixed: readonly FixedCopy[];
   readonly base: string | undefined;
+  readonly joint: string | undefined;
   readonly siteLogs: readonly { readonly site: string; readonly path: string }[];
   readonly spend: string | undefined;
   readonly terms: readonly PriceTerm["kind"][];
@@ -104,7 +109,7 @@ function command(args: readonly string[]): Command | string {
     if (name === undefined || !name.startsWith("--") || value === undefined || value.startsWith("--")) return `The argument ${String(name)} has no value.`;
     values.set(name.slice(2), value);
   }
-  const known = new Set(["min-memory-mib", "assume-provider", "assume-region", "assume-host", "assume-site", "fixed", "site-log", "base", "copies", "spend", "terms", "window-days"]);
+  const known = new Set(["min-memory-mib", "assume-provider", "assume-region", "assume-host", "assume-site", "fixed", "site-log", "base", "joint", "copies", "spend", "terms", "window-days"]);
   const other = [...values.keys()].find((name) => !known.has(name));
   if (other !== undefined) return `The option --${other} is not known.`;
   const memory = Number(values.get("min-memory-mib"));
@@ -145,7 +150,7 @@ function command(args: readonly string[]): Command | string {
   const bad = terms.find((term) => !TERM_KINDS.some((kind) => kind === term));
   if (bad !== undefined) return `The price term ${bad} is not on-demand, spot or committed.`;
   const chances: PlacementChances = { provider, region, host, ...(site === undefined ? {} : { site }) };
-  return { minMemoryMiB: memory, chances, copies, fixed, base: values.get("base"), siteLogs, spend: values.get("spend"), terms: terms as PriceTerm["kind"][], windowDays };
+  return { minMemoryMiB: memory, chances, copies, fixed, base: values.get("base"), joint: values.get("joint"), siteLogs, spend: values.get("spend"), terms: terms as PriceTerm["kind"][], windowDays };
 }
 
 // The front of a build: its search, its levels and the assumed fragments of each row. It prints each level.
@@ -198,6 +203,15 @@ if (typeof parsed === "string") {
     process.exit(2);
   }
   const base: PlacementBase | undefined = baseRead;
+  const joint = parsed.joint === undefined ? undefined : readJoint(await readConfig(parsed.joint));
+  if (typeof joint === "string") {
+    console.error(`The joint file has a problem: ${joint}`);
+    process.exit(2);
+  }
+  if (joint !== undefined && joint.works.length !== parsed.fixed.length) {
+    console.error("The joint file needs one input for each copy of --fixed, in the same order.");
+    process.exit(2);
+  }
   if (base === undefined) console.log("No base is named. The front leaves out the needs that all copies share.");
   else {
     const open = baseAssumed(base);
@@ -260,7 +274,10 @@ if (typeof parsed === "string") {
       console.log(`The site ${log.site} has a measured input: ${site.measure.input.source}.`);
     } else console.log(`The site ${log.site} keeps the assumed input: ${site.reason}`);
   }
-  const chances = withMeasures(parsed.chances, measures);
+  const chances = withMeasures({ ...parsed.chances, ...(joint === undefined ? {} : { joint }) }, measures);
+  const fit = jointFit(chances);
+  if (fit === undefined) console.log("No joint measure is named. The front counts the live copies as independent copies.");
+  else console.log(`The common cause of the live copies works with the chance ${fit.common.works.toFixed(6)} (${fit.common.kind}). Each copy needs it.`);
   for (const gap of gaps) console.log(`The provider ${gap.provider} keeps the assumed inputs: ${gap.reason}`);
   if (offers.length === 0) {
     console.error("No source gave an offer. The script writes no front.");
