@@ -862,7 +862,8 @@ export function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: 
     if (condition === undefined && snapshot.stores === undefined && name.startsWith(STORE_LINE)) continue;
     if (condition === undefined && snapshot.bounds === undefined && name.startsWith(BOUND_LINE)) continue;
     if (condition === undefined && snapshot.redundancy === undefined && name.startsWith(REDUNDANCY_LINE)) continue;
-    if (condition === undefined && snapshot.stale === undefined && name.startsWith(PLACE_LINE)) continue;
+    // A copy ends only its own lines of the stale places. Each other copy watches the fixes of its own phones.
+    if (condition === undefined && name.startsWith(PLACE_LINE) && (snapshot.stale === undefined || !name.startsWith(placePrefix(snapshot.copy)))) continue;
     const draft = condition === undefined ? (line === undefined ? undefined : cancelOf(line)) : condition;
     if (draft === undefined) continue;
     const facts = canonicalJson(draft.facts, { form: "json" });
@@ -1271,9 +1272,14 @@ function heldCondition(entry: HeldPerson): Condition {
 
 const PLACE_LINE = "place/";
 
+// The start of the names of the lines of the stale places of one copy.
+function placePrefix(copy: string | undefined): string {
+  return `${PLACE_LINE}${encodeURIComponent(copy ?? "")}/`;
+}
+
 // The copy is in the name: each copy tells only of the fixes that it takes.
 function placeName(copy: string | undefined, place: PlaceId): string {
-  return `${PLACE_LINE}${encodeURIComponent(copy ?? "")}/${encodeURIComponent(place)}`;
+  return `${placePrefix(copy)}${encodeURIComponent(place)}`;
 }
 
 function staleCondition(entry: StalePlace, copy: string | undefined): Condition {

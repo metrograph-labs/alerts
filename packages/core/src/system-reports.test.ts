@@ -1633,6 +1633,8 @@ describe("the reports of the stale moving places (AL-40)", () => {
     const lines = addSystemReports(NO_SYSTEM_LINES, home.reports, home.observations);
     expect(lines).toEqual(home.lines);
     expect(systemReports(lines, snapshot({ stale: [stale()], copy: "cloud" }), AT).reports.map((report) => report.op)).toEqual(["alert"]);
+    // Another copy with an empty list ends none of the lines of this copy.
+    expect(systemReports(lines, snapshot({ stale: [], copy: "cloud" }), AT).reports).toEqual([]);
   });
 });
 
