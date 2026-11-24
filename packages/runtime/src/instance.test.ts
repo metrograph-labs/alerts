@@ -1675,15 +1675,20 @@ describe("the Twilio call channel of the instance", () => {
     expect(open(store({ ...SECRETS, HEALTHCHECKS_LOUD_PING_URL: keys.HEALTHCHECKS_LOUD_PING_URL })).instance.joint).toBeUndefined();
   });
 
-  it("makes the drift watch only with the field drift of the configuration (AL-139)", () => {
+  it("makes the drift watch only with the field drift of the settings of the copy (AL-139)", () => {
     // The fake runner starts no program, and the test starts no pass.
     const driftRunner = async () => ({ exitCode: 0, stdout: "" });
-    const config: AlertConfig = { ...CONFIG, drift: { commands: [{ name: "host-a", kind: "setup", argv: ["check-host"] }] } };
-    const { instance } = open(store(SECRETS), config, undefined, undefined, { driftRunner });
+    const drift = { commands: [{ name: "host-a", kind: "setup", argv: ["check-host"] }] } as const;
+    const { instance } = open(store(SECRETS), CONFIG, undefined, undefined, { copy: { ...ONLY_COPY, drift }, driftRunner });
     expect(instance.drift).toBeDefined();
     // The health has the state of the reads of each check, with no change and no message.
     expect(instance.health().reads).toContainEqual({ what: "drift of host-a", at: null, failed: false, next: null });
     expect(open().instance.drift).toBeUndefined();
+    // A mirror takes the configuration of another copy. A copy with no checks of its own makes no watch, with each other field of the configuration.
+    const mirror: CopySettings = { ...CLOUD, configFrom: "home" };
+    const exchange = { call: async () => Promise.reject(new Error("The copy is down.")), configHash: "hash-1" };
+    expect(open(store(SECRETS), { ...CONFIG, throttle: {} }, undefined, undefined, { copy: mirror, exchange, driftRunner }).instance.drift).toBeUndefined();
+    expect(open(store(SECRETS), CONFIG, undefined, undefined, { copy: { ...mirror, drift }, exchange, driftRunner }).instance.drift).toBeDefined();
   });
 
   it("makes the billing watch only for a peer with the field billing, and the watches of the copies carry its reads (AL-70)", () => {
