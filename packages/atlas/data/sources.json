@@ -8216,7 +8216,7 @@
   {
     "id": "faa-nas-status",
     "name": "FAA NAS Status airport status XML",
-    "classes": [],
+    "classes": ["transport.air.disruption"],
     "dimensions": [
       "aviation-delays"
     ],

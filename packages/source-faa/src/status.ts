@@ -23,11 +23,22 @@ export const DELAY_LISTS: readonly string[] = [...HELD_LISTS, "Arrival_Departure
  */
 export const IGNORED_LISTS: readonly string[] = ["Airport_Closure_List", "Airspace_Flow_List"];
 
+/**
+ * One entry of a list: the airport and the text of each other child element, for example `Reason`, `Avg`, `Max` and
+ * `End_Time`. The texts are free: the FAA gives times as local texts, for example `7:30 pm EST`.
+ */
+export interface StatusEntry {
+  readonly airport: string;
+  readonly fields: Readonly<Record<string, string>>;
+}
+
 /** One block of the status: the element name of its list, its title and the airports of its entries. */
 export interface StatusList {
   readonly list: string;
   readonly name: string;
   readonly airports: readonly string[];
+  /** The entries with an airport, in the order of the list. */
+  readonly entries: readonly StatusEntry[];
 }
 
 /** The status of one answer. */
@@ -57,6 +68,23 @@ function textOf(xml: string, name: string): string | undefined {
 }
 
 /**
+ * This function gives the entries of the inner text of one block. An entry is an element whose children are only text
+ * elements and include `ARPT`. A nested element, for example the airspace of a flow program, gives no entry.
+ */
+function entriesOf(inner: string): readonly StatusEntry[] {
+  const entries: StatusEntry[] = [];
+  for (const match of inner.matchAll(/<([A-Za-z_]+)>((?:\s*<[A-Za-z_]+>[^<]*<\/[A-Za-z_]+>)+)\s*<\/\1>/g)) {
+    const fields: Record<string, string> = {};
+    for (const child of (match[2] ?? "").matchAll(/<([A-Za-z_]+)>([^<]*)<\/\1>/g)) fields[child[1] ?? ""] = (child[2] ?? "").trim();
+    const airport = fields["ARPT"]?.toUpperCase();
+    if (airport === undefined || airport === "") continue;
+    delete fields["ARPT"];
+    entries.push({ airport, fields });
+  }
+  return entries;
+}
+
+/**
  * This function reads one answer. It gives `undefined` when the text is not a whole document of the status: no root, or
  * no end of the root. A cut answer gives `undefined`.
  */
@@ -71,7 +99,7 @@ export function readStatus(xml: string): Status | undefined {
     const inner = block[1] ?? "";
     const list = /<([A-Za-z_]+_List)>/.exec(inner)?.[1] ?? "";
     const airports = [...inner.matchAll(/<ARPT>([^<]*)<\/ARPT>/g)].map((match) => (match[1] ?? "").trim().toUpperCase());
-    lists.push({ list, name: (textOf(inner, "Name") ?? "").trim(), airports });
+    lists.push({ list, name: (textOf(inner, "Name") ?? "").trim(), airports, entries: entriesOf(inner) });
   }
   return { updated: update === undefined ? undefined : updateTime(update), lists };
 }

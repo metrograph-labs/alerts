@@ -1,17 +1,19 @@
 /**
- * The map function of the FAA source. One observation is one census of the airport status of the FAA. The fetch gives
- * its body. The map gives no report. It gives two indicator readings for each region: the count of the airports that
- * hold flights and the count of the airports with a delay.
+ * The map function of the FAA source. An observation is one census of the airport status of the FAA, or one program at an
+ * airport. A census gives no report. It gives two indicator readings for each region: the count of the airports that hold
+ * flights and the count of the airports with a delay. A program gives one report at the point of its airport.
  *
  * The area of a reading of a state is the code of the state, the system of the places. Thus the breadth of each place
  * of the state reads the series. The area of the reading of the whole country is the code `US` of ISO 3166-1.
  */
 
-import { Problems, type IndicatorArea, type MapResult, type Observation, type Reading, type SourceId } from "@mark1russell7/alerts";
+import { categoryOf, kindLabel, Problems, reportId, type IndicatorArea, type MapResult, type Observation, type Reading, type Report, type SourceId } from "@mark1russell7/alerts";
 import { isRecord } from "@mark1russell7/optional/read";
 import { errorMessage } from "@mark1russell7/text";
 
+import { AIRPORT_POINTS } from "./airports.ts";
 import { COUNTRY_REGION } from "./census.ts";
+import { programKey, readProgram, type ProgramBody } from "./programs.ts";
 
 /** The id of this source. */
 export const SOURCE_ID = "faa-nas-status" as SourceId;
@@ -24,6 +26,21 @@ export const AIRPORTS_HELD_MEASURE = "airports-held";
 
 /** The id of the measure of the count of the airports with a delay of each kind. */
 export const AIRPORTS_DELAYED_MEASURE = "airports-delayed";
+
+/** The kind of the report of a program. */
+export const PROGRAM_KIND = "transport.air.disruption";
+
+/** The system of the subject of a report: the FAA location id of the airport. */
+export const AIRPORT_SYSTEM = "faa-airport";
+
+/** The radius of the area of a report around the point of its airport: the ground of a large airport. */
+export const AIRPORT_RADIUS_KM = 3;
+
+/** The page of the airport status of the FAA for a person. */
+export const STATUS_PAGE = "https://nasstatus.faa.gov/";
+
+/** The sender of each report. */
+export const FAA_SENDER = "FAA Air Traffic Control System Command Center";
 
 /** The unit of each count. */
 export const AIRPORT_UNIT = "{airport}";
@@ -56,6 +73,7 @@ function mapOrThrow(observation: Observation): MapResult {
     // The fetch gives the whole answer as one observation when the status has no valid time.
     return { reports: [], problems: [{ path: "", message: "the observation is not a census: the format of the status of the FAA changed", fatal: true }] };
   }
+  if (isRecord(fields) && "program" in fields) return mapProgram(observation, fields);
   if (!isRecord(fields) || typeof fields["status"] !== "string" || !isRecord(fields["regions"])) {
     return { reports: [], problems: [{ path: "", message: "the observation is not a census of the status of the FAA", fatal: true }] };
   }
@@ -89,4 +107,70 @@ function mapOrThrow(observation: Observation): MapResult {
     problems.add("unknown", `the status has the lists ${unknown.join(", ")}, which the census does not know: it does not count them`);
   }
   return { reports: [], problems: problems.list, readings };
+}
+
+/** The title of each type of program. */
+const PROGRAM_TITLES: Readonly<Record<ProgramBody["program"], string>> = { "ground-stop": "Ground stop", "ground-delay": "Ground delay program" };
+
+/** This function maps the observation of one program. An airport with no point in the table gives a note and no report. */
+function mapProgram(observation: Observation, fields: Record<string, unknown>): MapResult {
+  const key = typeof fields["program"] === "string" && typeof fields["airport"] === "string" ? programKey(fields["program"] as ProgramBody["program"], fields["airport"]) : "";
+  const body = readProgram(key, observation.body);
+  if (body === undefined) return { reports: [], problems: [{ path: "", message: "the observation is not a program of the status of the FAA", fatal: true }] };
+  const point = AIRPORT_POINTS.get(body.airport);
+  if (point === undefined) {
+    return { reports: [], problems: [{ path: "airport", message: `the table of the airports does not have ${body.airport}: the program gives no report`, fatal: false }] };
+  }
+  return { reports: [programReport(observation, body, point)], problems: [] };
+}
+
+/** This function gives the report of one program. */
+function programReport(observation: Observation, body: ProgramBody, point: readonly [number, number]): Report {
+  const sent = Date.parse(body.since);
+  const key = `${programKey(body.program, body.airport)}:${body.since}`;
+  const title = PROGRAM_TITLES[body.program];
+  const facts = [
+    body.reason === undefined ? undefined : `The reason is ${body.reason}.`,
+    body.averageDelay === undefined ? undefined : `At the start, the average delay was ${body.averageDelay}.`,
+    body.maximumDelay === undefined ? undefined : `At the start, the maximum delay was ${body.maximumDelay}.`,
+    body.endTime === undefined ? undefined : `At the start, the planned end was ${body.endTime}.`,
+  ].filter((fact) => fact !== undefined);
+  return {
+    id: reportId({ source: SOURCE_ID, key, sent }),
+    source: SOURCE_ID,
+    origin: FAA_ORIGIN,
+    key,
+    references: [],
+    correlation: [],
+    status: "actual",
+    op: "alert",
+    kind: { code: PROGRAM_KIND, label: kindLabel(PROGRAM_KIND) },
+    categories: [categoryOf(PROGRAM_KIND)],
+    severity: "moderate",
+    // A ground stop holds the flights now. A ground delay program gives each flight a later departure time.
+    urgency: body.program === "ground-stop" ? "immediate" : "expected",
+    certainty: "observed",
+    response: ["monitor"],
+    sent,
+    received: observation.fetched,
+    effective: sent,
+    onset: sent,
+    areas: [{ type: "circle", center: point, radiusKm: AIRPORT_RADIUS_KM }],
+    about: [{ system: AIRPORT_SYSTEM, id: body.airport }],
+    sender: FAA_SENDER,
+    headline: `${title} at the airport ${body.airport}`,
+    ...(facts.length === 0 ? {} : { description: facts.join(" ") }),
+    web: STATUS_PAGE,
+    observation: observation.id,
+    parameters: Object.fromEntries(
+      [
+        ["program", body.program],
+        ["airport", body.airport],
+        ["reason", body.reason],
+        ["averageDelay", body.averageDelay],
+        ["maximumDelay", body.maximumDelay],
+        ["endTime", body.endTime],
+      ].flatMap(([name, value]) => (value === undefined ? [] : [[name, [value]]])),
+    ),
+  };
 }

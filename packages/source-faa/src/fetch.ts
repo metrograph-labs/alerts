@@ -1,18 +1,19 @@
 /**
  * The fetch function of the FAA source. It asks for the airport status of the FAA (`nasstatus.faa.gov`) through
  * polite-crawler. The request names no place. The fetch makes the census of the status for the US states of the watched
- * places on the computer, and gives it as one observation.
+ * places on the computer, and gives it as one observation. Then it gives one observation for each program (`programs.ts`).
  *
  * The census holds the time of the update of the status. Thus two fetches of one update give one observation id, and the
  * runtime keeps it one time.
  */
 
-import { observationId, watchedStates, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch } from "@mark1russell7/alerts";
+import { observationId, watchedStates, type Cursor, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch } from "@mark1russell7/alerts";
 import { createRequester } from "@mark1russell7/alerts-fetch";
 import type { Pace, Reply, Transport } from "polite-crawler/api";
 
 import { censusOf } from "./census.ts";
 import { SOURCE_ID } from "./map.ts";
+import { programsOf } from "./programs.ts";
 import { readStatus } from "./status.ts";
 
 /** The base URL of the airport status of the FAA. */
@@ -21,7 +22,7 @@ export const FAA_BASE_URL = "https://nasstatus.faa.gov";
 /** The path of the status of all the airports. */
 export const STATUS_PATH = "/api/airport-status-information";
 
-/** The content type of each census. */
+/** The content type of each census and each program. */
 export const CENSUS_CONTENT_TYPE = "application/json";
 
 /** The shortest time between two requests to the host. The FAA publishes no limit. The status changes approximately one time each minute. */
@@ -46,6 +47,7 @@ export interface FaaFetchOptions {
 /** The input of the fetch function, as the contract gives it. */
 export interface FaaFetchInput {
   readonly watch: Watch;
+  readonly cursor?: Cursor;
 }
 
 /** The observations of one answer, and the value `complete`. */
@@ -53,14 +55,18 @@ export interface Read {
   readonly observations: readonly Observation[];
   /** True: the answer is a status with a valid time. */
   readonly complete: boolean;
+  /** The programs of the status, for the next fetch. Absent for a status with no valid time: the cursor stays. */
+  readonly cursor?: Cursor;
+  /** The time of the update of the status. */
+  readonly asOf?: Instant;
 }
 
 /**
- * This function reads one answer. A status with a valid time gives one census of the states `states`. A status with no
- * valid time gives one observation of the whole body, and then the map tells of the change. A cut answer, or a body that
+ * This function reads one answer. A status with a valid time gives one census of the states `states`. It also gives one
+ * observation for each program, with the cursor `cursor` of the last fetch. A status with no valid time gives one observation of the whole body, and then the map tells of the change. A cut answer, or a body that
  * is not a status, gives `undefined`.
  */
-export function readAnswer(reply: Reply, url: string, states: readonly string[], fetched: Instant, latency: number): Read | undefined {
+export function readAnswer(reply: Reply, url: string, states: readonly string[], fetched: Instant, latency: number, cursor?: Cursor): Read | undefined {
   const status = readStatus(reply.body);
   if (status === undefined) return undefined;
   const transport = { url, status: reply.status, latency };
@@ -74,7 +80,10 @@ export function readAnswer(reply: Reply, url: string, states: readonly string[],
   });
   const { updated } = status;
   if (updated === undefined) return { observations: [observation(reply.headers["content-type"] ?? "application/xml", reply.body)], complete: false };
-  return { observations: [observation(CENSUS_CONTENT_TYPE, JSON.stringify(censusOf({ ...status, updated }, states)))], complete: true };
+  const programs = programsOf({ ...status, updated }, cursor);
+  const census = observation(CENSUS_CONTENT_TYPE, JSON.stringify(censusOf({ ...status, updated }, states)));
+  const bodies = programs.bodies.map((body) => observation(CENSUS_CONTENT_TYPE, JSON.stringify(body)));
+  return { observations: [census, ...bodies], complete: true, cursor: programs.cursor, asOf: updated };
 }
 
 /**
@@ -98,8 +107,9 @@ export function createFaaFetch(options: FaaFetchOptions): (input: FaaFetchInput,
     const requested = await requester.get({ path: STATUS_PATH, what: "the airport status" }, signal);
     if (!requested.ok) return { ok: false, failure: requested.failure };
     const { url, answer, latency } = requested;
-    const read = readAnswer(answer.reply, url, watchedStates(input.watch.places), now(), latency);
+    const read = readAnswer(answer.reply, url, watchedStates(input.watch.places), now(), latency, input.cursor);
     if (read === undefined) return { ok: false, failure: { kind: "network", message: `truncated or malformed body: ${url}` } };
-    return { ok: true, observations: read.observations, complete: read.complete };
+    const { observations, complete, cursor, asOf } = read;
+    return { ok: true, observations, complete, ...(cursor === undefined ? {} : { cursor }), ...(asOf === undefined ? {} : { asOf }) };
   };
 }
