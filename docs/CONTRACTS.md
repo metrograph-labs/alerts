@@ -183,6 +183,8 @@ The rules of each adapter:
 
    Fatal and lossy problems move the health to `changed`. Notes do not. So a renamed value that the map replaces with a fallback shows in the health.
    When the map cannot read an area or a subject that a watch can match, it gives a fatal problem. A place with no position matches only by codes, so an area needs a region code or a place.
+   A report with no area, no subject and no address has no place, for example a cancel with no info block or a space weather event of the whole Earth. The schema accepts it, and it reaches no person by a place (AL-157).
+   The fetch step checks each report of the map with `reportSchema`. A report that fails it is a lossy problem, and the log does not get it. Thus the log keeps only reports that the other copies accept.
 3. **The descriptor tells the truth about dependencies.** `origins` names the authorities whose messages the source carries. `dependsOn` names the failure domains outside the cell: providers, CDNs, carriers, transmitters. Each id starts with its kind, for example `cdn:akamai`. `uses` names the resources of the cell: `internet`, `dns`, `power`, `receiver`. The coverage uses both.
 4. **The ids are hashes of content.** The core gives the id functions in `ids.ts`. An adapter does not make its own ids.
    - `observationId`: the SHA-256 of the source id, the content type, the request URL and the body. The fetch time is not part of it, so a poll with no change gives the same id. The URL is the part that the `map` function reads. A URL with the time of the poll gives the URL with no time, and a test holds that `map` does not read the time.

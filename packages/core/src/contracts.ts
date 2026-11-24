@@ -209,7 +209,10 @@ export interface Report {
   readonly expires?: Instant;
   /** The time at which the event ends, when the source tells it apart from `expires`. */
   readonly ends?: Instant;
-  /** The areas of the event. An empty list: the event has no place. */
+  /**
+   * The areas of the event. An empty list: the event has no place, for example a cancel or a space weather event of
+   * the whole Earth. Such a report reaches no person by a place.
+   */
   readonly areas: readonly Area[];
   readonly areaText?: string;
   readonly about: readonly Subject[];

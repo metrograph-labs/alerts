@@ -14,6 +14,7 @@ import {
   checkWith,
   readingProblems,
   readingSchema,
+  reportSchema,
   type CanaryResult,
   type FetchOutcome,
   type FetchRecord,
@@ -73,7 +74,8 @@ export function fetchEvents(input: FetchInput): (ObservationEvent | FetchEvent)[
 /**
  * This function gives the events and the readings of one fetch. Each reading of a new observation gets two checks: the
  * schema of a reading, and the declaration of its measure with `readingProblems`. It must also name its own observation.
- * A reading that fails a check is a lossy problem of its observation, and the store does not get it.
+ * A reading that fails a check is a lossy problem of its observation, and the store does not get it. Each report gets
+ * the schema of a report. A report that fails it is a lossy problem, and the log does not get it (AL-157).
  */
 export function fetchStep(input: FetchInput): FetchStep {
   const { source, started, ended, outcome } = input;
@@ -95,17 +97,18 @@ export function fetchStep(input: FetchInput): FetchStep {
   const readings: Reading[] = [];
   for (const observation of unique) {
     const result = mapSafely(input.procedures, observation);
+    const valid = checkReports(result.reports);
     const checked = checkReadings(result.readings, observation.id, source, input.descriptor);
-    const found = [...result.problems, ...checked.problems];
+    const found = [...result.problems, ...valid.problems, ...checked.problems];
     fatal += found.filter((problem) => problem.fatal).length;
     lossy += found.filter((problem) => problem.lossy === true).length;
     if (!isFresh.has(observation.id)) continue;
-    if (input.admit !== undefined && !input.admit(result.reports)) {
+    if (input.admit !== undefined && !input.admit(valid.reports)) {
       waiting += 1;
       continue;
     }
     fresh.push(observation);
-    reports.push(...result.reports);
+    reports.push(...valid.reports);
     problems.push(...found);
     readings.push(...checked.readings);
   }
@@ -128,6 +131,21 @@ export function fetchStep(input: FetchInput): FetchStep {
 const lossyAt =
   (path: string) =>
   (message: string): MapProblem => ({ path, message, fatal: false, lossy: true });
+
+// The reports of one map result that pass the schema of a report, and a lossy problem for each other report. A report
+// goes to the log and to the other copies, and the exchange refuses a report that fails the schema. Thus the log keeps
+// only a report that each copy accepts. The function keeps the value of a good report as the map gave it.
+function checkReports(given: unknown): { reports: Report[]; problems: MapProblem[] } {
+  if (!Array.isArray(given)) return { reports: [], problems: [lossyAt("reports")("The reports of the map are not a list.")] };
+  const reports: Report[] = [];
+  const problems: MapProblem[] = [];
+  for (const [index, value] of (given as readonly unknown[]).entries()) {
+    const checked = checkWith(reportSchema, value);
+    if (checked.tag === "err") problems.push(...checked.error.map(lossyAt(`reports[${String(index)}]`)));
+    else reports.push(value as Report);
+  }
+  return { reports, problems };
+}
 
 // The readings of one map result that pass their checks, and a lossy problem for each other reading. The value comes from
 // an adapter, thus the function checks the list too. A reading must name its observation, because the key of the store holds it.

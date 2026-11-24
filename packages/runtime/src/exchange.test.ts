@@ -127,6 +127,11 @@ describe("sharedItem", () => {
 describe("itemProblem", () => {
   const good = itemOf(delivered("k1", T0), "b");
 
+  it("gives no problem for a fetch with a report that has no place, as a cancel with no info block (AL-157)", () => {
+    const cancel: Report = { ...report("c1", T0), op: "cancel", references: ["w1"], areas: [] };
+    expect(itemProblem(itemOf(fetched("fetch:2", T0, [cancel]), "b"))).toBeUndefined();
+  });
+
   it("gives no problem for each shared item", () => {
     const events = [fetched("fetch:1", T0, [report("w1", T0)]), delivered("k1", T0, "copy-1"), acknowledged(T0), ended(T0, [W1]), back(T0, [W1]), cancelled("k1", T0), endOf(W1, T0)];
     for (const event of events) expect(itemProblem(JSON.parse(JSON.stringify(itemOf(event, "b"))))).toBeUndefined();
@@ -142,7 +147,7 @@ describe("itemProblem", () => {
     ["an unknown field", { from: "b", event: { ...good.event, copy: HIDDEN } }, "the event delivery has the unknown field copy."],
     ["a missing field", { from: "b", event: envelope("delivery", "delivery:k1", T0) }, "the event delivery does not have the field delivery."],
     ["a bad field", { from: "b", event: { ...good.event, delivery: { ...delivery("k1", T0), step: -1, key: HIDDEN } } }, "the field delivery of the event delivery is not valid."],
-    ["a bad report", { from: "b", event: { ...envelope("fetch", "fetch:1", T0), reports: [{ ...report("w1", T0), areas: [], headline: HIDDEN }] } }, "the field reports of the event fetch is not valid."],
+    ["a bad report", { from: "b", event: { ...envelope("fetch", "fetch:1", T0), reports: [{ ...report("w1", T0), severity: HIDDEN }] } }, "the field reports of the event fetch is not valid."],
     ["an extra field", { from: "b", event: good.event, note: HIDDEN }, "the item has a field other than from and event."],
   ])("gives a problem with no value for %s", (_name, value, problem) => {
     expect(itemProblem(value)).toBe(problem);
