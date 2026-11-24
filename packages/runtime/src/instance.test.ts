@@ -54,6 +54,9 @@ import { DEFAULT_POLICY } from "polite-crawler/politeness";
 import { afterEach, describe, expect, it } from "vitest";
 import { ACCOUNT_SOURCES, BOM_SWS_KEY, readsGdelt, CHECKS_KEY, EIA_KEY, CLOUDFLARE_RADAR_KEY, checksKeys, DAEMON_CHECK, daemonCheck, DELIVERY_TIMES, INSTANCE_CHANNELS, INSTANCE_CHECK, INSTANCE_EXPECTATIONS, instanceExpectations, INSTANCE_FETCH_LIMIT, INSTANCE_SOURCES, INSTANCE_TIMES, instanceCheck, instanceProblems, instanceServices, shownNode, shownServices, LOUD_PING_URL_KEY, LOUD_STEADY, nwwsKeys, nwwsSetup, openInstance, PING_URL_KEY, pingKeyOf, pingTargets, RANK_DELAY, RANK_FLOOR, SOURCE_POLICY, sourcePace, twilioSetup, USER_AGENT_NAME, instanceSenders, WEBHOOK_SECRET_KEY, WEBHOOK_USER_AGENT, webhookSetup, type Instance, type InstanceOptions } from "./instance.ts";
 import { heartbeatGap } from "./heartbeat.ts";
+import { NO_PARTS } from "./config.ts";
+import { configFilesOf } from "./config-sync.ts";
+import { createPositionIntake } from "./position-intake.ts";
 import { spendGates, spendQuota } from "./balance.ts";
 import { CLOCK_SKEW_LIMIT, COPY_TOKEN_KEY, EXCHANGE_EVERY, EXCHANGE_LIMIT } from "./copy.ts";
 import { overdueLimit } from "./delivery.ts";
@@ -105,6 +108,18 @@ const CONFIG: AlertConfig = {
   people: [{ watch: { person, places: [place], rules: [] } }],
   contacts: [{ person, channel: pushover, address: { user: { secret: "PUSHOVER_USER_KEY" } } }],
   policies: [policy("life-safety"), policy("urgent"), policy("notice")],
+};
+
+// A moving place of the tests (AL-40). The fixed place is 8.9 km north of the polygon of the recorded Flood Warning, thus out of it.
+const MOVING_PLACE = "place-moving" as PlaceId;
+const MOVING_DEVICE = "ph";
+const MOVING_CONFIG: AlertConfig = {
+  ...CONFIG,
+  places: [
+    { ...CONFIG.places[0]!, at: [LONGITUDE, 28.46] },
+    { id: MOVING_PLACE, label: "Phone", codes: [{ system: "state", code: "TX" }, { system: "iso3166", code: "US" }], bufferKm: 5, moving: { device: MOVING_DEVICE, maxAgeMinutes: 30 } },
+  ],
+  people: [{ watch: { person, places: [place, MOVING_PLACE], rules: [] } }],
 };
 
 // Fake keys: 30 letters and digits, as Pushover keys are. A test looks for them in each message.
@@ -1106,6 +1121,21 @@ describe("openInstance", () => {
       expect(net.exchanges.some((exchange) => exchange.url === CATALOG_URL)).toBe(false);
     });
 
+    it("chooses the feeds of the fixed places only: a fix of a moving place in the box of another feed changes no choice (AL-40)", async () => {
+      const net = network();
+      const { cache, written } = cacheOf({ text: CATALOG, fetched: T0 });
+      // A made-up fix in the box of the far feed. The fix is in the intake before the open, thus before the choice.
+      const position = createPositionIntake({ config: MOVING_CONFIG });
+      position.take({ _type: "location", lat: 53.412345, lon: 14.612345, acc: 20, tst: Math.floor(T0 / 1000) - 60, tid: MOVING_DEVICE });
+      const { instance, clock } = open(store(SECRETS), MOVING_CONFIG, 0, TEST_FETCH_LIMIT, { transport: withTransit(net), transit: cache, position });
+      expect(instance.transit?.chosen.feeds.map((feed) => feed.id)).toEqual(["mdb-9001"]);
+      await finish(clock, instance.runtime.pass());
+      await finish(clock, instance.transit!.idle());
+      expect(net.exchanges.filter((exchange) => new URL(exchange.url).hostname === "transit.example.test").map((exchange) => exchange.url)).toEqual([NEAR]);
+      expect(written).toEqual([]);
+      await instance.transit!.close();
+    });
+
     it("reads the catalog after the first pass with no copy, and tells one time that the feeds changed", async () => {
       const net = network();
       const { cache, written } = cacheOf(undefined);
@@ -1289,6 +1319,113 @@ describe("the GDELT source of the instance (AL-19)", () => {
       readings.close();
       rmSync(folder, { recursive: true, force: true });
     }
+  });
+});
+
+describe("the moving places of the instance (AL-40)", () => {
+  // Made-up fixes near the public point of the tests, in the polygon of the recorded Flood Warning. Each test looks for their digits.
+  const FIX_LON = -98.551234;
+  const FIX_LAT = 28.301234;
+  const location = (at: number, fields: Record<string, unknown> = {}) => ({ _type: "location", lat: FIX_LAT, lon: FIX_LON, acc: 30, tst: Math.floor(at / 1000), tid: MOVING_DEVICE, ...fields });
+  const holdsNoFix = (value: unknown): void => {
+    const text = JSON.stringify(value);
+    expect(text).not.toContain("98.5512");
+    expect(text).not.toContain("28.3012");
+  };
+  const apiUrls = (net: ReturnType<typeof network>): string[] => net.exchanges.map((exchange) => exchange.url).filter((url) => new URL(url).hostname === HOST).sort();
+  const staleLines = (instance: Instance) => Object.values(instance.runtime.state().lines.open).filter((line) => line.kind.code === "system.place.stale");
+
+  it("sends the warning at the fix of a moving place, by the label of the place, and sends nothing with no fix", async () => {
+    const position = createPositionIntake({ config: MOVING_CONFIG });
+    position.take(location(T0 - MINUTE));
+    const { instance, clock, server } = open(store(SECRETS), MOVING_CONFIG, 0, TEST_FETCH_LIMIT, { position });
+    const pass = await finish(clock, instance.runtime.pass());
+    expect(server.calls).toHaveLength(1);
+    expect(server.calls[0]?.fields["message"]).toMatch(/^Why: Phone is in the area\n\n\S/);
+    expect(pass.delivery?.sent).toHaveLength(1);
+    holdsNoFix(server.calls);
+    // The fixed place is out of the polygon. Thus with no fix, no place matches, and a copy with no fix tells no stale place.
+    const quiet = open(store(SECRETS), MOVING_CONFIG, 0, TEST_FETCH_LIMIT, { position: createPositionIntake({ config: MOVING_CONFIG }) });
+    await finish(quiet.clock, quiet.instance.runtime.pass());
+    expect(quiet.server.calls).toHaveLength(0);
+    expect(staleLines(quiet.instance)).toEqual([]);
+  });
+
+  it("changes no fetch of a source and no request of the store of shapes with a fix", async () => {
+    const run = async (fix: boolean) => {
+      const net = network();
+      const position = createPositionIntake({ config: MOVING_CONFIG });
+      // A made-up fix in another state. The sources and the store keep the states of the file.
+      if (fix) position.take(location(T0 - MINUTE, { lat: 35.512345, lon: -97.512345 }));
+      const { instance, clock } = open(store(SECRETS), MOVING_CONFIG, 0, TEST_FETCH_LIMIT, { transport: withZones(net), shapes: memoryCache(), position });
+      const pass = await finish(clock, instance.runtime.pass());
+      await finish(clock, instance.shapes.idle());
+      await instance.shapes.close();
+      return { urls: apiUrls(net), fetched: pass.fetched, net };
+    };
+    const without = await run(false);
+    const withFix = await run(true);
+    expect(withFix.fetched).toEqual(without.fetched);
+    expect(withFix.urls).toEqual(without.urls);
+    expect(withFix.urls).toContain("https://api.weather.gov/zones?area=TX&type=county");
+    for (const exchange of withFix.net.exchanges) {
+      expect(JSON.stringify(exchange)).not.toContain("35.5123");
+      expect(JSON.stringify(exchange)).not.toContain("97.5123");
+    }
+  });
+
+  it("puts the moving place at its fix into the coverage of the pass, with the outlines of the store", async () => {
+    const net = network();
+    const position = createPositionIntake({ config: MOVING_CONFIG });
+    position.take(location(T0 - MINUTE));
+    const shapeOf = (path: string) => (JSON.parse(ZONE_ANSWERS[path]!) as { geometry: { coordinates: [number, number][][] } }).geometry.coordinates;
+    const cache = memoryCache({
+      lists: [
+        { state: "TX", kind: "county", fetched: T0, ids: ["TXC311"] },
+        { state: "TX", kind: "forecast", fetched: T0, ids: ["TXZ230"] },
+      ],
+      zones: [
+        { kind: "county", id: "TXC311", state: "TX", name: "County", fetched: T0, shapes: [{ type: "polygon", rings: shapeOf("/zones/county/TXC311") }] },
+        { kind: "forecast", id: "TXZ230", state: "TX", name: "Zone", fetched: T0, shapes: [{ type: "polygon", rings: shapeOf("/zones/forecast/TXZ230") }] },
+      ],
+    });
+    const { instance, clock, server } = open(store(SECRETS), MOVING_CONFIG, 0, TEST_FETCH_LIMIT, { transport: withZones(net), shapes: cache, position });
+    const pass = await finish(clock, instance.runtime.pass());
+    expect(new Set(pass.view?.coverage.map((entry) => entry.place)).has(MOVING_PLACE)).toBe(true);
+    expect(server.calls).toHaveLength(1);
+    await instance.shapes.close();
+  });
+
+  it("gives a private notice with the label of a stale moving place, and keeps the place out of the pass", async () => {
+    const position = createPositionIntake({ config: MOVING_CONFIG });
+    // The fix is older than the age limit of 30 minutes.
+    position.take(location(T0 - 31 * MINUTE));
+    const { instance, clock, server } = open(store(SECRETS), MOVING_CONFIG, 0, TEST_FETCH_LIMIT, { position });
+    await finish(clock, instance.runtime.pass());
+    const stale = staleLines(instance);
+    expect(stale.map((line) => [line.about[0]?.label, line.addresses])).toEqual([["Phone", [person]]]);
+    // The warning does not reach the person: the place is not in the pass.
+    expect(server.calls.filter((call) => call.fields["title"]?.includes("Flood Warning") === true)).toEqual([]);
+    holdsNoFix(stale);
+    holdsNoFix(server.calls);
+    expect(instance.health().reads).toEqual(expect.arrayContaining([{ what: `fixes of the moving place ${MOVING_PLACE}`, at: T0 - 31 * MINUTE, failed: true, next: T0 - MINUTE }]));
+  });
+
+  it("carries no fix in the exchange page, the config files, the map, the history and the health", async () => {
+    const position = createPositionIntake({ config: MOVING_CONFIG });
+    position.take(location(T0 - MINUTE));
+    const { instance, clock } = open(store(SECRETS), MOVING_CONFIG, 0, TEST_FETCH_LIMIT, { position });
+    await finish(clock, instance.runtime.pass());
+    const page = instance.runtime.share(0);
+    expect(page.items.length).toBeGreaterThan(0);
+    holdsNoFix(page);
+    holdsNoFix(instance.map());
+    holdsNoFix(instance.history(null));
+    const health = instance.health();
+    holdsNoFix(health);
+    expect(health.reads).toEqual(expect.arrayContaining([{ what: `fixes of the moving place ${MOVING_PLACE}`, at: T0 - MINUTE, failed: false, next: T0 + 29 * MINUTE }]));
+    const texts = { config: { text: JSON.stringify(MOVING_CONFIG) }, secrets: { text: "" }, copy: { text: "{}" }, parts: NO_PARTS };
+    holdsNoFix(configFilesOf({ copy: ONLY_COPY, use: "files", texts, configHash: "hash-1" }));
   });
 });
 

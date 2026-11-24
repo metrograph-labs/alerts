@@ -17,6 +17,8 @@ import {
   interestsPayload,
   linkRule,
   localPlaces,
+  passPlaces,
+  staleMovingPlaces,
   mapPayload,
   ONLY_COPY,
   optedIn,
@@ -44,6 +46,12 @@ import {
   type HistoryPayload,
   type InterestsPayload,
   type Instant,
+  type PlaceConfig,
+  type Position,
+  type PositionFix,
+  type RegionCode,
+  type StalePlace,
+  type WatchedPlace,
   type MapPayload,
   type NodeKey,
   type OptInRecord,
@@ -127,8 +135,9 @@ import { exchangeLoop, exchangeWorker, type EntriesSource, type ExchangeCall, ty
 import { channelQuota } from "./quota.ts";
 import { keptPass, openRuntime, type CopyChecks, type KeptPass, type Pass, type Runtime, type RuntimeOptions } from "./runtime.ts";
 import { START_SNAPSHOT_EVERY, START_SNAPSHOT_FLOOR } from "./start-snapshot.ts";
-import { addZoneCodes, keepShapes, placeCodesKey, refreshUntil, shapeSources, type InstanceShapes, type ShapeOutcome, type ZoneCodeCounts } from "./shapes.ts";
+import { addZoneCodes, codesAtFix, keepShapes, placeCodesKey, refreshUntil, shapeSources, type InstanceShapes, type ShapeOutcome, type ZoneCodeCounts } from "./shapes.ts";
 import { chooseFeeds, feedsKey, keepTransit, type InstanceTransit, type TransitCache, type TransitOutcome } from "./transit.ts";
+import { fixReads, type PositionIntake } from "./position-intake.ts";
 import { tellSource, type TellIntake } from "./tell-intake.ts";
 import { DELAY_LIMITS, nextFetch } from "./view.ts";
 
@@ -752,6 +761,11 @@ export interface InstanceOptions {
    * Its fetch folds the messages of the intake into the lines of the reports of the merge state.
    */
   readonly tell?: TellIntake;
+  /**
+   * The intake of the fixes of the moving places (AL-40, `position-intake.ts`). With it, each pass has each moving place at
+   * its last fresh fix, and the health route tells the age of each last fix. The fixes stay on this copy.
+   */
+  readonly position?: PositionIntake;
   /** The fetch of the Pushover channel. */
   readonly pushover: PushoverChannelOptions["fetch"];
   /**
@@ -1065,6 +1079,35 @@ export function openInstance(options: InstanceOptions): Instance {
   const start = store === undefined ? undefined : zoned(store);
   const placed = start?.config ?? config;
   const places = localPlaces(placed);
+  // The moving places (AL-40). Each pass has each moving place at its last fresh fix, with the zone codes near the fix.
+  // The store of shapes and the keeper of the transit catalog get only the fixed places. Thus a fix changes no fetch.
+  const position = options.position;
+  // The codes of each fix, until the store gets new outlines. Thus a pass does not search the outlines again for the same fix.
+  let fixCodes = new WeakMap<PositionFix, readonly RegionCode[]>();
+  const codesAt = (place: PlaceConfig, at: Position): readonly RegionCode[] => {
+    const fix = position?.fixes().get(place.id);
+    if (fix === undefined || store === undefined) return place.codes;
+    const known = fixCodes.get(fix);
+    if (known !== undefined) return known;
+    const codes = codesAtFix(place, at, fix.accuracyKm, (state) => [...store.basemap(state), ...store.fireZones(state)]);
+    fixCodes.set(fix, codes);
+    return codes;
+  };
+  const passAt = position === undefined ? undefined : (at: Instant): readonly WatchedPlace[] => passPlaces(placed, position.fixes(), at, codesAt);
+  // A stale moving place is a report only on a copy that took a fix of the place. Thus a copy with no phone tells nothing.
+  const staleAt =
+    position === undefined
+      ? undefined
+      : (at: Instant): readonly StalePlace[] => {
+          const fixes = position.fixes();
+          return staleMovingPlaces(placed, fixes, at)
+            .filter((id) => fixes.has(id))
+            .map((id) => ({
+              place: id,
+              label: placed.places.find((place) => place.id === id)?.label ?? id,
+              persons: recipients.filter(({ watch }) => watch.places.includes(id) || (watch.mandatory ?? []).some((rule) => rule.place === id)).map(({ watch }) => watch.person),
+            }));
+        };
   // New outlines can change the codes of a place. The check is after a refresh with requests, when no task is due.
   const opened = placeCodesKey(placed);
   let fresh = false;
@@ -1079,6 +1122,8 @@ export function openInstance(options: InstanceOptions): Instance {
     options.onPlaceCodes?.();
   };
   const onShapes = (outcome: ShapeOutcome): void => {
+    // New outlines can change the codes of a fix.
+    if (outcome.ok && outcome.refreshed.requests > 0) fixCodes = new WeakMap();
     try {
       checkCodes(outcome);
     } finally {
@@ -1218,6 +1263,8 @@ export function openInstance(options: InstanceOptions): Instance {
       ...(config.sourceClear === undefined ? {} : { sourceClear: config.sourceClear }),
       ...(chain === undefined ? {} : { chain }),
     },
+    ...(passAt === undefined ? {} : { places: passAt }),
+    ...(staleAt === undefined ? {} : { stale: staleAt }),
     run: options.run,
     copy: copy.id,
     delivery,
@@ -1324,7 +1371,13 @@ export function openInstance(options: InstanceOptions): Instance {
       copies: worker?.watches() ?? [],
       quotas: quotas(),
       balances: balances.flatMap((watch) => watch.balance() ?? []),
-      reads: [...[...reads, ...uses, ...(joint === undefined ? [] : [joint])].map((watch) => watch.health()), ...(drift?.health() ?? []), ...(billing?.health() ?? [])],
+      reads: [
+        ...[...reads, ...uses, ...(joint === undefined ? [] : [joint])].map((watch) => watch.health()),
+        ...(drift?.health() ?? []),
+        ...(billing?.health() ?? []),
+        // The age of the last fix of each moving place, with no position (AL-40).
+        ...(position === undefined ? [] : fixReads(placed, position.fixes(), position.refusals(), wall.now())),
+      ],
       channels: runtime.channels(),
       channelDown: channelDownPolicy(runtime.config.channelDown),
     });

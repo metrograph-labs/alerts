@@ -11,7 +11,7 @@
  * its plain name and its summary here, and in no other place. A new code comes here first, in its pull request.
  */
 import { compareCodeUnits } from "@mark1russell7/text/order";
-import { BALANCE_KIND, CHANNEL_KIND, CLOCK_KIND, COPY_KIND, COVERAGE_KIND, DRIFT_KIND, DRILL_KIND, ESCALATION_KIND, HEALTH_KIND, JOINT_KIND, LIMIT_KIND, LOG_KIND, LOOP_KIND, QUOTA_KIND, STORE_KIND, REDUNDANCY_KIND, TELL_KIND, USE_KIND } from "./assess.ts";
+import { BALANCE_KIND, CHANNEL_KIND, CLOCK_KIND, COPY_KIND, COVERAGE_KIND, DRIFT_KIND, DRILL_KIND, ESCALATION_KIND, HEALTH_KIND, JOINT_KIND, LIMIT_KIND, LOG_KIND, LOOP_KIND, PLACE_KIND, QUOTA_KIND, STORE_KIND, REDUNDANCY_KIND, TELL_KIND, USE_KIND } from "./assess.ts";
 import type { BalanceStage, Category, CopyStage, DriftStage, HealthState, JointStage, QuotaStage, RedundancyStage, UseStage } from "./contracts.ts";
 
 /** One code of the taxonomy: its plain name and one plain sentence about it. */
@@ -467,6 +467,8 @@ export const TAXONOMY: Readonly<Record<string, KindEntry>> = {
   ...Object.fromEntries(Object.entries(DRIFT_ENTRIES).map(([stage, value]) => [`${DRIFT_KIND}.${stage}`, value])),
   [REDUNDANCY_KIND]: entry("Redundancy of the alert chain", "The paths of a function of the alert chain, from the open incidents of its parts."),
   ...Object.fromEntries(Object.entries(REDUNDANCY_ENTRIES).map(([stage, value]) => [`${REDUNDANCY_KIND}.${stage}`, value])),
+  [PLACE_KIND]: entry("Watch of a place", "The watch of a place of a person. A moving place gets its position from the fixes of a phone."),
+  [`${PLACE_KIND}.stale`]: entry("Stale moving place", "The phone of a moving place sent no good fix in its age limit. No alert at the position of the phone reaches the person."),
   [`${ESCALATION_KIND}.exhausted`]: entry("Exhausted escalation", "A person did not acknowledge a real warning in the time of the policy. The people who watch the person get this report."),
 };
 

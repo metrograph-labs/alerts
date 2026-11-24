@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { checkWith, reportSchema, type PersonId, type Recipient, type Report, type TellConfig } from "@mark1russell7/alerts";
+import { checkWith, CONFIG_FORMAT, reportSchema, type AlertConfig, type PersonId, type PlaceId, type Recipient, type Report, type TellConfig } from "@mark1russell7/alerts";
 import { embeddedProcess, service, type ServiceBuilder } from "@mark1russell7/service";
 import { ms, seconds } from "@procedures/client";
 import { afterEach, describe, expect, it } from "vitest";
@@ -21,6 +21,7 @@ import {
   TellRefusal,
   type TellIntake,
 } from "./tell-intake.ts";
+import { createPositionIntake } from "./position-intake.ts";
 import { TELL_LIFE, type TellEvent } from "./tell-message.ts";
 
 const T0 = Date.UTC(2026, 10, 19, 18, 0);
@@ -153,6 +154,50 @@ describe("the host of the intake (AL-92)", () => {
       await expect(tellCall({ port, token: OTHER_TOKEN })(ASK)).rejects.toThrow();
       await expect(tellCall({ port, token: TOKEN })({ ...ASK, url: "http://localhost:9999/" })).rejects.toThrow(/loopback/u);
       expect(intake.drain()).toHaveLength(1);
+    } finally {
+      await life.shutdown("the test ended");
+      expect(await life.done).toBe(0);
+    }
+  });
+
+  it("takes a fix of the phone with the token as a Basic password or a Bearer token, and refuses another password (AL-40)", async () => {
+    const config: AlertConfig = {
+      format: CONFIG_FORMAT,
+      places: [{ id: "place-moving" as PlaceId, label: "Phone", codes: [{ system: "state", code: "TX" }], bufferKm: 5, moving: { device: "ph", maxAgeMinutes: 30 } }],
+      people: [],
+      contacts: [],
+      policies: [],
+    };
+    const position = createPositionIntake({ config });
+    const host = tellHost({ intake: intakeAt({ at: T0 }), token: TOKEN, port: 0, position });
+    const life = await host.declare(serviceOf("position-test")).run({ process: embeddedProcess() });
+    try {
+      const address = host.info.endpoints().find((endpoint) => endpoint.type === "http")?.address;
+      if (address === undefined) throw new Error("The host has no HTTP endpoint.");
+      // The URL of the phone: the base path of the intake, then the path of the procedure.
+      const url = `${address}/alerts/position`;
+      const send = (authorization: string, tst: number) =>
+        fetch(url, { method: "POST", headers: { "content-type": "application/json", authorization }, body: JSON.stringify({ _type: "location", lat: 28.301234, lon: -98.551234, acc: 20, tst, tid: "ph" }) });
+      const basic = (password: string): string => `Basic ${Buffer.from(`phone:${password}`).toString("base64")}`;
+      const tst = Math.floor(T0 / 1000);
+      const byBasic = await send(basic(TOKEN), tst);
+      expect(byBasic.status).toBe(200);
+      expect(await byBasic.json()).toEqual([]);
+      expect(position.fixes().get("place-moving" as PlaceId)?.observedAt).toBe(tst * 1000);
+      const byBearer = await send(`Bearer ${TOKEN}`, tst + 60);
+      expect(byBearer.status).toBe(200);
+      expect(position.fixes().get("place-moving" as PlaceId)?.observedAt).toBe((tst + 60) * 1000);
+      const wrong = await send(basic(OTHER_TOKEN), tst + 120);
+      expect(wrong.status).toBe(401);
+      expect(position.fixes().get("place-moving" as PlaceId)?.observedAt).toBe((tst + 60) * 1000);
+      // An unknown device gives the code BAD_REQUEST, and the answer holds no position.
+      const unknown = await fetch(url, { method: "POST", headers: { "content-type": "application/json", authorization: basic(TOKEN) }, body: JSON.stringify({ _type: "location", lat: 28.301234, lon: -98.551234, acc: 20, tst, tid: "zz" }) });
+      expect(unknown.status).toBe(400);
+      const text = await unknown.text();
+      expect(text).toContain("No moving place has this device.");
+      expect(text).not.toContain("98.55");
+      // The message tool keeps its Bearer token.
+      expect(await tellCall({ port: Number(new URL(address).port), token: TOKEN })(ASK)).toEqual({ persons: 1, link: "none" });
     } finally {
       await life.shutdown("the test ended");
       expect(await life.done).toBe(0);

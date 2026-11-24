@@ -31,6 +31,7 @@ import {
   type TellConfig,
 } from "@mark1russell7/alerts";
 import * as z from "zod";
+import { basicPrincipal, POSITION_KEY, POSITION_PATH, type PositionIntake } from "./position-intake.ts";
 import { siteLink, TELL_LIFE, TELL_SOURCE, tellEventSchema, tellLines, tellPersons, tellStep, type TellDraft, type TellEvent, type TellReport } from "./tell-message.ts";
 
 /** The path of the procedure that takes a message. */
@@ -211,6 +212,8 @@ export interface TellHostOptions {
   readonly token: string;
   /** The port on the loopback address: the field `port` of the entry `tell`. The port 0 takes a free port. */
   readonly port: number;
+  /** The intake of the fixes of the moving places (AL-40). With it, the host also takes the procedure `alerts.position`. */
+  readonly position?: PositionIntake;
 }
 
 /**
@@ -220,7 +223,7 @@ export interface TellHostOptions {
  * @throws Error when the token is shorter than `TELL_TOKEN_LENGTH`. The message holds no token.
  */
 export function tellHost(options: TellHostOptions): ProcedureHost {
-  const { intake, token, port } = options;
+  const { intake, token, port, position } = options;
   if (token.length < TELL_TOKEN_LENGTH) throw new Error(`The token of the intake has fewer than ${TELL_TOKEN_LENGTH} characters.`);
   return createProcedureHost({
     name: "tell",
@@ -234,9 +237,21 @@ export function tellHost(options: TellHostOptions): ProcedureHost {
           .meta({ description: "Takes one message of the operator. The runtime routes it as a private report.", effects: { reads: ["alerts.config"], writes: ["alerts.log"] } })
           .handler(async (input): Promise<unknown> => intake.take(input))
           .build(),
+        ...(position === undefined
+          ? []
+          : [
+              createProcedure()
+                .path([...POSITION_PATH])
+                .input(z.unknown())
+                .output(z.unknown())
+                .meta({ description: "Takes one message of the phone app of a moving place. A location gives the fix of the place.", effects: { reads: ["alerts.config"], writes: ["alerts.fixes"] } })
+                .handler(async (input): Promise<unknown> => position.take(input))
+                .build(),
+            ]),
       ],
     }),
-    policy: hostPolicy({ token, strictCalls: true, expose: [TELL_KEY], timeout: ms(TELL_CALL_LIMIT) }),
+    // A phone app sends the token as the password of HTTP Basic auth. The hook gives that password to the token check.
+    policy: hostPolicy({ token, principalOf: basicPrincipal, strictCalls: true, expose: position === undefined ? [TELL_KEY] : [TELL_KEY, POSITION_KEY], timeout: ms(TELL_CALL_LIMIT) }),
     faces: { http: { basePath: TELL_BASE_PATH } },
     listen: [{ name: "tell", host: "127.0.0.1", port, knobs: LOCAL_LISTENER_KNOBS }],
     // The probes of the service are on the probe port. The listener of the intake gives no probe.
