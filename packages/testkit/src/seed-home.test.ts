@@ -71,7 +71,7 @@ describe("seedHome", { timeout: 30_000 }, () => {
 describe("seedHome with levels", { timeout: 30_000 }, () => {
   it("writes the levels in the seed record, and a person for each level of the persons", () => {
     const home = join(dir, "levels");
-    expect(readSeedRecord(home).levels).toEqual(LEVELS);
+    expect(readSeedRecord(home).levels).toEqual({ ...DEFAULT_LEVELS, ...LEVELS });
     expect(JSON.parse(readFileSync(join(home, CONFIG_FILE), "utf8"))).toEqual(measureConfig(LEVELS.persons));
     expect(leveled.open).toBe(LEVELS.incidents);
     expect(leveled.transit?.near).toBe(LEVELS.feeds);

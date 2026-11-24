@@ -17,7 +17,8 @@ const MINUTE = 60_000;
 const [portText, file] = process.argv.slice(2);
 const port = Number(portText);
 if (!Number.isInteger(port) || port < 0 || port > 65_535 || file === undefined) throw new Error("Give the port and the workload file.");
-const feeds = createFakeFeeds({ streams: readFeedWorkload(JSON.parse(readFileSync(file, "utf8"))) });
+// The fake gives the event files of GDELT. A start reads them only when its place shares its position with GDELT (AL-160).
+const feeds = createFakeFeeds({ streams: readFeedWorkload(JSON.parse(readFileSync(file, "utf8"))), gdelt: {} });
 const server = await startFake(feeds.handler, port);
 process.stdout.write(`${fakeReadyLine("feeds")}\n`);
 const timer = setInterval(() => {

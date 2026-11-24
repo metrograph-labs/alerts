@@ -24,6 +24,7 @@ import { CANARY_PATH, NWS_BASE_URL, WEA_PATH } from "@mark1russell7/alerts-sourc
 import { isRecord } from "@mark1russell7/optional/read";
 import { isQuantity, valueIn } from "@mark1russell7/quantity";
 import { random, seedOf, sha256Hex, type Random } from "@mark1russell7/rigor-generators";
+import { createFakeGdelt, type FakeGdelt, type GdeltLoad } from "./fake-gdelt.ts";
 import { UNKNOWN, type FakeHandler, type FakeReply } from "./fake-server.ts";
 import { caseBodies } from "./nws.ts";
 import { MEASURE_PLACE } from "./seed-home.ts";
@@ -113,6 +114,8 @@ export interface FakeFeedsOptions {
   readonly seed?: string;
   /** The instant of the start of the load. Default: the instant of the first request. */
   readonly start?: number;
+  /** The load of the event files of GDELT (AL-160). Default: no fake of GDELT, and each request at its host is unknown. */
+  readonly gdelt?: GdeltLoad;
 }
 
 /** The counts of the fake of the feeds. */
@@ -135,6 +138,8 @@ export interface FakeFeeds {
   /** This function makes the events until the instant `now`, and it gives the counts. */
   readonly advance: (now: number) => FakeFeedsCounts;
   readonly counts: () => FakeFeedsCounts;
+  /** This function gives the event files of GDELT that the fake gave, or 0 without the option `gdelt`. */
+  readonly gdeltFiles: () => number;
 }
 
 /** One version of an alert of the fake. */
@@ -242,6 +247,7 @@ export function createFakeFeeds(options: FakeFeedsOptions): FakeFeeds {
   const ugc = MEASURE_PLACE.codes.find((code) => code.system === "ugc")!.code;
   const same = MEASURE_PLACE.codes.find((code) => code.system === "same")!.code;
   const nwsHost = new URL(NWS_BASE_URL).host;
+  const gdelt: FakeGdelt | undefined = options.gdelt === undefined ? undefined : createFakeGdelt({ seed, ...options.gdelt });
   const streams = options.streams.filter((stream) => stream.perSecond > 0);
   const done = streams.map(() => 0);
   const live = new Map<number, Version>();
@@ -346,6 +352,8 @@ export function createFakeFeeds(options: FakeFeedsOptions): FakeFeeds {
     if (request.host === TRANSIT_HOST || request.host.endsWith(`.${TRANSIT_HOST}`)) {
       return { status: 200, headers: { "content-type": "application/x-protobuf" }, body: emptyFeed(request.now) };
     }
+    const file = gdelt?.handle(request);
+    if (file !== undefined) return file;
     if (request.host !== nwsHost) return UNKNOWN;
     const query = `${request.path}${request.search}`;
     if (query === CANARY_PATH) {
@@ -357,5 +365,5 @@ export function createFakeFeeds(options: FakeFeedsOptions): FakeFeeds {
     answers += 1;
     return { status: 200, headers: GEO_JSON, body: mainBody([...live.values()]) };
   };
-  return { handler, advance, counts };
+  return { handler, advance, counts, gdeltFiles: () => gdelt?.files() ?? 0 };
 }
