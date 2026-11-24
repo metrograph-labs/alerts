@@ -4,6 +4,8 @@
  * some copy works. `@mark1russell7/stack-placement` gives the layer `placement/1`, the search and the front.
  *
  * - Each copy is a slot. The first slot needs a candidate. Each other slot can stay empty.
+ * - A live copy is a fixed slot with one candidate. With a fixed slot, each new slot can stay empty. Thus the
+ *   front tells the gain of each next copy beside the live copies, and the gain of no new copy.
  * - Each candidate is an offer: a provider, a region and a plan, with its cost of a month.
  * - Each provider and each region is a shared fragment. Thus two copies on one provider share one cause of failure.
  * - Nobody picks a provider or a price. Each offer that meets the needs is a candidate.
@@ -65,8 +67,8 @@ export interface ChanceOverride extends ChanceInput {
 }
 
 /**
- * The chance inputs of a placement. Each provider, each region and each host gets the input of its kind. An override
- * replaces the input of one provider or of one region.
+ * The chance inputs of a placement. Each provider, each region, each site and each host gets the input of its kind. An
+ * override replaces the input of one fragment.
  */
 export interface PlacementChances {
   /** The chance that a provider works: its control plane, its network and its account. */
@@ -75,6 +77,8 @@ export interface PlacementChances {
   readonly region: ChanceInput;
   /** The chance that one host of a copy works, when its provider and its region work. */
   readonly host: ChanceInput;
+  /** The chance that a site of a fixed copy works: its power and its internet. A fixed copy on a site needs it. */
+  readonly site?: ChanceInput | undefined;
   /** The inputs of single providers or regions. */
   readonly overrides?: readonly ChanceOverride[] | undefined;
 }
@@ -89,6 +93,14 @@ export interface CopyNeeds {
   readonly currency: string;
 }
 
+/**
+ * A live copy. It is a fixed slot with one candidate. A copy at a provider uses the provider and region fragments
+ * of an offer. A copy at a site, for example a home computer, uses the one fragment of its site.
+ */
+export type FixedCopy =
+  | { readonly kind: "cloud"; readonly provider: string; readonly region: string }
+  | { readonly kind: "site"; readonly site: string };
+
 /** The inputs of a placement layer. */
 export interface PlacementInput {
   /** The live offers, for example from the plan client of `@mark1russell7/market-sources`. */
@@ -97,8 +109,13 @@ export interface PlacementInput {
   readonly needs: CopyNeeds;
   /** The chance inputs. */
   readonly chances: PlacementChances;
-  /** The count of copies, 1 or more. Each copy is one slot. */
+  /** The count of new copies, 1 or more. Each copy is one slot. */
   readonly copies: number;
+  /**
+   * The live copies. Each is a fixed slot before the new slots, with a cost of 0: the front gives the cost of the
+   * new copies only. A fixed copy has no offer, thus the plan lists of the providers do not limit it.
+   */
+  readonly fixed?: readonly FixedCopy[] | undefined;
   /** The largest expected cost of a month, from the private configuration. Without it, the layer has no limit of cost. */
   readonly costLimit?: number | undefined;
 }
@@ -122,11 +139,28 @@ export interface PlacementBuild {
   readonly offers: number;
   /** The count of skipped offers for each reason. */
   readonly skipped: Readonly<Record<SkipReason, number>>;
+  /** The ids of the fixed slots: the live copies. */
+  readonly fixed: readonly string[];
 }
 
 /** This function gives the id of the slot of the copy `index`, from 0: `copy-1`, `copy-2` and so on. */
 export function slotId(index: number): string {
   return `copy-${String(index + 1)}`;
+}
+
+/** This function gives the id of the fixed slot of the live copy `index`, from 0: `live-1`, `live-2` and so on. */
+export function fixedSlotId(index: number): string {
+  return `live-${String(index + 1)}`;
+}
+
+/** This function gives the id of the shared fragment of a site of a fixed copy. */
+export function siteFragment(site: string): string {
+  return `site:${site}`;
+}
+
+/** This function gives the key of a fixed copy: `provider/region`, or `site/<site>`. */
+export function fixedKey(copy: FixedCopy): string {
+  return copy.kind === "cloud" ? `${copy.provider}/${copy.region}` : `site/${copy.site}`;
 }
 
 /** This function gives the id of the shared fragment of a provider. */
@@ -203,6 +237,22 @@ function sharedOf(id: string, kind: string, input: ChanceInput): Shared {
   return { id, stack: { schema: "stack/1", parts: [{ id, kind }], layers: { "risk/1": riskOf(id, input) } } };
 }
 
+function fixedUses(copy: FixedCopy): readonly string[] {
+  return copy.kind === "cloud" ? [providerFragment(copy.provider), regionFragment(copy.provider, copy.region)] : [siteFragment(copy.site)];
+}
+
+function fixedCandidate(slot: string, copy: FixedCopy, chances: PlacementChances, currency: string): Candidate {
+  const uses = fixedUses(copy);
+  const spend: SpendLayer = { schema: "spend/1", currency, kinds: [], proofDays: 30, services: [{ part: slot, billing: "fixed", price: 0 }] };
+  return {
+    key: fixedKey(copy),
+    cost: 0,
+    uses,
+    source: "a live copy",
+    stack: { schema: "stack/1", parts: [{ id: slot, kind: "host", needs: [...uses] }], layers: { "risk/1": riskOf(slot, chances.host), "spend/1": spend } },
+  };
+}
+
 /**
  * This function gives the placement layer of the copies from the live offers.
  *
@@ -211,9 +261,11 @@ function sharedOf(id: string, kind: string, input: ChanceInput): Shared {
  * - For each provider and region, only the cheapest such offer is a candidate. Each offer of one provider and region
  *   has the same chances. Thus a dearer offer is not on the front at any time, and the skip does not change the front.
  * - The layer has the limit of cost of the input, when it has one.
+ * - Each fixed copy is a slot before the new slots. With a fixed copy, each new slot is optional.
  *
  * @throws RangeError when the count of copies is not a whole number of 1 or more. It also throws when the least memory
- * or the limit of cost is less than 0, or when a chance input is not valid.
+ * or the limit of cost is less than 0, or when a chance input is not valid. It also throws when two fixed copies have
+ * one key, or when a fixed copy at a site has no site input and no override.
  */
 export function placementLayer(input: PlacementInput): PlacementBuild {
   const { needs, chances } = input;
@@ -223,7 +275,19 @@ export function placementLayer(input: PlacementInput): PlacementBuild {
   checkChance("provider", chances.provider);
   checkChance("region", chances.region);
   checkChance("host", chances.host);
+  if (chances.site !== undefined) checkChance("site", chances.site);
   for (const item of chances.overrides ?? []) checkChance(item.id, item);
+  const fixed = input.fixed ?? [];
+  const keys = new Set<string>();
+  for (const copy of fixed) {
+    const key = fixedKey(copy);
+    if (keys.has(key)) throw new RangeError(`Two fixed copies have the key ${key}.`);
+    keys.add(key);
+    const fragment = copy.kind === "site" ? siteFragment(copy.site) : undefined;
+    if (fragment !== undefined && chances.site === undefined && !(chances.overrides ?? []).some((item) => item.id === fragment)) {
+      throw new RangeError(`The fixed copy ${key} has no site input.`);
+    }
+  }
   const terms = needs.terms ?? DEFAULT_TERMS;
   const skipped: Record<SkipReason, number> = { term: 0, currency: 0, memory: 0, meter: 0, dearer: 0 };
   const best = new Map<string, OfferPick>();
@@ -259,23 +323,31 @@ export function placementLayer(input: PlacementInput): PlacementBuild {
     }
   }
   const picks = [...best.values()].sort((a, b) => (a.provider === b.provider ? (a.region < b.region ? -1 : 1) : a.provider < b.provider ? -1 : 1));
-  const overrides = new Map((chances.overrides ?? []).map((item) => [item.id, item]));
   const shared: Shared[] = [];
   const seen = new Set<string>();
-  for (const pick of picks) {
-    const provider = providerFragment(pick.provider);
-    if (!seen.has(provider)) {
-      seen.add(provider);
-      shared.push(sharedOf(provider, "provider", overrides.get(provider) ?? chances.provider));
+  const add = (id: string, kind: string): void => {
+    if (seen.has(id)) return;
+    seen.add(id);
+    shared.push(sharedOf(id, kind, fragmentInput(chances, id)));
+  };
+  for (const copy of fixed) {
+    if (copy.kind === "site") add(siteFragment(copy.site), "site");
+    else {
+      add(providerFragment(copy.provider), "provider");
+      add(regionFragment(copy.provider, copy.region), "region");
     }
-    const region = regionFragment(pick.provider, pick.region);
-    shared.push(sharedOf(region, "region", overrides.get(region) ?? chances.region));
   }
-  const slots = Array.from({ length: input.copies }, (_, index) => ({
+  for (const pick of picks) {
+    add(providerFragment(pick.provider), "provider");
+    add(regionFragment(pick.provider, pick.region), "region");
+  }
+  const fixedSlots = fixed.map((copy, index) => ({ id: fixedSlotId(index), candidates: [fixedCandidate(fixedSlotId(index), copy, chances, needs.currency)] }));
+  const newSlots = Array.from({ length: input.copies }, (_, index) => ({
     id: slotId(index),
-    ...(index === 0 ? {} : { optional: true }),
+    ...(index === 0 && fixed.length === 0 ? {} : { optional: true }),
     candidates: picks.map((pick) => candidateOf(slotId(index), pick, chances, needs.currency)),
   }));
+  const slots = [...fixedSlots, ...newSlots];
   const layer: PlacementLayer = {
     schema: PLACEMENT_SCHEMA,
     part: PLACEMENT_PART,
@@ -288,7 +360,7 @@ export function placementLayer(input: PlacementInput): PlacementBuild {
     schema: "stack/1",
     parts: [{ id: PLACEMENT_PART, kind: "function", name: "A message gets out of some copy", needs: [{ any: slots.map((slot) => slot.id) }] }],
   };
-  return { layer, base, offers: input.offers.length, skipped };
+  return { layer, base, offers: input.offers.length, skipped, fixed: fixedSlots.map((slot) => slot.id) };
 }
 
 function layerOf<Layer>(stack: Stack, addOn: StackJoiner<Layer>): Layer | undefined {
@@ -378,11 +450,18 @@ export function frontLevels(front: readonly PlacementRow[]): readonly FrontLevel
 
 /**
  * This function gives the chance input of one shared fragment: the override of the fragment, or the input of its kind.
- * A fragment `provider:...` gets the provider input, and each other fragment gets the region input.
+ * A fragment `provider:...` gets the provider input, and a fragment `site:...` gets the site input. Each other
+ * fragment gets the region input.
+ *
+ * @throws RangeError when a site fragment has no override and the chances have no site input.
  */
 export function fragmentInput(chances: PlacementChances, fragment: string): ChanceInput {
   const override = (chances.overrides ?? []).find((item) => item.id === fragment);
   if (override !== undefined) return override;
+  if (fragment.startsWith("site:")) {
+    if (chances.site === undefined) throw new RangeError(`The site fragment ${fragment} has no input.`);
+    return chances.site;
+  }
   return fragment.startsWith("provider:") ? chances.provider : chances.region;
 }
 
@@ -412,11 +491,15 @@ export function assumedInputs(layer: PlacementLayer, chances: PlacementChances, 
  *
  * The front of this build is not a filter of the full front. A row with an assumed input can beat a row of measured
  * inputs. Then that row of measured inputs is not on the full front, but it can be on this one.
+ *
+ * A fixed slot stays as it is: a live copy is a fact, not a choice. Thus a row can name the assumed fragments of a
+ * fixed copy. It gives `undefined` when no new slot keeps a candidate.
  */
 export function measuredBuild(build: PlacementBuild, chances: PlacementChances): PlacementBuild | undefined {
   const measured = (candidate: Candidate): boolean => (candidate.uses ?? []).every((fragment) => fragmentInput(chances, fragment).kind === "measured");
-  const slots = build.layer.slots.map((slot) => ({ ...slot, candidates: slot.candidates.filter(measured) }));
-  if (slots.every((slot) => slot.candidates.length === 0)) return undefined;
+  const fixed = new Set(build.fixed);
+  const slots = build.layer.slots.map((slot) => (fixed.has(slot.id) ? slot : { ...slot, candidates: slot.candidates.filter(measured) }));
+  if (slots.every((slot) => fixed.has(slot.id) || slot.candidates.length === 0)) return undefined;
   const used = new Set(slots.flatMap((slot) => slot.candidates.flatMap((candidate) => candidate.uses ?? [])));
   const shared = (build.layer.shared ?? []).filter((each) => used.has(each.id));
   return { ...build, layer: { ...build.layer, slots, shared } };

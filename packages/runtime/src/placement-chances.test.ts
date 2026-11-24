@@ -1,3 +1,4 @@
+import { VM_PRODUCTS, type PastIncident } from "@mark1russell7/alerts-source-gcp";
 import type { HistoryIncident, HistoryRead } from "@mark1russell7/alerts-source-statuspage";
 import { HostScheduler } from "polite-crawler/politeness";
 import { describe, expect, it } from "vitest";
@@ -6,11 +7,14 @@ import {
   DAY_MS,
   downShare,
   downTime,
+  feedOf,
+  googleHistory,
   historyWindow,
   HISTORY_GAPS,
   HISTORY_SOURCES,
   HOUR_MS,
   isDown,
+  locationPlace,
   measureProvider,
   readPageHistory,
   withMeasures,
@@ -21,7 +25,7 @@ import type { PlacementChances } from "./placement.ts";
 // Each incident is made up: neutral names, made-up places and times. No text of a real page.
 const NOW = Date.parse("2026-03-01T00:00:00.000Z");
 const at = (text: string): number => Date.parse(text);
-const SOURCE: HistorySource = { provider: "provider-a", host: "status.provider-a.test", placeOf: codePlace };
+const SOURCE: HistorySource = { provider: "provider-a", host: "status.provider-a.test", kind: "statuspage", placeOf: codePlace };
 
 function incident(id: string, impact: string, start: string, end: string | undefined, components: readonly string[], scheduled = false): HistoryIncident {
   return { id, impact, start: at(start), end: end === undefined ? undefined : at(end), updated: end === undefined ? at(start) : at(end), scheduled, components };
@@ -161,6 +165,75 @@ describe("the records of the providers", () => {
     const sources = HISTORY_SOURCES.map((source) => source.provider);
     const gaps = HISTORY_GAPS.map((gap) => gap.provider);
     expect(sources.filter((provider) => gaps.includes(provider))).toEqual([]);
+  });
+});
+
+describe("the history of a dashboard of Google", () => {
+  const GOOGLE: HistorySource = { provider: "provider-g", host: "status.provider-g.test", kind: "google", placeOf: locationPlace };
+  const vm = VM_PRODUCTS[0]!.id;
+  const past = (id: string, severity: string, impact: string, start: string, end: string | undefined, products: readonly string[], locations: readonly string[]): PastIncident => ({
+    id,
+    severity,
+    impact,
+    start: at(start),
+    end: end === undefined ? undefined : at(end),
+    products,
+    locations,
+  });
+  const PAST: readonly PastIncident[] = [
+    past("g1", "high", "SERVICE_OUTAGE", "2026-01-10T00:00:00Z", "2026-01-10T03:30:00Z", [vm], ["global", "europe-west1"]),
+    past("g2", "medium", "SERVICE_DISRUPTION", "2026-01-20T00:00:00Z", "2026-01-20T05:00:00Z", [vm], ["europe-west2"]),
+    past("g3", "medium", "SERVICE_OUTAGE", "2026-02-01T00:00:00Z", "2026-02-01T02:00:00Z", [vm], ["europe-west2"]),
+    past("x1", "high", "SERVICE_OUTAGE", "2026-02-10T00:00:00Z", "2026-02-10T09:00:00Z", ["product-x"], ["europe-west3"]),
+  ];
+  const since = at("2025-12-01T00:00:00Z");
+
+  it("keeps the incidents of a virtual machine, and marks an outage or a high severity as a down time", () => {
+    const history = googleHistory(PAST, since);
+    expect(history.read.incidents.map((each) => [each.id, each.impact])).toEqual([
+      ["g1", "major"],
+      ["g2", "minor"],
+      ["g3", "major"],
+    ]);
+    expect(history.components).toEqual(["europe-west1", "europe-west2", "global"]);
+    expect(locationPlace("global")).toEqual({ kind: "global" });
+    expect(feedOf(GOOGLE)).toBe("status.provider-g.test/incidents.json");
+  });
+
+  it("starts the window at the oldest incident, and measures each region of the offers", () => {
+    const measured = measureProvider(GOOGLE, googleHistory(PAST, since), NOW, 365, ["europe-west4"]);
+    expect(measured.ok).toBe(true);
+    if (!measured.ok) return;
+    const byId = new Map(measured.measures.map((measure) => [measure.input.id, measure]));
+    expect([...byId.keys()]).toEqual(["provider:provider-g", "region:provider-g/europe-west1", "region:provider-g/europe-west2", "region:provider-g/europe-west4"]);
+    expect(byId.get("provider:provider-g")?.window).toEqual({ from: since, to: NOW });
+    // g1 is 3.5 hours: 4 whole hours. g3 counts for its region. g2 is not a down time. A region with no incident has 0 hours.
+    expect(byId.get("provider:provider-g")?.down.downHours).toBe(4);
+    expect(byId.get("region:provider-g/europe-west1")?.down.downHours).toBe(4);
+    expect(byId.get("region:provider-g/europe-west2")?.down.downHours).toBe(2);
+    expect(byId.get("region:provider-g/europe-west4")?.down.downHours).toBe(0);
+    expect(byId.get("region:provider-g/europe-west4")?.input.source).toContain("status.provider-g.test/incidents.json");
+  });
+
+  it("gives no value when the file starts less than 30 days before the read", () => {
+    expect(measureProvider(GOOGLE, googleHistory(PAST, NOW - 10 * DAY_MS), NOW).ok).toBe(false);
+  });
+
+  it("reads the one incident file of the dashboard", async () => {
+    const clock = { now: () => 0, sleep: async () => {} };
+    const urls: string[] = [];
+    const body = JSON.stringify([
+      { id: "g1", begin: "2026-01-10T00:00:00+00:00", end: "2026-01-10T03:30:00+00:00", severity: "high", status_impact: "SERVICE_OUTAGE", affected_products: [{ id: vm, title: "x" }], previously_affected_locations: [{ id: "global", title: "Global" }] },
+    ]);
+    const outcome = await readPageHistory(GOOGLE, { scheduler: new HostScheduler(clock, 1), now: clock.now }, async (exchange) => {
+      urls.push(exchange.url);
+      return { status: 200, statusText: "OK", headers: {}, body };
+    });
+    expect(urls).toEqual(["https://status.provider-g.test/incidents.json"]);
+    expect(outcome.ok && outcome.history.since).toBe(at("2026-01-10T00:00:00Z"));
+    expect(outcome.ok && outcome.history.read.incidents.map((each) => each.impact)).toEqual(["major"]);
+    const wrong = await readPageHistory(GOOGLE, { scheduler: new HostScheduler(clock, 1), now: clock.now }, async () => ({ status: 200, statusText: "OK", headers: {}, body: "{}" }));
+    expect(wrong).toEqual({ ok: false, problem: "The incident file is not a list of incidents." });
   });
 });
 

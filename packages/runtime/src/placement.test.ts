@@ -6,6 +6,7 @@ import {
   assumedInputs,
   choiceCount,
   distinctRows,
+  fixedSlotId,
   fragmentInput,
   frontLevels,
   measuredBuild,
@@ -15,7 +16,10 @@ import {
   planCopies,
   providerFragment,
   regionFragment,
+  siteFragment,
+  slotId,
   spendLimitOf,
+  type FixedCopy,
   type PlacementChances,
   type PlacementInput,
 } from "./placement.ts";
@@ -228,6 +232,72 @@ describe("the kinds of the inputs of a front", () => {
 
   it("gives no build when no candidate has measured inputs only", () => {
     expect(measuredBuild(placementLayer(input(offers)), CHANCES)).toBeUndefined();
+  });
+});
+
+describe("the live copies", () => {
+  // Two copies run: one at a site (a computer at a home) and one at provider-c, which has no offer in the plan lists.
+  const offers = [
+    offer({ provider: "provider-a", region: "europe-west1", plan: "small", hourly: 0.005 }),
+    offer({ provider: "provider-b", region: "europe-west1", plan: "small", hourly: 0.01 }),
+  ];
+  const fixed: readonly FixedCopy[] = [
+    { kind: "site", site: "home" },
+    { kind: "cloud", provider: "provider-c", region: "europe-west1" },
+  ];
+  const measured = { kind: "measured" as const, source: "a made-up history" };
+  const chances: PlacementChances = {
+    ...CHANCES,
+    site: { works: 0.99, kind: "assumed", source: "a test input" },
+    overrides: [
+      { id: providerFragment("provider-b"), works: 0.9995, ...measured },
+      { id: regionFragment("provider-b", "europe-west1"), works: 0.9993, ...measured },
+      { id: providerFragment("provider-c"), works: 0.9996, ...measured },
+      { id: regionFragment("provider-c", "europe-west1"), works: 0.9994, ...measured },
+    ],
+  };
+
+  it("puts each live copy in a fixed slot with one candidate and no cost", () => {
+    const build = placementLayer(input(offers, { chances, fixed, copies: 1 }));
+    expect(build.fixed).toEqual([fixedSlotId(0), fixedSlotId(1)]);
+    expect(build.layer.slots.map((slot) => [slot.id, slot.optional === true, slot.candidates.length])).toEqual([
+      [fixedSlotId(0), false, 1],
+      [fixedSlotId(1), false, 1],
+      [slotId(0), true, 2],
+    ]);
+    expect(build.layer.slots[1]?.candidates[0]).toMatchObject({ key: "provider-c/europe-west1", cost: 0 });
+    expect((build.layer.shared ?? []).map((each) => each.id)).toContain(siteFragment("home"));
+    expect(checkPlacement(build.layer, build.base).filter((fault) => fault.level === "error")).toEqual([]);
+  });
+
+  it("gives the chance of no new copy at no cost, and the gain of each next copy", () => {
+    const build = placementLayer(input(offers, { chances, fixed, copies: 1 }));
+    const levels = frontLevels(distinctRows(planCopies(build, TODAY).front));
+    const none = levels[0];
+    expect(none?.cost).toBe(0);
+    // Either copy works: 1 less the chance that both fail. Each copy needs its host and each of its fragments.
+    const home = 0.99 * CHANCES.host.works;
+    const cloud = 0.9996 * 0.9994 * CHANCES.host.works;
+    expect(none?.chance).toBeCloseTo(1 - (1 - home) * (1 - cloud), 9);
+    expect(none?.rows.every((row) => row.choice[slotId(0)] === null)).toBe(true);
+    // A third copy costs more and gives a higher chance.
+    expect(levels.length).toBeGreaterThan(1);
+    expect(levels.slice(1).every((level) => level.cost > 0 && level.chance > (none?.chance ?? 1))).toBe(true);
+  });
+
+  it("keeps the fixed slots in the build of measured inputs, and names their assumed fragments", () => {
+    const build = placementLayer(input(offers, { chances, fixed, copies: 1 }));
+    const only = measuredBuild(build, chances);
+    expect(only?.layer.slots.map((slot) => slot.candidates.map((candidate) => candidate.key).join())).toEqual(["site/home", "provider-c/europe-west1", "provider-b/europe-west1"]);
+    if (only === undefined) return;
+    const rows = distinctRows(planCopies(only, TODAY).front);
+    expect(rows.every((row) => assumedInputs(only.layer, chances, row).join() === siteFragment("home"))).toBe(true);
+  });
+
+  it("refuses a copy at a site with no site input, and two copies with one key", () => {
+    expect(() => placementLayer(input(offers, { fixed }))).toThrow(RangeError);
+    expect(() => placementLayer(input(offers, { chances, fixed: [fixed[1]!, fixed[1]!] }))).toThrow(RangeError);
+    expect(() => fragmentInput(CHANCES, siteFragment("home"))).toThrow(RangeError);
   });
 });
 

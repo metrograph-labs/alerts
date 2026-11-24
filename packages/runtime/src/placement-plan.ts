@@ -3,7 +3,7 @@
  * plan list of each provider record of `@mark1russell7/market-sources`, and the incident history of the status page of
  * each provider. It reads no other source and opens no account.
  *
- * `node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>]`
+ * `node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>]`
  *
  * - `--min-memory-mib` is the least memory of a host of a copy, in MiB.
  * - The three `--assume-*` values are assumed chance inputs, from 0 to 1, for each provider, region and host. The script
@@ -13,7 +13,11 @@
  * - Each row of the front names its shared fragments with an assumed input. A second front, `measured`, uses only the
  *   candidates with measured inputs.
  * - `--window-days` is the length of the window of the history, in days. The default is `DEFAULT_WINDOW_DAYS` (365).
- * - `--copies` is the count of copies. The default is 2.
+ * - `--fixed` names the live copies, with commas between them. A name `provider/region` is a copy at a provider. A
+ *   name with no slash is a copy at a site, for example a home computer. Each is a fixed slot with no cost. The front
+ *   then gives the gain of each next copy beside them. The names go only to the private front file.
+ * - `--assume-site` is the assumed chance input of each site of a fixed copy. A fixed copy at a site needs it.
+ * - `--copies` is the count of new copies. The default is 2.
  * - `--spend` names the spend entry of `config.json` that gives the limit of cost of a month (`monthlyUsd`). Without
  *   it, or without that entry, the front has no limit of cost.
  * - `--terms` gives the price terms that fit. The default is `on-demand`.
@@ -39,6 +43,7 @@ import {
   FRONT_FORMAT,
   frontLevels,
   measuredBuild,
+  type FixedCopy,
   placementLayer,
   planCopies,
   spendLimitOf,
@@ -48,7 +53,7 @@ import {
 } from "./placement.ts";
 
 const USAGE =
-  "The command is: node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>]";
+  "The command is: node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>]";
 
 /** The User-Agent of each request. It names no person and no project. */
 const USER_AGENT = "alerts-placement";
@@ -62,6 +67,7 @@ interface Command {
   readonly minMemoryMiB: number;
   readonly chances: PlacementChances;
   readonly copies: number;
+  readonly fixed: readonly FixedCopy[];
   readonly spend: string | undefined;
   readonly terms: readonly PriceTerm["kind"][];
   readonly windowDays: number;
@@ -76,7 +82,7 @@ function command(args: readonly string[]): Command | string {
     if (name === undefined || !name.startsWith("--") || value === undefined || value.startsWith("--")) return `The argument ${String(name)} has no value.`;
     values.set(name.slice(2), value);
   }
-  const known = new Set(["min-memory-mib", "assume-provider", "assume-region", "assume-host", "copies", "spend", "terms", "window-days"]);
+  const known = new Set(["min-memory-mib", "assume-provider", "assume-region", "assume-host", "assume-site", "fixed", "copies", "spend", "terms", "window-days"]);
   const other = [...values.keys()].find((name) => !known.has(name));
   if (other !== undefined) return `The option --${other} is not known.`;
   const memory = Number(values.get("min-memory-mib"));
@@ -97,10 +103,21 @@ function command(args: readonly string[]): Command | string {
   if (typeof provider === "string") return provider;
   if (typeof region === "string") return region;
   if (typeof host === "string") return host;
+  const fixed: FixedCopy[] = [];
+  for (const name of (values.get("fixed") ?? "").split(",").filter((each) => each !== "")) {
+    const parts = name.split("/");
+    if (parts.length === 1) fixed.push({ kind: "site", site: name });
+    else if (parts.length === 2 && parts[0] !== "" && parts[1] !== "") fixed.push({ kind: "cloud", provider: parts[0]!, region: parts[1]! });
+    else return `The fixed copy ${name} is not provider/region or a site.`;
+  }
+  const needsSite = fixed.some((copy) => copy.kind === "site");
+  const site = values.has("assume-site") || needsSite ? assumed("site") : undefined;
+  if (typeof site === "string") return site;
   const terms = (values.get("terms") ?? "on-demand").split(",");
   const bad = terms.find((term) => !TERM_KINDS.some((kind) => kind === term));
   if (bad !== undefined) return `The price term ${bad} is not on-demand, spot or committed.`;
-  return { minMemoryMiB: memory, chances: { provider, region, host }, copies, spend: values.get("spend"), terms: terms as PriceTerm["kind"][], windowDays };
+  const chances: PlacementChances = { provider, region, host, ...(site === undefined ? {} : { site }) };
+  return { minMemoryMiB: memory, chances, copies, fixed, spend: values.get("spend"), terms: terms as PriceTerm["kind"][], windowDays };
 }
 
 // The front of a build: its search, its levels and the assumed fragments of each row. It prints each level.
@@ -108,7 +125,8 @@ function frontOf(build: PlacementBuild, chances: PlacementChances, today: string
   const plan = planCopies(build, today);
   const rows = distinctRows(plan.front);
   const levels = frontLevels(rows);
-  const candidates = build.layer.slots[0]?.candidates.length ?? 0;
+  const fixed = new Set(build.fixed);
+  const candidates = build.layer.slots.find((slot) => !fixed.has(slot.id))?.candidates.length ?? 0;
   const keysOf = (row: (typeof rows)[number]): string => Object.values(row.choice).filter((value): value is string => value !== null).join(" + ");
   console.log(`${title}: ${countOf(candidates, "candidate")} for each slot. The search is ${plan.method}. The front has ${countOf(rows.length, "choice")} in ${countOf(levels.length, "level")}.`);
   for (const level of levels) {
@@ -167,14 +185,22 @@ if (typeof parsed === "string") {
     const tail = read.problems.length === 0 ? `${countOf(read.offers, "offer")}, ${countOf(read.notes, "note")}` : `failed: ${read.problems.join(" ")}`;
     console.log(`The source ${read.source}: ${tail}.`);
   }
-  const providers = new Set(offers.map((offer) => offer.offer.location.provider));
+  const clouds = parsed.fixed.flatMap((copy) => (copy.kind === "cloud" ? [copy] : []));
+  const providers = new Set([...offers.map((offer) => offer.offer.location.provider), ...clouds.map((copy) => copy.provider)]);
+  // The regions of each provider: of its offers and of its fixed copies. A dashboard of Google measures each of them.
+  const regionsOf = (provider: string): readonly string[] => [
+    ...new Set([
+      ...offers.flatMap((offer) => (offer.offer.location.provider === provider && offer.offer.location.region !== undefined ? [offer.offer.location.region] : [])),
+      ...clouds.filter((copy) => copy.provider === provider).map((copy) => copy.region),
+    ]),
+  ];
   const measureTransport = fetchTransport({ userAgent: MEASURE_USER_AGENT });
   const measures: ChanceMeasure[] = [];
   const gaps: { readonly provider: string; readonly reason: string }[] = HISTORY_GAPS.filter((gap) => providers.has(gap.provider)).map((gap) => ({ ...gap }));
   const readAt = Date.now();
   for (const source of HISTORY_SOURCES.filter((each) => providers.has(each.provider))) {
     const outcome = await readPageHistory(source, { scheduler, now: () => Date.now() }, measureTransport);
-    const measured = outcome.ok ? measureProvider(source, outcome.history, readAt, parsed.windowDays) : { ok: false as const, reason: outcome.problem };
+    const measured = outcome.ok ? measureProvider(source, outcome.history, readAt, parsed.windowDays, regionsOf(source.provider)) : { ok: false as const, reason: outcome.problem };
     if (measured.ok) measures.push(...measured.measures);
     else gaps.push({ provider: source.provider, reason: measured.reason });
   }
@@ -189,7 +215,8 @@ if (typeof parsed === "string") {
   } else {
     const at = new Date();
     const today = at.toISOString().slice(0, 10);
-    const build = placementLayer({ offers, needs: { minMemoryMiB: parsed.minMemoryMiB, terms: parsed.terms, currency: "USD" }, chances, copies: parsed.copies, costLimit });
+    const build = placementLayer({ offers, needs: { minMemoryMiB: parsed.minMemoryMiB, terms: parsed.terms, currency: "USD" }, chances, copies: parsed.copies, fixed: parsed.fixed, costLimit });
+    if (parsed.fixed.length > 0) console.log(`Fixed slots with no cost: ${countOf(parsed.fixed.length, "live copy", "live copies")}. The first level of the front with the cost 0 is no new copy.`);
     const measuredIds = new Set(measures.map((measure) => measure.input.id));
     const shared = build.layer.shared ?? [];
     const measuredShared = shared.filter((shared) => measuredIds.has(shared.id)).length;
@@ -202,7 +229,15 @@ if (typeof parsed === "string") {
     const front = {
       format: FRONT_FORMAT,
       at: at.toISOString(),
-      inputs: { needs: { minMemoryMiB: parsed.minMemoryMiB, terms: parsed.terms, currency: "USD" }, copies: parsed.copies, windowDays: parsed.windowDays, chances, spend: parsed.spend ?? null, costLimit: costLimit ?? null },
+      inputs: {
+        needs: { minMemoryMiB: parsed.minMemoryMiB, terms: parsed.terms, currency: "USD" },
+        copies: parsed.copies,
+        fixed: parsed.fixed,
+        windowDays: parsed.windowDays,
+        chances,
+        spend: parsed.spend ?? null,
+        costLimit: costLimit ?? null,
+      },
       reads,
       measures: measures.map((measure) => ({ id: measure.input.id, works: measure.input.works, window: { from: new Date(measure.window.from).toISOString(), to: new Date(measure.window.to).toISOString() }, down: measure.down })),
       gaps,
