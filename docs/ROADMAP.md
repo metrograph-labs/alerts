@@ -122,7 +122,7 @@ The target is the whole vision. The milestones give the order of the work.
 
 | ID | Item | Status | Summary |
 | --- | --- | --- | --- |
-| AL-119 | A line during a long block, before the liveness stop | later | AL-88 writes a block after its end. A watch thread writes a line during a block of 10 s or more, before the liveness probe stops the child. |
+| AL-119 | A line during a long block, before the liveness stop | in progress | AL-88 writes a block after its end. A worker thread reads a heartbeat of the main thread and writes a line with the phase at 10 s and at 20 s of a block, before the liveness probe stops the child. |
 | AL-120 | A time on each line of the output | done | Each line of the runtime and of the supervisor starts with the time of the wall clock. The log file of the runtime had no time before. |
 | AL-82 | The trace context of the runtime | done | Each pass is one span of OpenTelemetry, and each line of a pass has the trace id of the pass. A request to the API joins the trace of its `traceparent` header. No span leaves the process, and a fetch to another server gets no trace header. |
 | AL-126 | The levels of the capacity contract | done | The contract has 3 level variables: the transit feeds near the place, the persons and the open incidents. The seed writes a home at each level, and the run reads them from the seed record. |

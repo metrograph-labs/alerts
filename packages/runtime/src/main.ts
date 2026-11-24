@@ -72,6 +72,7 @@ import { PROFILES, declare } from "./index.ts";
 import { daemonCheck, instanceCheck, LOUD_PING_URL_KEY, openInstance, pingKeyOf, pingTargets, userAgent } from "./instance.ts";
 import { openCheckedRuntimeLog } from "./log.ts";
 import { blockLine, startLoopWatch, type LoopWatch } from "./loop-watch.ts";
+import { startBlockWatch, type BlockWatch } from "./block-watch.ts";
 import { fileBundleStore } from "./outage.ts";
 import type { ExchangeRound } from "./peers.ts";
 import { loadPriors } from "./priors.ts";
@@ -88,6 +89,10 @@ import { runtimeVersion, startTelemetry } from "./telemetry.ts";
 // Each line of the runtime starts with the time of the wall clock: the log file of the runtime has no other time (AL-120).
 const out = outputOf(timedLogger());
 
+// The watch of long blocks (AL-119). Its worker writes a line to the error output during a block of 10 s or more. The
+// supervisor writes that output to the log file of the runtime, thus a liveness stop in a block has its cause on file.
+let blockWatch: BlockWatch | undefined;
+
 /** This function gives a port from the environment, or the fallback when the variable is not set. */
 const port = (name: string, fallback: number): number => {
   const text = process.env[name];
@@ -101,6 +106,13 @@ async function runtime(): Promise<ServiceBuilder> {
   const name = process.env["SERVICE_PROFILE"] ?? "local";
   const profile = PROFILES[name];
   if (profile === undefined) throw new Error(`SERVICE_PROFILE is "${name}". The profiles are: ${Object.keys(PROFILES).join(", ")}.`);
+  // A fault of the watch stops only the watch.
+  try {
+    blockWatch = startBlockWatch({ target: 2, onError: (error) => out.error(`The watch of long blocks stopped: ${errorMessage(error)}`) });
+    blockWatch.phase("start: files");
+  } catch (error) {
+    out.error(`The watch of long blocks did not start: ${errorMessage(error)}`);
+  }
 
   const home = alertsHome(process.env, process.cwd());
   // The lock of the home folder comes before each read and each write of its files (AL-58). A second runtime on the folder
@@ -243,6 +255,7 @@ async function runtime(): Promise<ServiceBuilder> {
     if (instance.useReads !== undefined) uses.update(instance.useReads());
     if (marked || service.lifecycle?.state !== "running") return;
     marked = true;
+    blockWatch?.phase("run after the good start");
     // Each block of 1 s or more goes to the output at once, and the next pass writes it into the log. Thus a stop after a
     // block has its cause on file.
     loopWatch = startLoopWatch({
@@ -261,6 +274,7 @@ async function runtime(): Promise<ServiceBuilder> {
     });
   };
 
+  blockWatch?.phase("start: open and fold of the log");
   // A broken log file goes into quarantine. The new file gets each event that the salvage reads, and a system report tells the loss.
   const { log, recovered } = openCheckedRuntimeLog(join(home, "runtime.sqlite"), { now: () => wall.now() });
   if (recovered !== undefined) out.error(`The log file was broken. It is in the quarantine folder ${recovered.quarantine}. The new log kept ${String(recovered.added)} events and lost ${String(recovered.lost)}.`);
@@ -342,6 +356,7 @@ async function runtime(): Promise<ServiceBuilder> {
     loopBlocks: () => loopWatch?.blocks() ?? [],
     onOutageError: (error, failures) => out.error(`A deploy of the outage call failed (${failures} in sequence): ${redactSecrets(errorMessage(error), values)}`),
   });
+  blockWatch?.phase("start: service and first pass");
   if (instance.zones !== undefined) out.log(zoneCodesText(instance.zones));
   if (instance.transit !== undefined) out.log(transitText(instance.transit.chosen, instance.transit.copied));
   out.log(startReadText(instance.runtime.start));
@@ -407,3 +422,4 @@ if (signal !== null) out.warn(signal);
 // The process exits after the shutdown of the service.
 const started = mode === "supervise" ? supervisor(process.argv[3]) : await runtime();
 await started.run();
+await blockWatch?.stop();
