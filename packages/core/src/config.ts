@@ -444,12 +444,33 @@ export interface CopyListen {
   readonly port: number;
 }
 
+/** The pattern of the field of a billing read: one name or more with dots between them, each name of letters, digits, `_` and `-`. */
+export const BILLING_FIELD: RegExp = /^[A-Za-z0-9_-]{1,64}(?:\.[A-Za-z0-9_-]{1,64}){0,15}$/u;
+
+/**
+ * The billing read of the host of another copy (AL-70). The values are private. Only `copy.json` holds them.
+ *
+ * - The runtime starts the program with no shell, only when the copy reaches `unread`. The program prints one JSON value.
+ * - The field is a path of names with dots between them, for example `billing.enabled`.
+ * - A value of the field in `stoppedWhen` tells a billing stop. Each other text, number or boolean tells that the billing is on.
+ */
+export interface CopyBillingConfig {
+  /** The program and its arguments, for example the command of the provider that prints the billing of the host as JSON. */
+  readonly argv: readonly string[];
+  /** The path of the field with the billing state in the JSON output. */
+  readonly field: string;
+  /** The values of the field that tell a billing stop. The list has one value or more. */
+  readonly stoppedWhen: readonly (string | number | boolean)[];
+}
+
 /** Another copy of the system, as one copy sees it. */
 export interface CopyPeer {
   /** The id of the other copy. */
   readonly id: string;
   /** The URL of the exchange of the other copy, with `http` or `https`. */
   readonly url: string;
+  /** The billing read of the host of the other copy (AL-70). Without it, the alarm of a down copy has no billing state. */
+  readonly billing?: CopyBillingConfig;
 }
 
 /**

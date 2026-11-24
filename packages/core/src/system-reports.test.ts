@@ -1091,6 +1091,37 @@ describe("the copy reports", () => {
     expect(codes(read.reports)).toEqual([["cancel", "system.copy.unread"]]);
   });
 
+  it("names a billing stop of the host in an update of the unread line, and keeps the text when the billing is on (AL-70)", () => {
+    const at = START + MINUTE;
+    const since = `No read of the copy cloud passed since the start of the watch at ${new Date(START).toISOString()}.`;
+    // The alarm goes out at once, before the billing read ends.
+    const down = systemReports(NO_SYSTEM_LINES, snapshot({ copies: [watch()] }), at);
+    expect(down.reports).toMatchObject([{ op: "alert", kind: { code: "system.copy.unread" }, headline: since }]);
+    expect(down.reports[0]?.parameters["billing"]).toBeUndefined();
+    // The billing state on is not a fact: the text stays, and no update goes out.
+    expect(systemReports(down.lines, snapshot({ copies: [watch(undefined, { billing: { state: "on", at } })] }), at).reports).toEqual([]);
+    // A billing stop is a new fact: an update of the same line names it.
+    const stopped = systemReports(down.lines, snapshot({ copies: [watch(undefined, { billing: { state: "stopped", at } })] }), at);
+    expect(stopped.reports).toMatchObject([
+      {
+        op: "update",
+        kind: { code: "system.copy.unread" },
+        headline: `The copy cloud is down because of a billing stop of its host. ${since}`,
+        instruction: "Examine the billing account of the host. Start the billing again, then start the copy.",
+        parameters: { stage: ["unread"], billing: ["stopped"] },
+      },
+    ]);
+    expect(Object.keys(stopped.lines.open)).toEqual(["copy/cloud/unread"]);
+    // A failed read keeps the text of a down copy and tells that the billing state is unread.
+    const unread = systemReports(down.lines, snapshot({ copies: [watch(undefined, { billing: { state: "unread", at } })] }), at);
+    expect(unread.reports).toMatchObject([{ op: "update", headline: `${since} The billing state of its host is unread.`, parameters: { billing: ["unread"] } }]);
+    // A billing state that is known at the start of the line goes into the first alert.
+    expect(systemReports(NO_SYSTEM_LINES, snapshot({ copies: [watch(undefined, { billing: { state: "stopped", at } })] }), at).reports).toMatchObject([{ op: "alert", parameters: { billing: ["stopped"] } }]);
+    // The billing state changes only the line unread, and a read of the copy ends the line.
+    expect(systemReports(NO_SYSTEM_LINES, snapshot({ copies: [watch({ skew: 9_000 }, { billing: { state: "stopped", at: START } })] }), START).reports).toMatchObject([{ headline: "The clock of the copy cloud differs from the clock of this copy by 9.0 s." }]);
+    expect(codes(systemReports(stopped.lines, snapshot({ copies: [watch({ at })] }), at).reports)).toEqual([["cancel", "system.copy.unread"]]);
+  });
+
   it("keeps each open line of a copy when the snapshot has no copies, and ends the lines of a copy that the snapshot does not have", () => {
     const skewed = systemReports(NO_SYSTEM_LINES, snapshot({ copies: [watch({ skew: 9_000 })], balances: [] }), START);
     expect(systemReports(skewed.lines, snapshot(), START + 1).reports).toEqual([]);

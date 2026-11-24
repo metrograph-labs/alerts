@@ -17,6 +17,7 @@ import type {
   BalanceStage,
   ChannelId,
   ChannelQuota,
+  CopyBillingState,
   CopyStage,
   CopyWatch,
   Coverage,
@@ -1682,11 +1683,7 @@ function copyCondition(watch: CopyWatch, stage: CopyStage, at: Instant): Conditi
       description: "The copies can route one alert in two ways. Then a person can get an alert from each copy, or on a different channel.",
       instruction: "Give each copy the same file config.json. Then restart each copy.",
     },
-    unread: {
-      headline: `No read of the copy ${copy} passed since ${last}.`,
-      description: "This copy cannot see the sends of the other copy. Thus the two copies can both send each alert.",
-      instruction: "Examine the other computer and the network between the copies.",
-    },
+    unread: unreadText(copy, last, stage === "unread" ? watch.billing?.state : undefined),
     unsteady: {
       headline: `The copy ${copy} is not steady since ${new Date(watch.unsteadySince ?? watch.since).toISOString()}.`,
       description: "The other copy starts again and again, and it stops before it is steady. It sends no alert. Thus this copy is the only copy that sends.",
@@ -1694,9 +1691,11 @@ function copyCondition(watch: CopyWatch, stage: CopyStage, at: Instant): Conditi
     },
   };
   const code = `${COPY_KIND}.${stage}`;
+  // The billing state `on` keeps the text of a down copy, thus it is not a fact. A stop or a failed read changes the text (AL-70).
+  const billing = stage === "unread" ? watch.billing?.state : undefined;
   return {
-    // A new difference or a new age is not a fact. Thus each stage gives one alert, and no update.
-    facts: { copy, stage },
+    // A new difference or a new age is not a fact. Thus each stage gives one alert, and no update. A new billing state gives an update.
+    facts: { copy, stage, ...(billing === "stopped" || billing === "unread" ? { billing } : {}) },
     kind: { code, label: kindLabel(code) },
     severity: "moderate",
     urgency: "expected",
@@ -1708,7 +1707,26 @@ function copyCondition(watch: CopyWatch, stage: CopyStage, at: Instant): Conditi
       stage: [stage],
       ...(read === undefined ? {} : { skew: [String(read.skew)], sameConfig: [String(read.sameConfig)] }),
       age: [String(at - (read?.at ?? watch.since))],
+      ...(billing === undefined ? {} : { billing: [billing] }),
     },
+  };
+}
+
+// The text of the stage `unread` of a copy, with the billing state of its host when the watch has it (AL-70).
+function unreadText(copy: string, last: string, billing: CopyBillingState | undefined): { readonly headline: string; readonly description: string; readonly instruction: string } {
+  const unread = `No read of the copy ${copy} passed since ${last}.`;
+  const description = "This copy cannot see the sends of the other copy. Thus the two copies can both send each alert.";
+  if (billing === "stopped") {
+    return {
+      headline: `The copy ${copy} is down because of a billing stop of its host. ${unread}`,
+      description: `The account of the host of the copy stopped its billing, thus the host stopped. ${description}`,
+      instruction: "Examine the billing account of the host. Start the billing again, then start the copy.",
+    };
+  }
+  return {
+    headline: billing === "unread" ? `${unread} The billing state of its host is unread.` : unread,
+    description,
+    instruction: "Examine the other computer and the network between the copies.",
   };
 }
 

@@ -559,6 +559,18 @@ A copy that starts again and again is not steady (AL-108). It answers the exchan
 - A copy of an older build tells nothing. Its watch has no `unsteadySince`, and a read that passes ends `unread` as before.
 - On 2026-11-21, a copy made 125 starts. The line `unread` of the other copy opened at each stop and ended at each start, and no line told of the loop.
 
+An account can stop the billing of a copy host at a spend limit. Then the host stops, and the line `unread` of the copy names the billing stop (AL-70).
+
+- The field `billing` of a peer in `copy.json` names a command: `argv`, a JSON `field` and the values of a stop (`stoppedWhen`). It names no provider.
+- The runtime starts the program with no shell, only when the copy reaches `unread`. One read passes in each down time of the copy.
+- A failed read tries again after 5 minutes, then after two times as long, up to 1 hour. A read has a limit of 1 minute.
+- The program prints one JSON value. The field is a path of names with dots between them. A value in `stoppedWhen` is `stopped`, and each other text, number or boolean is `on`.
+- A failed command, a time out, a bad JSON value or a missing field is `unread`. The message holds no argument and no output.
+- The pass does not wait for the read. Thus the alert of the line goes out at once with the text of a down copy.
+- The billing state goes into `CopyWatch.billing` and into the parameter `billing` of the line. `stopped` and `unread` are facts of the line, thus each gives an update.
+- `stopped` names the billing stop in the headline. `unread` adds that the billing state is unread. `on` keeps the text of a down copy.
+- A read of the copy that passes ends the down time and its billing state. The health route shows each read as `billing of <copy>`.
+
 A drill report has no area. Its subject is `{ system: "alerts.drill", id: <drill id> }` (`DRILL_SUBJECT`). Each copy has its own lines, thus the name of a line holds the copy id.
 
 | Line | Kind | Condition | Level |
@@ -804,7 +816,7 @@ Each copy loads the same configuration: `config.json` and the parts. The sync of
 - `id`: the name of the copy, for example `home` or `cloud`. Two copies do not have the same id.
 - `rank`: the order of the copy, from 0. The copy with rank 0 sends first.
 - `listen`: the address and the port of the exchange. The address is the tailnet address of the computer, not all addresses.
-- `peers`: the id and the URL of the exchange of each other copy.
+- `peers`: the id and the URL of the exchange of each other copy. A peer can also have a billing read of its host (`billing`, AL-70). The section "System reports" tells it.
 - `pingKey`: the key of `secrets.env` that holds the ping URL of the first check of this copy. The default is `HEALTHCHECKS_PING_URL`. It is not the key of the loud check, because the copies share the loud check.
 - `accounts`: the number of the account of each source with an account, by the id of the source. The keys of account 2 end in `_2`. The default is account 1.
 - `configFrom`: the id of the copy that gives the configuration of this copy. It is the id of a copy of `peers`. The section "The sync of the configuration" tells the steps.

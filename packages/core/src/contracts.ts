@@ -922,6 +922,22 @@ export interface CopyRead {
   readonly sameConfig: boolean;
 }
 
+/**
+ * The billing state of the host of another copy (AL-70). The watch reads it only when the copy reaches `unread`:
+ *
+ * - `stopped`: the account of the host stopped its billing. Then the host and the copy stopped.
+ * - `on`: the billing of the host is on. Then the copy is down for a different cause.
+ * - `unread`: the read failed. The command failed, took too long, or gave no value that the watch can read.
+ */
+export type CopyBillingState = "stopped" | "on" | "unread";
+
+/** One billing read of the host of another copy (AL-70). */
+export interface CopyBilling {
+  readonly state: CopyBillingState;
+  /** The end of the read, on the clock of this copy. */
+  readonly at: Instant;
+}
+
 /** The watch of another copy of the system, at one time. */
 export interface CopyWatch {
   /** The id of the other copy. */
@@ -944,6 +960,11 @@ export interface CopyWatch {
    * read ends it. A failed read keeps it. A copy of an older build tells nothing, thus its watch has none.
    */
   readonly unsteadySince?: Instant;
+  /**
+   * The last billing read of the host of the copy in this stage `unread` (AL-70). The watch reads only when the copy has a
+   * billing read in `copy.json`. A read that passes for the copy ends the billing read.
+   */
+  readonly billing?: CopyBilling;
 }
 
 /** The watch of the balance of one provider account, at one time. */
