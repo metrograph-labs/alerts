@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 import type { Cursor, FetchOutcome, PlaceId, Watch, WatchedPlace } from "@mark1russell7/alerts";
-import { crc32 } from "@mark1russell7/files/archive";
+import { writeZipEntries } from "@mark1russell7/files/archive";
 import type { Exchange, Reply, Transport } from "polite-crawler/api";
 import { HostScheduler } from "polite-crawler/politeness";
 import { describe, expect, it } from "vitest";
@@ -25,52 +25,14 @@ const place = (id: string, at?: readonly [number, number], bufferKm = 0): Watche
 /** The places of the tests: the cities of the three kept events. The requests hold no place. */
 const WATCH: Watch = { places: [place("dhaka", [90.4086, 23.7231]), place("port-au-prince", [-72.335, 18.5392]), place("gaza", [34.3333, 31.4167])] };
 
-/** This function writes a ZIP archive whose entries are stored with no compression. It is only for the tests. */
-function storedZip(entries: readonly { readonly name: string; readonly text: string }[]): Uint8Array {
-  const locals: Buffer[] = [];
-  const centrals: Buffer[] = [];
-  let offset = 0;
-  for (const { name, text } of entries) {
-    const nameBytes = Buffer.from(name, "utf8");
-    const data = Buffer.from(text, "utf8");
-    const crc = crc32(data);
-    const local = Buffer.alloc(30);
-    local.writeUInt32LE(0x04034b50, 0);
-    local.writeUInt16LE(20, 4);
-    local.writeUInt16LE(0x21, 12);
-    local.writeUInt32LE(crc, 14);
-    local.writeUInt32LE(data.length, 18);
-    local.writeUInt32LE(data.length, 22);
-    local.writeUInt16LE(nameBytes.length, 26);
-    const central = Buffer.alloc(46);
-    central.writeUInt32LE(0x02014b50, 0);
-    central.writeUInt16LE(20, 4);
-    central.writeUInt16LE(20, 6);
-    central.writeUInt16LE(0x21, 14);
-    central.writeUInt32LE(crc, 16);
-    central.writeUInt32LE(data.length, 20);
-    central.writeUInt32LE(data.length, 24);
-    central.writeUInt16LE(nameBytes.length, 28);
-    central.writeUInt32LE(offset, 42);
-    locals.push(local, nameBytes, data);
-    centrals.push(central, nameBytes);
-    offset += 30 + nameBytes.length + data.length;
-  }
-  const directory = Buffer.concat(centrals);
-  const end = Buffer.alloc(22);
-  end.writeUInt32LE(0x06054b50, 0);
-  end.writeUInt16LE(entries.length, 8);
-  end.writeUInt16LE(entries.length, 10);
-  end.writeUInt32LE(directory.length, 12);
-  end.writeUInt32LE(offset, 16);
-  return new Uint8Array(Buffer.concat([...locals, directory, end]));
-}
+/** This function gives a ZIP archive of one text file, stored with no compression. */
+const textZip = (name: string, text: string): Uint8Array => writeZipEntries([{ name, bytes: new TextEncoder().encode(text), method: 0 }]);
 
 /** This function gives the time `YYYYMMDDHHMMSS` that is `minutes` after the time of the fixture. */
 const stampAfter = (minutes: number): string => new Date(addedTime(STAMP)! + minutes * MIN).toISOString().replace(/\D/g, "").slice(0, 14);
 
 /** This function gives the archive of an event file of the time `stamp`, with the real lines and that time of addition. */
-const archiveOf = (stamp: string): Uint8Array => storedZip([{ name: `${stamp}.export.CSV`, text: TEXT.replaceAll("\t20261123200000\t", `\t${stamp}\t`) }]);
+const archiveOf = (stamp: string): Uint8Array => textZip(`${stamp}.export.CSV`, TEXT.replaceAll("\t20261123200000\t", `\t${stamp}\t`));
 
 /** This function gives the text of `lastupdate.txt` for an archive, in the real format. */
 const lastUpdateOf = (stamp: string, archive: Uint8Array, md5 = createHash("md5").update(archive).digest("hex")): string =>
@@ -196,7 +158,7 @@ describe("the census of the regions (AL-142)", () => {
   });
 
   it("counts the events of a state with the place of the state only, and gives 0 to a region with no event", () => {
-    const archive = storedZip([{ name: `${STAMP}.export.CSV`, text: stateText(STAMP) }]);
+    const archive = textZip(`${STAMP}.export.CSV`, stateText(STAMP));
     const file = readEventFile(archive, STAMP, undefined, () => true, ["CA", "TX"]);
     expect(typeof file === "object" ? file.census : file).toEqual({ CA: 0, TX: 1 });
     expect(typeof file === "object" ? file.reported : file).toBe(3);
@@ -210,7 +172,7 @@ describe("the census of the regions (AL-142)", () => {
 
   it("gives one census for each file that a fetch reads, only for a watch with a US state", async () => {
     const routes = new Map<string, Reply>();
-    const archive = storedZip([{ name: `${STAMP}.export.CSV`, text: stateText(STAMP) }]);
+    const archive = textZip(`${STAMP}.export.CSV`, stateText(STAMP));
     routes.set(eventFilePath(STAMP), bytes(archive));
     routes.set(LAST_UPDATE_PATH, text(lastUpdateOf(STAMP, archive)));
     const { fetch, sent } = fetchWith(routes, { places: [statePlace("austin", "TX")] });
