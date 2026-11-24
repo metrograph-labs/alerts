@@ -1687,6 +1687,16 @@ The package links of each slot resolve in that slot (AL-144):
 - A swap refuses when a link of either slot resolves outside its slot. `deploy.ts relink [a|b]` installs a slot again at its path.
 - For the live slot, stop the boot task before `relink`.
 
+A new fold version gets its snapshot before the next start (AL-153):
+
+- A new `FOLD_VERSION` makes the next start ignore the old snapshot. Then the start folds the whole log.
+- On a small host, that fold can take longer than the ready window. The supervisor stops each start in its fold, and the work of the fold is lost.
+- The stage and the swap read `FOLD_VERSION` of the two slots. When it changes, they tell the steps.
+- `deploy.ts fold` starts `main.ts fold` of the live slot on the live home. The mode folds the log, writes the snapshot and stops.
+- The mode has no service, no listener and no window. It does not change the start marker or the last good set.
+- The lock of the home folder refuses the fold while a runtime runs. Thus stop the runtime, swap, fold, and then start the runtime.
+- A fold version change with an upgrade of the old snapshot needs no fold step. A fold step then only writes a new snapshot.
+
 The two slots keep each start on the code of one commit:
 
 - A checkout and an install in the live tree do not stop the runtime. The runtime keeps its code until its next start.
