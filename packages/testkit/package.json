@@ -31,7 +31,7 @@
     "@mark1russell7/otel-ts": "^0.8.5",
     "@mark1russell7/quantity": "^0.4.3",
     "@mark1russell7/rigor-chaos": "^0.3.3",
-    "@mark1russell7/rigor-generators": "^0.1.18",
+    "@mark1russell7/rigor-generators": "^0.2.3",
     "@mark1russell7/rigor-proxy": "^0.3.2",
     "@mark1russell7/rigor-testkit": "^0.1.20",
     "@mark1russell7/service": "^0.12.0",
