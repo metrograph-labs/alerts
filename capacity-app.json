@@ -48,6 +48,33 @@
       "min": 200,
       "max": 100000,
       "scale": "log"
+    },
+    {
+      "id": "routes",
+      "title": "The routes of a pass: one for each live incident and each person",
+      "kind": "run",
+      "unit": "{route}",
+      "min": 1,
+      "max": 100000000,
+      "scale": "log"
+    },
+    {
+      "id": "holds",
+      "title": "The holds of the send limit in the state after a pass: each one is an event of the log",
+      "kind": "run",
+      "unit": "{hold}",
+      "min": 1,
+      "max": 100000000,
+      "scale": "log"
+    },
+    {
+      "id": "suppressions",
+      "title": "The suppressions of the throttle in the state after a pass: each one is an event of the log",
+      "kind": "run",
+      "unit": "{suppression}",
+      "min": 1,
+      "max": 10000000,
+      "scale": "log"
     }
   ],
   "classes": [
@@ -87,7 +114,8 @@
       },
       "lines": [
         { "kind": "pass", "ev": "lab-pass", "title": "The end of a pass of the loop" },
-        { "kind": "write", "ev": "lab-snapshot-write", "title": "A write of the start snapshot" }
+        { "kind": "write", "ev": "lab-snapshot-write", "title": "A write of the start snapshot" },
+        { "kind": "amounts", "ev": "lab-amounts", "title": "The routes, the holds and the suppressions after a pass" }
       ]
     }
   },
