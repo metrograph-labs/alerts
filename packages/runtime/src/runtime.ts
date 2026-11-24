@@ -523,10 +523,13 @@ export function openRuntime(options: RuntimeOptions): Runtime {
   if (!Number.isInteger(reportLimit) || reportLimit < 1) throw new Error(`The bound of the reports is ${reportLimit}, not an integer of 1 or more.`);
   // The count of the new observations of each source that wait outside the log at its last fetch that passed (AL-145).
   const waiting = new Map<SourceId, number>();
-  // The admission of one fetch. It counts the reports of the state and the reports that the fetch took before.
+  // The admission of one fetch. It counts the reports of the state and the reports that the fetch took before. An
+  // observation with no report adds no entry to the bound, thus it always goes in: its readings, its head and the cursor of
+  // its source do not wait (AL-171).
   const admission = (): ((reports: readonly Report[]) => boolean) => {
     let count = state.merge.reports.length;
     return (reports) => {
+      if (reports.length === 0) return true;
       if (count + reports.length > reportLimit && !reports.some((report) => keepsAtBound(report, places))) return false;
       count += reports.length;
       return true;
