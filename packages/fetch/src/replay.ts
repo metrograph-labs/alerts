@@ -4,17 +4,24 @@
  * memory until the next full answer. Thus the memory grows with the live alerts. This store keeps the body of the answer
  * as compressed bytes. At a 304, the source reads the answer again and gets the same observations.
  *
- * - The compression is `deflateRaw` of `node:zlib`. It operates in the thread pool, thus it does not block the event loop.
+ * - The compression is the web stream `CompressionStream` with the format `deflate-raw`. Node and the browser have it. Thus the site also type-checks this module.
+ * - In Node, the stream operates in the thread pool of `zlib`, thus it does not block the event loop.
  * - The store keeps the extra values of each answer, as its time of fetch and its latency. Thus a new read gives the same observations.
  * - A reply with `bytes` keeps its bytes as they are. Only the text body gets the compression.
  * - A failed compression or expansion rejects the `get` of the URL. The source then has no earlier full answer.
  */
-import { promisify } from "node:util";
-import { deflateRaw, inflateRaw } from "node:zlib";
 import type { Reply } from "polite-crawler/api";
 
-const deflate = promisify(deflateRaw);
-const inflate = promisify(inflateRaw);
+// The compressed bytes of a text.
+async function deflate(text: string): Promise<Uint8Array<ArrayBuffer>> {
+  const stream = new Blob([text]).stream().pipeThrough(new CompressionStream("deflate-raw"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+// The text of compressed bytes.
+async function inflate(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
+  return new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).text();
+}
 
 /** One answer of the store: the reply with its body, and the values that the source kept with it. */
 export interface KeptAnswer<Extra> {
@@ -35,7 +42,7 @@ export interface AnswerStore<Extra> {
 // One answer in the store. The compression of the body is a promise, thus a 304 that comes first waits for it.
 interface Entry<Extra> {
   readonly reply: Omit<Reply, "body">;
-  readonly body: Promise<Buffer>;
+  readonly body: Promise<Uint8Array<ArrayBuffer>>;
   readonly extra: Extra;
 }
 
@@ -53,7 +60,7 @@ export function answerStore<Extra>(): AnswerStore<Extra> {
     async get(url) {
       const entry = entries.get(url);
       if (entry === undefined) return undefined;
-      const body = (await inflate(await entry.body)).toString("utf8");
+      const body = await inflate(await entry.body);
       return { reply: { ...entry.reply, body }, extra: entry.extra };
     },
     delete(url) {
