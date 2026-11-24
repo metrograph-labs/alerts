@@ -13,7 +13,11 @@
  * The flags `--gdelt`, `--score=<n>` and `--chain` add the parts of a live configuration (AL-160). With `--gdelt`, the place
  * shares its position with GDELT, and the fake gives event files of the real size. With `--score=<n>`, `n` persons have a
  * score rule. With `--chain`, the configuration has the stack of an alert chain. With `--passes=<n>`, the script does `n`
- * passes after the first pass, and the line gives the time of each one in `passMs`.
+ * passes after the first pass, and the line gives the time of each one in `passMs`. With `--score-risk=<x>`, each score rule
+ * has the risk `x`. A risk that no alert reaches gives the cost of the score with the sends of the base (AL-168).
+ *
+ * The line also gives the writes of the log: `openWrites` has the events of the open and its first pass, and `passWrites`
+ * has the transactions and the events of each later pass. A send in flight writes its delivery in its own transaction.
  *
  * The script gives one JSON line: the count of the alerts and the persons, the live alerts of the feeds, the live
  * incidents and the routes of the first pass, the heap, the external memory, the resident memory and the time of the open. The test
@@ -43,6 +47,8 @@ const valueOf = (name: string): string | undefined => flags.find((flag) => flag.
 const transit = Number(valueOf("feeds") ?? "0");
 const gdelt = flags.includes("--gdelt") ? 1 : 0;
 const score = Number(valueOf("score") ?? "0");
+const scoreRiskText = valueOf("score-risk");
+const scoreRisk = scoreRiskText === undefined ? undefined : Number(scoreRiskText);
 const chain = flags.includes("--chain") ? 1 : 0;
 const passes = Number(valueOf("passes") ?? "0");
 // The kept lines of GDELT at the place in each file: each one gives a report, as on a busy day at a place.
@@ -56,12 +62,13 @@ for (const [name, amount] of Object.entries({ feeds: transit, score, passes })) 
   if (!(Number.isInteger(amount) && amount >= 0)) throw new RangeError(`Give a count of ${name} of 0 or more.`);
 }
 if (score > persons) throw new RangeError("Give a count of score rules of at most the count of persons.");
+if (scoreRisk !== undefined && !(Number.isFinite(scoreRisk) && scoreRisk > 0)) throw new RangeError("Give a risk of the score rules above 0.");
 const gc = (globalThis as { gc?: () => void }).gc;
 if (gc === undefined) throw new Error("Start node with --expose-gc.");
 const dir = await mkdtemp(join(tmpdir(), "live-heap-"));
 const home = join(dir, "home");
-await seedHome(home, { log: 300_000, seed: "al-145", files: { shapes: 200_000, transit: 100_000 }, levels: { feeds: transit, persons, incidents: 0, gdelt, score, chain } });
-const { end } = readSeedRecord(home);
+await seedHome(home, { log: 300_000, seed: "al-145", files: { shapes: 200_000, transit: 100_000 }, levels: { feeds: transit, persons, incidents: 0, gdelt, score, chain }, ...(scoreRisk === undefined ? {} : { scoreRisk }) });
+const { end, events: seeded } = readSeedRecord(home);
 const at = end + MINUTE;
 let feeds: ReturnType<typeof createFakeFeeds> | undefined = createFakeFeeds({
   streams: alerts === 0 ? [] : [{ kind: "event", perSecond: (alerts * 1000) / SPAN, eventBytes: 2000 }],
@@ -88,12 +95,21 @@ const measured = await openMeasuredRuntime(home, {
   services: { feeds: servers[0]!.url, channels: servers[1]!.url },
 });
 const ms = performance.now() - t0;
+// The log of the instance is the log of its runtime. The count of its calls of appendAll is the count of its transactions.
+const log = measured.instance.log;
+const openWrites = log.count() - seeded;
+let transactions = 0;
+const appendAll = log.appendAll.bind(log);
+Object.assign(log, { appendAll: (...args: Parameters<typeof appendAll>) => ((transactions += 1), appendAll(...args)) });
+const passWrites: { transactions: number; events: number }[] = [];
 // The passes after the start, as the loop of a live runtime does them. Each one rebuilds the view and routes again.
 const passMs: number[] = [];
 for (let index = 0; index < passes; index += 1) {
+  const before = { transactions, events: log.count() };
   const begin = performance.now();
   await measured.pass();
   passMs.push(Math.round(performance.now() - begin));
+  passWrites.push({ transactions: transactions - before.transactions, events: log.count() - before.events });
 }
 let profile: ProfileSummary | undefined;
 if (session !== undefined) {
@@ -121,7 +137,7 @@ await new Promise((resolve) => setTimeout(resolve, 50));
 gc();
 const { heapUsed: heap, external, rss } = process.memoryUsage();
 if (snap !== undefined) writeHeapSnapshot(snap);
-process.stdout.write(`${JSON.stringify({ alerts, persons, feeds: transit, gdelt, score, chain, gdeltFiles, passMs, live, incidents, routes, holds, suppressions, heap, external, rss, peakRss: peakRss(), blockWatch: watching, ms: Math.round(ms), ...(profile === undefined ? {} : { sending, profile }) })}\n`);
+process.stdout.write(`${JSON.stringify({ alerts, persons, feeds: transit, gdelt, score, ...(scoreRisk === undefined ? {} : { scoreRisk }), chain, gdeltFiles, passMs, passWrites, openWrites, live, incidents, routes, holds, suppressions, heap, external, rss, peakRss: peakRss(), blockWatch: watching, ms: Math.round(ms), ...(profile === undefined ? {} : { sending, profile }) })}\n`);
 await measured.close();
 await watch?.stop();
 await rm(dir, { recursive: true, force: true });
