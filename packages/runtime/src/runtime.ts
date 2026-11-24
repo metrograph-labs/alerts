@@ -5,7 +5,7 @@
  * that it gets.
  */
 import { isFrameClock, type WallClock } from "@mark1russell7/algebra/clock";
-import { bucketOf, channelDownPolicy, DEFAULT_SEND_LIMITS, downChannels, heldPersons, indicatorBreadth, indicatorSurprise, indicatorUnits, knowsReport, MIN_READS, limitShare, matchPlaces, observeConditions, ONLY_COPY, type StoreBound, type WatchedPlace, type ChannelQuota, type ChannelSnapshot, type CopyWatch, type DrillWatch, type Duration, type EntryTimes, type Exhaustion, type FetchOutcome, type HeldPerson, type Incident, type IndicatorBreadth, type IndicatorSurprise, type Instant, type LatenessFolds, type LoopBlock, type MergeState, type ObserveCondition, type Report, type ReportId, type SourceDescriptor, type SourceId, type StoreFill, type SourceProcedures, type Watch, type ZoneRegions, type JointDown, type DriftCheck } from "@mark1russell7/alerts";
+import { bucketOf, channelDownPolicy, DEFAULT_SEND_LIMITS, downChannels, heldPersons, indicatorBreadth, indicatorSurprise, indicatorUnits, knowsReport, MIN_READS, limitShare, matchPlaces, observeConditions, ONLY_COPY, type StalePlace, type StoreBound, type WatchedPlace, type ChannelQuota, type ChannelSnapshot, type CopyWatch, type DrillWatch, type Duration, type EntryTimes, type Exhaustion, type FetchOutcome, type HeldPerson, type Incident, type IndicatorBreadth, type IndicatorSurprise, type Instant, type LatenessFolds, type LoopBlock, type MergeState, type ObserveCondition, type Report, type ReportId, type SourceDescriptor, type SourceId, type StoreFill, type SourceProcedures, type Watch, type ZoneRegions, type JointDown, type DriftCheck } from "@mark1russell7/alerts";
 import type { ChunkOptions, FoldMark, FoldSnapshot } from "@mark1russell7/sqlite";
 import { errorMessage } from "@mark1russell7/text";
 import { compareCodeUnits } from "@mark1russell7/text/order";
@@ -65,6 +65,14 @@ export interface RuntimeOptions {
   readonly watch: (source: SourceDescriptor) => Watch;
   /** The configuration of the views, other than the descriptors of the sources. */
   readonly view: Omit<ViewConfig, "sources">;
+  /**
+   * This function gives the places of a pass at its start (AL-40): the fixed places, then each moving place at its last fix.
+   * The default is the places of `view`. The coverage, the threats, the admission, the observe mode and the delivery of the
+   * pass read them. The watch of each source and the log do not.
+   */
+  readonly places?: (at: Instant) => readonly WatchedPlace[];
+  /** This function gives the stale moving places of this copy at the time of the view (AL-40). Each one is a private system report. */
+  readonly stale?: (at: Instant) => readonly StalePlace[];
   /** The id of this run. Each start of the process has a new id. */
   readonly run: string;
   /** The id of this copy of the system (AL-16). The default is the id of `ONLY_COPY`. */
@@ -434,12 +442,16 @@ export function openRuntime(options: RuntimeOptions): Runtime {
   const logId = recovery === undefined ? (firstEventId(log) ?? `started:${options.run}`) : `recovered:${recovery.quarantine}`;
   // The position of the next read of each other copy. It starts at the position of the log, and it moves at each page.
   const positions = new Map<string, ExchangeCursor>();
+  // The places of the pass in progress (AL-40). Each pass reads them at its start. Thus each part of one pass reads the same places.
+  let places: readonly WatchedPlace[] = config.places;
 
   const copies = options.copies;
   // The parts of the observe mode of the new sources (AL-73). With no delivery, no person watches. Thus each verdict passes after its window.
   const observeParts: ObserveParts = {
     people: options.delivery?.recipients.map((recipient) => recipient.watch) ?? [],
-    places: config.places,
+    get places() {
+      return places;
+    },
     assess: options.delivery?.assess,
     limits: options.delivery?.sendLimits,
     ...(copies === undefined ? {} : { share: (at: Instant) => limitShare(copies.watches(), at) }),
@@ -453,7 +465,9 @@ export function openRuntime(options: RuntimeOptions): Runtime {
   const dispatcher = options.delivery === undefined ? undefined : createDispatcher(options.delivery, {
           clock,
           run: options.run,
-          places: config.places,
+          get places() {
+            return places;
+          },
           link: config.link,
           state: () => state,
           append,
@@ -513,7 +527,7 @@ export function openRuntime(options: RuntimeOptions): Runtime {
   const admission = (): ((reports: readonly Report[]) => boolean) => {
     let count = state.merge.reports.length;
     return (reports) => {
-      if (count + reports.length > reportLimit && !reports.some((report) => keepsAtBound(report, config.places))) return false;
+      if (count + reports.length > reportLimit && !reports.some((report) => keepsAtBound(report, places))) return false;
       count += reports.length;
       return true;
     };
@@ -668,6 +682,7 @@ export function openRuntime(options: RuntimeOptions): Runtime {
       if (closed !== undefined) throw new Error("The runtime is closed: its sources have no session.");
       const stepped = followStep();
       const start = clock.now();
+      places = options.places?.(start) ?? config.places;
       const due = options.sources.flatMap((source, at) => {
         const descriptor = config.sources[at]!;
         return nextFetch(state, descriptor) <= start ? [{ source, descriptor }] : [];
@@ -695,7 +710,7 @@ export function openRuntime(options: RuntimeOptions): Runtime {
       const at = clock.now();
       // The breadth of the indicator signals at the time of the view. A fault of the store gives no breadth, and the pass continues.
       const signals = indicatorReads === undefined ? undefined : guarded("read", () => indicatorReads.signals(at));
-      const breadth = signals === undefined ? undefined : indicatorBreadth(signals, config.places, zones);
+      const breadth = signals === undefined ? undefined : indicatorBreadth(signals, places, zones);
       // The surprise reads the history of the hours before this hour. Then the first pass of the hour writes its units.
       // A fault of the store gives no surprise or no write, and the pass continues.
       const surprise = breadth === undefined || unitReads === undefined ? undefined : guarded("read", () => indicatorSurprise(breadth, unitReads.histories(bucketOf(at)), MIN_READS, unitReads.pairs(bucketOf(at))));
@@ -715,7 +730,8 @@ export function openRuntime(options: RuntimeOptions): Runtime {
       const stores = readStores();
       // The persons with a hold of the send limit (AL-81). With no delivery, no person has a hold, and each open line stays.
       const held = dispatcher === undefined ? undefined : heldOf(at);
-      const view = systemView(state, config, at, { drills: drilled.snapshots, ...(quotas === undefined ? {} : { quotas }), ...(stores === undefined ? {} : { stores }), bounds: readBounds(), balances: watches.flatMap((watch) => watch.balance() ?? []), uses: uses.flatMap((watch) => watch.use() ?? []), ...jointPart(options.joint), ...driftPart(options.drift), ...(options.copies === undefined ? {} : { copies: options.copies.watches(), copy: self, drillWatches: options.drillWatches ?? [] }), ...(folds === undefined ? {} : { folds }), ...(exhausted === undefined ? {} : { exhausted }), ...(held === undefined ? {} : { held }), ...(channels === undefined ? {} : { channels: channels.snapshots() }), ...(observing === undefined ? {} : { observing }) });
+      const stale = options.stale?.(at);
+      const view = systemView(state, places === config.places ? config : { ...config, places }, at, { ...(stale === undefined ? {} : { stale }), drills: drilled.snapshots, ...(quotas === undefined ? {} : { quotas }), ...(stores === undefined ? {} : { stores }), bounds: readBounds(), balances: watches.flatMap((watch) => watch.balance() ?? []), uses: uses.flatMap((watch) => watch.use() ?? []), ...jointPart(options.joint), ...driftPart(options.drift), ...(options.copies === undefined ? {} : { copies: options.copies.watches(), copy: self, drillWatches: options.drillWatches ?? [] }), ...(folds === undefined ? {} : { folds }), ...(exhausted === undefined ? {} : { exhausted }), ...(held === undefined ? {} : { held }), ...(channels === undefined ? {} : { channels: channels.snapshots() }), ...(observing === undefined ? {} : { observing }) });
       folds = view.folds;
       const event = systemEvent(view);
       if (event !== undefined) conflicts.push(...append([event]));

@@ -13,6 +13,7 @@ export * from "./ids.ts";
 export * from "./merge.ts";
 export * from "./retention.ts";
 export * from "./assess.ts";
+export * from "./moving.ts";
 export * from "./state-codes.ts";
 export * from "./audience.ts";
 export * from "./score.ts";

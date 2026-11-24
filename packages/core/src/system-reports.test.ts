@@ -44,6 +44,7 @@ import {
   LOOP_BLOCK_LIMIT,
   LOOP_BLOCK_WINDOW,
   NO_SYSTEM_LINES,
+  PLACE_SUBJECT,
   quotaStages,
   recentBlocks,
   recentRecovery,
@@ -67,6 +68,7 @@ import {
   useStages,
   useUnreadAt,
   type LogRecovery,
+  type StalePlace,
   type StoreBound,
   type StoreFill,
   type SystemLines,
@@ -1587,6 +1589,52 @@ describe("the notices of the send limit (AL-81)", () => {
     const count = (copy: string, other: string): number =>
       systemReports(NO_SYSTEM_LINES, snapshot({ held: [held(OPERATOR)], copy, copies: [watch(other)] }), AT).reports.filter((report) => report.kind.code === "system.limit.held").length;
     expect([count("a", "b"), count("b", "a")]).toEqual([1, 0]);
+  });
+});
+
+describe("the reports of the stale moving places (AL-40)", () => {
+  const AT = Date.UTC(2026, 10, 24, 12);
+  const stale = (persons: readonly PersonId[] = [OPERATOR.person]): StalePlace => ({ place: "place:moving" as PlaceId, label: "Phone", persons });
+
+  it("gives one private notice to the persons of the place, with the label and no position", () => {
+    expect(unknownKinds(["system.place", "system.place.stale"])).toEqual([]);
+    const step = systemReports(NO_SYSTEM_LINES, snapshot({ stale: [stale()], copy: "home" }), AT);
+    expect(step.reports).toMatchObject([
+      {
+        op: "alert",
+        status: "system",
+        kind: { code: "system.place.stale", label: "Stale moving place" },
+        severity: "moderate",
+        urgency: "expected",
+        areas: [],
+        about: [{ system: PLACE_SUBJECT, id: "place:moving", label: "Phone" }],
+        addresses: [OPERATOR.person],
+        headline: "The watch of the moving place Phone stopped.",
+      },
+    ]);
+    expect(step.reports.every((report) => reportSchema.safeParse(report).success)).toBe(true);
+    expect(levels(step.reports, OPERATOR, AT)).toEqual(["notice"]);
+    expect(levels(step.reports, NEIGHBOR, AT)).toEqual(["none"]);
+  });
+
+  it("gives no report for a place with no person, keeps the line with no list, and cancels it at the next good fix", () => {
+    expect(systemReports(NO_SYSTEM_LINES, snapshot({ stale: [stale([])] }), AT).reports).toEqual([]);
+    const first = systemReports(NO_SYSTEM_LINES, snapshot({ stale: [stale()], copy: "home" }), AT);
+    expect(systemReports(first.lines, snapshot({ stale: [stale()], copy: "home" }), AT + 60_000).reports).toEqual([]);
+    expect(systemReports(first.lines, snapshot({ copy: "home" }), AT + 60_000).reports).toEqual([]);
+    const ended = systemReports(first.lines, snapshot({ stale: [], copy: "home" }), AT + 120_000);
+    expect(ended.reports.map((report) => [report.op, report.kind.code, report.addresses])).toEqual([["cancel", "system.place.stale", [OPERATOR.person]]]);
+    expect(ended.lines.open).toEqual({});
+  });
+
+  it("keeps a line of each copy apart", () => {
+    const home = systemReports(NO_SYSTEM_LINES, snapshot({ stale: [stale()], copy: "home" }), AT);
+    // Another copy with no stale place keeps the line of this copy open.
+    const lines = addSystemReports(NO_SYSTEM_LINES, home.reports, home.observations);
+    expect(lines).toEqual(home.lines);
+    expect(systemReports(lines, snapshot({ stale: [stale()], copy: "cloud" }), AT).reports.map((report) => report.op)).toEqual(["alert"]);
+    // Another copy with an empty list ends none of the lines of this copy.
+    expect(systemReports(lines, snapshot({ stale: [], copy: "cloud" }), AT).reports).toEqual([]);
   });
 });
 
