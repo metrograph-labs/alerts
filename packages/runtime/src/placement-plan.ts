@@ -3,7 +3,7 @@
  * plan list of each provider record of `@mark1russell7/market-sources`, and the incident history of the status page of
  * each provider. It reads no other source and opens no account.
  *
- * `node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--base <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>]`
+ * `node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--site-log <site=file,site=file>] [--base <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>]`
  *
  * - `--min-memory-mib` is the least memory of a host of a copy, in MiB.
  * - The three `--assume-*` values are assumed chance inputs, from 0 to 1, for each provider, region and host. The script
@@ -17,6 +17,9 @@
  *   name with no slash is a copy at a site, for example a home computer. Each is a fixed slot with no cost. The front
  *   then gives the gain of each next copy beside them. The names go only to the private front file.
  * - `--assume-site` is the assumed chance input of each site of a fixed copy. A fixed copy at a site needs it.
+ * - `--site-log` names a copy of the runtime log of the live copy at each site, as `site=file` with commas between
+ *   them. The gaps of its fetch events give a measured chance of the site (`measureSite` of `placement-chances.ts`).
+ *   This input replaces `--assume-site` for that site.
  * - `--base` names a private JSON file with the function and the needs that all copies share (`readBase` of
  *   `placement.ts`). These needs limit the gain of each copy. The output names each of their inputs that is assumed or
  *   missing.
@@ -38,7 +41,18 @@ import { writeFileAtomic } from "@procedures/fs/files";
 import { fetchTransport } from "polite-crawler/api";
 import { HostScheduler, realClock } from "polite-crawler/politeness";
 import { alertsHome, configPath } from "./config.ts";
-import { DEFAULT_WINDOW_DAYS, HISTORY_GAPS, HISTORY_SOURCES, MEASURE_USER_AGENT, measureProvider, readPageHistory, withMeasures, type ChanceMeasure } from "./placement-chances.ts";
+import {
+  DEFAULT_WINDOW_DAYS,
+  HISTORY_GAPS,
+  HISTORY_SOURCES,
+  MEASURE_USER_AGENT,
+  measureProvider,
+  measureSite,
+  readFetchTimes,
+  readPageHistory,
+  withMeasures,
+  type ChanceMeasure,
+} from "./placement-chances.ts";
 import {
   assumedInputs,
   distinctRows,
@@ -59,7 +73,7 @@ import {
 } from "./placement.ts";
 
 const USAGE =
-  "The command is: node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--base <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>]";
+  "The command is: node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--site-log <site=file,site=file>] [--base <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>]";
 
 /** The User-Agent of each request. It names no person and no project. */
 const USER_AGENT = "alerts-placement";
@@ -75,6 +89,7 @@ interface Command {
   readonly copies: number;
   readonly fixed: readonly FixedCopy[];
   readonly base: string | undefined;
+  readonly siteLogs: readonly { readonly site: string; readonly path: string }[];
   readonly spend: string | undefined;
   readonly terms: readonly PriceTerm["kind"][];
   readonly windowDays: number;
@@ -89,7 +104,7 @@ function command(args: readonly string[]): Command | string {
     if (name === undefined || !name.startsWith("--") || value === undefined || value.startsWith("--")) return `The argument ${String(name)} has no value.`;
     values.set(name.slice(2), value);
   }
-  const known = new Set(["min-memory-mib", "assume-provider", "assume-region", "assume-host", "assume-site", "fixed", "base", "copies", "spend", "terms", "window-days"]);
+  const known = new Set(["min-memory-mib", "assume-provider", "assume-region", "assume-host", "assume-site", "fixed", "site-log", "base", "copies", "spend", "terms", "window-days"]);
   const other = [...values.keys()].find((name) => !known.has(name));
   if (other !== undefined) return `The option --${other} is not known.`;
   const memory = Number(values.get("min-memory-mib"));
@@ -120,11 +135,17 @@ function command(args: readonly string[]): Command | string {
   const needsSite = fixed.some((copy) => copy.kind === "site");
   const site = values.has("assume-site") || needsSite ? assumed("site") : undefined;
   if (typeof site === "string") return site;
+  const siteLogs: { site: string; path: string }[] = [];
+  for (const item of (values.get("site-log") ?? "").split(",").filter((each) => each !== "")) {
+    const cut = item.indexOf("=");
+    if (cut < 1 || cut === item.length - 1) return `The site log ${item} is not site=file.`;
+    siteLogs.push({ site: item.slice(0, cut), path: item.slice(cut + 1) });
+  }
   const terms = (values.get("terms") ?? "on-demand").split(",");
   const bad = terms.find((term) => !TERM_KINDS.some((kind) => kind === term));
   if (bad !== undefined) return `The price term ${bad} is not on-demand, spot or committed.`;
   const chances: PlacementChances = { provider, region, host, ...(site === undefined ? {} : { site }) };
-  return { minMemoryMiB: memory, chances, copies, fixed, base: values.get("base"), spend: values.get("spend"), terms: terms as PriceTerm["kind"][], windowDays };
+  return { minMemoryMiB: memory, chances, copies, fixed, base: values.get("base"), siteLogs, spend: values.get("spend"), terms: terms as PriceTerm["kind"][], windowDays };
 }
 
 // The front of a build: its search, its levels and the assumed fragments of each row. It prints each level.
@@ -226,8 +247,20 @@ if (typeof parsed === "string") {
   }
   const known = new Set([...HISTORY_SOURCES, ...HISTORY_GAPS].map((each) => each.provider));
   for (const provider of [...providers].filter((each) => !known.has(each)).sort()) gaps.push({ provider, reason: "No status page history of this provider is known." });
-  const chances = withMeasures(parsed.chances, measures);
   console.log(`The status page histories gave ${countOf(measures.length, "measured input")}. The other fragments and the hosts use the assumed inputs.`);
+  for (const log of parsed.siteLogs) {
+    let site: ReturnType<typeof measureSite>;
+    try {
+      site = measureSite(log.site, readFetchTimes(log.path), readAt);
+    } catch (error) {
+      site = { ok: false, reason: `The log of the site ${log.site} has no good read: ${errorMessage(error)}` };
+    }
+    if (site.ok) {
+      measures.push(site.measure);
+      console.log(`The site ${log.site} has a measured input: ${site.measure.input.source}.`);
+    } else console.log(`The site ${log.site} keeps the assumed input: ${site.reason}`);
+  }
+  const chances = withMeasures(parsed.chances, measures);
   for (const gap of gaps) console.log(`The provider ${gap.provider} keeps the assumed inputs: ${gap.reason}`);
   if (offers.length === 0) {
     console.error("No source gave an offer. The script writes no front.");
