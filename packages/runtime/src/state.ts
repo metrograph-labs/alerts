@@ -281,18 +281,44 @@ export const EMPTY_RUNTIME: RuntimeState = {
 };
 
 /**
+ * The lists that one batch of folds made (AL-150). Only the last state of the batch leaves it, thus a fold of the batch adds
+ * an item to such a list in place. A list from outside the batch gets a copy one time. Thus a batch of n starts costs O(n),
+ * not O(n²).
+ */
+export type FoldScratch = WeakSet<readonly unknown[]>;
+
+/** This function gives the scratch of a new batch of folds. Give it to each fold of the batch, and keep only the last state. */
+export function foldScratch(): FoldScratch {
+  return new WeakSet();
+}
+
+// The list with the item at its end. A list of the scratch grows in place. Each other list gets a copy, and the copy joins the scratch.
+function appended<T>(list: readonly T[], item: T, scratch: FoldScratch | undefined): readonly T[] {
+  if (scratch?.has(list) === true) {
+    (list as T[]).push(item);
+    return list;
+  }
+  const next = [...list, item];
+  scratch?.add(next);
+  return next;
+}
+
+/**
  * This function adds one event to the state. With a retention in the context, a step of the retirement can come before
  * the event (AL-109). `retired` gets the merge state after the step, and after the fold of a `retired` event.
+ *
+ * With `scratch`, the fold can change a list that an earlier fold of the same batch made (`FoldScratch`). Then only the
+ * last state of the batch is a value: each earlier state of the batch can change.
  */
-export function fold(state: RuntimeState, event: RuntimeEvent, context: FoldContext, retired?: RetireHook): RuntimeState {
-  const next = foldEvent(retireStep(state, event, context, retired), event, context);
+export function fold(state: RuntimeState, event: RuntimeEvent, context: FoldContext, retired?: RetireHook, scratch?: FoldScratch): RuntimeState {
+  const next = foldEvent(retireStep(state, event, context, retired), event, context, scratch);
   if (event.type === "retired") retired?.(next.merge);
   return next;
 }
 
 // The fold of one event, with no step of the retirement.
-function foldEvent(state: RuntimeState, event: RuntimeEvent, context: FoldContext): RuntimeState {
-  const rest = foldRest(state, event, context);
+function foldEvent(state: RuntimeState, event: RuntimeEvent, context: FoldContext, scratch?: FoldScratch): RuntimeState {
+  const rest = foldRest(state, event, context, scratch);
   // A tombstone of this copy keeps the parts of a retired report out of each side. The own merge state applies its own tombstones.
   const parts = event.type === "import" ? withoutRetired(partsOf(event.event), rest.own.merge.retired) : partsOf(event);
   if (parts === undefined) return rest;
@@ -312,6 +338,8 @@ function foldEvent(state: RuntimeState, event: RuntimeEvent, context: FoldContex
  */
 export function rebuild(events: Iterable<RuntimeEvent>, context: FoldContext, retired?: RetireHook, from?: RuntimeState): RuntimeState {
   let state = EMPTY_RUNTIME;
+  // Only the last state of the rebuild leaves it. Thus the lists of the rebuild grow in place.
+  const scratch = foldScratch();
   const own = collector();
   const imported = collector();
   if (from !== undefined) {
@@ -341,7 +369,7 @@ export function rebuild(events: Iterable<RuntimeEvent>, context: FoldContext, re
     // The fold moves its own merge state in normal form. A step can change which copy of a report the normal form keeps.
     // Thus the own parts get the normal form before the step moves them.
     if (event.type === "clock") own.compact(before);
-    state = foldRest(state, event, context);
+    state = foldRest(state, event, context, scratch);
     // A step moves the own parts before it, as the fold moves its own merge state. The parts after it are in the new frame.
     if (event.type === "clock") own.shift(event.size);
     if (event.type === "retired") {
@@ -488,7 +516,7 @@ function partsOf(event: RuntimeEvent | SharedEvent): MergeParts | undefined {
 }
 
 // Each change of an event other than the merge.
-function foldRest(state: RuntimeState, event: RuntimeEvent, context: FoldContext): RuntimeState {
+function foldRest(state: RuntimeState, event: RuntimeEvent, context: FoldContext, scratch?: FoldScratch): RuntimeState {
   const base: RuntimeState = { ...state, time: Math.max(state.time, event.time) };
   const start = state.start ?? event.time;
   switch (event.type) {
@@ -510,13 +538,13 @@ function foldRest(state: RuntimeState, event: RuntimeEvent, context: FoldContext
     case "system":
       return { ...base, lines: addSystemReports(state.lines, event.reports, event.observations) };
     case "escalation":
-      return { ...base, starts: [...state.starts, event.start] };
+      return { ...base, starts: appended(state.starts, event.start, scratch) };
     case "hold":
-      return { ...base, holds: [...state.holds, event.hold] };
+      return { ...base, holds: appended(state.holds, event.hold, scratch) };
     case "suppressed":
-      return { ...base, suppressions: [...state.suppressions, event.suppression] };
+      return { ...base, suppressions: appended(state.suppressions, event.suppression, scratch) };
     case "escalation-end": {
-      const own = { ...state.own, escalationEnds: [...state.own.escalationEnds, event.end] };
+      const own = { ...state.own, escalationEnds: appended(state.own.escalationEnds, event.end, scratch) };
       return { ...base, own, escalationEnds: joinedEnds(own, state.imported) };
     }
     case "cancelled":
