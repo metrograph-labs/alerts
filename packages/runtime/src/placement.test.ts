@@ -4,7 +4,10 @@ import { checkPlacement } from "@mark1russell7/stack-placement";
 import { describe, expect, it } from "vitest";
 import {
   baseAssumed,
+  COMMON_FRAGMENT,
+  jointFit,
   readBase,
+  readJoint,
   assumedInputs,
   choiceCount,
   distinctRows,
@@ -301,6 +304,64 @@ describe("the live copies", () => {
     expect(() => placementLayer(input(offers, { fixed }))).toThrow(RangeError);
     expect(() => placementLayer(input(offers, { chances, fixed: [fixed[1]!, fixed[1]!] }))).toThrow(RangeError);
     expect(() => fragmentInput(CHANCES, siteFragment("home"))).toThrow(RangeError);
+  });
+});
+
+describe("the common cause of the live copies (AL-147)", () => {
+  const offers = [
+    offer({ provider: "provider-a", region: "europe-west1", plan: "small", hourly: 0.005 }),
+    offer({ provider: "provider-b", region: "europe-west1", plan: "small", hourly: 0.01 }),
+  ];
+  const fixed: readonly FixedCopy[] = [
+    { kind: "site", site: "home" },
+    { kind: "cloud", provider: "provider-c", region: "europe-west1" },
+  ];
+  const measured = { kind: "measured" as const, source: "made-up heartbeat flips" };
+  // Two independent copies of 0.95 and 0.97 give 0.9985. The measure gives 0.985: the copies fail together more often.
+  const chances: PlacementChances = {
+    ...CHANCES,
+    site: { works: 0.99, kind: "assumed", source: "a test input" },
+    overrides: [
+      { id: providerFragment("provider-c"), works: 0.9996, ...measured },
+      { id: regionFragment("provider-c", "europe-west1"), works: 0.9994, ...measured },
+    ],
+    joint: { works: [{ works: 0.95, ...measured }, { works: 0.97, ...measured }], anyWorks: { works: 0.985, ...measured } },
+  };
+
+  it("gives the measured chance of the live copies to the front of no new copy", () => {
+    const build = placementLayer(input(offers, { chances, fixed, copies: 1 }));
+    const none = frontLevels(distinctRows(planCopies(build, TODAY).front))[0];
+    expect(none?.cost).toBe(0);
+    expect(none?.chance).toBeCloseTo(0.985, 9);
+    expect(checkPlacement(build.layer, build.base).filter((fault) => fault.level === "error")).toEqual([]);
+  });
+
+  it("limits the gain of each new copy by the common cause", () => {
+    const build = placementLayer(input(offers, { chances, fixed, copies: 2 }));
+    const common = jointFit(chances)?.common.works ?? 0;
+    expect(common).toBeCloseTo(0.9855615, 6);
+    const levels = frontLevels(distinctRows(planCopies(build, TODAY).front));
+    expect(levels.length).toBeGreaterThan(1);
+    expect(levels.every((level) => level.chance < common)).toBe(true);
+    // With no joint measure, the copies are independent, and a new copy gives more than the common cause allows.
+    const free = frontLevels(distinctRows(planCopies(placementLayer(input(offers, { chances: { ...chances, joint: undefined }, fixed, copies: 2 })), TODAY).front));
+    expect(Math.max(...free.map((level) => level.chance))).toBeGreaterThan(common);
+  });
+
+  it("puts the common fragment in each candidate, with a measured input", () => {
+    const build = placementLayer(input(offers, { chances, fixed, copies: 1 }));
+    expect(build.layer.slots.every((slot) => slot.candidates.every((candidate) => candidate.uses?.includes(COMMON_FRAGMENT) === true))).toBe(true);
+    expect(fragmentInput(chances, COMMON_FRAGMENT).kind).toBe("measured");
+    expect(() => fragmentInput(CHANCES, COMMON_FRAGMENT)).toThrow(RangeError);
+  });
+
+  it("reads a joint measure, and refuses a measure with no input for each fixed copy", () => {
+    const value = { works: [{ works: 0.95, ...measured }, { works: 0.97, ...measured }], anyWorks: { works: 0.985, ...measured } };
+    expect(readJoint(value)).toEqual(chances.joint);
+    expect(readJoint({ works: [] })).toMatch(/no list works/u);
+    expect(readJoint({ ...value, anyWorks: { works: 2, ...measured } })).toMatch(/anyWorks/u);
+    expect(readJoint({ ...value, works: [{ works: 0.9, kind: "guess", source: "x" }] })).toMatch(/Each input/u);
+    expect(() => placementLayer(input(offers, { chances, fixed: [fixed[0]!], copies: 1 }))).toThrow(RangeError);
   });
 });
 

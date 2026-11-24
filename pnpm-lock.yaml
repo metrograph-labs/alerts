@@ -732,8 +732,8 @@ importers:
         specifier: ^0.1.3
         version: 0.1.3
       '@mark1russell7/stack-risk':
-        specifier: ^0.2.3
-        version: 0.2.3
+        specifier: ^0.2.5
+        version: 0.2.6
       '@mark1russell7/stack-spend':
         specifier: ^0.1.12
         version: 0.1.12
@@ -2282,6 +2282,9 @@ packages:
   '@mark1russell7/coeval@0.38.1':
     resolution: {integrity: sha512-e8hythmLZevMmTj7WNDBjK5shuGfgFFZcVMto89hEsTgS3vCrkC8GNOGS1zzFqcpBulkYJQ6eu+xpyxaiwjryA==}
 
+  '@mark1russell7/coeval@0.38.2':
+    resolution: {integrity: sha512-UAfZPmB0c+RrwKZVuuXtwsL+cdl2T6VFS4U0WRw8chsOwZYswljwbOM4jJzQ0FOVdfFsF8VFEq7kmD7LV0uqBA==}
+
   '@mark1russell7/collections@0.10.2':
     resolution: {integrity: sha512-uOqrK6ZYqgbG8DLchTU2FO8DcNeeeLbNAqR8E3YTe/HKK3rk4ZpR0M0GlYG/7ApiWfrFkVhW1rCF6opaeiL16g==}
     engines: {node: '>=22.12'}
@@ -2587,8 +2590,8 @@ packages:
     resolution: {integrity: sha512-a+yKc2M80kaiowFC26gUCYYPuNlkbuhb/nUFCI1zuWLDIwfMG/RgK9qbrytEaiL/F6NIY3CzM2uiapAj84ILgg==}
     engines: {node: '>=22'}
 
-  '@mark1russell7/stack-risk@0.2.3':
-    resolution: {integrity: sha512-swUktYvDEkGJynSwT4c3/bcgY0hMlzMdQPRN4Nz6pY5pKldPCSmTnpZZdV3UnJ1+R80CoZP4qiXFYy5GIjIAJg==}
+  '@mark1russell7/stack-risk@0.2.6':
+    resolution: {integrity: sha512-MgSyeoz2OewM3OKk2OSW3O0FGy7joX2jnmHmyfUFErxyfB/84yp+5OPUlxk0XehvvNlWqbc4K/ho7fCRjgx56A==}
     engines: {node: '>=22'}
 
   '@mark1russell7/stack-spend@0.1.12':
@@ -2606,6 +2609,10 @@ packages:
 
   '@mark1russell7/strategy-space@0.1.1':
     resolution: {integrity: sha512-6AP7wcNFOepPp+/w0Z/b8+a5CKjCP9nmUeGflgWtNvGlzBogVhPQMLM417gqzARTCMH4gc6WtNaIYEhkjkefYA==}
+    engines: {node: '>=22'}
+
+  '@mark1russell7/system-stack@0.1.10':
+    resolution: {integrity: sha512-x4cvwnKFBR+1uxrO1ilqe3xbcEbrOpz8az0tu4QAdOhSK7oMLhJu7lvgzeoLKKXkgBCJ4SteaQH/gKLpAuLFoQ==}
     engines: {node: '>=22'}
 
   '@mark1russell7/system-stack@0.1.6':
@@ -4817,6 +4824,13 @@ snapshots:
     transitivePeerDependencies:
       - zod
 
+  '@mark1russell7/coeval@0.38.2(zod@4.6.7)':
+    dependencies:
+      '@mark1russell7/collections': 0.11.2(zod@4.6.7)
+      '@mark1russell7/rigor-generators': 0.2.0
+    transitivePeerDependencies:
+      - zod
+
   '@mark1russell7/collections@0.10.2(zod@4.6.7)':
     dependencies:
       '@mark1russell7/algebra': 0.8.10(zod@4.6.7)
@@ -5072,10 +5086,10 @@ snapshots:
       '@mark1russell7/system-stack': 0.1.8
       zod: 4.6.7
 
-  '@mark1russell7/stack-risk@0.2.3':
+  '@mark1russell7/stack-risk@0.2.6':
     dependencies:
       '@mark1russell7/collections': 0.11.2(zod@4.6.7)
-      '@mark1russell7/system-stack': 0.1.8
+      '@mark1russell7/system-stack': 0.1.10
       zod: 4.6.7
 
   '@mark1russell7/stack-spend@0.1.12':
@@ -5099,6 +5113,12 @@ snapshots:
     dependencies:
       '@mark1russell7/rigor-generators': 0.2.0
       '@mark1russell7/rigor-statistics': 0.2.8
+
+  '@mark1russell7/system-stack@0.1.10':
+    dependencies:
+      '@mark1russell7/coeval': 0.38.2(zod@4.6.7)
+      '@mark1russell7/collections': 0.11.2(zod@4.6.7)
+      zod: 4.6.7
 
   '@mark1russell7/system-stack@0.1.6':
     dependencies:
