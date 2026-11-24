@@ -15,6 +15,8 @@
  * - `relink [a|b]` removes the `node_modules` folders of a slot and installs them again at its own path. With no
  *   name, it takes the other slot. For the live slot, stop the boot task first.
  * - On Windows, `adopt` also relinks slot a, because the junctions of pnpm name the old path of the checkout.
+ * - `fold` folds the log with the code of the live slot, and writes the snapshot of the start (AL-153). Start it while the
+ *   runtime is stopped, after a swap that changes the fold version. The stage and the swap tell when the version changes.
  *
  * A swap back to older code is a rollback. Do it only when the new code wrote no new kind of event to the log.
  * When the files of the supervisor change, the stage and the swap tell it. The supervisor takes them only at a restart
@@ -39,6 +41,10 @@ import {
   adoptLive,
   checkoutOf,
   DEPLOY_FILE,
+  FOLD_FILE,
+  foldChange,
+  foldStep,
+  foldVersionOf,
   foreignLinks,
   liveRoot,
   installArgs,
@@ -64,7 +70,7 @@ import {
   type SlotName,
 } from "./slots.ts";
 
-const USAGE = "The command is: node src/deploy.ts status | adopt | stage <commit> [--page] | swap | relink [a|b]";
+const USAGE = "The command is: node src/deploy.ts status | adopt | stage <commit> [--page] | swap | relink [a|b] | fold";
 
 const root = liveRoot(process.env, process.argv[1], join(fileURLToPath(new URL(".", import.meta.url)), ".."));
 const slots = slotsOf(checkoutOf(root));
@@ -135,6 +141,24 @@ async function tellSupervisor(live: SlotName, slot: SlotName): Promise<void> {
   }
 }
 
+/** This function prints the line about the fold version from slot `from` to slot `to`, when the version changes (AL-153). */
+async function tellFold(from: SlotName, to: SlotName): Promise<void> {
+  const line = foldChange(foldVersionOf(await readText(join(slots[from], ...FOLD_FILE.split("/")))), foldVersionOf(await readText(join(slots[to], ...FOLD_FILE.split("/")))));
+  if (line !== undefined) console.log(line);
+}
+
+/**
+ * This function folds the log with the code of the live slot, and writes the snapshot of the start (AL-153). The lock of
+ * the home folder refuses the fold while a runtime runs.
+ */
+async function foldLive(): Promise<void> {
+  const live = await liveSlot();
+  setPriority(constants.priority.PRIORITY_LOW);
+  const fold = foldStep(join(slots[live], "packages", "runtime"), home, process.execPath);
+  const result = await step("fold", fold.program, fold.args, join(slots[live], "packages", "runtime"), fold.env);
+  console.log(result.stdout.trim().split("\n").slice(-2).join("\n"));
+}
+
 /** This function reads the live slot, or throws when the live path is not a link to a slot. */
 async function liveSlot(): Promise<SlotName> {
   const live = await readLive(slots);
@@ -200,6 +224,7 @@ async function stage(commit: string, page: boolean): Promise<void> {
   await writeMarks(withMark(await readMarks(), slot, { sha, at: new Date().toISOString(), checks: [...STAGE_CHECKS] }));
   console.log(`Slot ${slot} is staged at ${sha.slice(0, 7)}: ${STAGE_CHECKS.join(", ")} passed.`);
   await tellSupervisor(live, slot);
+  await tellFold(live, slot);
   console.log("Start `deploy.ts swap` to put it live.");
 }
 
@@ -240,6 +265,7 @@ async function swap(): Promise<void> {
   await swapLink(slots.live, slots[slot]);
   console.log(`The live path is a link to slot ${slot} (${(head ?? "").slice(0, 7)}) now. Slot ${from} stays for a rollback.`);
   await tellSupervisor(from, slot);
+  await tellFold(from, slot);
   console.log("The runtime takes the new code at its next start. `node src/install.ts restart` from the live path starts it now.");
 }
 
@@ -260,7 +286,7 @@ try {
   } else if (command === "swap" && rest.length === 0) await swap();
   else if (command === "relink" && rest.length <= 1 && (rest[0] === undefined || rest[0] === "a" || rest[0] === "b")) {
     await relink((rest[0] as SlotName | undefined) ?? otherSlot(await liveSlot()));
-  }
+  } else if (command === "fold" && rest.length === 0) await foldLive();
   else {
     console.error(USAGE);
     code = 2;

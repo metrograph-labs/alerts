@@ -32,7 +32,7 @@ export const BLOCK_READ_EVERY: Duration = 1_000;
 export const BLOCK_WORKER_LIMITS = { maxYoungGenerationSizeMb: 1, maxOldGenerationSizeMb: 16 } as const;
 
 /** The phases of the runtime in the shared buffer. The code of a phase is its index. */
-export const BLOCK_PHASES = ["none", "start: files", "start: open and fold of the log", "start: service and first pass", "run after the good start"] as const;
+export const BLOCK_PHASES = ["none", "start: files", "start: open and fold of the log", "start: service and first pass", "run after the good start", "fold: write of the snapshot"] as const;
 
 /** A phase of the runtime in the shared buffer. */
 export type BlockPhase = (typeof BLOCK_PHASES)[number];
