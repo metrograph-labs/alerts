@@ -7,7 +7,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import { entryIndex } from "./entries.ts";
 import { envelope, type RuntimeEvent } from "./events.ts";
 import { importOf, sharedItem } from "./exchange.ts";
-import { FOLD_VERSION, openStartSnapshot, readSnapshot, snapshotKey, snapshotRows, startReadText, type StartSnapshot } from "./start-snapshot.ts";
+import type { FoldRow } from "@mark1russell7/sqlite";
+import { FOLD_VERSION, openStartSnapshot, readSnapshot, SNAPSHOT_UPGRADES, snapshotKey, snapshotRows, startReadText, type StartSnapshot } from "./start-snapshot.ts";
 import { EMPTY_RUNTIME, fold, rebuild, type FoldContext, type RuntimeState } from "./state.ts";
 
 const T0 = Date.UTC(2026, 3, 1, 18, 0, 0);
@@ -162,6 +163,7 @@ describe("the key of the snapshot of a start (AL-105)", () => {
 describe("the line of the read of the log at a start (AL-105)", () => {
   it("tells the position of the snapshot, the fault of its read, or the fold of the whole log", () => {
     expect(startReadText({ events: 12, snapshot: { seq: 900, id: "e-900" } })).toBe("The start read the snapshot at the position 900 of the log, and it folded the 12 events after it.");
+    expect(startReadText({ events: 12, snapshot: { seq: 900, id: "e-900" }, upgraded: 1 })).toBe("The start read the snapshot at the position 900 of the log, and it folded the 12 events after it. It upgraded the snapshot from the fold version 1.");
     expect(startReadText({ events: 912, fault: "SyntaxError" })).toBe("The read of the snapshot failed (SyntaxError). The start folded the 912 events of the whole log.");
     expect(startReadText({ events: 912 })).toBe("The start had no snapshot of this log and of this configuration. It folded the 912 events of the whole log.");
   });
@@ -252,11 +254,11 @@ function seededLog(seed: string, length: number): RuntimeEvent[] {
   return events;
 }
 
-describe("the version of the fold (AL-105)", () => {
-  it("pins the hash of the snapshot of each seeded log", () => {
-    const contexts: readonly FoldContext[] = [{ sources: [], retention: {} }, { sources: [], retention: { horizon: 24 * HOUR, quiet: 3 * HOUR, life: 48 * HOUR, every: HOUR } }, { sources: [] }];
-    const digests = ["a", "b", "c"].flatMap((seed) =>
-      contexts.map((context) => {
+// The snapshot of the fold of each seeded log in each context of the gate.
+function seededSnapshots(): StartSnapshot[] {
+  const contexts: readonly FoldContext[] = [{ sources: [], retention: {} }, { sources: [], retention: { horizon: 24 * HOUR, quiet: 3 * HOUR, life: 48 * HOUR, every: HOUR } }, { sources: [] }];
+  return ["a", "b", "c"].flatMap((seed) =>
+    contexts.map((context) => {
         const entries = entryIndex();
         const events = seededLog(seed, 300);
         const state = rebuild(
@@ -269,10 +271,34 @@ describe("the version of the fold (AL-105)", () => {
           context,
           (merge) => entries.prune(merge),
         );
-        return canonicalHash([...snapshotRows({ state, entries: entries.snapshot() })], { form: "json" });
+        return { state, entries: entries.snapshot() };
       }),
-    );
+  );
+}
+
+// True for a row of the blocks of the event loop, the part of the state that version 2 adds (AL-88).
+const blockRow = (row: FoldRow): boolean => ["state.blocks", "state.blocks[]"].includes(row.part.replace(/^~/u, ""));
+
+describe("the version of the fold (AL-105)", () => {
+  it("pins the hash of the snapshot of each seeded log", () => {
+    const digests = seededSnapshots().map((snapshot) => canonicalHash([...snapshotRows(snapshot)], { form: "json" }));
     expect(digests, `The digests of FOLD_VERSION ${String(FOLD_VERSION)}: ${JSON.stringify(digests)}`).toEqual(DIGESTS[FOLD_VERSION]);
+  });
+
+  it("upgrades a snapshot of version 1 to the snapshot of the fold, with no fold of the log (AL-153)", () => {
+    expect(FOLD_VERSION, "A new version of the fold also changes SNAPSHOT_UPGRADES and this test.").toBe(2);
+    expect(Object.keys(SNAPSHOT_UPGRADES)).toEqual(["1"]);
+    const upgrade = SNAPSHOT_UPGRADES[1]!;
+    expect(upgrade.since).toEqual(["loop"]);
+    const snapshots = seededSnapshots();
+    snapshots.forEach((snapshot, index) => {
+      // The seeded logs have no loop event. Thus the rows of version 2 less the rows of the blocks are the rows of version 1.
+      const rows = [...snapshotRows(snapshot)];
+      const old = rows.filter((row) => !blockRow(row));
+      expect(old.length).toBeLessThan(rows.length);
+      expect(canonicalHash(old, { form: "json" })).toBe(DIGESTS[1]![index]);
+      expect(upgrade.upgrade(readSnapshot(old))).toEqual(readSnapshot(rows));
+    });
   });
 });
 

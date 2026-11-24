@@ -6,7 +6,6 @@
 
 import { interval } from "@mark1russell7/interval";
 import { compareCodeUnits } from "@mark1russell7/text/order";
-import { hasKind } from "./kind-prefix.ts";
 import {
   LEVELS,
   type Certainty,
@@ -27,15 +26,18 @@ import {
 /** The format of a file of priors. */
 export const PRIORS_FORMAT: ScorePriors["format"] = "alerts-priors/2";
 
-// The value of the longest prefix of the kind that gives a value. A prefix ends at a dot, as in `hasKind`.
+// The value of the longest prefix of the kind that gives a value. A prefix ends at a dot, as in `hasKind`. The walk
+// reads each prefix of the kind from the longest, thus its cost is the count of the dots of the kind, not the count of
+// the kinds of the priors (AL-136). The assessment of each person reads the score of each incident.
 function longestPrefix<T>(priors: ScorePriors, kind: string, pick: (prior: KindPrior) => T | undefined): { readonly value: T; readonly key: string } | undefined {
-  let found: { readonly value: T; readonly key: string } | undefined;
-  for (const [key, prior] of Object.entries(priors.kinds)) {
-    const value = pick(prior);
-    if (value === undefined || !hasKind([key], kind)) continue;
-    if (found === undefined || key.length > found.key.length) found = { value, key };
+  for (let key = kind; ; ) {
+    const prior = Object.hasOwn(priors.kinds, key) ? priors.kinds[key] : undefined;
+    const value = prior === undefined ? undefined : pick(prior);
+    if (value !== undefined) return { value, key };
+    const dot = key.lastIndexOf(".");
+    if (dot < 0) return undefined;
+    key = key.slice(0, dot);
   }
-  return found;
 }
 
 // The field of the longest prefix of the kind that has the field.

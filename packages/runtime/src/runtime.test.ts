@@ -9,10 +9,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import { balanceWatch, type BalanceReading } from "./balance.ts";
 import { limitWatch, type UseReading } from "./use.ts";
 import { DRIFT_LIMIT, driftWatch } from "./drift.ts";
-import { FOLD_TYPES, type RuntimeEvent } from "./events.ts";
+import { envelope, EVENT_TYPES, FOLD_TYPES, type RuntimeEvent } from "./events.ts";
 import { openRuntimeLog, type RuntimeLog } from "./log.ts";
 import { keepsAtBound, openRuntime, REPORT_LIMIT, type Pass, type RuntimeOptions } from "./runtime.ts";
-import type { StartRead } from "./start-snapshot.ts";
+import { snapshotKey, type StartRead } from "./start-snapshot.ts";
 import { rebuild, type RuntimeState } from "./state.ts";
 import type { ViewConfig } from "./view.ts";
 
@@ -325,6 +325,63 @@ describe("a restart from the snapshot of the start (AL-105)", () => {
       expect(none.eventsAfterSnapshot()).toBe(log.head());
       log.close();
     } finally {
+      store.close();
+    }
+  });
+
+  it("upgrades a snapshot of the old fold, and folds the whole log when a loop event is in the snapshot (AL-153)", async () => {
+    const seed = SEEDS[0]!;
+    // A snapshot of the fold after 20 passes, written again as a snapshot of version 1: the rows of version 2 less the rows of the blocks.
+    const oldSnapshot = async (place: string, loop: boolean): Promise<{ readonly log: RuntimeLog; readonly store: ReturnType<typeof openFoldSnapshot>; readonly head: number }> => {
+      const clock = fakeWallClock(T0);
+      const store = openFoldSnapshot(join(place, "snapshot.sqlite"));
+      const sources = [worldSource(API, MINUTE, seed, warningsOf(seed), clock)];
+      let log = openRuntimeLog(join(place, "runtime.sqlite"));
+      if (loop) log.appendAll([{ ...envelope("loop", "loop:run-0:1", T0), size: 1500 }], () => undefined);
+      const runtime = openRuntime({ log, clock, sources, watch: () => ({ places: [KANSAS], kinds: ["met"] }), view: VIEW, run: "run-0", startSnapshot: store });
+      for (let at = 0; at < 20; at += 1) {
+        await runtime.pass();
+        await clock.advance(MINUTE);
+      }
+      expect(await runtime.writeStartSnapshot()).toBeGreaterThan(0);
+      const first = [...log.entries({ after: 0, types: EVENT_TYPES, limit: 1 })][0]!.event.id;
+      const key = snapshotKey(runtime.config, { first, recoveries: 0 });
+      const read = store.read(key, log, (mark, rows) => ({ mark, rows: [...rows] }))!;
+      store.write({ ...key, version: 1 }, read.mark, read.rows.filter((row) => !["state.blocks", "state.blocks[]"].includes(row.part.replace(/^~/u, ""))));
+      await runtime.close();
+      log.close();
+      log = openRuntimeLog(join(place, "runtime.sqlite"));
+      return { log, store, head: read.mark.seq };
+    };
+    const reopen = (log: RuntimeLog, store: FoldSnapshot) => {
+      // The same sources: they are a part of the key of the snapshot.
+      const clock = fakeWallClock(T0 + 30 * MINUTE);
+      return openRuntime({ log, clock, sources: [worldSource(API, MINUTE, seed, warningsOf(seed), clock)], watch: () => ({ places: [KANSAS], kinds: ["met"] }), view: VIEW, run: "run-1", startSnapshot: store });
+    };
+
+    // No loop event: the start reads the old snapshot with its upgrade, and it gets the state of the fold of the whole log.
+    let { log, store, head } = await oldSnapshot(folder(), false);
+    try {
+      const upgraded = reopen(log, store);
+      expect(upgraded.start).toEqual({ events: expect.any(Number), snapshot: { seq: head, id: expect.any(String) }, upgraded: 1 });
+      expect(upgraded.start.events).toBeLessThan([...log.read(FOLD_TYPES)].length);
+      expect(upgraded.state()).toEqual(rebuild(log.read(FOLD_TYPES), upgraded.config));
+      await upgraded.close();
+    } finally {
+      log.close();
+      store.close();
+    }
+
+    // A loop event at or before the mark: the old fold did not read it, thus the upgrade is not exact, and the start folds the whole log.
+    ({ log, store, head } = await oldSnapshot(folder(), true));
+    try {
+      const count = [...log.read(FOLD_TYPES)].length;
+      const whole = reopen(log, store);
+      expect(whole.start).toEqual({ events: count });
+      expect(whole.state().blocks).toHaveLength(1);
+      await whole.close();
+    } finally {
+      log.close();
       store.close();
     }
   });

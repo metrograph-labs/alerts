@@ -27,7 +27,7 @@ import type { RuntimeLog } from "./log.ts";
 import { cutIncidents, modeEvents, modeStatus, observeStep, type ModeStatus, type ObserveParts } from "./observe.ts";
 import { READING_RETENTION, type ReadingStore } from "./readings.ts";
 import { SNAPSHOT_MISSES, snapshotStep } from "./snapshot.ts";
-import { readSnapshot, snapshotKey, snapshotRows, type StartRead, type StartSnapshot } from "./start-snapshot.ts";
+import { FOLD_VERSION, readSnapshot, SNAPSHOT_UPGRADES, snapshotKey, snapshotRows, type StartRead, type StartSnapshot } from "./start-snapshot.ts";
 import { retention, type RetentionOptions } from "./retention.ts";
 import type { ReadWatch } from "./schedule.ts";
 import { seriesReads } from "./series-reads.ts";
@@ -376,7 +376,7 @@ export function openRuntime(options: RuntimeOptions): Runtime {
     resumed.snapshot?.state,
   );
   const skipped = unknownEvents(counts);
-  const start: StartRead = { events: folded, ...(resumed.mark === undefined ? {} : { snapshot: resumed.mark }), ...(resumed.fault === undefined ? {} : { fault: resumed.fault }) };
+  const start: StartRead = { events: folded, ...(resumed.mark === undefined ? {} : { snapshot: resumed.mark }), ...(resumed.fault === undefined ? {} : { fault: resumed.fault }), ...(resumed.upgraded === undefined ? {} : { upgraded: resumed.upgraded }) };
 
   // The fold runs on a draft before each write. The state changes only when the transaction commits.
   // The new reports of the fetch events that the log accepted go to the hook of the metrics. A report is new when the own
@@ -789,6 +789,14 @@ export function openRuntime(options: RuntimeOptions): Runtime {
   };
 }
 
+// True when the log has an event of one of the types at or before the position. The counts of the log skip the read of a type with no event.
+function newEventsUpTo(log: RuntimeLog, counts: ReadonlyMap<string, number>, types: readonly RuntimeEvent["type"][], seq: number): boolean {
+  const present = types.filter((type) => (counts.get(type) ?? 0) > 0);
+  if (present.length === 0) return false;
+  const first = [...log.entries({ after: 0, types: present, limit: 1 })][0];
+  return first !== undefined && first.seq <= seq;
+}
+
 // The id of the first event of the log of a type that this build knows, or undefined for an empty log.
 function firstEventId(log: RuntimeLog): string | undefined {
   return [...log.entries({ after: 0, types: EVENT_TYPES, limit: 1 })][0]?.event.id;
@@ -799,16 +807,26 @@ interface StartResume {
   readonly snapshot?: StartSnapshot;
   readonly mark?: FoldMark;
   readonly fault?: string;
+  readonly upgraded?: number;
 }
 
 // The snapshot of a store for the open of a log (AL-105). A snapshot of another key, of another log or of a broken file is not used.
+// With no snapshot of the fold, a snapshot of an old fold with an upgrade is used (AL-153).
 function readStart(store: FoldSnapshot | undefined, log: RuntimeLog, config: ViewConfig, counts: ReadonlyMap<string, number>): StartResume {
   if (store === undefined) return {};
   const first = firstEventId(log);
   if (first === undefined) return {};
   try {
     const key = snapshotKey(config, { first, recoveries: counts.get("recovered") ?? 0 });
-    return store.read(key, log, (mark, rows) => ({ mark, snapshot: readSnapshot(rows) })) ?? {};
+    const current = store.read(key, log, (mark, rows) => ({ mark, snapshot: readSnapshot(rows) }));
+    if (current !== undefined) return current;
+    for (const [version, upgrade] of Object.entries(SNAPSHOT_UPGRADES)) {
+      const from = Number(version);
+      if (from === FOLD_VERSION) continue;
+      const old = store.read({ ...key, version: from }, log, (mark, rows) => ({ mark, snapshot: readSnapshot(rows) }));
+      if (old !== undefined && !newEventsUpTo(log, counts, upgrade.since, old.mark.seq)) return { mark: old.mark, snapshot: upgrade.upgrade(old.snapshot), upgraded: from };
+    }
+    return {};
   } catch (error) {
     return { fault: error instanceof Error ? error.name : typeof error };
   }
