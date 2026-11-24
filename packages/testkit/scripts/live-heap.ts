@@ -6,7 +6,8 @@
  * Usage: node --expose-gc scripts/live-heap.ts <alerts> <persons> [<snapshot file> | --profile] [--block-watch]. With a
  * snapshot file, the script also writes a heap snapshot to that file. With `--profile`, the open runs under the CPU profiler,
  * and the line also has the summary of the profile (AL-150). The workflow `measure-start.yml` starts this mode in CI. With
- * `--block-watch`, the watch of long blocks of the runtime and its worker thread run during the open (AL-119). The line has
+ * `--block-watch`, the watch of long blocks of the runtime and its worker thread run during the open (AL-119). With `--feeds=<n>`,
+ * the home has `n` transit feeds near its place, and the start reads each one from the fake of the feeds (AL-136). The line has
  * the resident memory `rss` and its peak `peakRss`. The script `block-watch-memory.ts` compares the two modes.
  *
  * The script gives one JSON line: the count of the alerts and the persons, the live alerts of the feeds, the live
@@ -33,16 +34,18 @@ const [alertsText, personsText, ...flags] = process.argv.slice(2);
 const profiling = flags.includes("--profile");
 const watching = flags.includes("--block-watch");
 const snap = profiling ? undefined : flags.find((flag) => !flag.startsWith("--"));
+const transit = Number(flags.find((flag) => flag.startsWith("--feeds="))?.slice("--feeds=".length) ?? "0");
 // The functions of a start and of its delivery step, for their inclusive time (AL-150).
 const STEP_FUNCTIONS = ["rebuild", "systemView", "systemReports", "route", "assess", "matchPlaces", "matchSubjects", "tableLevel", "escalate", "planDigests", "limitRoutes", "throttleRoutes"];
 const alerts = Number(alertsText ?? "0");
 const persons = Number(personsText ?? "1");
 if (!(Number.isInteger(alerts) && alerts >= 0 && Number.isInteger(persons) && persons >= 1)) throw new RangeError("Give a count of alerts of 0 or more and a count of persons of 1 or more.");
+if (!(Number.isInteger(transit) && transit >= 0)) throw new RangeError("Give a count of feeds of 0 or more.");
 const gc = (globalThis as { gc?: () => void }).gc;
 if (gc === undefined) throw new Error("Start node with --expose-gc.");
 const dir = await mkdtemp(join(tmpdir(), "live-heap-"));
 const home = join(dir, "home");
-await seedHome(home, { log: 300_000, seed: "al-145", files: { shapes: 200_000, transit: 100_000 }, levels: { feeds: 0, persons, incidents: 0 } });
+await seedHome(home, { log: 300_000, seed: "al-145", files: { shapes: 200_000, transit: 100_000 }, levels: { feeds: transit, persons, incidents: 0 } });
 const { end } = readSeedRecord(home);
 const at = end + MINUTE;
 let feeds: ReturnType<typeof createFakeFeeds> | undefined = createFakeFeeds({
@@ -65,7 +68,7 @@ const t0 = performance.now();
 const measured = await openMeasuredRuntime(home, {
   wall: wallClock({ start: at }),
   startSnapshot: true,
-  transitLimit: 0,
+  transitLimit: transit,
   services: { feeds: servers[0]!.url, channels: servers[1]!.url },
 });
 const ms = performance.now() - t0;
@@ -89,7 +92,7 @@ await new Promise((resolve) => setTimeout(resolve, 50));
 gc();
 const { heapUsed: heap, external, rss } = process.memoryUsage();
 if (snap !== undefined) writeHeapSnapshot(snap);
-process.stdout.write(`${JSON.stringify({ alerts, persons, live, incidents, routes, heap, external, rss, peakRss: peakRss(), blockWatch: watching, ms: Math.round(ms), ...(profile === undefined ? {} : { sending, profile }) })}\n`);
+process.stdout.write(`${JSON.stringify({ alerts, persons, feeds: transit, live, incidents, routes, heap, external, rss, peakRss: peakRss(), blockWatch: watching, ms: Math.round(ms), ...(profile === undefined ? {} : { sending, profile }) })}\n`);
 await measured.close();
 await watch?.stop();
 await rm(dir, { recursive: true, force: true });
