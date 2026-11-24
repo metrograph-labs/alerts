@@ -33,7 +33,7 @@ import {
 } from "@mark1russell7/alerts-source-gtfs-alerts";
 import { afterEach, describe, expect, it } from "vitest";
 import type { RuntimeEvent } from "./events.ts";
-import { openRuntimeLog } from "./log.ts";
+import { openRuntimeLog, type RuntimeLog } from "./log.ts";
 import { openRuntime, type RuntimeOptions } from "./runtime.ts";
 import { snapshotStep, type SnapshotInput } from "./snapshot.ts";
 import { rebuild } from "./state.ts";
@@ -226,7 +226,11 @@ describe("a snapshot source in the runtime", () => {
     };
     const path = logPath();
     let log = openRuntimeLog(path);
-    const open = (name: string) => openRuntime({ log, clock, sources: [source], watch: () => ({ places: [KANSAS], kinds: ["met"] }), view: VIEW, run: name });
+    // The count of the write transactions: each call of `appendAll` is one transaction of the log.
+    let writes = 0;
+    const counted = (target: RuntimeLog): RuntimeLog =>
+      new Proxy(target, { get: (object, key) => (key === "appendAll" ? (...args: Parameters<RuntimeLog["appendAll"]>) => ((writes += 1), object.appendAll(...args)) : Reflect.get(object, key)) });
+    const open = (name: string) => openRuntime({ log: counted(log), clock, sources: [source], watch: () => ({ places: [KANSAS], kinds: ["met"] }), view: VIEW, run: name });
     let runtime = open("run-0");
     const live: Record<string, boolean>[] = [];
     // The guard stops a pass that fetches nothing, so a fault fails the test and does not hang it.
@@ -247,7 +251,7 @@ describe("a snapshot source in the runtime", () => {
     const state = runtime.state();
     expect(rebuild(events, runtime.config)).toEqual(state);
     log.close();
-    return { events, live, state };
+    return { events, live, state, writes };
   }
   const ids = { a: report("a", row("a", T0)).id, b: report("b", row("b", T0)).id };
   const keyOf = (id: ReportId): string => (id === ids.a ? "a" : id === ids.b ? "b" : id);
@@ -271,6 +275,15 @@ describe("a snapshot source in the runtime", () => {
     ]);
     expect(live.map((row) => row["b"])).toEqual([true, true, true, true, false, true, true]);
     expect(live.every((row) => row["a"] === true)).toBe(true);
+  });
+
+  it("writes no transaction for a complete list that ends nothing and brings nothing back", async () => {
+    // The lists count one miss of `b` and then have `b` again: no end and no back event.
+    const answers: readonly Answer[] = [{ keys: ["a", "b"] }, { keys: ["a"] }, { keys: ["a", "b"] }, { keys: ["a", "b"] }];
+    const snapshot = await run(answers, true);
+    const plain = await run(answers, false);
+    expect(ends(snapshot.events)).toEqual([]);
+    expect(snapshot.writes).toBe(plain.writes);
   });
 
   it("ends nothing for a source that is not a snapshot", async () => {

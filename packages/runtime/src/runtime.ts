@@ -572,7 +572,8 @@ export function openRuntime(options: RuntimeOptions): Runtime {
     // The step reads the merge state after the fetch, thus a new report of the fetch has no miss. It reads only the own
     // merge state: a report that only another copy sees does not end or come back in this copy.
     const step = snapshotStep({ source: descriptor.id, started, ended, outcome, merge: state.own.merge, misses: misses.get(descriptor.id) ?? new Map(), limit, frame: state.steps.length });
-    const more = append(step.events);
+    // A step with no event writes no transaction (AL-165).
+    const more = step.events.length === 0 ? [] : append(step.events);
     // The counts change only after the write. A failed write leaves the old counts, thus the end comes later.
     misses.set(descriptor.id, step.misses);
     return [...conflicts, ...more];
