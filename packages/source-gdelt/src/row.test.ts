@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
-import { addedTime, dayStart, eventBody, eventOf, EVENT_FIELDS, keepEvent } from "./row.ts";
+import { addedTime, countEvent, dayStart, eventBody, eventOf, EVENT_FIELDS, keepEvent, stateOf } from "./row.ts";
 
 const lines = readFileSync(new URL("../fixtures/events-20261123200000.tsv", import.meta.url), "utf8").trim().split("\n");
 
@@ -49,6 +49,21 @@ describe("keepEvent", () => {
     expect(keepEvent({ ...event, lat: Number.NaN })).toBe(false);
     expect(keepEvent({ ...event, lat: 0, lon: 0 })).toBe(false);
     expect(keepEvent({ ...event, lat: 91 })).toBe(false);
+  });
+});
+
+describe("countEvent and stateOf (AL-142)", () => {
+  it("counts a reported root at the place of a city or of a country, and not another root or an old event", () => {
+    expect(lines.map((line) => countEvent(eventOf(line)!))).toEqual([false, true, true, true, true]);
+    expect(countEvent({ ...eventOf(lines[1]!)!, day: "20261121" })).toBe(false);
+  });
+
+  it("gives the state code of a US state, and nothing for another country or a region that is not a state", () => {
+    const event = eventOf(lines[1]!)!;
+    expect(stateOf({ ...event, country: "US", adm1: "USTX", geoType: 2 })).toBe("TX");
+    expect(stateOf({ ...event, country: "US", adm1: "US", geoType: 1 })).toBeUndefined();
+    expect(stateOf({ ...event, country: "MX", adm1: "MX07" })).toBeUndefined();
+    expect(stateOf(event)).toBeUndefined();
   });
 });
 

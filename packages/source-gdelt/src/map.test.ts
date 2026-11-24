@@ -3,7 +3,10 @@ import { readFileSync } from "node:fs";
 import { DEFAULT_ASSESS_POLICY, observationId, tableLevel, type Observation } from "@mark1russell7/alerts";
 import { describe, expect, it } from "vitest";
 
-import { CONFLICT_KIND, GDELT_CREDIT, mapObservation, PLACE_RADIUS_KM, REPORT_LIFE_MS, severityOf, SOURCE_ID, UNREST_KIND, cameoLabel } from "./map.ts";
+import { readingProblems } from "@mark1russell7/alerts";
+
+import { GDELT_DESCRIPTOR } from "./descriptor.ts";
+import { CONFLICT_EVENTS_MEASURE, CONFLICT_KIND, GDELT_CREDIT, mapObservation, PLACE_RADIUS_KM, REPORT_LIFE_MS, severityOf, SOURCE_ID, UNREST_KIND, cameoLabel } from "./map.ts";
 import { eventBody, eventOf, keepEvent } from "./row.ts";
 
 const lines = readFileSync(new URL("../fixtures/events-20261123200000.tsv", import.meta.url), "utf8").trim().split("\n");
@@ -72,6 +75,26 @@ describe("mapObservation", () => {
     const noPoint = JSON.parse(eventBody(kept[0]!)) as Record<string, unknown>;
     noPoint["lat"] = null;
     expect(mapObservation(observe(JSON.stringify(noPoint))).problems.map((problem) => problem.path)).toEqual(["lat"]);
+  });
+});
+
+describe("the census readings (AL-142)", () => {
+  it("gives one reading of the measure for each region, at the time of the file, that the descriptor accepts", () => {
+    const result = mapObservation(observe(JSON.stringify({ census: "20261123200000", regions: { CA: 0, TX: 2 } })));
+    expect(result.reports).toEqual([]);
+    expect(result.problems).toEqual([]);
+    expect(result.readings?.map((reading) => [reading.measure, reading.series, reading.value, reading.area])).toEqual([
+      [CONFLICT_EVENTS_MEASURE, "CA", 0, { type: "code", system: "state", code: "CA" }],
+      [CONFLICT_EVENTS_MEASURE, "TX", 2, { type: "code", system: "state", code: "TX" }],
+    ]);
+    expect(result.readings?.every((reading) => reading.at === Date.UTC(2026, 10, 23, 20) && readingProblems(reading, GDELT_DESCRIPTOR).length === 0)).toBe(true);
+  });
+
+  it("gives a problem for a region or a count that is not valid, and a fatal problem for a census with no time", () => {
+    const result = mapObservation(observe(JSON.stringify({ census: "20261123200000", regions: { TX: -1, "US-WY": 3, CA: 1.5, WA: 4 } })));
+    expect(result.readings?.map((reading) => reading.series)).toEqual(["WA"]);
+    expect(result.problems.map((problem) => problem.path)).toEqual(["regions.TX", "regions.US-WY", "regions.CA"]);
+    expect(mapObservation(observe(JSON.stringify({ census: "2026", regions: {} }))).problems[0]?.fatal).toBe(true);
   });
 });
 
