@@ -38,7 +38,7 @@ import { fakeSessions, NWWS_DESCRIPTOR } from "@mark1russell7/alerts-source-nwws
 import { SWPC_KINDS } from "@mark1russell7/alerts-source-swpc";
 import { CATALOG_URL, sourceIdOf, type CatalogCopy } from "@mark1russell7/alerts-source-gtfs-alerts";
 import { KEV_KINDS } from "@mark1russell7/alerts-source-cisa-kev";
-import { GDELT_DESCRIPTOR } from "@mark1russell7/alerts-source-gdelt";
+import { CONFLICT_EVENTS_MEASURE, GDELT_DESCRIPTOR } from "@mark1russell7/alerts-source-gdelt";
 import { AWS_DESCRIPTOR } from "@mark1russell7/alerts-source-aws";
 import { AZURE_DESCRIPTOR } from "@mark1russell7/alerts-source-azure";
 import { BOM_SWS_DESCRIPTOR, bomTimeText } from "@mark1russell7/alerts-source-bom-sws";
@@ -1213,6 +1213,22 @@ describe("the GDELT source of the instance (AL-19)", () => {
     // An id that names no source of the instance changes nothing.
     const other = open(store(SECRETS), sharing, 0, TEST_FETCH_LIMIT, { transport: withGdelt(network()), copy: { ...CLOUD, leaveSources: ["no-such-source" as SourceId] } });
     expect(other.instance.runtime.config.sources.map((source) => source.id)).toContain(GDELT_DESCRIPTOR.id);
+  });
+
+  it("keeps the census of the state of the place in the store of the readings (AL-142)", async () => {
+    const folder = mkdtempSync(join(tmpdir(), "alerts-gdelt-census-"));
+    const readings = openReadingStore(join(folder, READINGS_FILE));
+    try {
+      const { instance, clock } = open(store(SECRETS), sharing, 0, TEST_FETCH_LIMIT, { readings, transport: withGdelt(network()) });
+      await finish(clock, instance.runtime.pass());
+      // The place of the tests is in the state TX. The recorded file has no event in that state, thus its count is 0.
+      const refs = readings.refs().filter((ref) => ref.source === GDELT_DESCRIPTOR.id);
+      expect(refs.map((ref) => [ref.measure, ref.series])).toEqual([[CONFLICT_EVENTS_MEASURE, "TX"]]);
+      expect(readings.series(refs[0]!, 0).map((reading) => [reading.value, reading.at, reading.area])).toEqual([[0, Date.UTC(2026, 10, 23, 20), { type: "code", system: "state", code: "TX" }]]);
+    } finally {
+      readings.close();
+      rmSync(folder, { recursive: true, force: true });
+    }
   });
 });
 

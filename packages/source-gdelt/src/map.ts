@@ -11,7 +11,7 @@
  * alone sends no push. In an incident with an official warning, the merge keeps the higher urgency of the warning.
  */
 
-import { categoryOf, kindLabel, reportId, type Area, type MapResult, type Observation, type Report, type Severity, type SourceId } from "@mark1russell7/alerts";
+import { categoryOf, kindLabel, reportId, type Area, type MapResult, type Observation, type Reading, type Report, type Severity, type SourceId } from "@mark1russell7/alerts";
 import { isRecord, type Fields } from "@mark1russell7/optional/read";
 import { errorMessage } from "@mark1russell7/text";
 
@@ -39,6 +39,15 @@ export const GDELT_SENDER = "The GDELT Project, coded by machine from the news";
 export const GDELT_CREDIT = "The GDELT Project, https://www.gdeltproject.org/";
 
 /** The terms of use of GDELT: free use and redistribution, with a citation and a link. */
+/**
+ * The id of the measure of the census (AL-142). Each value is the count of the protests and the fights in one file of 15
+ * minutes, in one US state with a watched place. Thus an event with only the place of a state also counts.
+ */
+export const CONFLICT_EVENTS_MEASURE = "conflict-events";
+
+/** The form of the code of a region of the census: a US state in the system `state`. */
+const CENSUS_REGION = /^[A-Z]{2}$/;
+
 export const GDELT_TERMS_URL = "https://www.gdeltproject.org/about.html#termsofuse";
 
 /**
@@ -102,6 +111,22 @@ export function severityOf(code: string, root: string): Severity {
   return "minor";
 }
 
+/** This function gives the readings of the census of one file: one reading for each region, at the time of the file. */
+function censusReadings(observation: Observation, stamp: string, regions: unknown): MapResult {
+  const at = addedTime(stamp);
+  if (at === undefined || !isRecord(regions)) return { reports: [], problems: [{ path: "census", message: "the census has no time or no regions", fatal: true }], readings: [] };
+  const readings: Reading[] = [];
+  const problems: { path: string; message: string; fatal: boolean }[] = [];
+  for (const [region, value] of Object.entries(regions)) {
+    if (!CENSUS_REGION.test(region) || typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+      problems.push({ path: `regions.${region}`, message: "the census has a region or a count that is not valid", fatal: false });
+      continue;
+    }
+    readings.push({ source: SOURCE_ID, measure: CONFLICT_EVENTS_MEASURE, series: region, at, value, area: { type: "code", system: "state", code: region }, observation: observation.id });
+  }
+  return { reports: [], problems, readings };
+}
+
 /** This function maps one observation. It does not throw. A body that it does not understand gives a fatal problem. */
 export function mapObservation(observation: Observation): MapResult {
   try {
@@ -131,6 +156,8 @@ function mapOrThrow(observation: Observation): MapResult {
   } catch {
     return { reports: [], problems: [{ path: "", message: "the body is not JSON", fatal: true }] };
   }
+  // The census of a file gives one reading for each region, and no report.
+  if (isRecord(fields) && typeof fields["census"] === "string") return censusReadings(observation, fields["census"], fields["regions"]);
   // The head of a fetch names the newest file for the canary. It gives no report.
   if (isRecord(fields) && typeof fields["file"] === "string" && !Object.hasOwn(fields, "id")) return { reports: [], problems: [] };
   if (!isRecord(fields) || !EVENT_FIELDS.every((name) => Object.hasOwn(fields, name))) {
