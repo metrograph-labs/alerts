@@ -1470,6 +1470,17 @@ describe("the Twilio call channel of the instance", () => {
     expect(open(store({ ...SECRETS, HEALTHCHECKS_LOUD_PING_URL: keys.HEALTHCHECKS_LOUD_PING_URL })).instance.joint).toBeUndefined();
   });
 
+  it("makes the drift watch only with the field drift of the configuration (AL-139)", () => {
+    // The fake runner starts no program, and the test starts no pass.
+    const driftRunner = async () => ({ exitCode: 0, stdout: "" });
+    const config: AlertConfig = { ...CONFIG, drift: { commands: [{ name: "host-a", kind: "setup", argv: ["check-host"] }] } };
+    const { instance } = open(store(SECRETS), config, undefined, undefined, { driftRunner });
+    expect(instance.drift).toBeDefined();
+    // The health has the state of the reads of each check, with no change and no message.
+    expect(instance.health().reads).toContainEqual({ what: "drift of host-a", at: null, failed: false, next: null });
+    expect(open().instance.drift).toBeUndefined();
+  });
+
   it("does not start with some keys of Twilio, a key of a bad form, or a call with no cap, and no problem holds a value", () => {
     const keys = (extra: Readonly<Record<string, string>>): SecretLookup => store({ ...SECRETS, ...TWILIO, ...extra });
     const partial = messageOf(() => open(keys({ TWILIO_API_KEY_SECRET: "" }), calling([SPEND])));

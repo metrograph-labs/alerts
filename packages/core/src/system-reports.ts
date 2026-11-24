@@ -10,7 +10,7 @@
 import { canonicalJson } from "@mark1russell7/rigor-generators";
 import { countOf } from "@mark1russell7/text/english";
 import { compareCodeUnits } from "@mark1russell7/text/order";
-import { BALANCE_KIND, CHANNEL_KIND, CLOCK_KIND, CONTEXT_KINDS, COPY_KIND, COVERAGE_KIND, DRILL_KIND, ESCALATION_KIND, hasKind, HEALTH_KIND, JOINT_KIND, LIMIT_KIND, LOG_KIND, LOOP_KIND, matchPlaces, PERSON_SUBJECT, QUOTA_KIND, REDUNDANCY_KIND, STORE_KIND, USE_KIND } from "./assess.ts";
+import { BALANCE_KIND, CHANNEL_KIND, CLOCK_KIND, CONTEXT_KINDS, COPY_KIND, COVERAGE_KIND, DRILL_KIND, ESCALATION_KIND, hasKind, HEALTH_KIND, DRIFT_KIND, JOINT_KIND, LIMIT_KIND, LOG_KIND, LOOP_KIND, matchPlaces, PERSON_SUBJECT, QUOTA_KIND, REDUNDANCY_KIND, STORE_KIND, USE_KIND } from "./assess.ts";
 import { isPrivate } from "./audience.ts";
 import type {
   Area,
@@ -20,6 +20,8 @@ import type {
   CopyStage,
   CopyWatch,
   Coverage,
+  DriftCheck,
+  DriftStage,
   Duration,
   HealthState,
   Incident,
@@ -99,6 +101,12 @@ export const BALANCE_STAGES: readonly BalanceStage[] = ["low", "empty", "unread"
 
 /** The stages of the joint down time of the copies (AL-148). `unread` comes from the time of the last read. */
 export const JOINT_STAGES: readonly JointStage[] = ["over", "unread"];
+
+/** The stages of the drift check of a copy host (AL-139). `unread` comes from the time of the last read. */
+export const DRIFT_STAGES: readonly DriftStage[] = ["changed", "unread"];
+
+/** The most names of changes in the headline of a drift report. The parameter `steps` holds each name of the read. */
+export const DRIFT_STEPS_SHOWN = 10;
 
 /** The stages of the use of a hard limit (AL-111). `level` comes from the last read that passed. `unread` comes from its time. */
 export const USE_STAGES: readonly UseStage[] = ["level", "unread"];
@@ -385,6 +393,12 @@ export interface SystemSnapshot {
    * stays open. Only one copy reports the stage `over` (`reportsShared`).
    */
   readonly joint?: JointDown | null;
+  /**
+   * The drift checks of the copy hosts (AL-139). Each stage that `driftStages` gives is a condition. The value `null` tells
+   * that this copy has no drift check: each open line of a drift ends. With no field, each open line stays open. Only one
+   * copy reports the stage `changed` (`reportsShared`).
+   */
+  readonly drift?: readonly DriftCheck[] | null;
   /** The id of this copy. With the watches of the other copies, it chooses the copy that reports the facts of a shared account. */
   readonly copy?: string;
   /**
@@ -558,6 +572,22 @@ export function jointUnreadAt(joint: JointDown): Instant {
 }
 
 /**
+ * This function gives the stages of the drift check of a copy host at the time `at`, in the order of `DRIFT_STAGES` (AL-139).
+ *
+ * - `changed` comes from the last read that passed, also when the read is old. The read must count one change or more.
+ * - `unread` starts at `driftUnreadAt`. A read that passes ends it.
+ */
+export function driftStages(check: DriftCheck, at: Instant): DriftStage[] {
+  const reached: Readonly<Record<DriftStage, boolean>> = { changed: check.read !== undefined && check.read.changes > 0, unread: at >= driftUnreadAt(check) };
+  return DRIFT_STAGES.filter((stage) => reached[stage]);
+}
+
+/** This function gives the time of the stage `unread` of a drift check: the maximum age after the last read. With no read, the age counts from the start. */
+export function driftUnreadAt(check: DriftCheck): Instant {
+  return (check.read?.at ?? check.since) + check.maxAge;
+}
+
+/**
  * This function gives the stages of another copy at the time `at`, in the order of `COPY_STAGES`.
  *
  * - `skew` and `config` come from the last read that passed, also when the read is old.
@@ -655,6 +685,7 @@ export function gapGrade(entry: Coverage, threatened: boolean): { readonly sever
  *   `low` and `empty` of a balance (`reportsShared`). The stage `unread` is a fact of each copy.
  * - Each level that the use of a hard limit reached, and the stage `unread` of its watch. Only one copy reports a level (`reportsShared`).
  * - Each stage of the joint down time of the copies (AL-148). Only one copy reports `over` (`reportsShared`).
+ * - Each stage of the drift check of a copy host (AL-139). Only one copy reports `changed` (`reportsShared`).
  * - The latest step of the wall clock in `CLOCK_STEP_WINDOW` before `at`.
  * - The latest recovery of the log in `LOG_RECOVERY_WINDOW` before `at`.
  * - Each run of a drill that waits for its acknowledgment, and each drill whose last run failed.
@@ -720,6 +751,14 @@ export function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: 
     // A watch with no read keeps its open line over. Thus after a restart, a failed first read sends no cancel and no new alert.
     const over = jointName("over");
     if (joint.read === undefined && shared && lines.open[over] !== undefined) conditions.set(over, jointCondition(joint, "over", at));
+  }
+  // A drift of a host is a fact of the shared configuration, and one copy reports it. The stage unread is a fact of this copy.
+  for (const check of snapshot.drift ?? []) {
+    for (const stage of driftStages(check, at)) if (stage === "unread" || shared) conditions.set(driftName(check.name, stage), driftCondition(check, stage, at));
+    // A check with no read keeps its open line changed. Thus after a restart, a failed first read sends no cancel and no new alert.
+    const changed = driftName(check.name, "changed");
+    const open = lines.open[changed];
+    if (check.read === undefined && shared && open !== undefined) conditions.set(changed, driftCondition(check, "changed", at, open));
   }
   for (const watch of snapshot.copies ?? []) {
     for (const stage of copyStages(watch, at)) conditions.set(copyName(watch.copy, stage), copyCondition(watch, stage, at));
@@ -788,6 +827,7 @@ export function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: 
     if (condition === undefined && snapshot.balances === undefined && name.startsWith(BALANCE_LINE)) continue;
     if (condition === undefined && snapshot.uses === undefined && name.startsWith(USE_LINE)) continue;
     if (condition === undefined && snapshot.joint === undefined && name.startsWith(JOINT_LINE)) continue;
+    if (condition === undefined && snapshot.drift === undefined && name.startsWith(DRIFT_LINE)) continue;
     if (condition === undefined && unreadUses.some((prefix) => name.startsWith(prefix))) continue;
     if (condition === undefined && snapshot.copies === undefined && name.startsWith(COPY_LINE)) continue;
     if (condition === undefined && snapshot.drills === undefined && name.startsWith(DRILL_LINE)) continue;
@@ -895,6 +935,13 @@ const JOINT_LINE = "joint/";
 
 function jointName(stage: JointStage): string {
   return `${JOINT_LINE}${stage}`;
+}
+
+// The start of the name of each line of the drift check of a copy host (AL-139).
+const DRIFT_LINE = "drift/";
+
+function driftName(check: string, stage: DriftStage): string {
+  return `${DRIFT_LINE}${encodeURIComponent(check)}/${stage}`;
 }
 
 // The start of the name of each line of the use of a hard limit (AL-111).
@@ -1548,6 +1595,45 @@ function jointCondition(joint: JointDown, stage: JointStage, at: Instant): Condi
       limit: [String(limit)],
       ...(read === undefined ? {} : { down: [String(read.down)], spans: [String(read.spans)] }),
       age: [String(at - (read?.at ?? joint.since))],
+    },
+  };
+}
+
+// The condition of one stage of the drift check of a copy host (AL-139). A check with no read keeps the facts of its open line.
+function driftCondition(check: DriftCheck, stage: DriftStage, at: Instant, open?: SystemLine): Condition {
+  const { name, maxAge, read } = check;
+  const last = read === undefined ? `the start of the watch at ${new Date(check.since).toISOString()}` : new Date(read.at).toISOString();
+  const kept = read === undefined && open !== undefined ? (JSON.parse(open.facts) as Readonly<Record<string, unknown>>) : undefined;
+  const shown = (read?.steps ?? []).slice(0, DRIFT_STEPS_SHOWN);
+  const more = (read?.changes ?? 0) - shown.length;
+  const list = shown.length === 0 ? "" : `: ${shown.join(", ")}${more > 0 ? ` and ${String(more)} more` : ""}`;
+  const text: Readonly<Record<DriftStage, { readonly headline: string; readonly description: string }>> = {
+    changed: {
+      headline: read === undefined ? `The host check ${name} found a change at its last read.` : `The host check ${name} found ${countOf(read.changes, "change")}${list}.`,
+      description: "The host does not agree with its code. Examine each change. Then apply the code to the host, or change the code.",
+    },
+    unread: {
+      headline: `The host check ${name} has no good read since ${last}.`,
+      description: "The watch cannot see a drift of the host. Examine the command of the check, its access to the host and its time limit.",
+    },
+  };
+  const code = `${DRIFT_KIND}.${stage}`;
+  return {
+    // A new list of changes is a new fact, thus it gives an update. The stage unread gives one alert, and no update.
+    facts: stage === "changed" ? (kept ?? { stage, changes: read?.changes ?? 0, steps: [...(read?.steps ?? [])] }) : { stage },
+    kind: { code, label: kindLabel(code) },
+    severity: "moderate",
+    urgency: "expected",
+    response: ["assess"],
+    areas: [],
+    about: [{ system: COPY_SUBJECT, id: name, label: `Host check ${name}` }],
+    ...text[stage],
+    parameters: {
+      stage: [stage],
+      check: [name],
+      maxAge: [String(maxAge)],
+      ...(read === undefined ? {} : { changes: [String(read.changes)], steps: [...read.steps] }),
+      age: [String(at - (read?.at ?? check.since))],
     },
   };
 }

@@ -107,6 +107,7 @@ import type { Meter } from "@opentelemetry/api";
 import type { UseRead } from "@mark1russell7/stack-spend";
 import { limitProblems, limitWatches, type LimitWatch } from "./use.ts";
 import { jointReader, jointWatch, type JointWatch } from "./joint.ts";
+import { driftWatch, type DriftRunner, type DriftWatch } from "./drift.ts";
 import { chainProblems, chainWatch, readChain } from "./chain.ts";
 import { balanceWatch, SPEND_UNIT, spendEntryOf, spendGates, spendQuota, spendUnits, spendWatch, type BalanceWatch, type SpendGates, type SpendWatch } from "./balance.ts";
 import { spendUseReads } from "./spend-use.ts";
@@ -766,6 +767,11 @@ export interface InstanceOptions {
    * fake. The instance reads only when the secrets have `CHECKS_KEY` and `LOUD_PING_URL_KEY`.
    */
   readonly checks?: Transport;
+  /**
+   * The runner of the commands of the drift checks (AL-139). The default is `commandRunner` of `drift.ts`. A test gives a
+   * fake. The instance starts the commands only when the configuration has the field `drift`.
+   */
+  readonly driftRunner?: DriftRunner;
   /** The store of the file of the outage bundles. The entry gives the file of the slot. Without it, each deploy makes the bundles. */
   readonly outageBundles?: BundleStore;
   /**
@@ -901,6 +907,8 @@ export interface Instance {
   readonly uses: readonly LimitWatch[];
   /** The watch of the joint down time of the copies (AL-148), when the secrets have `CHECKS_KEY` and `LOUD_PING_URL_KEY`. */
   readonly joint?: JointWatch;
+  /** The drift watch of the copy hosts (AL-139), when the configuration has the field `drift`. */
+  readonly drift?: DriftWatch;
   /** The watch of the STOP and START replies of the texts, when the instance has the text channel and an opt-in list. */
   readonly replies?: ReplyWatch;
   /** The watch of the spend that Twilio reports for the month of the cap, when the configuration has a spend entry for Twilio. */
@@ -1103,6 +1111,7 @@ export function openInstance(options: InstanceOptions): Instance {
   const balances = twilio?.watch === undefined ? [] : [twilio.watch];
   const uses = limitWatches(config.limits ?? [], options.secret, options.github);
   const joint = jointOf(options, clock, wall);
+  const drift = config.drift === undefined ? undefined : driftWatch({ commands: config.drift.commands, ...(options.driftRunner === undefined ? {} : { run: options.driftRunner }) });
   const replies = twilio?.replies;
   const spent = twilio?.spend;
   const reads = [...(replies === undefined ? [] : [replies]), ...(spent === undefined ? [] : [spent])];
@@ -1196,6 +1205,8 @@ export function openInstance(options: InstanceOptions): Instance {
     ...(uses.length === 0 ? {} : { uses }),
     // Each stage of the joint down time of the copies is a line of system reports (AL-148).
     ...(joint === undefined ? {} : { joint }),
+    // Each stage of a drift check of a copy host is a line of system reports (AL-139).
+    ...(drift === undefined ? {} : { drift }),
     // Each family of a store with no entry at the end of its window after the start is a line of system reports (AL-86).
     stores: () => shapes.fill(startedAt, STORE_FILL_WINDOW, shapeSources(runtime.config.sources).map((source) => source.id)),
     // Each block of the event loop of 1 s or more is a line of system reports (AL-88).
@@ -1279,7 +1290,7 @@ export function openInstance(options: InstanceOptions): Instance {
       copies: worker?.watches() ?? [],
       quotas: quotas(),
       balances: balances.flatMap((watch) => watch.balance() ?? []),
-      reads: [...reads, ...uses, ...(joint === undefined ? [] : [joint])].map((watch) => watch.health()),
+      reads: [...[...reads, ...uses, ...(joint === undefined ? [] : [joint])].map((watch) => watch.health()), ...(drift?.health() ?? [])],
       channels: runtime.channels(),
       channelDown: channelDownPolicy(runtime.config.channelDown),
     });
@@ -1325,6 +1336,7 @@ export function openInstance(options: InstanceOptions): Instance {
     balances,
     uses,
     ...(joint === undefined ? {} : { joint }),
+    ...(drift === undefined ? {} : { drift }),
     ...(replies === undefined ? {} : { replies }),
     ...(spent === undefined ? {} : { spend: spent }),
     ...(twilio?.useReads === undefined ? {} : { useReads: useReadsAt(twilio.useReads, options.wall) }),

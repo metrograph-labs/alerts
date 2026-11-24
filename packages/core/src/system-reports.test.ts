@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { assess, PERSON_SUBJECT } from "./assess.ts";
 import { CONFIG_FORMAT } from "./config.ts";
 import { messageOf } from "./delivery.ts";
-import type { ChannelId, ChannelQuota, CopyRead, CopyWatch, Coverage, HealthState, Incident, JointDown, Observation, PersonId, PersonWatch, PlaceId, LimitUse, ProviderBalance, RedundancyState, Report, ReportId, SourceDescriptor, SourceHealth, SourceId, WatchedPlace } from "./contracts.ts";
+import type { ChannelId, ChannelQuota, CopyRead, CopyWatch, Coverage, DriftCheck, HealthState, Incident, JointDown, Observation, PersonId, PersonWatch, PlaceId, LimitUse, ProviderBalance, RedundancyState, Report, ReportId, SourceDescriptor, SourceHealth, SourceId, WatchedPlace } from "./contracts.ts";
 import { SYSTEM_SOURCE } from "./contracts.ts";
 import { DRILL_WATCH_GRACE, type DrillConfig, type DrillRun, type DrillWatch } from "./drill.ts";
 import type { Lateness } from "./lateness.ts";
@@ -28,6 +28,9 @@ import {
   copyUnreadAt,
   copyUnsteadyAt,
   drillWatchAt,
+  DRIFT_STEPS_SHOWN,
+  driftStages,
+  driftUnreadAt,
   FUNCTION_SUBJECT,
   gapGrade,
   jointStages,
@@ -774,6 +777,102 @@ describe("the joint reports (AL-148)", () => {
     const over = systemReports(NO_SYSTEM_LINES, snapshot({ joint: joint({ down: HOUR }) }), START);
     expect(levels(over.reports, WATCHER, START)).toEqual(["notice"]);
     expect(levels(over.reports, OPERATOR, START)).toEqual(["none"]);
+  });
+});
+
+describe("the drift reports (AL-139)", () => {
+  const HOUR = 3_600_000;
+  const START = Date.UTC(2026, 10, 15, 12);
+  const MAX_AGE = 48 * HOUR;
+  const WATCHER: PersonWatch = { ...NEIGHBOR, subjects: [{ system: COPY_SUBJECT }] };
+  const codes = (reports: readonly Report[]) => reports.map((report) => [report.op, report.kind.code]);
+  const check = (read?: { readonly changes: number; readonly steps?: readonly string[]; readonly at?: number }, fields: Partial<DriftCheck> = {}): DriftCheck => ({
+    name: "host-a",
+    maxAge: MAX_AGE,
+    since: START,
+    ...(read === undefined ? {} : { read: { changes: read.changes, steps: read.steps ?? [], at: read.at ?? START } }),
+    ...fields,
+  });
+  const copyWatch = (copy: string, read: number): CopyWatch => ({ copy, skewLimit: 2_000, maxAge: 60_000, since: START, read: { at: read, skew: 0, sameConfig: true } });
+
+  it("reaches changed at one change, and unread at the maximum age", () => {
+    expect(driftStages(check({ changes: 0 }), START)).toEqual([]);
+    expect(driftStages(check({ changes: 1 }), START)).toEqual(["changed"]);
+    expect(driftStages(check(), START + MAX_AGE - 1)).toEqual([]);
+    expect(driftStages(check(), START + MAX_AGE)).toEqual(["unread"]);
+    expect(driftStages(check({ changes: 2 }), START + MAX_AGE)).toEqual(["changed", "unread"]);
+    expect(driftUnreadAt(check({ changes: 0, at: START + HOUR }))).toBe(START + HOUR + MAX_AGE);
+    expect(unknownKinds(["system.drift", "system.drift.changed", "system.drift.unread"])).toEqual([]);
+  });
+
+  it("gives one alert for a drift, an update for a new list of changes, and a cancel with no change", () => {
+    const changed = systemReports(NO_SYSTEM_LINES, snapshot({ drift: [check({ changes: 2, steps: ["step.one", "step.two"] })] }), START);
+    expect(changed.reports).toMatchObject([
+      {
+        op: "alert",
+        status: "system",
+        kind: { code: "system.drift.changed", label: "Drift of a copy host" },
+        severity: "moderate",
+        urgency: "expected",
+        areas: [],
+        about: [{ system: COPY_SUBJECT, id: "host-a" }],
+        headline: "The host check host-a found 2 changes: step.one, step.two.",
+        parameters: { stage: ["changed"], check: ["host-a"], changes: ["2"], steps: ["step.one", "step.two"] },
+      },
+    ]);
+    expect(Object.keys(changed.lines.open)).toEqual(["drift/host-a/changed"]);
+    // The same list is no new fact. A new list gives an update.
+    expect(systemReports(changed.lines, snapshot({ drift: [check({ changes: 2, steps: ["step.one", "step.two"], at: START + HOUR })] }), START + HOUR).reports).toEqual([]);
+    const more = systemReports(changed.lines, snapshot({ drift: [check({ changes: 3, steps: ["step.one"], at: START + 2 * HOUR })] }), START + 2 * HOUR);
+    expect(more.reports).toMatchObject([{ op: "update", headline: "The host check host-a found 3 changes: step.one and 2 more." }]);
+    const clean = systemReports(more.lines, snapshot({ drift: [check({ changes: 0, at: START + 3 * HOUR })] }), START + 3 * HOUR);
+    expect(codes(clean.reports)).toEqual([["cancel", "system.drift.changed"]]);
+    expect(clean.lines.open).toEqual({});
+    const rebuilt = addSystemReports(NO_SYSTEM_LINES, [...changed.reports, ...more.reports, ...clean.reports], [...changed.observations, ...more.observations, ...clean.observations]);
+    expect(rebuilt.open).toEqual(clean.lines.open);
+  });
+
+  it("shows at most the first names in the headline, and a count with no name", () => {
+    const steps = Array.from({ length: DRIFT_STEPS_SHOWN + 2 }, (_, index) => `step.${String(index).padStart(2, "0")}`);
+    const many = systemReports(NO_SYSTEM_LINES, snapshot({ drift: [check({ changes: steps.length, steps })] }), START);
+    expect(many.reports[0]?.headline).toBe(`The host check host-a found 12 changes: ${steps.slice(0, DRIFT_STEPS_SHOWN).join(", ")} and 2 more.`);
+    expect(many.reports[0]?.parameters?.["steps"]).toEqual(steps);
+    const unnamed = systemReports(NO_SYSTEM_LINES, snapshot({ drift: [check({ changes: 1 })] }), START);
+    expect(unnamed.reports[0]?.headline).toBe("The host check host-a found 1 change.");
+  });
+
+  it("gives the unread line when no read passes, ends it at the next read, and ends each line with no drift check", () => {
+    const unread = systemReports(NO_SYSTEM_LINES, snapshot({ drift: [check()] }), START + MAX_AGE);
+    expect(unread.reports).toMatchObject([{ op: "alert", kind: { code: "system.drift.unread" }, headline: `The host check host-a has no good read since the start of the watch at ${new Date(START).toISOString()}.` }]);
+    const read = systemReports(unread.lines, snapshot({ drift: [check({ changes: 0, at: START + MAX_AGE })] }), START + MAX_AGE);
+    expect(codes(read.reports)).toEqual([["cancel", "system.drift.unread"]]);
+    const changed = systemReports(NO_SYSTEM_LINES, snapshot({ drift: [check({ changes: 1 })] }), START);
+    // With no field, the open line stays. With no drift check, or with no entry of its name, it ends.
+    expect(systemReports(changed.lines, snapshot(), START + 1).reports).toEqual([]);
+    expect(codes(systemReports(changed.lines, snapshot({ drift: null }), START + 1).reports)).toEqual([["cancel", "system.drift.changed"]]);
+    expect(codes(systemReports(changed.lines, snapshot({ drift: [check({ changes: 0 }, { name: "host-b" })] }), START + 1).reports)).toEqual([["cancel", "system.drift.changed"]]);
+  });
+
+  it("keeps the open line changed with no read, thus a restart sends nothing", () => {
+    const changed = systemReports(NO_SYSTEM_LINES, snapshot({ drift: [check({ changes: 2, steps: ["step.one"] })] }), START);
+    const restarted = systemReports(changed.lines, snapshot({ drift: [check(undefined, { since: START + HOUR })] }), START + HOUR);
+    expect(restarted.reports).toEqual([]);
+    expect(restarted.lines.open).toEqual(changed.lines.open);
+    expect(codes(systemReports(restarted.lines, snapshot({ drift: [check(undefined, { since: START + HOUR })] }), START + HOUR + MAX_AGE).reports)).toEqual([["alert", "system.drift.unread"]]);
+  });
+
+  it("gives the line changed in one copy and the unread line in each copy", () => {
+    const changed = [check({ changes: 1 })];
+    expect(codes(systemReports(NO_SYSTEM_LINES, snapshot({ drift: changed, copy: "copy-a", copies: [copyWatch("copy-b", START)] }), START).reports)).toEqual([["alert", "system.drift.changed"]]);
+    expect(systemReports(NO_SYSTEM_LINES, snapshot({ drift: changed, copy: "copy-b", copies: [copyWatch("copy-a", START)] }), START).reports).toEqual([]);
+    const unread = systemReports(NO_SYSTEM_LINES, snapshot({ drift: [check()], copy: "copy-b", copies: [copyWatch("copy-a", START + MAX_AGE)] }), START + MAX_AGE);
+    expect(codes(unread.reports)).toEqual([["alert", "system.drift.unread"]]);
+  });
+
+  it("goes at notice at most to the person who watches the copies", () => {
+    const changed = systemReports(NO_SYSTEM_LINES, snapshot({ drift: [check({ changes: 1 })] }), START);
+    expect(levels(changed.reports, WATCHER, START)).toEqual(["notice"]);
+    expect(levels(changed.reports, OPERATOR, START)).toEqual(["none"]);
   });
 });
 

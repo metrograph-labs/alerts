@@ -11,8 +11,8 @@
  * its plain name and its summary here, and in no other place. A new code comes here first, in its pull request.
  */
 import { compareCodeUnits } from "@mark1russell7/text/order";
-import { BALANCE_KIND, CHANNEL_KIND, CLOCK_KIND, COPY_KIND, COVERAGE_KIND, DRILL_KIND, ESCALATION_KIND, HEALTH_KIND, JOINT_KIND, LIMIT_KIND, LOG_KIND, LOOP_KIND, QUOTA_KIND, STORE_KIND, REDUNDANCY_KIND, TELL_KIND, USE_KIND } from "./assess.ts";
-import type { BalanceStage, Category, CopyStage, HealthState, JointStage, QuotaStage, RedundancyStage, UseStage } from "./contracts.ts";
+import { BALANCE_KIND, CHANNEL_KIND, CLOCK_KIND, COPY_KIND, COVERAGE_KIND, DRIFT_KIND, DRILL_KIND, ESCALATION_KIND, HEALTH_KIND, JOINT_KIND, LIMIT_KIND, LOG_KIND, LOOP_KIND, QUOTA_KIND, STORE_KIND, REDUNDANCY_KIND, TELL_KIND, USE_KIND } from "./assess.ts";
+import type { BalanceStage, Category, CopyStage, DriftStage, HealthState, JointStage, QuotaStage, RedundancyStage, UseStage } from "./contracts.ts";
 
 /** One code of the taxonomy: its plain name and one plain sentence about it. */
 export interface KindEntry {
@@ -92,6 +92,12 @@ const USE_ENTRIES: Readonly<Record<UseStage, KindEntry>> = {
 const JOINT_ENTRIES: Readonly<Record<JointStage, KindEntry>> = {
   over: entry("Joint down time over its limit", "In the window of the watch, no copy of the alert system could tell the person for longer than the limit."),
   unread: entry("Joint down time not read", "No read of the joint down time of the copies passed for the maximum age, so a long down time is not seen."),
+};
+
+// The drift kinds of the core: one for each stage of the drift check of a copy host (AL-139).
+const DRIFT_ENTRIES: Readonly<Record<DriftStage, KindEntry>> = {
+  changed: entry("Drift of a copy host", "The daily check of a copy host found a step or a resource that does not agree with its code."),
+  unread: entry("Drift of a copy host not read", "No drift check of a copy host passed for the maximum age, so a drift is not seen."),
 };
 
 // The copy kinds of the core: one for each stage of the watch of another copy of the system.
@@ -457,6 +463,8 @@ export const TAXONOMY: Readonly<Record<string, KindEntry>> = {
   ...Object.fromEntries(Object.entries(USE_ENTRIES).map(([stage, value]) => [`${USE_KIND}.${stage}`, value])),
   [JOINT_KIND]: entry("Joint down time of the copies", "The time in a window in which no copy of the alert system could tell the person."),
   ...Object.fromEntries(Object.entries(JOINT_ENTRIES).map(([stage, value]) => [`${JOINT_KIND}.${stage}`, value])),
+  [DRIFT_KIND]: entry("Drift check of the copy hosts", "A daily check that a copy host agrees with its code: its setup steps and its OpenTofu plan."),
+  ...Object.fromEntries(Object.entries(DRIFT_ENTRIES).map(([stage, value]) => [`${DRIFT_KIND}.${stage}`, value])),
   [REDUNDANCY_KIND]: entry("Redundancy of the alert chain", "The paths of a function of the alert chain, from the open incidents of its parts."),
   ...Object.fromEntries(Object.entries(REDUNDANCY_ENTRIES).map(([stage, value]) => [`${REDUNDANCY_KIND}.${stage}`, value])),
   [`${ESCALATION_KIND}.exhausted`]: entry("Exhausted escalation", "A person did not acknowledge a real warning in the time of the policy. The people who watch the person get this report."),
