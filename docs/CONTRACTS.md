@@ -890,6 +890,7 @@ Each copy loads the same configuration: `config.json` and the parts. The sync of
 - `accounts`: the number of the account of each source with an account, by the id of the source. The keys of account 2 end in `_2`. The default is account 1.
 - `configFrom`: the id of the copy that gives the configuration of this copy. It is the id of a copy of `peers`. The section "The sync of the configuration" tells the steps.
 - `leaveChannels`: the ids of the channels that this copy leaves to the other copies (AL-55). The section "The channels that a copy leaves" tells the rules.
+- `sounder`: the sounder channel of this copy (AL-41). The section "The sounder of a copy" tells the rules.
 - `drift`: the drift checks of the host of this copy (AL-139). The section "System reports" tells their lines.
 
 Without `copy.json`, the runtime is the only copy. It has rank 0 and no exchange. The key `COPY_TOKEN` of `secrets.env` gives the token of the exchange, the same for each copy. The check of the profile `daemon` needs it when the copy has other copies.
@@ -906,6 +907,18 @@ A receiver that only one computer reaches gets its messages from the copy on tha
 - A step on the channel needs no sender of the copy. Thus the copy needs no secret of the channel.
 - When the copy on that computer stops, the receiver gets no message. Each other step still goes from each copy.
 - An older runtime refuses the field. Add the field only after each copy has the code that reads it.
+
+### The sounder of a copy
+
+A sounder is a device in the home of one copy, for example the speaker of its computer. Only that copy can start its sounds. Thus the field `sounder` of `copy.json` holds the sounders, and the configuration holds the contacts and the steps:
+
+- `devices`: the programs of each device, by its name. A name has small letters, digits and hyphens, and 32 characters or fewer.
+- Each device has the program `sound`. It can also have a program for a level in `levels`, and the program `probe` that makes no sound.
+- `sounds`: the most sounds of one message at each level. The defaults are 60 for `life-safety`, 3 for `urgent` and 1 for the other levels.
+- `gapMs`: the wait between two sounds of a message. The default is 1 second.
+- The runtime starts each program with no shell. A problem names the field and no argument, because an argument can be a private path.
+- A copy with no field `sounder` names the channel `sounder` in `leaveChannels`. Without it, a step on the channel stops the start of that copy.
+- A copy with the field `sounder` does not leave the channel.
 
 ### The rank wait
 

@@ -95,6 +95,8 @@ CopyMeasureOptions: build/index.d.ts#CopyMeasureOptions
 CopyPeer: build/index.d.ts#CopyPeer
 CopyRead: build/index.d.ts#CopyRead
 CopySettings: build/index.d.ts#CopySettings
+CopySounder: build/index.d.ts#CopySounder
+CopySounderDevice: build/index.d.ts#CopySounderDevice
 CopyStage: build/index.d.ts#CopyStage
 CopyTime: build/index.d.ts#CopyTime
 CopyWatch: build/index.d.ts#CopyWatch
@@ -625,6 +627,8 @@ copyPeerSchema: build/index.d.ts#copyPeerSchema
 copyProblems: build/index.d.ts#copyProblems
 copyReadSchema: build/index.d.ts#copyReadSchema
 copySettingsSchema: build/index.d.ts#copySettingsSchema
+copySounderDeviceSchema: build/index.d.ts#copySounderDeviceSchema
+copySounderSchema: build/index.d.ts#copySounderSchema
 copyStageSchema: build/index.d.ts#copyStageSchema
 copyStages: build/index.d.ts#copyStages
 copyUnreadAt: build/index.d.ts#copyUnreadAt
@@ -1579,7 +1583,22 @@ export interface CopySettings {
   readonly configFrom?: string;
   readonly leaveChannels?: readonly ChannelId[];
   readonly leaveSources?: readonly SourceId[];
+  readonly sounder?: CopySounder;
   readonly drift?: DriftConfig;
+}
+
+### build/index.d.ts#CopySounder
+export interface CopySounder {
+  readonly devices: Readonly<Record<string, CopySounderDevice>>;
+  readonly sounds?: Partial<Readonly<Record<Level, number>>>;
+  readonly gapMs?: Duration;
+}
+
+### build/index.d.ts#CopySounderDevice
+export interface CopySounderDevice {
+  readonly sound: readonly string[];
+  readonly levels?: Partial<Readonly<Record<Level, readonly string[]>>>;
+  readonly probe?: readonly string[];
 }
 
 ### build/index.d.ts#CopyStage
@@ -4786,6 +4805,12 @@ export declare const copyReadSchema: z.ZodType<CopyRead, CopyRead>;
 
 ### build/index.d.ts#copySettingsSchema
 export declare const copySettingsSchema: z.ZodType<CopySettings, CopySettings>;
+
+### build/index.d.ts#copySounderDeviceSchema
+export declare const copySounderDeviceSchema: z.ZodType<CopySounderDevice, CopySounderDevice>;
+
+### build/index.d.ts#copySounderSchema
+export declare const copySounderSchema: z.ZodType<CopySounder, CopySounder>;
 
 ### build/index.d.ts#copyStageSchema
 export declare const copyStageSchema: z.ZodType<CopyStage, CopyStage>;
