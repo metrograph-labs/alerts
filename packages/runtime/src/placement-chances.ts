@@ -5,8 +5,13 @@
  *
  * The method:
  *
- * - The history is the documented list of the latest incidents of a page of Atlassian Statuspage (`readHistory` of
+ * - A history is the documented list of the latest incidents of a page of Atlassian Statuspage (`readHistory` of
  *   `@mark1russell7/alerts-source-statuspage`). The list of components of the page tells which regions the page tracks.
+ * - A history is also the incident file of the dashboard of Google Cloud (`readIncidentHistory` of
+ *   `@mark1russell7/alerts-source-gcp`). Only an incident of a product of a plain virtual machine counts
+ *   (`VM_PRODUCTS`). An incident is a down time when its impact is `SERVICE_OUTAGE` or its severity is `high`.
+ * - The location `global` of a dashboard of Google is the provider, and each other location is a region. The file has
+ *   no documented limit, thus the window starts at the oldest incident of the file at the earliest.
  * - The window ends at the read. It starts `DEFAULT_WINDOW_DAYS` days before, or at the oldest last change of a full list.
  *   A full list does not show an incident with an older last change, and each incident after that time changed after it.
  *   An open incident with no change after that time can be missing. This case is rare. A window of less than `MIN_WINDOW_DAYS` days gives no value.
@@ -26,11 +31,13 @@
  * A provider with no usable feed keeps the assumed inputs. `HISTORY_GAPS` names each such provider and the reason.
  */
 
+import { GCP_BASE, GLOBAL_LOCATION, INCIDENTS_PATH, readIncidentHistory, VM_PRODUCTS, type PastIncident } from "@mark1russell7/alerts-source-gcp";
 import { COMPONENTS_PATH, HISTORY_LIMIT, HISTORY_PATH, readComponentNames, readHistory, type HistoryIncident, type HistoryRead } from "@mark1russell7/alerts-source-statuspage";
 import { wilson, Z95 } from "@mark1russell7/rigor-statistics";
+import { openDatabase } from "@mark1russell7/sqlite";
 import { errorMessage } from "@mark1russell7/text";
 import { send, statusLine, type Pace, type Transport } from "polite-crawler/api";
-import { providerFragment, regionFragment, type ChanceOverride, type PlacementChances } from "./placement.ts";
+import { providerFragment, regionFragment, siteFragment, type ChanceOverride, type PlacementChances } from "./placement.ts";
 
 /** The impacts of an incident that count as a down time: the outages of a part or of all of a service. */
 export const DOWN_IMPACTS: readonly string[] = ["major", "critical"];
@@ -62,6 +69,11 @@ export interface HistorySource {
   readonly provider: string;
   /** The host of the status page. */
   readonly host: string;
+  /**
+   * The kind of the page. A page of Atlassian Statuspage (`statuspage`) tracks only the regions of its components. A
+   * dashboard of Google (`google`) lists each incident of each region, thus each region of the offers gets a measure.
+   */
+  readonly kind: "statuspage" | "google";
   /** This function gives the kind of one component of the page from its name. */
   readonly placeOf: (component: string) => ComponentPlace;
 }
@@ -87,11 +99,20 @@ export function codePlace(component: string): ComponentPlace {
   return match[3]!.trim() === "" ? { kind: "region", region: match[1]!.toLowerCase() } : { kind: "product" };
 }
 
+/** This function gives the kind of a location of a dashboard of Google. The id `global` is all of the cloud, and each other id is a region. */
+export function locationPlace(location: string): ComponentPlace {
+  return location === GLOBAL_LOCATION ? { kind: "global" } : { kind: "region", region: location };
+}
+
 /**
  * The status page of each provider of the offers with a usable history. The Linode page of Akamai Cloud is a page of
- * Atlassian Statuspage. The first word of each of its region components is the code of a region of the plan list.
+ * Atlassian Statuspage. The first word of each of its region components is the code of a region of the plan list. The
+ * dashboard of Google Cloud gives the history of the provider `gcp`. Its location ids are the region ids of the plan list.
  */
-export const HISTORY_SOURCES: readonly HistorySource[] = [{ provider: "linode", host: "status.linode.com", placeOf: codePlace }];
+export const HISTORY_SOURCES: readonly HistorySource[] = [
+  { provider: "linode", host: "status.linode.com", kind: "statuspage", placeOf: codePlace },
+  { provider: "gcp", host: new URL(GCP_BASE).host, kind: "google", placeOf: locationPlace },
+];
 
 /** The providers of the offers with no usable history. They keep the assumed inputs. */
 export const HISTORY_GAPS: readonly HistoryGap[] = [
@@ -108,14 +129,68 @@ export interface TimeWindow {
 }
 
 /**
- * This function gives the window of a history. The window ends at `now` and starts `days` days before. When the list is
- * full (`HISTORY_LIMIT` items or more), the window starts at the oldest last change of the list, if that is later.
+ * This function gives the window of a history. The window ends at `now` and starts `days` days before. With `since`,
+ * the window starts at `since` if that is later. Else, when the list is full (`HISTORY_LIMIT` items or more), the
+ * window starts at the oldest last change of the list, if that is later.
  */
-export function historyWindow(read: HistoryRead, now: number, days: number): TimeWindow {
+export function historyWindow(read: HistoryRead, now: number, days: number, since?: number): TimeWindow {
   const from = now - days * DAY_MS;
+  if (since !== undefined) return { from: Math.min(Math.max(from, since), now), to: now };
   if (read.listed < HISTORY_LIMIT || read.incidents.length === 0) return { from, to: now };
   const oldest = Math.min(...read.incidents.map((incident) => incident.updated));
   return { from: Math.min(Math.max(from, oldest), now), to: now };
+}
+
+/** The longest time between two fetch events of a live copy that is up: 5 minutes. A longer gap is a down time. */
+export const FETCH_GAP_MS = 300_000;
+
+/** The shortest log that gives a measured chance of a site: 24 hours. The Wilson interval holds the doubt of a short log. */
+export const MIN_LOG_HOURS = 24;
+
+/**
+ * This function gives the down time of a live copy from the times of its fetch events, in milliseconds. Each gap
+ * longer than `limit` between two fetches is down, from the first fetch to the next. A gap from the last fetch to
+ * `now` counts too. The copy fetches each due source in each pass, thus a long gap tells that the copy did not work.
+ */
+export function fetchGapTime(times: readonly number[], now: number, limit: number = FETCH_GAP_MS): number {
+  let total = 0;
+  const ends = [...times, now];
+  for (let index = 1; index < ends.length; index += 1) {
+    const gap = (ends[index] ?? 0) - (ends[index - 1] ?? 0);
+    if (gap > limit) total += gap;
+  }
+  return total;
+}
+
+/**
+ * This function gives the measured chance input of a site from the fetch times of the log of its live copy. The window
+ * starts at the first fetch and ends at `now`. It gives a reason and no input for a log shorter than `MIN_LOG_HOURS`.
+ */
+export function measureSite(site: string, times: readonly number[], now: number, limit: number = FETCH_GAP_MS): { readonly ok: true; readonly measure: ChanceMeasure } | { readonly ok: false; readonly reason: string } {
+  const first = times[0];
+  if (first === undefined || now - first < MIN_LOG_HOURS * HOUR_MS) return { ok: false, reason: `The log of the site ${site} has less than ${String(MIN_LOG_HOURS)} hours of fetch events.` };
+  const window: TimeWindow = { from: first, to: now };
+  const down = downShare(fetchGapTime(times, now, limit), window);
+  const low = 1 - down.interval.high;
+  const source =
+    `the fetch events of the log of the site ${site} from ${dayOf(window.from)} to ${dayOf(window.to)}: ` +
+    `${String(down.downHours)} of ${String(down.hours)} hours down (no fetch for more than ${String(limit / 60_000)} minutes), ` +
+    `works ${(1 - down.share).toFixed(6)}, 95% Wilson interval ${low.toFixed(6)} to ${(1 - down.interval.low).toFixed(6)}, the input is the low end`;
+  return { ok: true, measure: { input: { id: siteFragment(site), works: low, kind: "measured", source }, down, window } };
+}
+
+/** This function reads the times of the fetch events of a runtime log file, in their order. It opens the file to read only. */
+export function readFetchTimes(path: string): readonly number[] {
+  const db = openDatabase(path, { readOnly: true });
+  try {
+    return db
+      .prepare("SELECT at FROM events WHERE type = 'fetch' ORDER BY seq")
+      .all()
+      .map((row) => Date.parse(String(row["at"])))
+      .filter((time) => Number.isFinite(time));
+  } finally {
+    db.close();
+  }
 }
 
 /** This function tells if an incident is a down time: its impact is in `DOWN_IMPACTS`, and it is not a scheduled maintenance. */
@@ -185,6 +260,8 @@ export interface PageHistory {
   readonly read: HistoryRead;
   /** The names of the components of the page. */
   readonly components: readonly string[];
+  /** The time from which the list holds each incident, when the page tells it. */
+  readonly since?: number | undefined;
 }
 
 /** The measured inputs of one provider, or the reason that it has none. */
@@ -194,29 +271,46 @@ function dayOf(time: number): string {
   return new Date(time).toISOString().slice(0, 10);
 }
 
-function sourceText(host: string, window: TimeWindow, down: DownShare): string {
+/** The rule of a down time of each kind of page, for the text of a measure. */
+const DOWN_RULE: Readonly<Record<HistorySource["kind"], string>> = {
+  statuspage: "impact major or critical",
+  google: "impact SERVICE_OUTAGE or severity high, of a product of a virtual machine",
+};
+
+/** This function gives the feed of a page: its host and the path of its list of incidents. */
+export function feedOf(source: HistorySource): string {
+  return `${source.host}${source.kind === "google" ? INCIDENTS_PATH : HISTORY_PATH}`;
+}
+
+function sourceText(source: HistorySource, window: TimeWindow, down: DownShare): string {
   const days = Math.round((window.to - window.from) / DAY_MS);
   const low = 1 - down.interval.high;
   const high = 1 - down.interval.low;
   return (
-    `${host}${HISTORY_PATH} from ${dayOf(window.from)} to ${dayOf(window.to)} (${String(days)} days): ` +
-    `${String(down.downHours)} of ${String(down.hours)} hours down (impact major or critical), ` +
+    `${feedOf(source)} from ${dayOf(window.from)} to ${dayOf(window.to)} (${String(days)} days): ` +
+    `${String(down.downHours)} of ${String(down.hours)} hours down (${DOWN_RULE[source.kind]}), ` +
     `works ${(1 - down.share).toFixed(6)}, 95% Wilson interval ${low.toFixed(6)} to ${high.toFixed(6)}, the input is the low end`
   );
 }
 
-function measureOf(id: string, host: string, incidents: readonly HistoryIncident[], window: TimeWindow): ChanceMeasure {
+function measureOf(id: string, source: HistorySource, incidents: readonly HistoryIncident[], window: TimeWindow): ChanceMeasure {
   const down = downShare(downTime(incidents, window), window);
-  return { input: { id, works: 1 - down.interval.high, kind: "measured", source: sourceText(host, window, down) }, down, window };
+  return { input: { id, works: 1 - down.interval.high, kind: "measured", source: sourceText(source, window, down) }, down, window };
 }
 
 /**
  * This function gives the measured inputs of one provider from the history of its page. The provider fragment gets one
- * input, and each region fragment that the page tracks gets one input. It gives a reason and no input when the window is shorter than
- * `MIN_WINDOW_DAYS` days.
+ * input, and each region fragment that the page tracks gets one input. A dashboard of Google also gives one input to each
+ * region of `regions`. It gives a reason and no input when the window is shorter than `MIN_WINDOW_DAYS` days.
  */
-export function measureProvider(source: HistorySource, history: PageHistory, now: number, days: number = DEFAULT_WINDOW_DAYS): ProviderMeasure {
-  const window = historyWindow(history.read, now, days);
+export function measureProvider(
+  source: HistorySource,
+  history: PageHistory,
+  now: number,
+  days: number = DEFAULT_WINDOW_DAYS,
+  regions: readonly string[] = [],
+): ProviderMeasure {
+  const window = historyWindow(history.read, now, days, history.since);
   const span = (window.to - window.from) / DAY_MS;
   if (span < MIN_WINDOW_DAYS) {
     return { ok: false, reason: `The list of ${source.host} covers only ${span.toFixed(1)} days, less than ${String(MIN_WINDOW_DAYS)}.` };
@@ -224,11 +318,15 @@ export function measureProvider(source: HistorySource, history: PageHistory, now
   const down = history.read.incidents.filter(isDown);
   const places = (incident: HistoryIncident): readonly ComponentPlace[] => incident.components.map(source.placeOf);
   const providerDown = down.filter((incident) => incident.components.length === 0 || places(incident).some((place) => place.kind === "global"));
-  const measures = [measureOf(providerFragment(source.provider), source.host, providerDown, window)];
-  const regions = [...new Set(history.components.flatMap((name) => { const place = source.placeOf(name); return place.kind === "region" ? [place.region] : []; }))].sort();
-  for (const region of regions) {
+  const measures = [measureOf(providerFragment(source.provider), source, providerDown, window)];
+  const tracked = history.components.flatMap((name) => {
+    const place = source.placeOf(name);
+    return place.kind === "region" ? [place.region] : [];
+  });
+  const all = source.kind === "google" ? [...tracked, ...regions] : tracked;
+  for (const region of [...new Set(all)].sort()) {
     const regionDown = down.filter((incident) => places(incident).some((place) => place.kind === "region" && place.region === region));
-    measures.push(measureOf(regionFragment(source.provider, region), source.host, regionDown, window));
+    measures.push(measureOf(regionFragment(source.provider, region), source, regionDown, window));
   }
   return { ok: true, measures };
 }
@@ -270,13 +368,43 @@ async function getJson(source: HistorySource, path: string, what: string, pace: 
 }
 
 /**
- * This function reads the history of the page of one provider through polite-crawler: the list of incidents, then the
- * list of components. It sends two documented requests, with no query and no personal data. The page stops crawlers
- * under `/api/` in its `robots.txt` file. This read is not a crawl: it asks for two documented files one time in a run.
+ * This function gives the history of a dashboard of Google as the history of a page. Only an incident of a product of
+ * `VM_PRODUCTS` stays. Its impact is `major` when its impact is `SERVICE_OUTAGE` or its severity is `high`, else
+ * `minor`. Its components are its locations. The components of the page are the locations of the kept incidents.
+ */
+export function googleHistory(incidents: readonly PastIncident[], since: number | undefined): PageHistory {
+  const products = new Set(VM_PRODUCTS.map((product) => product.id));
+  const kept: HistoryIncident[] = incidents
+    .filter((incident) => incident.products.some((id) => products.has(id)))
+    .map((incident) => ({
+      id: incident.id,
+      impact: incident.impact === "SERVICE_OUTAGE" || incident.severity === "high" ? "major" : "minor",
+      start: incident.start,
+      end: incident.end,
+      updated: incident.start,
+      scheduled: false,
+      components: incident.locations,
+    }));
+  const components = [...new Set(kept.flatMap((incident) => incident.components))].sort();
+  return { read: { listed: kept.length, incidents: kept, skipped: 0 }, components, since };
+}
+
+/**
+ * This function reads the history of the page of one provider through polite-crawler. A page of Statuspage gives the
+ * list of incidents, then the list of components. It sends two documented requests, with no query and no personal data.
+ * The page stops crawlers under `/api/` in its `robots.txt` file. This read is not a crawl: it asks for two documented
+ * files one time in a run. A dashboard of Google gives its one incident file, as the source adapter reads it.
  *
  * It does not throw for a failure of the page: it gives the problem. It throws only when the signal aborts.
  */
 export async function readPageHistory(source: HistorySource, pace: Pace, transport: Transport, signal?: AbortSignal): Promise<HistoryOutcome> {
+  if (source.kind === "google") {
+    const file = await getJson(source, INCIDENTS_PATH, "the incident file", pace, transport, signal);
+    if ("problem" in file) return { ok: false, problem: file.problem };
+    const history = readIncidentHistory(file.body);
+    if (history === undefined) return { ok: false, problem: "The incident file is not a list of incidents." };
+    return { ok: true, history: googleHistory(history.incidents, history.since) };
+  }
   const incidents = await getJson(source, HISTORY_PATH, "the list of incidents", pace, transport, signal);
   if ("problem" in incidents) return { ok: false, problem: incidents.problem };
   const read = readHistory(incidents.body);

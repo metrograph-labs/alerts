@@ -40,6 +40,8 @@ export {
   type ProductKey,
 } from "./feed.ts";
 export { createGcpFetch, incidentBody, INCIDENTS_TIMEOUT_MS, isLive, readIncidents } from "./fetch.ts";
+export { GLOBAL_LOCATION, readIncidentHistory, VM_PRODUCTS } from "./history.ts";
+export type { IncidentHistory, PastIncident } from "./history.ts";
 export type { GcpFetchInput, GcpFetchOptions, Incidents } from "./fetch.ts";
 export { HISTORY_FIELDS, INCIDENT_FIELDS, isIncident, ITEM_FIELDS, itemsOf, keysOf, locationsOf, mapObservation, sentOf, SEVERITY_OF_INCIDENT, UPDATE_FIELDS, URGENCY_OF_STATUS } from "./map.ts";
 

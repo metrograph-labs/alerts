@@ -4,22 +4,27 @@
  * some copy works. `@mark1russell7/stack-placement` gives the layer `placement/1`, the search and the front.
  *
  * - Each copy is a slot. The first slot needs a candidate. Each other slot can stay empty.
+ * - A live copy is a fixed slot with one candidate. With a fixed slot, each new slot can stay empty. Thus the
+ *   front tells the gain of each next copy beside the live copies, and the gain of no new copy.
  * - Each candidate is an offer: a provider, a region and a plan, with its cost of a month.
  * - Each provider and each region is a shared fragment. Thus two copies on one provider share one cause of failure.
  * - Nobody picks a provider or a price. Each offer that meets the needs is a candidate.
+ * - A base stack gives the needs that all copies share, for example the push services and the feeds. These needs limit
+ *   the gain of each new copy, thus the front tells the true gain.
  *
  * The chances are inputs. Each input tells if it is measured or assumed, and its source. This module holds no chance
  * and no limit of cost. The caller reads the limit of cost from the private configuration at run time.
  */
 
 import { meteredCost, type MeteredObservation, type PriceTerm } from "@mark1russell7/market";
-import { arrayOf, numberOf, textOf } from "@mark1russell7/optional/read";
+import { arrayOf, isRecord, numberOf, textOf } from "@mark1russell7/optional/read";
 import { OBJECTIVE_STEPS, PLACEMENT_SCHEMA, planPlacement, type Candidate, type PlacementLayer, type PlacementPlan, type PlacementRow, type PlanOptions, type Shared } from "@mark1russell7/stack-placement";
 import { RISK_SCHEMA, worksChance, type RiskLayer } from "@mark1russell7/stack-risk";
 import { riskAddOn } from "@mark1russell7/stack-risk/add-on";
 import { monthTotal, type SpendLayer } from "@mark1russell7/stack-spend";
 import { spendAddOn } from "@mark1russell7/stack-spend/add-on";
-import { readLayer, type Stack, type StackJoiner } from "@mark1russell7/system-stack";
+import { readLayer, type Need, type Part, type Stack, type StackJoiner } from "@mark1russell7/system-stack";
+import { parseStack } from "@mark1russell7/system-stack/schema";
 
 /** The id of the function of the base stack: a message gets out of some copy. */
 export const PLACEMENT_PART = "send";
@@ -65,8 +70,8 @@ export interface ChanceOverride extends ChanceInput {
 }
 
 /**
- * The chance inputs of a placement. Each provider, each region and each host gets the input of its kind. An override
- * replaces the input of one provider or of one region.
+ * The chance inputs of a placement. Each provider, each region, each site and each host gets the input of its kind. An
+ * override replaces the input of one fragment.
  */
 export interface PlacementChances {
   /** The chance that a provider works: its control plane, its network and its account. */
@@ -75,6 +80,8 @@ export interface PlacementChances {
   readonly region: ChanceInput;
   /** The chance that one host of a copy works, when its provider and its region work. */
   readonly host: ChanceInput;
+  /** The chance that a site of a fixed copy works: its power and its internet. A fixed copy on a site needs it. */
+  readonly site?: ChanceInput | undefined;
   /** The inputs of single providers or regions. */
   readonly overrides?: readonly ChanceOverride[] | undefined;
 }
@@ -89,6 +96,63 @@ export interface CopyNeeds {
   readonly currency: string;
 }
 
+/**
+ * A live copy. It is a fixed slot with one candidate. A copy at a provider uses the provider and region fragments
+ * of an offer. A copy at a site, for example a home computer, uses the one fragment of its site.
+ */
+export type FixedCopy =
+  | { readonly kind: "cloud"; readonly provider: string; readonly region: string }
+  | { readonly kind: "site"; readonly site: string };
+
+/** One chance input of one part of a base stack. */
+export interface PartChance extends ChanceInput {
+  /** The id of the part. */
+  readonly part: string;
+}
+
+/**
+ * The function of the system and the needs that all copies share. Each copy of the alert system needs the same push
+ * services, call services and feeds. The front of a placement with a base tells the gain of each copy past these needs.
+ */
+export interface PlacementBase {
+  /** The stack of the function and of its shared needs. A layer `risk/1` of the stack keeps its goals. */
+  readonly stack: Stack;
+  /** The id of the function to keep in work. Its needs get one more need: some slot works. */
+  readonly part: string;
+  /** The ids of the parts of the stack that are copies. The placement replaces each need of the function that names only these parts. */
+  readonly copies?: readonly string[] | undefined;
+  /** The chance input of each part of the stack. A part with needs and no input works when its needs hold. */
+  readonly chances?: readonly PartChance[] | undefined;
+}
+
+/**
+ * This function reads a base input from a JSON value: `{ stack, part, copies?, chances? }`. Each chance has `part`,
+ * `works`, `kind` (`measured` or `assumed`) and `source`. It gives the base, or a problem as a text.
+ */
+export function readBase(value: unknown): PlacementBase | string {
+  if (!isRecord(value)) return "The base is not an object.";
+  const stack = parseStack(value["stack"]);
+  if (!stack.ok) return `The stack of the base has faults: ${stack.errors.join(" ")}`;
+  const part = textOf(value, "part");
+  if (part === undefined) return "The base has no text part.";
+  const copyList: unknown = value["copies"] ?? [];
+  if (!Array.isArray(copyList) || !copyList.every((each) => typeof each === "string")) return "The copies of the base are not a list of texts.";
+  const chanceList: unknown = value["chances"] ?? [];
+  if (!Array.isArray(chanceList)) return "The chances of the base are not a list.";
+  const chances: PartChance[] = [];
+  for (const item of chanceList as readonly unknown[]) {
+    const id = textOf(item, "part");
+    const works = numberOf(item, "works");
+    const kind = textOf(item, "kind");
+    const source = textOf(item, "source");
+    if (id === undefined || works === undefined || (kind !== "measured" && kind !== "assumed") || source === undefined) {
+      return "Each chance of the base needs part, works, kind (measured or assumed) and source.";
+    }
+    chances.push({ part: id, works, kind, source });
+  }
+  return { stack: stack.stack, part, copies: copyList as readonly string[], chances };
+}
+
 /** The inputs of a placement layer. */
 export interface PlacementInput {
   /** The live offers, for example from the plan client of `@mark1russell7/market-sources`. */
@@ -97,10 +161,17 @@ export interface PlacementInput {
   readonly needs: CopyNeeds;
   /** The chance inputs. */
   readonly chances: PlacementChances;
-  /** The count of copies, 1 or more. Each copy is one slot. */
+  /** The count of new copies, 1 or more. Each copy is one slot. */
   readonly copies: number;
+  /**
+   * The live copies. Each is a fixed slot before the new slots, with a cost of 0: the front gives the cost of the
+   * new copies only. A fixed copy has no offer, thus the plan lists of the providers do not limit it.
+   */
+  readonly fixed?: readonly FixedCopy[] | undefined;
   /** The largest expected cost of a month, from the private configuration. Without it, the layer has no limit of cost. */
   readonly costLimit?: number | undefined;
+  /** The function and the needs that all copies share. Without it, the function needs only some slot. */
+  readonly base?: PlacementBase | undefined;
 }
 
 /** The reasons to skip an offer. */
@@ -122,11 +193,28 @@ export interface PlacementBuild {
   readonly offers: number;
   /** The count of skipped offers for each reason. */
   readonly skipped: Readonly<Record<SkipReason, number>>;
+  /** The ids of the fixed slots: the live copies. */
+  readonly fixed: readonly string[];
 }
 
 /** This function gives the id of the slot of the copy `index`, from 0: `copy-1`, `copy-2` and so on. */
 export function slotId(index: number): string {
   return `copy-${String(index + 1)}`;
+}
+
+/** This function gives the id of the fixed slot of the live copy `index`, from 0: `live-1`, `live-2` and so on. */
+export function fixedSlotId(index: number): string {
+  return `live-${String(index + 1)}`;
+}
+
+/** This function gives the id of the shared fragment of a site of a fixed copy. */
+export function siteFragment(site: string): string {
+  return `site:${site}`;
+}
+
+/** This function gives the key of a fixed copy: `provider/region`, or `site/<site>`. */
+export function fixedKey(copy: FixedCopy): string {
+  return copy.kind === "cloud" ? `${copy.provider}/${copy.region}` : `site/${copy.site}`;
 }
 
 /** This function gives the id of the shared fragment of a provider. */
@@ -203,6 +291,22 @@ function sharedOf(id: string, kind: string, input: ChanceInput): Shared {
   return { id, stack: { schema: "stack/1", parts: [{ id, kind }], layers: { "risk/1": riskOf(id, input) } } };
 }
 
+function fixedUses(copy: FixedCopy): readonly string[] {
+  return copy.kind === "cloud" ? [providerFragment(copy.provider), regionFragment(copy.provider, copy.region)] : [siteFragment(copy.site)];
+}
+
+function fixedCandidate(slot: string, copy: FixedCopy, chances: PlacementChances, currency: string): Candidate {
+  const uses = fixedUses(copy);
+  const spend: SpendLayer = { schema: "spend/1", currency, kinds: [], proofDays: 30, services: [{ part: slot, billing: "fixed", price: 0 }] };
+  return {
+    key: fixedKey(copy),
+    cost: 0,
+    uses,
+    source: "a live copy",
+    stack: { schema: "stack/1", parts: [{ id: slot, kind: "host", needs: [...uses] }], layers: { "risk/1": riskOf(slot, chances.host), "spend/1": spend } },
+  };
+}
+
 /**
  * This function gives the placement layer of the copies from the live offers.
  *
@@ -211,9 +315,11 @@ function sharedOf(id: string, kind: string, input: ChanceInput): Shared {
  * - For each provider and region, only the cheapest such offer is a candidate. Each offer of one provider and region
  *   has the same chances. Thus a dearer offer is not on the front at any time, and the skip does not change the front.
  * - The layer has the limit of cost of the input, when it has one.
+ * - Each fixed copy is a slot before the new slots. With a fixed copy, each new slot is optional.
  *
  * @throws RangeError when the count of copies is not a whole number of 1 or more. It also throws when the least memory
- * or the limit of cost is less than 0, or when a chance input is not valid.
+ * or the limit of cost is less than 0, or when a chance input is not valid. It also throws when two fixed copies have
+ * one key, or when a fixed copy at a site has no site input and no override.
  */
 export function placementLayer(input: PlacementInput): PlacementBuild {
   const { needs, chances } = input;
@@ -223,7 +329,19 @@ export function placementLayer(input: PlacementInput): PlacementBuild {
   checkChance("provider", chances.provider);
   checkChance("region", chances.region);
   checkChance("host", chances.host);
+  if (chances.site !== undefined) checkChance("site", chances.site);
   for (const item of chances.overrides ?? []) checkChance(item.id, item);
+  const fixed = input.fixed ?? [];
+  const keys = new Set<string>();
+  for (const copy of fixed) {
+    const key = fixedKey(copy);
+    if (keys.has(key)) throw new RangeError(`Two fixed copies have the key ${key}.`);
+    keys.add(key);
+    const fragment = copy.kind === "site" ? siteFragment(copy.site) : undefined;
+    if (fragment !== undefined && chances.site === undefined && !(chances.overrides ?? []).some((item) => item.id === fragment)) {
+      throw new RangeError(`The fixed copy ${key} has no site input.`);
+    }
+  }
   const terms = needs.terms ?? DEFAULT_TERMS;
   const skipped: Record<SkipReason, number> = { term: 0, currency: 0, memory: 0, meter: 0, dearer: 0 };
   const best = new Map<string, OfferPick>();
@@ -259,36 +377,120 @@ export function placementLayer(input: PlacementInput): PlacementBuild {
     }
   }
   const picks = [...best.values()].sort((a, b) => (a.provider === b.provider ? (a.region < b.region ? -1 : 1) : a.provider < b.provider ? -1 : 1));
-  const overrides = new Map((chances.overrides ?? []).map((item) => [item.id, item]));
   const shared: Shared[] = [];
   const seen = new Set<string>();
-  for (const pick of picks) {
-    const provider = providerFragment(pick.provider);
-    if (!seen.has(provider)) {
-      seen.add(provider);
-      shared.push(sharedOf(provider, "provider", overrides.get(provider) ?? chances.provider));
+  const baseIds = new Set((input.base?.stack.parts ?? []).map((part) => part.id));
+  const taken = (id: string): void => {
+    if (baseIds.has(id)) throw new RangeError(`The part ${id} of the base stack is also a slot or a shared fragment.`);
+  };
+  const add = (id: string, kind: string): void => {
+    if (seen.has(id)) return;
+    taken(id);
+    seen.add(id);
+    shared.push(sharedOf(id, kind, fragmentInput(chances, id)));
+  };
+  for (const copy of fixed) {
+    if (copy.kind === "site") add(siteFragment(copy.site), "site");
+    else {
+      add(providerFragment(copy.provider), "provider");
+      add(regionFragment(copy.provider, copy.region), "region");
     }
-    const region = regionFragment(pick.provider, pick.region);
-    shared.push(sharedOf(region, "region", overrides.get(region) ?? chances.region));
   }
-  const slots = Array.from({ length: input.copies }, (_, index) => ({
+  for (const pick of picks) {
+    add(providerFragment(pick.provider), "provider");
+    add(regionFragment(pick.provider, pick.region), "region");
+  }
+  const fixedSlots = fixed.map((copy, index) => ({ id: fixedSlotId(index), candidates: [fixedCandidate(fixedSlotId(index), copy, chances, needs.currency)] }));
+  const newSlots = Array.from({ length: input.copies }, (_, index) => ({
     id: slotId(index),
-    ...(index === 0 ? {} : { optional: true }),
+    ...(index === 0 && fixed.length === 0 ? {} : { optional: true }),
     candidates: picks.map((pick) => candidateOf(slotId(index), pick, chances, needs.currency)),
   }));
+  const slots = [...fixedSlots, ...newSlots];
+  for (const slot of slots) taken(slot.id);
+  const some: Need = { any: slots.map((slot) => slot.id) };
+  const base = input.base === undefined ? sendStack(some) : baseStack(input.base, some);
   const layer: PlacementLayer = {
     schema: PLACEMENT_SCHEMA,
-    part: PLACEMENT_PART,
+    part: input.base?.part ?? PLACEMENT_PART,
     currency: needs.currency,
     slots,
     shared,
     ...(input.costLimit === undefined ? {} : { limits: { cost: input.costLimit, bound: input.costLimit } }),
   };
-  const base: Stack = {
-    schema: "stack/1",
-    parts: [{ id: PLACEMENT_PART, kind: "function", name: "A message gets out of some copy", needs: [{ any: slots.map((slot) => slot.id) }] }],
+  return { layer, base, offers: input.offers.length, skipped, fixed: fixedSlots.map((slot) => slot.id) };
+}
+
+/** The base stack with no base input: the function `send` works when some slot works. */
+function sendStack(some: Need): Stack {
+  return { schema: "stack/1", parts: [{ id: PLACEMENT_PART, kind: "function", name: "A message gets out of some copy", needs: [some] }] };
+}
+
+/** This function tells if a need names only the parts of `ids`. */
+function namesOnly(need: Need, ids: ReadonlySet<string>): boolean {
+  if (typeof need === "string") return ids.has(need);
+  const list = "all" in need ? need.all : need.any;
+  return list.length > 0 && list.every((each) => namesOnly(each, ids));
+}
+
+/**
+ * This function gives the base stack of a base input. The function loses each need that names only copies, and gets
+ * the need of some slot. The layer `risk/1` keeps its goals and its chances, and gets the chance input of each part.
+ */
+function baseStack(base: PlacementBase, some: Need): Stack {
+  const found = base.stack.parts.find((part) => part.id === base.part);
+  if (found === undefined) throw new RangeError(`The base stack has no part ${base.part}.`);
+  const ids = new Set(base.stack.parts.map((part) => part.id));
+  const copies = new Set(base.copies ?? []);
+  for (const id of copies) if (!ids.has(id)) throw new RangeError(`The base stack has no copy ${id}.`);
+  const chances = base.chances ?? [];
+  const given = new Set<string>();
+  for (const item of chances) {
+    if (!ids.has(item.part)) throw new RangeError(`The base stack has no part ${item.part} for a chance input.`);
+    if (given.has(item.part)) throw new RangeError(`The part ${item.part} has two chance inputs.`);
+    given.add(item.part);
+    checkChance(item.part, item);
+  }
+  const needs = (found.needs ?? []).filter((need) => !namesOnly(need, copies));
+  const parts: Part[] = base.stack.parts.map((part) => (part.id === base.part ? { ...part, needs: [...needs, some] } : part));
+  // The gate of the plan reads the layer with the date of the plan. This step only adds the chance inputs to it.
+  const prior = base.stack.layers?.["risk/1"] as RiskLayer | undefined;
+  for (const item of prior?.chances ?? []) {
+    if (given.has(item.part)) throw new RangeError(`The part ${item.part} has two chance inputs.`);
+  }
+  const added = chances.map((item) => ({ part: item.part, works: item.works, source: sourceOf(item) }));
+  const layer: RiskLayer = { schema: RISK_SCHEMA, goals: prior?.goals ?? [], ...prior, chances: [...(prior?.chances ?? []), ...added] };
+  return { ...base.stack, parts, layers: { ...(base.stack.layers ?? {}), "risk/1": layer } };
+}
+
+function namesOf(need: Need): readonly string[] {
+  if (typeof need === "string") return [need];
+  return ("all" in need ? need.all : need.any).flatMap(namesOf);
+}
+
+/**
+ * This function gives the parts that the function of a base input needs, past its copies, whose chance input is
+ * assumed. It also gives such leaf parts with no input. Both lists are sorted. A leaf part with no input works at each
+ * time, thus the front is too high when one exists.
+ */
+export function baseAssumed(base: PlacementBase): { readonly assumed: readonly string[]; readonly missing: readonly string[] } {
+  const chances = new Map((base.chances ?? []).map((item) => [item.part, item]));
+  const byId = new Map(base.stack.parts.map((part) => [part.id, part]));
+  const copies = new Set(base.copies ?? []);
+  const reached = new Set<string>();
+  const visit = (id: string): void => {
+    if (reached.has(id) || copies.has(id)) return;
+    reached.add(id);
+    const needs = byId.get(id)?.needs ?? [];
+    const kept = id === base.part ? needs.filter((need) => !namesOnly(need, copies)) : needs;
+    for (const name of kept.flatMap(namesOf)) visit(name);
   };
-  return { layer, base, offers: input.offers.length, skipped };
+  visit(base.part);
+  const parts = [...reached].filter((id) => id !== base.part).sort();
+  return {
+    assumed: parts.filter((id) => chances.get(id)?.kind === "assumed"),
+    missing: parts.filter((id) => (byId.get(id)?.needs ?? []).length === 0 && !chances.has(id)),
+  };
 }
 
 function layerOf<Layer>(stack: Stack, addOn: StackJoiner<Layer>): Layer | undefined {
@@ -374,6 +576,63 @@ export function frontLevels(front: readonly PlacementRow[]): readonly FrontLevel
     else level.rows.push(row);
   }
   return [...levels.values()].sort((a, b) => a.cost - b.cost || b.chance - a.chance);
+}
+
+/**
+ * This function gives the chance input of one shared fragment: the override of the fragment, or the input of its kind.
+ * A fragment `provider:...` gets the provider input, and a fragment `site:...` gets the site input. Each other
+ * fragment gets the region input.
+ *
+ * @throws RangeError when a site fragment has no override and the chances have no site input.
+ */
+export function fragmentInput(chances: PlacementChances, fragment: string): ChanceInput {
+  const override = (chances.overrides ?? []).find((item) => item.id === fragment);
+  if (override !== undefined) return override;
+  if (fragment.startsWith("site:")) {
+    if (chances.site === undefined) throw new RangeError(`The site fragment ${fragment} has no input.`);
+    return chances.site;
+  }
+  return fragment.startsWith("provider:") ? chances.provider : chances.region;
+}
+
+function usesOf(layer: PlacementLayer, slot: string, key: string): readonly string[] {
+  return layer.slots.find((each) => each.id === slot)?.candidates.find((candidate) => candidate.key === key)?.uses ?? [];
+}
+
+/**
+ * This function gives the shared fragments of a row whose chance input is of the kind `assumed`, sorted. The host input
+ * is not a fragment: the caller tells its kind one time. A row with no such fragment uses measured inputs only.
+ *
+ * `worksChance` of `stack-risk` marks only the parts with no chance in a layer. Each fragment of a placement layer
+ * has a chance, thus that mark does not tell the kind of an input. This function tells it.
+ */
+export function assumedInputs(layer: PlacementLayer, chances: PlacementChances, row: PlacementRow): readonly string[] {
+  const found = new Set<string>();
+  for (const [slot, key] of Object.entries(row.choice)) {
+    if (key === null) continue;
+    for (const fragment of usesOf(layer, slot, key)) if (fragmentInput(chances, fragment).kind === "assumed") found.add(fragment);
+  }
+  return [...found].sort();
+}
+
+/**
+ * This function gives the build with the candidates whose shared fragments all have a measured input. It keeps the
+ * shared fragments of these candidates only. It gives `undefined` when no candidate stays.
+ *
+ * The front of this build is not a filter of the full front. A row with an assumed input can beat a row of measured
+ * inputs. Then that row of measured inputs is not on the full front, but it can be on this one.
+ *
+ * A fixed slot stays as it is: a live copy is a fact, not a choice. Thus a row can name the assumed fragments of a
+ * fixed copy. It gives `undefined` when no new slot keeps a candidate.
+ */
+export function measuredBuild(build: PlacementBuild, chances: PlacementChances): PlacementBuild | undefined {
+  const measured = (candidate: Candidate): boolean => (candidate.uses ?? []).every((fragment) => fragmentInput(chances, fragment).kind === "measured");
+  const fixed = new Set(build.fixed);
+  const slots = build.layer.slots.map((slot) => (fixed.has(slot.id) ? slot : { ...slot, candidates: slot.candidates.filter(measured) }));
+  if (slots.every((slot) => fixed.has(slot.id) || slot.candidates.length === 0)) return undefined;
+  const used = new Set(slots.flatMap((slot) => slot.candidates.flatMap((candidate) => candidate.uses ?? [])));
+  const shared = (build.layer.shared ?? []).filter((each) => used.has(each.id));
+  return { ...build, layer: { ...build.layer, slots, shared } };
 }
 
 /**
