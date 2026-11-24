@@ -1705,7 +1705,11 @@ The live path of the checkout is a link to one of two checkouts, the slots `<liv
 - `deploy.ts stage <commit>` checks out the commit in the slot that the link does not name. Then it installs and checks the code there.
 - A stage checks four things: the install, the file of the outage bundles, the private files and the load of the code.
 - On Linux, the heavy steps of a stage operate in a scope of the user manager. The scope has a memory limit and a low weight of the processor.
-- `deploy.ts swap` points the link at the staged slot in one step. A second `swap` goes back to the old slot.
+- `deploy.ts swap <a|b> <commit>` points the link at the staged slot in one step. A swap to the old slot goes back to it.
+- The swap is a compare and swap (AL-167). It refuses when the link names the target slot already, or when the target slot has another commit.
+- `stage`, `swap`, `relink`, `adopt` and `fold` hold the deploy lock `host/deploy.lock`. A second deploy on the host stops at its start.
+- Each start of the runtime writes `host/running.json`: its process, its slot and the commit of the stage of that slot.
+- `install.ts restart` and `deploy.ts status` compare that slot with the link. A runtime of the other slot gives exit code 1.
 - On Windows the link is a junction. The swap removes it and makes a new one. A start in that short gap fails, and the supervisor starts the runtime again.
 - A swap stops no process. The runtime takes the new code at its next start. `node src/install.ts restart` from the live path starts it at once.
 - A swap back to older code is a rollback. Do it only when the new code wrote no new kind of event to the log.
@@ -1751,7 +1755,7 @@ The supervisor keeps the code of its own start:
 A deploy has these steps, in this order:
 
 1. `deploy.ts stage <commit>`. Read its line about the supervisor.
-2. `deploy.ts swap`.
+2. `deploy.ts swap <slot> <commit>`, with the slot and the commit that the stage tells.
 3. With no change of the supervisor, `node src/install.ts restart` from the live path.
 4. With a change of the supervisor, the operator restarts the boot task. This restart also starts the runtime on the new code.
 5. `node src/install.ts status` after the ready wait.
@@ -2057,8 +2061,8 @@ A deploy of new code does not change the live checkout (AL-89). The live path of
 - `ALERTS_LIVE` names the live path in place of the path of the entry file (`liveRoot`). `install.ts` reads it too.
 - `node src/deploy.ts swap` points the live path at the staged slot in one step. It refuses a slot with no mark of its commit, a missing check or a change in its tree.
 - On Linux, the swap renames a new symbolic link over the old link. On Windows, it removes the junction and makes a new one. A start in that short gap fails, and the supervisor starts the runtime again.
-- The old slot stays as it is. A second `swap` goes back to it. Do not go back after the new code wrote a new kind of event to the log.
-- `node src/deploy.ts status` gives the live slot, and the commit and the mark of each slot.
+- The old slot stays as it is. A swap to it goes back to it. Do not go back after the new code wrote a new kind of event to the log.
+- `node src/deploy.ts status` gives the live slot, the commit and the mark of each slot, and the slot of the running runtime.
 
 The supervisor and `install.ts` take the folder of the package from the path of the command line (`entryRoot`), not from the URL of the module. Node resolves the links in the URL of a module, but not in the path of the command line. Thus each start of the runtime goes through the link, and takes the slot that the link names at that time.
 
@@ -2120,6 +2124,53 @@ The core matches the area of a report to a place with one rule for each source. 
 - The areas with no block key keep the union rule. Their codes are the floor of the match, and a shape adds a place in its buffer. A shape that geo refuses adds no place.
 - A position in a shape has the distance 0. The reason `place` of the assessment has `distanceKm` when the distance is in the buffer. A match by a shape only has no codes.
 - `@mark1russell7/geo` gives the distances. An edge of a polygon is a straight line in longitude and latitude, as in GeoJSON (RFC 7946).
+
+### A moving place (AL-40)
+
+A watched place has a fixed position. A moving place gets its position from the phone of its person. Thus the relevance and the rule of the life-safety warnings also cover the place where the person is at that time.
+
+The format:
+
+- A moving place is a place of the configuration with the field `moving`: `{ "device": <id>, "maxAgeMinutes": <minutes> }`. It has no `at`.
+- The field `maxAccuracyKm` of `moving` is optional. The default is `DEFAULT_MAX_ACCURACY_KM`, 2 km.
+- Its `codes` give the states and the country where the person can be. The runtime adds the zone codes near each fix.
+- A moving place has no `sharePosition`. The load refuses the field on a moving place. Thus no source gets the position.
+- A source gets the codes of a moving place with no position. Thus the sources fetch the states where the person can be.
+- `localPlaces` does not give a moving place. A moving place goes into a pass only from a fix.
+- A fix is one reading: `PositionFix` `{ place, at, accuracyKm, observedAt }`. The core gives the type and its pure rules.
+- The function `movingPlace(place, fix, now, codes)` of the core gives the `WatchedPlace` at the fix, or `undefined`.
+- It gives `undefined` with no fix, with a fix older than `maxAgeMinutes`, and with a fix in the future by more than one minute.
+- The buffer of the place at a fix is `bufferKm` plus `accuracyKm`. Thus an imprecise fix widens the match, on the safe side.
+- `nextFix` keeps the last good fix after a fix with a problem, a doubt over `maxAccuracyKm` or an older time.
+- `passPlaces(config, fixes, now, codesAt)` gives the places of a pass: the fixed places, then each moving place at a fresh fix.
+- `staleMovingPlaces` gives the moving places with no fresh fix.
+- A person watches a moving place as a fixed place: by its id in `places`, in the interest graph and in a rule of `mandatory`.
+
+The runtime:
+
+- The intake is the procedure `alerts.position` at the path `/position`. It uses the token of the intake of the home, as `alerts.tell` does.
+- The intake reads the JSON of OwnTracks, an open phone app: `_type` `location`, `lat`, `lon`, `acc` in meters and `tst` in seconds.
+- The tracker id `tid` of OwnTracks is the `device` of the moving place. The intake refuses an unknown device.
+- The instance keeps the last fix of each moving place. At each pass, `passPlaces` gives the places of the view.
+- The store of shapes and the choice of the transit feeds get only the fixed places. Thus a fix changes no fetch.
+- A match of a moving place stays until the incident ends or the person acknowledges it. Thus a fix at the edge of an area does not send again.
+- A new fix gives the zone codes near its position from the outlines of the store. A fix outside each outline keeps the codes of the file.
+- The health route tells the age of the last fix of each moving place by its id. It tells no position.
+- A moving place with no fix in its age limit is not in the places of the pass. The health route then tells `stale`.
+- A stale moving place is a system problem for its person, with the label of the place and no position.
+
+The privacy rules:
+
+- The fix stays on the copy that takes it. It is in memory and in the file `fixes.json` of the home of that copy only.
+- The exchange, the sync of the configuration and the map payload do not carry a fix. A mirror and the cloud copy do not get it.
+- No log, no problem text and no why line holds a position of a fix. A why line names the place by its label.
+- The phone sends the fix over the private network of its person, to a copy on a machine of that person.
+
+The limits:
+
+- Only the copy that takes the fixes watches a moving place. When that copy is down, no copy watches it.
+- A stop of the runtime loses the last fix when the home store does not have it. The next fix of the phone gives it again.
+- The phone app decides the time between two fixes. A long time between fixes makes the place stale.
 
 ### The fire zones of the NWS (AL-33)
 

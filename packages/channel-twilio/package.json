@@ -21,7 +21,7 @@
   "dependencies": {
     "@mark1russell7/alerts": "workspace:*",
     "@mark1russell7/algebra": "^0.9.9",
-    "@mark1russell7/rigor-generators": "^0.2.3",
+    "@mark1russell7/rigor-generators": "^0.2.4",
     "@mark1russell7/text": "^0.0.17",
     "@procedures/notify": "^0.68.0",
     "esbuild": "^0.28.2",

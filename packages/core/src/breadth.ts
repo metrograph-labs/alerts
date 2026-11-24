@@ -17,6 +17,22 @@ import type { SeriesRead } from "./baseline.ts";
 import { DIMENSIONS, type DimensionId, type IndicatorArea, type PlaceId, type Position, type RegionCode, type WatchedPlace } from "./contracts.ts";
 import { shapeDistanceKm } from "./shapes.ts";
 
+/**
+ * The US territories by their postal codes. Some sources code a territory as a country, for example GDELT and the FIPS
+ * 10-4 codes. Thus `watchedStates` gives no territory.
+ */
+export const US_TERRITORIES: ReadonlySet<string> = new Set(["AS", "GU", "MP", "PR", "UM", "VI"]);
+
+/**
+ * This function gives the US states of the watched places, by their `state` codes. A source gives a series for each of
+ * them, for example a count of each state, so its readings meet each place of the state. The states are in the order of
+ * their codes, with no duplicate and no territory.
+ */
+export function watchedStates(places: readonly WatchedPlace[]): readonly string[] {
+  const codes = places.flatMap((place) => place.codes.filter((code) => code.system === "state" && /^[A-Z]{2}$/.test(code.code) && !US_TERRITORIES.has(code.code)).map((code) => code.code));
+  return [...new Set(codes)].sort(compareCodeUnits);
+}
+
 /** The read of one series at one time, with the dimension of its measure and the area of its latest reading. */
 export interface SeriesSignal {
   /** The key of the series, for example from `seriesKey`. One key counts one time in each dimension. */

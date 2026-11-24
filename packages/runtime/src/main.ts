@@ -83,7 +83,9 @@ import { openReadingStore, READINGS_FILE } from "./readings.ts";
 import { GOOD_FILE, privateFiles, readStartTexts, reloadHook, startConfig, type CheckOf } from "./reload.ts";
 import { shapeReport, zoneCodesText } from "./shapes.ts";
 import { openTransitCache, TRANSIT_FILE, transitReport, transitText } from "./transit.ts";
-import { signalWarning } from "./host.ts";
+import { hostFolder, signalWarning } from "./host.ts";
+import { recordRunningCode } from "./running.ts";
+import { checkoutOf, liveRoot, slotsOf } from "./slots.ts";
 import { openStartSnapshot, START_SNAPSHOT_FILE, startReadText } from "./start-snapshot.ts";
 import { supervisor } from "./supervise.ts";
 import { outputOf, timedLogger } from "./output.ts";
@@ -123,6 +125,13 @@ async function runtime(fold: boolean): Promise<ServiceBuilder | undefined> {
   // stops here. A start that stops after this line leaves a stale lock, and the next start removes it.
   const held = await holdHome(home, nodeHostPorts());
   if (held.recovered !== undefined) out.log(`The lock of a runtime that stopped went: ${held.recovered}`);
+  // The record of the code of this start (AL-167). The probes of a deploy do not tell the slot that runs.
+  if (!fold) {
+    const checkout = checkoutOf(liveRoot(process.env, process.argv[1], join(fileURLToPath(new URL(".", import.meta.url)), "..")));
+    await recordRunningCode(slotsOf(checkout), checkout, hostFolder(home), process.pid, new Date()).catch((error: unknown) => {
+      out.error(`The record of the running code was not written: ${errorMessage(error)}`);
+    });
+  }
 
   // The start checks config.json with the keys of secrets.env and the settings of copy.json. Files with problems, or files
   // of a start that stopped before it was ready, give way to the last good set. A problem names the line and the key of a

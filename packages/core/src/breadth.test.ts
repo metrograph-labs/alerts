@@ -1,7 +1,7 @@
 import { random, seedsFrom } from "@mark1russell7/rigor-generators";
 import { describe, expect, it } from "vitest";
 import type { SeriesRead } from "./baseline.ts";
-import { areaMeetsPlace, breadthOf, indicatorBreadth, type SeriesSignal, type ZoneRegions } from "./breadth.ts";
+import { areaMeetsPlace, breadthOf, indicatorBreadth, watchedStates, type SeriesSignal, type ZoneRegions } from "./breadth.ts";
 import type { DimensionId, IndicatorArea, PlaceId, Position, WatchedPlace } from "./contracts.ts";
 
 const SEEDS = seedsFrom(process.env["SEED"], [1, 2, 3, 4, 5, 6, 7, 8]);
@@ -173,5 +173,15 @@ describe("indicatorBreadth is a function of the set of the series", () => {
         expect(high?.signals.length, `seed ${r.seed}`).toBeGreaterThanOrEqual(low?.signals.length ?? 0);
       }
     }
+  });
+});
+
+describe("watchedStates", () => {
+  const statePlace = (id: string, state: string): WatchedPlace => ({ id: id as PlaceId, codes: [{ system: "state", code: state }, { system: "iso3166", code: "US" }], bufferKm: 0 });
+  it("gives each US state of the places once, in order, and no territory or other code", () => {
+    const none: WatchedPlace = { id: "none" as PlaceId, codes: [], bufferKm: 0 };
+    const iso: WatchedPlace = { id: "iso" as PlaceId, codes: [{ system: "iso3166", code: "US-TX" }], bufferKm: 0 };
+    expect(watchedStates([statePlace("b", "TX"), statePlace("a", "CA"), statePlace("c", "TX"), none])).toEqual(["CA", "TX"]);
+    expect(watchedStates([statePlace("pr", "PR"), iso, statePlace("long", "TEX")])).toEqual([]);
   });
 });
