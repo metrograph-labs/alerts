@@ -74,6 +74,12 @@ export const LAB_PASS = "lab-pass";
 /** The event of the line of each write of the snapshot of the start in the lab run. The line kind `write` of `capacity-app.json` names it (CAP-65). */
 export const LAB_SNAPSHOT_WRITE = "lab-snapshot-write";
 
+/**
+ * The event of the line of the readings of the live metrics in the lab run (AL-132). The reader of `@mark1russell7/otel-ts/pull`
+ * gives the readings, with one series for each metric (AL-135).
+ */
+export const LAB_READINGS = "lab-readings";
+
 /** The levels of the configuration of a home (AL-126). They are the level variables of `capacity-app.json`. */
 export interface SeedLevels {
   /**

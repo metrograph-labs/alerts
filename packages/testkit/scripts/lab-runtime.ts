@@ -20,7 +20,7 @@
  * the feeds, the persons and the open incidents of the start, and the routes of its first pass.
  *
  * The runtime gets a meter of the OpenTelemetry SDK (AL-132). After the ready line and after each pass line, the script
- * collects the meter. Then it writes one line `lab-readings` with the readings of the series of `capacity-app.json` at the wall time.
+ * collects the meter with the reader of `@mark1russell7/otel-ts/pull` (AL-135). Then it writes one line `lab-readings` with the readings of the series of `capacity-app.json` at the wall time.
  *
  * The start times each write of the snapshot (the option `timeSnapshot`, AL-115). At the end of each write, the script writes one
  * line `lab-snapshot-write` with the times of the write (CAP-65). The field `at` is the time of the start of the write on the wall clock.
@@ -31,8 +31,8 @@ import { performance } from "node:perf_hooks";
 import { openMeasuredRuntime, type SnapshotWriteTime } from "@mark1russell7/alerts-runtime";
 import { delay, wallClock } from "@mark1russell7/algebra/clock";
 import { MeterProvider } from "@opentelemetry/sdk-metrics";
-import { collectReadings, LAB_READINGS, LabMetricReader } from "../src/lab-readings.ts";
-import { LAB_PASS, LAB_READY, LAB_SNAPSHOT_WRITE, readSeedRecord } from "../src/seed-home.ts";
+import { collectReadings, PullMetricReader } from "@mark1russell7/otel-ts/pull";
+import { LAB_PASS, LAB_READINGS, LAB_READY, LAB_SNAPSHOT_WRITE, readSeedRecord } from "../src/seed-home.ts";
 
 const [home, feeds, channels] = process.argv.slice(2);
 if (home === undefined) throw new Error("Give the home folder of the seed.");
@@ -47,7 +47,7 @@ const report = (text: string): void => {
   process.stderr.write(`${text}\n`);
 };
 const services = feeds === undefined || channels === undefined ? {} : { services: { feeds, channels } };
-const reader = new LabMetricReader();
+const reader = new PullMetricReader();
 const meter = new MeterProvider({ readers: [reader] }).getMeter("alerts-runtime");
 const onSnapshotWrite = (write: SnapshotWriteTime): void => {
   const at = wall.now() - (performance.now() - write.at);
@@ -56,7 +56,8 @@ const onSnapshotWrite = (write: SnapshotWriteTime): void => {
 const measured = await openMeasuredRuntime(home, { wall, startSnapshot: true, timeSnapshot: true, onSnapshotWrite, transitLimit: record.levels.feeds, report, meter, ...services });
 const readings = async (): Promise<void> => {
   const at = wall.now();
-  const collection = await collectReadings(reader, at);
+  // One series for each metric: the sum over its attributes. Thus each series is one metric id of capacity-app.json.
+  const collection = await collectReadings(reader, at, { attributes: "sum" });
   line({ ev: LAB_READINGS, at: new Date(at).toISOString(), readings: collection.readings, ...(collection.errors === 0 ? {} : { errors: collection.errors }) });
 };
 line({
