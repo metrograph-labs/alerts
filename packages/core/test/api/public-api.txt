@@ -1036,7 +1036,6 @@ export interface AlertConfig {
   readonly sendLimit?: SendLimitConfig;
   readonly throttle?: ThrottleConfig;
   readonly tell?: TellConfig;
-  readonly drift?: DriftConfig;
 }
 
 ### build/index.d.ts#Area
@@ -1576,6 +1575,7 @@ export interface CopySettings {
   readonly configFrom?: string;
   readonly leaveChannels?: readonly ChannelId[];
   readonly leaveSources?: readonly SourceId[];
+  readonly drift?: DriftConfig;
 }
 
 ### build/index.d.ts#CopyStage

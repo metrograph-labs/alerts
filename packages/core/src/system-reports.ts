@@ -398,9 +398,9 @@ export interface SystemSnapshot {
    */
   readonly joint?: JointDown | null;
   /**
-   * The drift checks of the copy hosts (AL-139). Each stage that `driftStages` gives is a condition. The value `null` tells
-   * that this copy has no drift check: each open line of a drift ends. With no field, each open line stays open. Only one
-   * copy reports the stage `changed` (`reportsShared`).
+   * The drift checks of the host of this copy (AL-139). Each stage that `driftStages` gives is a condition. The value
+   * `null` tells that this copy has no drift check: each open line of a drift ends. With no field, each open line stays
+   * open. Each stage is a fact of this copy, because each copy has its own checks.
    */
   readonly drift?: readonly DriftCheck[] | null;
   /** The id of this copy. With the watches of the other copies, it chooses the copy that reports the facts of a shared account. */
@@ -706,7 +706,7 @@ export function gapGrade(entry: Coverage, threatened: boolean): { readonly sever
  *   `low` and `empty` of a balance (`reportsShared`). The stage `unread` is a fact of each copy.
  * - Each level that the use of a hard limit reached, and the stage `unread` of its watch. Only one copy reports a level (`reportsShared`).
  * - Each stage of the joint down time of the copies (AL-148). Only one copy reports `over` (`reportsShared`).
- * - Each stage of the drift check of a copy host (AL-139). Only one copy reports `changed` (`reportsShared`).
+ * - Each stage of the drift check of the host of this copy (AL-139). Each stage is a fact of this copy.
  * - The latest step of the wall clock in `CLOCK_STEP_WINDOW` before `at`.
  * - The latest recovery of the log in `LOG_RECOVERY_WINDOW` before `at`.
  * - Each run of a drill that waits for its acknowledgment, and each drill whose last run failed.
@@ -773,13 +773,13 @@ export function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: 
     const over = jointName("over");
     if (joint.read === undefined && shared && lines.open[over] !== undefined) conditions.set(over, jointCondition(joint, "over", at));
   }
-  // A drift of a host is a fact of the shared configuration, and one copy reports it. The stage unread is a fact of this copy.
+  // Each copy has its own drift checks in its settings (copy.json). Thus each stage of a drift is a fact of this copy.
   for (const check of snapshot.drift ?? []) {
-    for (const stage of driftStages(check, at)) if (stage === "unread" || shared) conditions.set(driftName(check.name, stage), driftCondition(check, stage, at));
+    for (const stage of driftStages(check, at)) conditions.set(driftName(check.name, stage), driftCondition(check, stage, at));
     // A check with no read keeps its open line changed. Thus after a restart, a failed first read sends no cancel and no new alert.
     const changed = driftName(check.name, "changed");
     const open = lines.open[changed];
-    if (check.read === undefined && shared && open !== undefined) conditions.set(changed, driftCondition(check, "changed", at, open));
+    if (check.read === undefined && open !== undefined) conditions.set(changed, driftCondition(check, "changed", at, open));
   }
   for (const watch of snapshot.copies ?? []) {
     for (const stage of copyStages(watch, at)) conditions.set(copyName(watch.copy, stage), copyCondition(watch, stage, at));
