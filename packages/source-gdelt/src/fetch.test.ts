@@ -8,7 +8,7 @@ import { HostScheduler } from "polite-crawler/politeness";
 import { describe, expect, it } from "vitest";
 
 import { checkCanary } from "./check.ts";
-import { censusBody, censusRegions, createGdeltFetch, eventFilePath, headBody, LAST_UPDATE_PATH, nearPlaces, readEventFile, readLastUpdate, stampsToRead } from "./fetch.ts";
+import { censusBody, createGdeltFetch, eventFilePath, headBody, LAST_UPDATE_PATH, nearPlaces, readEventFile, readLastUpdate, stampsToRead } from "./fetch.ts";
 import { mapObservation } from "./map.ts";
 import { addedTime, eventOf } from "./row.ts";
 
@@ -179,11 +179,6 @@ describe("readEventFile", () => {
 });
 
 describe("the census of the regions (AL-142)", () => {
-  it("gives each US state of the places once, in order, and no territory or other code", () => {
-    expect(censusRegions([statePlace("b", "TX"), statePlace("a", "CA"), statePlace("c", "TX"), place("no-codes")])).toEqual(["CA", "TX"]);
-    expect(censusRegions([statePlace("pr", "PR"), { ...place("iso"), codes: [{ system: "iso3166", code: "US-TX" }] }])).toEqual([]);
-  });
-
   it("counts the events of a state with the place of the state only, and gives 0 to a region with no event", () => {
     const archive = storedZip([{ name: `${STAMP}.export.CSV`, text: stateText(STAMP) }]);
     const file = readEventFile(archive, STAMP, undefined, () => true, ["CA", "TX"]);

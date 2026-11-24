@@ -46,6 +46,7 @@ import { ANOMALIES_DESCRIPTOR as RADAR_ANOMALIES, OUTAGES_DESCRIPTOR as RADAR_OU
 import { FIREBASE_DESCRIPTOR, GCP_DESCRIPTOR } from "@mark1russell7/alerts-source-gcp";
 import { descriptorOf as statusPageDescriptor, pagePath, STATUS_PAGES, type StatusPage } from "@mark1russell7/alerts-source-statuspage";
 import { ENERGY_CHARTS_MEASURES, SOURCE_ID as ENERGY_CHARTS_SOURCE, WINDOW_MINUTES } from "@mark1russell7/alerts-source-energy-charts";
+import { AIRPORTS_DELAYED_MEASURE, AIRPORTS_HELD_MEASURE, FAA_DESCRIPTOR } from "@mark1russell7/alerts-source-faa";
 import { DATE_FORMAT as EIA_DATE_FORMAT, EIA_930_DESCRIPTOR, HOUR_MS, periodEnd, periodText } from "@mark1russell7/alerts-source-eia-930";
 import { memoryQuotaStore, quotaGate, type Exchange, type Transport } from "polite-crawler/api";
 import { DEFAULT_POLICY } from "polite-crawler/politeness";
@@ -152,6 +153,17 @@ function energyChartsAnswer(url: URL): string {
     license: "CC BY 4.0 (creativecommons.org/licenses/by/4.0), attribution: energy-charts.info",
     deprecated: false,
   });
+}
+
+/**
+ * The answer of the FAA: the airport status at the time `T0`, with a delay at one airport of Texas, `IAH`, and no
+ * program.
+ */
+function faaAnswer(): string {
+  const [day, date, month, year, time] = new Date(T0).toUTCString().replace(",", "").split(" ");
+  const update = `${day ?? ""} ${month ?? ""} ${date ?? ""} ${time ?? ""} ${year ?? ""} GMT`;
+  const delay = "<Delay><ARPT>IAH</ARPT><Reason>WX:Wind</Reason><Arrival_Departure Type=\"Departure\"><Min>15 minutes</Min><Max>29 minutes</Max><Trend>Increasing</Trend></Arrival_Departure></Delay>";
+  return `<AIRPORT_STATUS_INFORMATION><Update_Time>${update}</Update_Time><Delay_type><Name>General Arrival/Departure Delay Info</Name><Arrival_Departure_Delay_List>${delay}</Arrival_Departure_Delay_List></Delay_type></AIRPORT_STATUS_INFORMATION>`;
 }
 
 /**
@@ -307,7 +319,7 @@ const STATUS_HOSTS: ReadonlyMap<string, StatusPage> = new Map(STATUS_PAGES.map((
  * The SWPC gives its recorded list of 2026-11-16. Its caps are far from the place, and its other messages have no area.
  *
  * GFZ gives a quiet value of the index Kp for each interval of the window of the query (`gfzAnswer`). Energy-Charts gives
- * the nominal frequency for each second of the query (`energyChartsAnswer`). CISA gives a catalog with one live entry (`kevAnswer`).
+ * the nominal frequency for each second of the query (`energyChartsAnswer`). The FAA gives one delay in Texas (`faaAnswer`). CISA gives a catalog with one live entry (`kevAnswer`).
  * BoM gives one K index, and no alert and no warning (`bomAnswer`). Cloudflare Radar gives one outage and no anomaly (`radarAnswer`).
  *
  * Each status page gives its summary or its feed (`statusPageAnswer`). Google Cloud gives one live incident (`gcpAnswer`). Firebase
@@ -340,6 +352,7 @@ function network(delay = 0) {
     if (url.hostname === "rssfeed.azure.status.microsoft") return { status: 200, statusText: "OK", headers: { "content-type": "text/xml; charset=utf-8" }, body: azureAnswer() };
     if (url.hostname === "www.cisa.gov") return { status: 200, statusText: "OK", headers: { "content-type": "application/json" }, body: kevAnswer() };
     if (url.hostname === "api.energy-charts.info") return { status: 200, statusText: "OK", headers: { "content-type": "application/json" }, body: energyChartsAnswer(url) };
+    if (url.hostname === "nasstatus.faa.gov") return { status: 200, statusText: "OK", headers: { "content-type": "application/xml" }, body: faaAnswer() };
     if (url.hostname === "api.eia.gov") return { status: 200, statusText: "OK", headers: { "content-type": "application/json" }, body: eiaAnswer(url) };
     if (url.hostname === "www.tsunami.gov") {
       const name = url.pathname.endsWith("/PHEBCAP.xml") ? "PHEBCAP-20261116T1134Z.xml" : "PAAQCAP-20261116T1134Z.xml";
@@ -483,7 +496,7 @@ describe("openInstance", () => {
   it("sends a recorded NWS warning for a watched county to the person on Pushover", async () => {
     const { instance, clock, net, server } = await open();
     const pass = await finish(clock, instance.runtime.pass());
-    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "energy-charts", "cisa-kev"]);
+    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "energy-charts", "faa-nas-status", "cisa-kev"]);
     // A fetch that ran out of time names its cause here, before the checks of the send.
     expect(pass.view?.health.map((health) => [health.source, health.state])).toEqual([
       ["nws-api", "healthy"],
@@ -495,6 +508,7 @@ describe("openInstance", () => {
       ["swpc", "healthy"],
       ["gfz", "healthy"],
       ["energy-charts", "healthy"],
+      ["faa-nas-status", "healthy"],
       ["cisa-kev", "healthy"],
     ]);
     expect(server.calls).toHaveLength(1);
@@ -588,7 +602,7 @@ describe("openInstance", () => {
     const outside = { ...CONFIG.places[0]!, at: [LONGITUDE, 28.46] as const };
     const { instance, clock, server } = open(store(SECRETS), { ...CONFIG, places: [outside] });
     const pass = await finish(clock, instance.runtime.pass());
-    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "energy-charts", "cisa-kev"]);
+    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "energy-charts", "faa-nas-status", "cisa-kev"]);
     expect(server.calls).toHaveLength(0);
     // The USGS and EMSC give earthquake incidents too, the tsunami centers give expired statements, and the SWPC gives
     // space weather. The order of the incidents is the order of their anchors.
@@ -616,6 +630,7 @@ describe("openInstance", () => {
       ["swpc", "healthy"],
       ["gfz", "healthy"],
       ["energy-charts", "healthy"],
+      ["faa-nas-status", "healthy"],
       ["cisa-kev", "healthy"],
     ]);
     expect(server.calls.map((call) => call.fields["title"])).toEqual([expect.stringContaining("Flood Warning")]);
@@ -634,8 +649,30 @@ describe("openInstance", () => {
       ["swpc", "The fetch took longer than 5000 ms."],
       ["gfz", "The fetch took longer than 5000 ms."],
       ["energy-charts", "The fetch took longer than 5000 ms."],
+      ["faa-nas-status", "The fetch took longer than 5000 ms."],
       ["cisa-kev", "The fetch took longer than 5000 ms."],
     ]);
+  });
+
+  it("keeps the counts of the airport status of the FAA for the state of the place and the country (AL-163)", async () => {
+    const folder = mkdtempSync(join(tmpdir(), "alerts-faa-"));
+    const readings = openReadingStore(join(folder, READINGS_FILE));
+    try {
+      const { instance, clock } = open(store(SECRETS), CONFIG, 0, TEST_FETCH_LIMIT, { readings });
+      await finish(clock, instance.runtime.pass());
+      // The place of the tests is in the state TX. The fake status has one delay, at IAH in Texas, and no program.
+      const refs = readings.refs().filter((ref) => ref.source === FAA_DESCRIPTOR.id);
+      const values = refs.map((ref) => [ref.measure, ref.series, readings.series(ref, 0).map((reading) => [reading.value, reading.at])]);
+      expect(values).toEqual([
+        [AIRPORTS_DELAYED_MEASURE, "TX", [[1, T0]]],
+        [AIRPORTS_DELAYED_MEASURE, "US", [[1, T0]]],
+        [AIRPORTS_HELD_MEASURE, "TX", [[0, T0]]],
+        [AIRPORTS_HELD_MEASURE, "US", [[0, T0]]],
+      ]);
+    } finally {
+      readings.close();
+      rmSync(folder, { recursive: true, force: true });
+    }
   });
 
   it("keeps the grid frequency of Energy-Charts in the store of the readings, and gives the breadth of the signals", async () => {
@@ -670,7 +707,7 @@ describe("openInstance", () => {
     const pass = await finish(clock, instance.runtime.pass());
     const pages = STATUS_PAGES.filter((page) => ["infra.saas.outage", "infra.cloud.outage", "infra.internet.dns-cdn"].includes(page.kind));
     expect(pages.length).toBeGreaterThan(20);
-    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "energy-charts", "cisa-kev", "gcp-status", "firebase-status", "aws-health", "azure-status", ...pages.map((page) => page.id)]);
+    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "energy-charts", "faa-nas-status", "cisa-kev", "gcp-status", "firebase-status", "aws-health", "azure-status", ...pages.map((page) => page.id)]);
     for (const source of ["gcp-status", "firebase-status", "aws-health", "azure-status"]) expect(pass.view.health.find((health) => health.source === source)?.state, source).toBe("healthy");
     expect(pass.view.health.filter((health) => health.source.startsWith("statuspage-")).map((health) => [health.source, health.state])).toEqual(pages.map((page) => [page.id, "healthy"]));
     const asked = new Set(net.exchanges.map((exchange) => new URL(exchange.url)).filter((url) => STATUS_HOSTS.has(url.hostname)).map((url) => url.origin + url.pathname));
@@ -726,7 +763,7 @@ describe("openInstance", () => {
     const { instance, clock } = open(store(SECRETS), push);
     const pass = await finish(clock, instance.runtime.pass());
     // The layer delivery adds the API of Pushover, because the person has a contact on Pushover.
-    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "energy-charts", "cisa-kev", "firebase-status", "statuspage-pushover"]);
+    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "energy-charts", "faa-nas-status", "cisa-kev", "firebase-status", "statuspage-pushover"]);
     const clouds = pass.view.incidents.filter((incident) => incident.kind.code === "infra.cloud.outage");
     // The merge gives the subjects of an incident in the order of their canonical text.
     expect(clouds.map((incident) => incident.about.map((subject) => subject.id))).toEqual([["fcm.googleapis.com", "firebase.google.com"]]);
@@ -736,7 +773,7 @@ describe("openInstance", () => {
     const delivery: AlertConfig = { ...CONFIG, people: CONFIG.people.map((entry) => ({ ...entry, defaults: {} })) };
     const { instance, clock, net } = open(store(SECRETS), delivery);
     const pass = await finish(clock, instance.runtime.pass());
-    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "energy-charts", "cisa-kev", "statuspage-pushover"]);
+    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "energy-charts", "faa-nas-status", "cisa-kev", "statuspage-pushover"]);
     expect(net.exchanges.map((exchange) => exchange.url).filter((url) => STATUS_HOSTS.has(new URL(url).hostname))).toEqual(["https://status.pushover.net/rss"]);
     expect(pass.view.health.find((health) => health.source === "statuspage-pushover")?.state).toBe("healthy");
     const outages = pass.view.incidents.filter((incident) => incident.kind.code === "infra.saas.outage");
@@ -761,7 +798,7 @@ describe("openInstance", () => {
     const key = "bom-test-key-5d1f";
     const { instance, clock, net } = open(store({ ...SECRETS, [BOM_SWS_KEY]: key }));
     const pass = await finish(clock, instance.runtime.pass());
-    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "bom-sws", "energy-charts", "cisa-kev"]);
+    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "bom-sws", "energy-charts", "faa-nas-status", "cisa-kev"]);
     expect(instance.runtime.config.sources.map((source) => source.id)).toContain(BOM_SWS_DESCRIPTOR.id);
     expect(pass.view.health.find((health) => health.source === BOM_SWS_DESCRIPTOR.id)?.state).toBe("healthy");
     const bom = net.exchanges.filter((exchange) => new URL(exchange.url).hostname === "sws-data.sws.bom.gov.au");
@@ -784,7 +821,7 @@ describe("openInstance", () => {
     try {
       const { instance, clock, net } = open(store({ ...SECRETS, [EIA_KEY]: key }), CONFIG, 0, TEST_FETCH_LIMIT, { readings });
       const pass = await finish(clock, instance.runtime.pass());
-      expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "energy-charts", EIA_930_DESCRIPTOR.id, "cisa-kev"]);
+      expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "energy-charts", "faa-nas-status", EIA_930_DESCRIPTOR.id, "cisa-kev"]);
       expect(pass.view.health.find((health) => health.source === EIA_930_DESCRIPTOR.id)?.state).toBe("healthy");
       // The first fetch reads the past hours and one day of history.
       const eia = net.exchanges.filter((exchange) => new URL(exchange.url).hostname === "api.eia.gov");
@@ -810,7 +847,7 @@ describe("openInstance", () => {
     const token = "radar-test-token-7c2e";
     const { instance, clock, net } = open(store({ ...SECRETS, [CLOUDFLARE_RADAR_KEY]: token }));
     const pass = await finish(clock, instance.runtime.pass());
-    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "energy-charts", "cisa-kev", RADAR_OUTAGES.id, RADAR_ANOMALIES.id]);
+    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "energy-charts", "faa-nas-status", "cisa-kev", RADAR_OUTAGES.id, RADAR_ANOMALIES.id]);
     for (const descriptor of [RADAR_OUTAGES, RADAR_ANOMALIES]) expect(pass.view.health.find((health) => health.source === descriptor.id)?.state, descriptor.id).toBe("healthy");
     const radar = net.exchanges.filter((exchange) => new URL(exchange.url).hostname === "api.cloudflare.com");
     expect(radar.map((exchange) => new URL(exchange.url).pathname)).toEqual(["/client/v4/radar/annotations/outages", "/client/v4/radar/traffic_anomalies"]);
@@ -838,7 +875,7 @@ describe("openInstance", () => {
     const { instance, clock, net } = await open();
     await finish(clock, instance.runtime.pass());
     const hosts = new Set(net.exchanges.map((exchange) => new URL(exchange.url).hostname));
-    expect(hosts).toEqual(new Set(["api.weather.gov", "apps.fema.gov", "earthquake.usgs.gov", "www.seismicportal.eu", "www.tsunami.gov", "services.swpc.noaa.gov", "kp.gfz.de", "api.energy-charts.info", "www.cisa.gov"]));
+    expect(hosts).toEqual(new Set(["api.weather.gov", "apps.fema.gov", "earthquake.usgs.gov", "www.seismicportal.eu", "www.tsunami.gov", "services.swpc.noaa.gov", "kp.gfz.de", "api.energy-charts.info", "nasstatus.faa.gov", "www.cisa.gov"]));
     for (const exchange of net.exchanges) {
       expect(exchange.headers["user-agent"]).toBe(USER_AGENT_NAME);
       const text = JSON.stringify(exchange);
@@ -862,7 +899,7 @@ describe("openInstance", () => {
     // The refresh starts after the pass, and it starts no request that can end after the next fetch of a source.
     const next = Math.min(...instance.runtime.config.sources.map((source) => nextFetch(instance.runtime.state(), source)));
     expect(clock.now()).toBeLessThanOrEqual(next);
-    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "energy-charts", "cisa-kev"]);
+    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "energy-charts", "faa-nas-status", "cisa-kev"]);
     expect(outcomes).toHaveLength(1);
     expect(outcomes[0]?.ok).toBe(true);
     await instance.shapes.close();
@@ -1107,7 +1144,7 @@ describe("openInstance", () => {
   it("gives the loop the times of the sources and of the channel", async () => {
     const { instance } = await open();
     const intervals = instance.runtime.config.sources.map((source) => source.interval);
-    expect(instance.runtime.config.sources.map((source) => source.id)).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "energy-charts", "cisa-kev"].map((id) => id as SourceId));
+    expect(instance.runtime.config.sources.map((source) => source.id)).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "energy-charts", "faa-nas-status", "cisa-kev"].map((id) => id as SourceId));
     // The limit of a fetch is its interval, up to the shortest interval. Thus the 10 minutes of GFZ do not make the pass long.
     expect(instance.runtime.config.sources.map(INSTANCE_FETCH_LIMIT)).toEqual(intervals.map(() => 60_000));
     expect(instance.loop.times).toEqual({

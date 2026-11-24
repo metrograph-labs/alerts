@@ -87,6 +87,7 @@ import { createGfzSource, GFZ_DESCRIPTOR } from "@mark1russell7/alerts-source-gf
 import { createCatalogFetch, createGtfsSource, type GtfsFeed, type GtfsFetchOptions } from "@mark1russell7/alerts-source-gtfs-alerts";
 import { createEnergyChartsSource, ENERGY_CHARTS_DESCRIPTOR } from "@mark1russell7/alerts-source-energy-charts";
 import { createEia930Source, type Eia930FetchOptions } from "@mark1russell7/alerts-source-eia-930";
+import { createFaaSource, FAA_DESCRIPTOR } from "@mark1russell7/alerts-source-faa";
 import { createKevSource, KEV_DESCRIPTOR } from "@mark1russell7/alerts-source-cisa-kev";
 import { createGdeltSource, GDELT_DESCRIPTOR } from "@mark1russell7/alerts-source-gdelt";
 import { createRadarAnomaliesSource, createRadarOutagesSource, type RadarSourceOptions } from "@mark1russell7/alerts-source-cloudflare-radar";
@@ -473,6 +474,7 @@ export const INSTANCE_SOURCES: readonly SourceDescriptor[] = [
   SWPC_DESCRIPTOR,
   GFZ_DESCRIPTOR,
   ENERGY_CHARTS_DESCRIPTOR,
+  FAA_DESCRIPTOR,
   KEV_DESCRIPTOR,
 ];
 
@@ -1007,6 +1009,7 @@ export function openInstance(options: InstanceOptions): Instance {
     createGfzSource,
     ...(bomKey === "" ? [] : [bomFactory(bomKey)]),
     createEnergyChartsSource,
+    createFaaSource,
     ...(eiaKey === "" ? [] : [eiaFactory(eiaKey)]),
     createKevSource,
     ...(readsGdelt(options.config.config) ? [createGdeltSource] : []),

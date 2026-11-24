@@ -9,7 +9,7 @@
 
 import { createHash } from "node:crypto";
 
-import { matchPlaces, observationId, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch, type WatchedPlace } from "@mark1russell7/alerts";
+import { matchPlaces, observationId, watchedStates, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch, type WatchedPlace } from "@mark1russell7/alerts";
 import { createRequester } from "@mark1russell7/alerts-fetch";
 import { readZipEntries, type ArchiveLimits } from "@mark1russell7/files/archive";
 import { isRecord } from "@mark1russell7/optional/read";
@@ -189,21 +189,6 @@ export function censusBody(stamp: string, census: Readonly<Record<string, number
 }
 
 /**
- * The codes of the system `state` that are not a state in GDELT. GDELT codes each territory as a country of its own, for
- * example Puerto Rico as `RQ`, thus the census of a territory is always 0.
- */
-const TERRITORIES: ReadonlySet<string> = new Set(["AS", "GU", "MP", "PR", "UM", "VI"]);
-
-/**
- * This function gives the regions of the census for the places of a watch. Each region is a US state that contains a
- * watched place, by the `state` codes of the places. The regions are in the order of their codes, with no duplicate.
- */
-export function censusRegions(places: readonly WatchedPlace[]): readonly string[] {
-  const codes = places.flatMap((place) => place.codes.filter((code) => code.system === "state" && /^[A-Z]{2}$/.test(code.code) && !TERRITORIES.has(code.code)).map((code) => code.code));
-  return [...new Set(codes)].sort(compareCodeUnits);
-}
-
-/**
  * This function gives the filter of the events for the places of a watch. An event passes when its area reaches a
  * place with a position, within the buffer of the place. The function `matchPlaces` of the core decides.
  */
@@ -260,7 +245,7 @@ export function createGdeltFetch(options: GdeltFetchOptions): (input: GdeltFetch
 
   return async (input, signal) => {
     const near = nearPlaces(input.watch.places);
-    const regions = censusRegions(input.watch.places);
+    const regions = watchedStates(input.watch.places);
     const listed = await requester.get({ path: LAST_UPDATE_PATH, what: "the list of the newest files" }, signal);
     if (!listed.ok) return { ok: false, failure: listed.failure };
     const newest = readLastUpdate(listed.answer.reply.body);
