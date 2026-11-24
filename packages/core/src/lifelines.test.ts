@@ -57,6 +57,13 @@ describe("the needs of a person (AL-106)", () => {
     expect(NEEDS.find((need) => need.code === "food.energy")?.perPersonDay).toBe(2000);
   });
 
+  it("gives the infant formula as the largest energy need of the infant rows below 6 months", () => {
+    const formula = NEEDS.find((need) => need.code === "food.infant-formula");
+    expect(formula?.unit).toBe("kcal");
+    expect(formula?.perPersonDay).toBe(589);
+    expect(formula?.source.url).toBe("https://nap.nationalacademies.org/26818");
+  });
+
   it("tells the form of a code of a need", () => {
     for (const code of ["hydration.drink", "food.energy", "health.medicine-a"]) expect(isNeedCode(code), code).toBe(true);
     for (const code of ["", "water", "Hydration.drink", "food..energy", "food.", ".food", "food.energy kcal"]) expect(isNeedCode(code), code).toBe(false);
