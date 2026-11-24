@@ -8,7 +8,7 @@ import { entryIndex } from "./entries.ts";
 import { envelope, type RuntimeEvent } from "./events.ts";
 import { importOf, sharedItem } from "./exchange.ts";
 import type { FoldRow } from "@mark1russell7/sqlite";
-import { FOLD_VERSION, openStartSnapshot, readSnapshot, SNAPSHOT_UPGRADES, snapshotKey, snapshotRows, startReadText, wholeSourcesKey, type StartSnapshot } from "./start-snapshot.ts";
+import { FOLD_VERSION, openStartSnapshot, readSnapshot, SNAPSHOT_UPGRADES, snapshotKey, snapshotRows, startReadText, type StartSnapshot } from "./start-snapshot.ts";
 import { EMPTY_RUNTIME, fold, rebuild, type FoldContext, type RuntimeState } from "./state.ts";
 
 const T0 = Date.UTC(2026, 3, 1, 18, 0, 0);
@@ -170,10 +170,6 @@ describe("the key of the snapshot of a start (AL-105)", () => {
     for (const other of [{ ...source, interval: 2 * MINUTE }, { ...source, slowAfter: 20_000 }, { ...source, maxQuiet: HOUR }]) {
       expect(snapshotKey({ sources: [other] }, LOG)).not.toEqual(key);
     }
-    // The key of the old form reads the whole descriptor, thus it is another key.
-    expect(wholeSourcesKey({ sources: [source] }, LOG)).not.toEqual(key);
-    const retitled: SourceDescriptor = { ...source, title: "Another title" };
-    expect(wholeSourcesKey({ sources: [retitled] }, LOG)).not.toEqual(wholeSourcesKey({ sources: [source] }, LOG));
   });
 });
 
