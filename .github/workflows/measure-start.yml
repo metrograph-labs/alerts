@@ -17,6 +17,8 @@ on:
       - packages/testkit/src/cpu-profile.ts
       - packages/testkit/scripts/block-watch-memory.ts
       - packages/runtime/src/block-watch.ts
+      - packages/runtime/src/log.ts
+      - packages/runtime/src/measured-start.ts
       - .github/workflows/measure-start.yml
   # A person starts a run of other cases: gh workflow run measure-start.yml -f cases="4000x1 4000x10"
   workflow_dispatch:
