@@ -409,6 +409,7 @@ describe("commandSounder", () => {
     expect(signals).toHaveLength(1);
     expect(signals[0]?.aborted).toBe(true);
     if (!outcome.ok) throw new Error(outcome.message);
-    expect(await channel.status({ receipt: outcome.receipt })).toMatchObject({ state: "delivered", reason: "The sounds ended: 0 of 60 sounds." });
+    // The cancel stopped the first sound before its end. Thus no sound is sure, and the state is not delivered.
+    expect(await channel.status({ receipt: outcome.receipt })).toMatchObject({ state: "accepted", reason: "A cancel stopped the play before the end of the first sound." });
   });
 });
