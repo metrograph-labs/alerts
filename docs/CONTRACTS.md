@@ -317,6 +317,9 @@ The module `threat.ts` tells how rare the signals of one time are (AL-24). A uni
 - The field `weighted` gives a weight of `-ln(rate)` to each unit. Thus a rare signal counts more than a common signal.
 - Its statistic is the sum of the weights of the units with a signal. Its `p` is the upper bound of `weightedBernoulliTest`, and `low` is the lower bound.
 - When each unit has the same rate, the weighted `p` is the `p` of the count. A group of more than `MAX_WEIGHTED_UNITS` units has no field `weighted`.
+- The field `pairs` tells the links between the domains of one scope. `pairHistories` counts the hours with a read of two units, and the hours with a signal of each and of both.
+- For each pair with two signals, `rate` is the upper bound of the Wilson interval of the joint signals, and `surprise` is `-log10(rate)`.
+- The value `together` is the binomial chance of the joint count or more when the two units are independent. A low value tells a common cause, thus the two signals are not two independent signs.
 - The result is a function of the sets of the units and of the histories. The order and a duplicate do not change it.
 - `indicatorUnits` gives the units of the world with the scope `world`, and the units of a place with the scope `place/<id>`. Thus no place id gives the units of the world.
 - `indicatorSurprise` gives the surprise of the world and of each place from one list of histories.
@@ -2315,7 +2318,7 @@ The file `schemas.ts` of the core has one zod 4 schema for each data type of the
 - The threat level does not read the breadth of the signals yet. No source gives the table of the zones yet.
 - A new store gives no base rate for 30 hours: the history of the units starts empty. A restart keeps the history.
 - The reads of one unit in near hours are not independent. A signal of one day gives 24 reads with a signal. Thus the Wilson interval of a history is too narrow.
-- The calculation of the level (AL-31) does not read the weighted surprise yet.
+- The calculation of the level (AL-31) does not read the weighted surprise or the pairs yet.
 - The atlas has no table of the regions of each zone yet. Until then, each series of a zone is in `unplaced`.
 - A fault of the store of the readings goes only to the output. The health payload does not show it yet.
 - The season of a baseline is in UTC. A change of the clock moves a local rush hour by 1 h in UTC. A season in the local time of the area, with the civil time of `@mark1russell7/algebra`, replaces it.

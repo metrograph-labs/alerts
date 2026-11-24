@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { random } from "@mark1russell7/rigor-generators";
 import type { Breadth, IndicatorBreadth } from "./breadth.ts";
 import type { PlaceId } from "./contracts.ts";
-import { breadthUnits, bucketOf, HISTORY_BUCKET, indicatorSurprise, indicatorUnits, MAX_WEIGHTED_UNITS, MIN_READS, placeScope, signalHistories, signalRate, surpriseOf, type BucketReads, type SignalHistory, type SignalUnit } from "./threat.ts";
+import { breadthUnits, bucketOf, HISTORY_BUCKET, indicatorSurprise, indicatorUnits, MAX_WEIGHTED_UNITS, MIN_READS, pairHistories, pairSurprises, placeScope, scopeOf, signalHistories, signalRate, surpriseOf, type BucketReads, type PairHistory, type SignalHistory, type SignalUnit } from "./threat.ts";
 
 const ids = Array.from({ length: 12 }, (_, index) => `place-1/unit-${String(index).padStart(2, "0")}`);
 const history = (unit: string, reads = 1000, signals = 10): SignalHistory => ({ unit, reads, signals });
@@ -227,5 +227,90 @@ describe("the surprise of the world and of each place (AL-24)", () => {
     expect(found.places).toEqual([{ place, ...surpriseOf(breadthUnits(breadth.places[0]!, "place/place:a"), histories) }]);
     expect(found.world.signals).toBe(1);
     expect(found.places[0]!.surprise).toBeGreaterThan(0);
+    expect(found.world.pairs).toBeUndefined();
+  });
+
+  it("gives the pairs of each scope only with the histories of the pairs", () => {
+    const two: IndicatorBreadth = { ...breadth, world: { ...breadth.world, dimensions: [{ dimension: "road-traffic", read: 2, signals: 1, noRead: 0 }, { dimension: "rail", read: 1, signals: 1, noRead: 0 }] } };
+    const pairs: PairHistory[] = [{ a: "world/rail", b: "world/road-traffic", reads: 100, signalsA: 10, signalsB: 10, joint: 8 }];
+    const found = indicatorSurprise(two, [], MIN_READS, pairs);
+    expect(found.world.pairs).toEqual(pairSurprises(breadthUnits(two.world, "world"), pairs));
+    expect(found.world.pairs).toHaveLength(1);
+    expect(found.places[0]!.pairs).toEqual([]);
+  });
+});
+
+describe("the pairs of the domains (AL-24)", () => {
+  const T0 = Date.UTC(2026, 3, 1, 18, 0, 0);
+  const at = (hour: number): number => T0 + hour * HISTORY_BUCKET;
+  const unit = (id: string, signal: boolean): SignalUnit => ({ unit: id, signal });
+
+  it("counts the joint reads of each pair of one scope, one time for each bucket, in any order", () => {
+    const buckets: BucketReads[] = [
+      { bucket: at(0), units: [unit("world/rail", true), unit("world/power", true), unit("place/p/rail", true)] },
+      { bucket: at(1), units: [unit("world/rail", false), unit("world/power", true)] },
+      { bucket: at(2), units: [unit("world/rail", true)] },
+      // A second read of a bucket counts one time, and a signal wins.
+      { bucket: at(1), units: [unit("world/rail", true)] },
+    ];
+    const found = pairHistories(buckets);
+    expect(found).toEqual([{ a: "world/power", b: "world/rail", reads: 2, signalsA: 2, signalsB: 2, joint: 2 }]);
+    expect(pairHistories([...buckets].reverse())).toEqual(found);
+    // A pair of two scopes is not a pair: the place has its own units.
+    expect(found.some((pair) => scopeOf(pair.a) !== scopeOf(pair.b))).toBe(false);
+    expect(scopeOf("place/p/rail")).toBe("place/p");
+    expect(scopeOf("rail")).toBe("");
+  });
+
+  it("gives a low together for two units that move together, and a high together for two independent units", () => {
+    const draw = random("pairs-of-domains");
+    const buckets: BucketReads[] = Array.from({ length: 2000 }, (_, hour) => {
+      const cause = draw.chance(0.05);
+      return {
+        bucket: at(hour),
+        units: [unit("world/power", cause), unit("world/rail", cause), unit("world/flights", draw.chance(0.05)), unit("world/road-traffic", draw.chance(0.05))],
+      };
+    });
+    const pairs = pairHistories(buckets);
+    const now = [unit("world/power", true), unit("world/rail", true), unit("world/flights", true), unit("world/road-traffic", true)];
+    const found = pairSurprises(now, pairs);
+    expect(found).toHaveLength(6);
+    const linked = found.find((pair) => pair.a === "world/power" && pair.b === "world/rail")!;
+    const free = found.find((pair) => pair.a === "world/flights" && pair.b === "world/road-traffic")!;
+    expect(linked.together).toBeLessThan(1e-20);
+    expect(free.together).toBeGreaterThan(0.01);
+    // The joint signal of a linked pair is common, thus its surprise is low. The free pair is rare together.
+    expect(free.surprise).toBeGreaterThan(linked.surprise);
+    expect(free.rate).toBeLessThan(linked.rate);
+    expect(found[0]!.rate).toBeLessThanOrEqual(found[5]!.rate);
+  });
+
+  it("gives the upper bound of the Wilson interval and the binomial chance of the joint count", () => {
+    const pair: PairHistory = { a: "world/power", b: "world/rail", reads: 500, signalsA: 50, signalsB: 40, joint: 12 };
+    const [found] = pairSurprises([unit("world/power", true), unit("world/rail", true)], [pair]);
+    expect(found!.rate).toBeCloseTo(signalRate({ unit: "x", reads: 500, signals: 12 })!.rate, 12);
+    expect(found!.surprise).toBeCloseTo(-Math.log10(found!.rate), 12);
+    const expected = signalRate({ unit: "x", reads: 500, signals: 50 })!.rate * signalRate({ unit: "x", reads: 500, signals: 40 })!.rate;
+    expect(found!.together).toBeCloseTo(binomialTest(12, 500, expected, "greater"), 12);
+  });
+
+  it("gives no pair without two signals, or with fewer than MIN_READS joint reads", () => {
+    const pair: PairHistory = { a: "world/power", b: "world/rail", reads: MIN_READS, signalsA: 3, signalsB: 3, joint: 1 };
+    expect(pairSurprises([unit("world/power", true), unit("world/rail", false)], [pair])).toEqual([]);
+    expect(pairSurprises([unit("world/power", true)], [pair])).toEqual([]);
+    expect(pairSurprises([unit("world/power", true), unit("world/rail", true)], [{ ...pair, reads: MIN_READS - 1 }])).toEqual([]);
+    expect(pairSurprises([unit("world/power", true), unit("world/rail", true)], [pair])).toHaveLength(1);
+    // Of two histories of one pair, the history with more reads counts.
+    const two = pairSurprises([unit("world/power", true), unit("world/rail", true)], [{ ...pair, reads: 40 }, pair]);
+    expect(two[0]!.reads).toBe(40);
+  });
+
+  it("refuses a pair out of order, of two scopes, or with counts that do not fit", () => {
+    const now = [unit("world/power", true), unit("world/rail", true)];
+    const pair: PairHistory = { a: "world/power", b: "world/rail", reads: 40, signalsA: 3, signalsB: 3, joint: 1 };
+    expect(() => pairSurprises(now, [{ ...pair, a: "world/rail", b: "world/power" }])).toThrow(RangeError);
+    expect(() => pairSurprises(now, [{ ...pair, b: "place/p/rail" }])).toThrow(RangeError);
+    expect(() => pairSurprises(now, [{ ...pair, joint: 4 }])).toThrow(RangeError);
+    expect(() => pairSurprises(now, [{ ...pair, reads: 2.5 }])).toThrow(RangeError);
   });
 });
