@@ -88,14 +88,16 @@ async function startWrites(alerts: number): Promise<StartWrites> {
       return run.call(this, ...values);
     }),
   ];
+  let fetched = 0;
   try {
     const measured = await openMeasuredRuntime(home, { wall: wallClock({ start: at }), startSnapshot: true, transitLimit: 0, services: { feeds: servers[0]!.url, channels: servers[1]!.url } });
+    fetched = measured.first.fetched.length;
     await measured.close();
   } finally {
     for (const spy of spies) spy.mockRestore();
     for (const server of servers) await server.close();
   }
-  return { live: feeds.counts().live, ...counts };
+  return { live: feeds.counts().live, fetched, ...counts };
 }
 
 describe("the writes of a start to the log (AL-151)", () => {
