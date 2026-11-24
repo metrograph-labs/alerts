@@ -1,14 +1,14 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
-import type { FetchOutcome, PlaceId, Watch, WatchedPlace } from "@mark1russell7/alerts";
+import type { Cursor, FetchOutcome, PlaceId, Watch, WatchedPlace } from "@mark1russell7/alerts";
 import { crc32 } from "@mark1russell7/files/archive";
 import type { Exchange, Reply, Transport } from "polite-crawler/api";
 import { HostScheduler } from "polite-crawler/politeness";
 import { describe, expect, it } from "vitest";
 
 import { checkCanary } from "./check.ts";
-import { censusBody, createGdeltFetch, eventFilePath, headBody, LAST_UPDATE_PATH, nearPlaces, readEventFile, readLastUpdate, stampsToRead } from "./fetch.ts";
+import { censusBody, createGdeltFetch, cursorOf, eventFilePath, headBody, LAST_UPDATE_PATH, nearPlaces, readCursor, readEventFile, readLastUpdate, stampsToRead } from "./fetch.ts";
 import { mapObservation } from "./map.ts";
 import { addedTime, eventOf } from "./row.ts";
 
@@ -84,7 +84,11 @@ const text = (body: string, status = 200): Reply => ({ status, statusText: statu
 const bytes = (data: Uint8Array): Reply => ({ status: 200, statusText: "OK", headers: { "content-type": "application/zip" }, body: "", bytes: data });
 const missing: Reply = { status: 404, statusText: "Not Found", headers: {}, body: "" };
 
-/** This function makes a fetch whose transport answers from a map of paths. Each test changes the map between fetches. */
+/**
+ * This function makes a fetch whose transport answers from a map of paths. Each test changes the map between fetches.
+ * As the runtime, the harness keeps the cursor of each fetch that succeeds and gives it to the next fetch. `start` makes
+ * the fetch function again with the kept cursor, as a start of the runtime does.
+ */
 const fetchWith = (routes: Map<string, Reply>, watch: Watch = WATCH) => {
   const sent: Exchange[] = [];
   const transport: Transport = async (exchange) => {
@@ -94,8 +98,15 @@ const fetchWith = (routes: Map<string, Reply>, watch: Watch = WATCH) => {
   };
   let time = START;
   const clock = { now: () => time, sleep: async (ms: number) => void (time += ms) };
-  const fetch = createGdeltFetch({ pace: { scheduler: new HostScheduler(clock, 1), now: clock.now }, transport, userAgent: "alerts-tests", baseUrl: BASE, minIntervalMs: 0, timeoutMs: 1000 });
-  return { fetch: () => fetch({ watch }), sent, move: (ms: number) => void (time += ms) };
+  const make = () => createGdeltFetch({ pace: { scheduler: new HostScheduler(clock, 1), now: clock.now }, transport, userAgent: "alerts-tests", baseUrl: BASE, minIntervalMs: 0, timeoutMs: 1000 });
+  let fetch = make();
+  let cursor: Cursor | undefined;
+  const fetchOnce = async (): Promise<FetchOutcome> => {
+    const outcome = await fetch({ watch, ...(cursor === undefined ? {} : { cursor }) });
+    if (outcome.ok && outcome.cursor !== undefined) cursor = outcome.cursor;
+    return outcome;
+  };
+  return { fetch: fetchOnce, sent, move: (ms: number) => void (time += ms), start: () => void (fetch = make()), cursor: () => cursor };
 };
 
 /** This function puts the event file of `stamp` in the routes, and names it in `lastupdate.txt`. */
@@ -296,6 +307,49 @@ describe("createGdeltFetch", () => {
     expect(pathsOf(sent).slice(-2)).toEqual([LAST_UPDATE_PATH, eventFilePath(stampAfter(30))]);
     expect(late.ok && late.complete).toBe(true);
     expect(bodiesOf(late).at(-1)?.["file"]).toBe(stampAfter(30));
+  });
+
+  it("gives the same last head after a start as a copy that runs, while GDELT does not have its newest files (AL-166)", async () => {
+    const routes = new Map<string, Reply>();
+    publish(routes, STAMP);
+    const { fetch, move, start, cursor } = fetchWith(routes);
+    const first = await fetch();
+    // GDELT names four new files one after the other, and has none of them.
+    for (const minutes of [15, 30, 45, 60]) {
+      publish(routes, stampAfter(minutes));
+      routes.delete(eventFilePath(stampAfter(minutes)));
+    }
+    move(60 * MIN);
+    const running = await fetch();
+    start();
+    const started = await fetch();
+    const heads = (outcome: FetchOutcome): readonly unknown[] => bodiesOf(outcome).map((body) => body["file"]);
+    expect(heads(running)).toEqual([STAMP]);
+    expect(started).toEqual(running);
+    expect(started.ok && !started.complete && started.observations.at(-1)?.id).toBe(first.ok ? first.observations.at(-1)?.id : "x");
+    expect(readCursor(cursor()).head?.stamp).toBe(STAMP);
+    // When GDELT has the newest file again, the copy after the start reads it.
+    publish(routes, stampAfter(60));
+    move(MIN);
+    const back = await fetch();
+    expect(back.ok && back.complete).toBe(true);
+    expect(heads(back).at(-1)).toBe(stampAfter(60));
+  });
+
+  it("gives a server failure, not a refusal, when the first newest file is missing (AL-166)", async () => {
+    const routes = new Map<string, Reply>();
+    publish(routes, STAMP);
+    routes.delete(eventFilePath(STAMP));
+    const outcome = await fetchWith(routes).fetch();
+    expect(outcome.ok ? undefined : outcome.failure).toEqual({ kind: "server", message: `lastupdate.txt names the file, but GDELT does not have it (404): ${BASE}${eventFilePath(STAMP)}` });
+  });
+
+  it("reads the state of its own cursor, and leaves out each value that is not valid", () => {
+    const head = { stamp: STAMP, body: headBody(STAMP, { lines: 5, parsed: 5, reported: 3, bodies: [] }) };
+    expect(readCursor(cursorOf(stampAfter(15), head))).toEqual({ stamp: stampAfter(15), head });
+    expect(readCursor(undefined)).toEqual({});
+    expect(readCursor({ stamp: "soon", head: "{}" })).toEqual({});
+    expect(readCursor({ head: head.body })).toEqual({ head });
   });
 
   it("fails when the first newest file is missing, has a wrong digest, or lastupdate.txt names no file", async () => {

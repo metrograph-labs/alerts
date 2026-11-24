@@ -9,7 +9,7 @@
 
 import { createHash } from "node:crypto";
 
-import { matchPlaces, observationId, watchedStates, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch, type WatchedPlace } from "@mark1russell7/alerts";
+import { matchPlaces, observationId, watchedStates, type Cursor, type FetchFailure, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch, type WatchedPlace } from "@mark1russell7/alerts";
 import { createRequester } from "@mark1russell7/alerts-fetch";
 import { readZipEntries, type ArchiveLimits } from "@mark1russell7/files/archive";
 import { isRecord } from "@mark1russell7/optional/read";
@@ -62,6 +62,8 @@ export interface GdeltFetchOptions {
 /** The input of one fetch. */
 export interface GdeltFetchInput {
   readonly watch: Watch;
+  /** The cursor of the last fetch that the runtime kept (`cursorOf`). With no cursor, the fetch reads only the newest file. */
+  readonly cursor?: Cursor;
 }
 
 /** The newest event file, as `lastupdate.txt` names it. */
@@ -208,6 +210,40 @@ export function headTime(body: string): Instant | undefined {
   }
 }
 
+/** The state of the fetch between two fetches. It has the last file that the fetch read or passed, and the head of the newest file. */
+export interface FetchState {
+  readonly stamp?: string;
+  readonly head?: { readonly stamp: string; readonly body: string };
+}
+
+/** The pattern of a time `YYYYMMDDHHMMSS` of a file. */
+const STAMP_PATTERN = /^[0-9]{14}$/;
+
+/** This function gives the cursor of a state. The cursor has the time of the last file and the body of the head. */
+export function cursorOf(stamp: string, head: { readonly stamp: string; readonly body: string }): Cursor {
+  return { stamp, head: head.body };
+}
+
+/**
+ * This function reads the state of a cursor. A value that is not valid is left out, so a cursor of an earlier version
+ * gives the state of a first fetch.
+ */
+export function readCursor(cursor: Cursor | undefined): FetchState {
+  const stamp = cursor?.["stamp"];
+  const body = cursor?.["head"];
+  const time = body === undefined ? undefined : headTime(body);
+  const head = body === undefined || time === undefined ? undefined : { stamp: stampOf(time), body };
+  return { ...(stamp !== undefined && STAMP_PATTERN.test(stamp) && addedTime(stamp) !== undefined ? { stamp } : {}), ...(head === undefined ? {} : { head }) };
+}
+
+/**
+ * This function gives the failure of a newest file that `lastupdate.txt` names and that GDELT does not have. The kind is
+ * `server`: the fault is at GDELT. The kind `refused` tells of a request that the server refused.
+ */
+export function missingUpstream(url: string): FetchFailure {
+  return { kind: "server", message: `lastupdate.txt names the file, but GDELT does not have it (404): ${url}` };
+}
+
 /**
  * This function makes the fetch function of the GDELT source. The fetch does not throw for a failure of the source:
  * it gives `{ ok: false }`. It throws only when the signal of the caller aborts.
@@ -217,6 +253,10 @@ export function headTime(body: string): Instant | undefined {
  *
  * GDELT sometimes names a file in `lastupdate.txt` some minutes before the file is there. A missing newest file stops
  * the fetch, and the next fetch reads it again. A missing older file is lost, and the outcome is not complete.
+ *
+ * The fetch keeps its state in the cursor (`readCursor`), not in the memory of the process. Thus a copy after a start
+ * gives the same outcome as a copy that runs. During a gap of GDELT, both give the last head (AL-166). The runtime keeps
+ * no cursor when it does not write the observations, and then the next fetch reads the same files again.
  */
 export function createGdeltFetch(options: GdeltFetchOptions): (input: GdeltFetchInput, signal?: FetchSignal) => Promise<FetchOutcome> {
   const requester = createRequester({
@@ -229,10 +269,6 @@ export function createGdeltFetch(options: GdeltFetchOptions): (input: GdeltFetch
     ...(options.minIntervalMs === undefined ? {} : { minIntervalMs: options.minIntervalMs }),
   });
   const now = options.pace.now;
-  /** The time of the last file that the fetch read or passed. */
-  let lastStamp: string | undefined;
-  /** The head of the newest file that the fetch read, with its time. */
-  let lastHead: { readonly stamp: string; readonly body: string } | undefined;
 
   const observe = (body: string, url: string, status: number, latency: number): Observation => ({
     id: observationId({ source: SOURCE_ID, contentType: BODY_TYPE, url, body }),
@@ -244,6 +280,9 @@ export function createGdeltFetch(options: GdeltFetchOptions): (input: GdeltFetch
   });
 
   return async (input, signal) => {
+    const kept = readCursor(input.cursor);
+    let lastStamp = kept.stamp;
+    let lastHead = kept.head;
     const near = nearPlaces(input.watch.places);
     const regions = watchedStates(input.watch.places);
     const listed = await requester.get({ path: LAST_UPDATE_PATH, what: "the list of the newest files" }, signal);
@@ -265,7 +304,7 @@ export function createGdeltFetch(options: GdeltFetchOptions): (input: GdeltFetch
           lastStamp = stamp;
           continue;
         }
-        if (read === 0 && lastHead === undefined) return { ok: false, failure: requested.failure };
+        if (read === 0 && lastHead === undefined) return { ok: false, failure: requested.answer?.reply.status === 404 ? missingUpstream(url) : requested.failure };
         break;
       }
       const file = readEventFile(requested.answer.reply.bytes ?? new Uint8Array(), stamp, newest, near, regions);
@@ -283,6 +322,6 @@ export function createGdeltFetch(options: GdeltFetchOptions): (input: GdeltFetch
     if (lastHead === undefined) return { ok: false, failure: { kind: "network", message: `no event file was read: ${listed.url}` } };
     observations.push(observe(lastHead.body, `${requester.baseUrl}${eventFilePath(lastHead.stamp)}`, 200, listed.latency));
     const asOf = addedTime(lastHead.stamp);
-    return { ok: true, observations, complete, ...(asOf === undefined ? {} : { asOf }) };
+    return { ok: true, observations, complete, cursor: cursorOf(lastStamp ?? lastHead.stamp, lastHead), ...(asOf === undefined ? {} : { asOf }) };
   };
 }

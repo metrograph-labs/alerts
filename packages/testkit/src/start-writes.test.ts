@@ -21,14 +21,20 @@ const LOG_FILE = "runtime.sqlite";
 const MINUTE = 60_000;
 const SPAN = 10 * MINUTE;
 const PERSONS = 2;
-/** The highest count of write transactions on the log in one start. The count run gave 25. */
-const TRANSACTIONS_LIMIT = 25;
+/**
+ * The highest count of write transactions on the log in one start, apart from one transaction for each fetched source. Each
+ * fetch writes its events in one transaction, so the count grows with the sources, not with the live alerts. The count runs
+ * gave 15 with live alerts and 13 with no alert, with 10 and with 11 fetched sources (AL-163).
+ */
+const PASS_TRANSACTIONS_LIMIT = 15;
 /** The highest count of statements, apart from the statements of a transaction, that a start runs with `exec` on the log. */
 const EXECS_LIMIT = 10;
 
 /** The counts of the calls on the connection of the log in one start. */
 interface StartWrites {
   readonly live: number;
+  /** The count of the sources that the first pass fetched. */
+  readonly fetched: number;
   /** The count of `BEGIN` statements: the write transactions. */
   readonly transactions: number;
   /** The count of the other statements of `exec`, apart from `COMMIT`, `ROLLBACK` and the savepoints. */
@@ -113,10 +119,12 @@ describe("the writes of a start to the log (AL-151)", () => {
     // Each live alert writes events: its observation, and an escalation and a hold for each person.
     expect(many.inserts - few.inserts).toBeGreaterThan(many.live - few.live);
     for (const writes of [none, few, many]) {
-      expect(writes.transactions).toBeLessThanOrEqual(TRANSACTIONS_LIMIT);
+      expect(writes.fetched).toBeGreaterThan(0);
+      expect(writes.transactions - writes.fetched).toBeLessThanOrEqual(PASS_TRANSACTIONS_LIMIT);
       expect(writes.execs).toBeLessThanOrEqual(EXECS_LIMIT);
     }
     // Four times the live alerts add no transaction, no statement of `exec` and no prepared statement.
+    expect(many.fetched).toBe(few.fetched);
     expect(many.transactions).toBe(few.transactions);
     expect(many.execs).toBe(few.execs);
     expect(many.prepares).toBe(few.prepares);
