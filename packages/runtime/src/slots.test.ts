@@ -3,10 +3,15 @@ import { mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { FOLD_VERSION } from "./start-snapshot.ts";
 import {
   adoptLive,
   checkoutOf,
   entryRoot,
+  FOLD_FILE,
+  foldChange,
+  foldStep,
+  foldVersionOf,
   foreignLinks,
   insideFolder,
   installArgs,
@@ -301,5 +306,35 @@ describe("the load step of a stage (AL-89)", () => {
 
   it("throws with the name and the exit code of a failed step", async () => {
     await expect(runStep("load", process.execPath, ["-e", "process.exit(3)"], tmpdir())).rejects.toThrow('The step "load" failed with the code 3.');
+  });
+});
+
+describe("the fold version of a slot (AL-153)", () => {
+  it("reads FOLD_VERSION from the fold file of this checkout", async () => {
+    const text = await readFile(new URL(`../../../${FOLD_FILE}`, import.meta.url), "utf8");
+    expect(foldVersionOf(text)).toBe(FOLD_VERSION);
+  });
+
+  it("gives no version for no text or a text with no version line", () => {
+    expect(foldVersionOf(undefined)).toBeUndefined();
+    expect(foldVersionOf("export const OTHER = 3;\n")).toBeUndefined();
+    expect(foldVersionOf("// export const FOLD_VERSION = 4;\n")).toBeUndefined();
+  });
+
+  it("tells a change of the version with the steps, and nothing for the same version", () => {
+    expect(foldChange(2, 2)).toBeUndefined();
+    expect(foldChange(undefined, undefined)).toBeUndefined();
+    const line = foldChange(1, 2) ?? "";
+    expect(line).toContain("from 1 to 2");
+    expect(line).toContain("deploy.ts fold");
+    expect(foldChange(undefined, 2)).toContain("from none to 2");
+  });
+
+  it("folds with the live slot on the live home, with the profile of the supervised runtime", () => {
+    const runtime = join("slot-b", "packages", "runtime");
+    const home = join(tmpdir(), "alerts-home");
+    const step = foldStep(runtime, home, "/usr/bin/node");
+    expect(step.args).toEqual([join(runtime, "src", "main.ts"), "fold"]);
+    expect(step.env).toEqual({ ALERTS_HOME: home, SERVICE_PROFILE: "daemon" });
   });
 });

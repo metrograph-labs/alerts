@@ -398,6 +398,37 @@ export function loadStep(runtime: string, scratch: string, node: string): StageS
   return { program: node, args: [join(runtime, "src", "main.ts"), "load"], env: { ALERTS_HOME: scratch } };
 }
 
+/** The file of a slot that holds `FOLD_VERSION` (AL-153). */
+export const FOLD_FILE = "packages/runtime/src/start-snapshot.ts";
+
+/** This function reads `FOLD_VERSION` from the text of `FOLD_FILE`. It gives undefined for no text or a text with no version. */
+export function foldVersionOf(text: string | undefined): number | undefined {
+  const match = text === undefined ? null : /^export const FOLD_VERSION = (\d+);$/m.exec(text);
+  return match?.[1] === undefined ? undefined : Number(match[1]);
+}
+
+/**
+ * This function gives the line about the fold version from the live slot to the other slot. It gives undefined for the same
+ * version. A new version makes the next start ignore the snapshot of the old fold. Then the fold of the whole log can take
+ * longer than the ready window (AL-153).
+ */
+export function foldChange(live: number | undefined, next: number | undefined): string | undefined {
+  if (live === next) return undefined;
+  return [
+    `The fold version changes from ${live === undefined ? "none" : String(live)} to ${next === undefined ? "none" : String(next)}.`,
+    "If the new code does not upgrade the old snapshot, the next start folds the whole log.",
+    "Stop the runtime, swap, start `deploy.ts fold`, and then start the runtime.",
+  ].join(" ");
+}
+
+/**
+ * This function gives the fold step: `main.ts fold` of the live slot on the live home. The profile is the profile of the
+ * supervised runtime, thus the fold has the configuration and the key of the next start.
+ */
+export function foldStep(runtime: string, home: string, node: string): StageStep {
+  return { program: node, args: [join(runtime, "src", "main.ts"), "fold"], env: { ALERTS_HOME: home, SERVICE_PROFILE: "daemon" } };
+}
+
 /**
  * This function runs one program of a stage to its end. The variables of `env` go over the environment of this process.
  * A failure throws with the end of the output.

@@ -28,6 +28,7 @@ BalanceRead: build/index.d.ts#BalanceRead
 BalanceStage: build/index.d.ts#BalanceStage
 BaselinePolicy: build/index.d.ts#BaselinePolicy
 Breadth: build/index.d.ts#Breadth
+BucketReads: build/index.d.ts#BucketReads
 CAP_MESSAGE_SYSTEM: build/index.d.ts#CAP_MESSAGE_SYSTEM
 CATEGORIES: build/index.d.ts#CATEGORIES
 CATEGORY_LABELS: build/index.d.ts#CATEGORY_LABELS
@@ -195,6 +196,7 @@ HEALTH_FORMAT: build/index.d.ts#HEALTH_FORMAT
 HEALTH_KIND: build/index.d.ts#HEALTH_KIND
 HEALTH_MACHINE: build/index.d.ts#HEALTH_MACHINE
 HELD_SHOWN: build/index.d.ts#HELD_SHOWN
+HISTORY_BUCKET: build/index.d.ts#HISTORY_BUCKET
 HISTORY_FORMAT: build/index.d.ts#HISTORY_FORMAT
 HealthOptions: build/index.d.ts#HealthOptions
 HealthPayload: build/index.d.ts#HealthPayload
@@ -223,6 +225,7 @@ IncidentOptions: build/index.d.ts#IncidentOptions
 IndicatorArea: build/index.d.ts#IndicatorArea
 IndicatorAreaKind: build/index.d.ts#IndicatorAreaKind
 IndicatorBreadth: build/index.d.ts#IndicatorBreadth
+IndicatorSurprise: build/index.d.ts#IndicatorSurprise
 Instant: build/index.d.ts#Instant
 InterestDefaultsConfig: build/index.d.ts#InterestDefaultsConfig
 InterestEdge: build/index.d.ts#InterestEdge
@@ -365,6 +368,7 @@ PlaceBreadth: build/index.d.ts#PlaceBreadth
 PlaceConfig: build/index.d.ts#PlaceConfig
 PlaceId: build/index.d.ts#PlaceId
 PlaceMatch: build/index.d.ts#PlaceMatch
+PlaceSurprise: build/index.d.ts#PlaceSurprise
 Position: build/index.d.ts#Position
 ProbeOutcome: build/index.d.ts#ProbeOutcome
 ProblemEffect: build/index.d.ts#ProblemEffect
@@ -513,6 +517,7 @@ WHY_FULL_COVERAGE: build/index.d.ts#WHY_FULL_COVERAGE
 WHY_LIMITS: build/index.d.ts#WHY_LIMITS
 WORK_DEFAULTS: build/index.d.ts#WORK_DEFAULTS
 WORK_DEFAULTS_DATE: build/index.d.ts#WORK_DEFAULTS_DATE
+WORLD_SCOPE: build/index.d.ts#WORLD_SCOPE
 Watch: build/index.d.ts#Watch
 WatchedPlace: build/index.d.ts#WatchedPlace
 WhyLabels: build/index.d.ts#WhyLabels
@@ -560,6 +565,7 @@ blockClass: build/index.d.ts#blockClass
 blockSizeText: build/index.d.ts#blockSizeText
 breadthOf: build/index.d.ts#breadthOf
 breadthUnits: build/index.d.ts#breadthUnits
+bucketOf: build/index.d.ts#bucketOf
 canReach: build/index.d.ts#canReach
 canaryResultSchema: build/index.d.ts#canaryResultSchema
 canonicalKind: build/index.d.ts#canonicalKind
@@ -696,6 +702,8 @@ incidents: build/index.d.ts#incidents
 indicatorAreaKindSchema: build/index.d.ts#indicatorAreaKindSchema
 indicatorAreaSchema: build/index.d.ts#indicatorAreaSchema
 indicatorBreadth: build/index.d.ts#indicatorBreadth
+indicatorSurprise: build/index.d.ts#indicatorSurprise
+indicatorUnits: build/index.d.ts#indicatorUnits
 instantSchema: build/index.d.ts#instantSchema
 interestDefaultsConfigSchema: build/index.d.ts#interestDefaultsConfigSchema
 interestEdgeSchema: build/index.d.ts#interestEdgeSchema
@@ -804,6 +812,7 @@ placeIdSchema: build/index.d.ts#placeIdSchema
 placeLabels: build/index.d.ts#placeLabels
 placeNode: build/index.d.ts#placeNode
 placeOfNode: build/index.d.ts#placeOfNode
+placeScope: build/index.d.ts#placeScope
 placeWhy: build/index.d.ts#placeWhy
 placesLayer: build/index.d.ts#placesLayer
 plainLabel: build/index.d.ts#plainLabel
@@ -889,6 +898,7 @@ shiftEscalationStart: build/index.d.ts#shiftEscalationStart
 shiftHealth: build/index.d.ts#shiftHealth
 shiftMerge: build/index.d.ts#shiftMerge
 shiftReport: build/index.d.ts#shiftReport
+signalHistories: build/index.d.ts#signalHistories
 signalRate: build/index.d.ts#signalRate
 significanceSchema: build/index.d.ts#significanceSchema
 simplifyBasemap: build/index.d.ts#simplifyBasemap
@@ -1161,6 +1171,12 @@ export interface Breadth {
   readonly signals: readonly DimensionId[];
   readonly read: readonly DimensionId[];
   readonly dimensions: readonly DimensionCount[];
+}
+
+### build/index.d.ts#BucketReads
+export interface BucketReads {
+  readonly bucket: Instant;
+  readonly units: readonly SignalUnit[];
 }
 
 ### build/index.d.ts#CAP_MESSAGE_SYSTEM
@@ -2280,6 +2296,9 @@ export declare const HEALTH_MACHINE: Machine;
 ### build/index.d.ts#HELD_SHOWN
 export declare const HELD_SHOWN = 3;
 
+### build/index.d.ts#HISTORY_BUCKET
+export declare const HISTORY_BUCKET: Duration;
+
 ### build/index.d.ts#HISTORY_FORMAT
 export declare const HISTORY_FORMAT = "alerts-history/1";
 
@@ -2515,6 +2534,12 @@ export interface IndicatorBreadth {
   readonly world: Breadth;
   readonly places: readonly PlaceBreadth[];
   readonly unplaced: readonly string[];
+}
+
+### build/index.d.ts#IndicatorSurprise
+export interface IndicatorSurprise {
+  readonly world: Surprise;
+  readonly places: readonly PlaceSurprise[];
 }
 
 ### build/index.d.ts#Instant
@@ -2908,6 +2933,7 @@ export interface MapPayload {
   readonly view: MapView;
   readonly basemap: readonly MapRegion[];
   readonly breadth?: IndicatorBreadth;
+  readonly surprise?: IndicatorSurprise;
 }
 
 ### build/index.d.ts#MapPayloadInput
@@ -2919,6 +2945,7 @@ export interface MapPayloadInput extends Omit<MapInput, "assessments"> {
   readonly priors?: ScorePriors;
   readonly foreign?: ((incident: Pick<Incident, "anchor" | "reports">) => boolean) | undefined;
   readonly breadth?: IndicatorBreadth;
+  readonly surprise?: IndicatorSurprise;
 }
 
 ### build/index.d.ts#MapPlace
@@ -3380,6 +3407,11 @@ export interface PlaceMatch {
   readonly distanceKm?: number;
   readonly shapeRefused?: true;
   readonly zoneFallback?: true;
+}
+
+### build/index.d.ts#PlaceSurprise
+export interface PlaceSurprise extends Surprise {
+  readonly place: PlaceId;
 }
 
 ### build/index.d.ts#Position
@@ -4333,6 +4365,9 @@ export declare const WORK_DEFAULTS: Readonly<Record<string, WorkDefaults>>;
 ### build/index.d.ts#WORK_DEFAULTS_DATE
 export declare const WORK_DEFAULTS_DATE = "2026-11-17";
 
+### build/index.d.ts#WORLD_SCOPE
+export declare const WORLD_SCOPE = "world";
+
 ### build/index.d.ts#Watch
 export interface Watch {
   readonly places: readonly WatchedPlace[];
@@ -4499,6 +4534,9 @@ export declare function breadthOf(series: readonly SeriesSignal[]): Breadth;
 
 ### build/index.d.ts#breadthUnits
 export declare function breadthUnits(breadth: Breadth, scope: string): SignalUnit[];
+
+### build/index.d.ts#bucketOf
+export declare function bucketOf(at: Instant, size?: Duration): Instant;
 
 ### build/index.d.ts#canReach
 export declare function canReach(input: RelevanceInput, graph: InterestGraph, policy: RelevancePolicy, options?: RelevanceOptions): boolean;
@@ -4914,6 +4952,12 @@ export declare const indicatorAreaSchema: z.ZodType<IndicatorArea, IndicatorArea
 ### build/index.d.ts#indicatorBreadth
 export declare function indicatorBreadth(series: readonly SeriesSignal[], places: readonly WatchedPlace[], zones?: readonly ZoneRegions[]): IndicatorBreadth;
 
+### build/index.d.ts#indicatorSurprise
+export declare function indicatorSurprise(breadth: IndicatorBreadth, histories: readonly SignalHistory[], minReads?: number): IndicatorSurprise;
+
+### build/index.d.ts#indicatorUnits
+export declare function indicatorUnits(breadth: IndicatorBreadth): SignalUnit[];
+
 ### build/index.d.ts#instantSchema
 export declare const instantSchema: z.ZodType<Instant, Instant>;
 
@@ -5243,6 +5287,9 @@ export declare function placeNode(place: PlaceId): NodeKey;
 ### build/index.d.ts#placeOfNode
 export declare function placeOfNode(node: NodeKey): PlaceId | undefined;
 
+### build/index.d.ts#placeScope
+export declare function placeScope(place: PlaceId): string;
+
 ### build/index.d.ts#placeWhy
 export declare function placeWhy(places: readonly PlaceId[]): WhyRecord | undefined;
 
@@ -5497,6 +5544,9 @@ export declare function shiftMerge(state: MergeState, size: Duration): MergeStat
 
 ### build/index.d.ts#shiftReport
 export declare function shiftReport(report: Report, size: Duration): Report;
+
+### build/index.d.ts#signalHistories
+export declare function signalHistories(buckets: readonly BucketReads[]): SignalHistory[];
 
 ### build/index.d.ts#signalRate
 export declare function signalRate(history: SignalHistory, minReads?: number): SignalRate | undefined;

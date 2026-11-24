@@ -313,6 +313,27 @@ The module `threat.ts` tells how rare the signals of one time are (AL-24). A uni
 - `signalRate` gives the base rate of a unit from its history: the upper bound of the Wilson interval of its reads with a signal. A history with fewer than `MIN_READS` (30) reads gives no rate.
 - `surpriseOf` gives the chance of the count of the units with a signal, or more, when the units are independent. The law is the Poisson binomial law of their rates, from `@mark1russell7/rigor-statistics`. The surprise is `-log10` of that chance.
 - The result is a function of the sets of the units and of the histories. The order and a duplicate do not change it.
+- `indicatorUnits` gives the units of the world with the scope `world`, and the units of a place with the scope `place/<id>`. Thus no place id gives the units of the world.
+- `indicatorSurprise` gives the surprise of the world and of each place from one list of histories.
+
+The history of a unit counts one read in each bucket of one hour at most (`HISTORY_BUCKET`, `signalHistories`). Two passes a few seconds apart give the same read nearly always. A count of each pass thus counts one read many times, and the hours with many passes count more. A bucket of a fixed size gives each hour the same weight.
+
+- A bucket with no read of a unit adds no read of the unit. A read with a signal adds to the reads and to the signals.
+- Two reads of a unit in one bucket count one time. A signal counts.
+- The result is a function of the set of the reads. The order and a duplicate do not change it.
+
+`unit-history.ts` of the runtime keeps the history in the store of the readings:
+
+- The first pass of each hour writes the units of its breadth to the table `unit_reads`. The later passes of the hour write nothing.
+- The surprise of a pass reads the history of the hours before its hour. Thus the read of the pass is not in its own base rate.
+- The store deletes the reads of the units with the old readings. The history thus holds the last 29 days, 696 hours at most.
+- The table is a part of the file with its own version. An older build reads only the version of the readings, thus it opens the file.
+- The runtime reads the table at the first pass and keeps it in memory. A new hour or a delete calculates the histories again, in O(hours × units). Each other pass reuses them.
+- A fault of the table goes to the hook `onReadingsFault` with the action `read` or `add`. The pass then has no surprise, and it continues. The next pass reads the table again.
+
+The field `surprise` of the pass holds the surprise, next to the breadth. The map route gives it in the field `surprise`. A runtime with no store of the readings has no field.
+
+The history does not come from a read of the store at past times. The baseline of a past time reads the 28 days before that time, and the store keeps only one day more. Thus a past read of a score is correct only for the last day, 24 reads. That is fewer than `MIN_READS`. A longer store doubles the store and the cost of each read.
 
 A high surprise tells that a hidden common cause moves many units at one time. The surprise gives no level. The calculation of the level (AL-31) reads it.
 
@@ -1691,6 +1712,16 @@ The package links of each slot resolve in that slot (AL-144):
 - A swap refuses when a link of either slot resolves outside its slot. `deploy.ts relink [a|b]` installs a slot again at its path.
 - For the live slot, stop the boot task before `relink`.
 
+A new fold version gets its snapshot before the next start (AL-153):
+
+- A new `FOLD_VERSION` makes the next start ignore the old snapshot. Then the start folds the whole log.
+- On a small host, that fold can take longer than the ready window. The supervisor stops each start in its fold, and the work of the fold is lost.
+- The stage and the swap read `FOLD_VERSION` of the two slots. When it changes, they tell the steps.
+- `deploy.ts fold` starts `main.ts fold` of the live slot on the live home. The mode folds the log, writes the snapshot and stops.
+- The mode has no service, no listener and no window. It does not change the start marker or the last good set.
+- The lock of the home folder refuses the fold while a runtime runs. Thus stop the runtime, swap, fold, and then start the runtime.
+- A fold version change with an upgrade of the old snapshot needs no fold step. A fold step then only writes a new snapshot.
+
 The two slots keep each start on the code of one commit:
 
 - A checkout and an install in the live tree do not stop the runtime. The runtime keeps its code until its next start.
@@ -2279,7 +2310,8 @@ The file `schemas.ts` of the core has one zod 4 schema for each data type of the
 ## Open points
 
 - The threat level does not read the breadth of the signals yet. No source gives the table of the zones yet.
-- The surprise of the signals has no history yet. The runtime does not keep the count of the reads with a signal of each unit.
+- A new store gives no base rate for 30 hours: the history of the units starts empty. A restart keeps the history.
+- The reads of one unit in near hours are not independent. A signal of one day gives 24 reads with a signal. Thus the Wilson interval of a history is too narrow.
 - The surprise weighs each unit the same. A statistic that weighs each unit by its rate is the next part of AL-24.
 - The atlas has no table of the regions of each zone yet. Until then, each series of a zone is in `unplaced`.
 - A fault of the store of the readings goes only to the output. The health payload does not show it yet.

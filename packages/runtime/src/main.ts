@@ -5,6 +5,8 @@
  * - `node src/main.ts supervise <folder>` starts the supervisor of the runtime (`supervise.ts`). The boot task starts it.
  * - `node src/main.ts load` loads each module of the runtime, and stops with the code 0. It starts no service. The stage of a
  *   deploy uses it to check the code of a new slot (`deploy.ts`).
+ * - `node src/main.ts fold` folds the log, writes the snapshot of the start, and stops. It starts no service (`fold-mode.ts`).
+ *   After a change of the fold version, `deploy.ts fold` starts it while the runtime is stopped (AL-153).
  *
  * The lifecycle owns the signals of the process. After SIGTERM or Ctrl-C, the service stops in its
  * phases, and the process exits with 0 or 1.
@@ -72,6 +74,7 @@ import { PROFILES, declare } from "./index.ts";
 import { daemonCheck, instanceCheck, LOUD_PING_URL_KEY, openInstance, pingKeyOf, pingTargets, userAgent } from "./instance.ts";
 import { openCheckedRuntimeLog } from "./log.ts";
 import { blockLine, startLoopWatch, type LoopWatch } from "./loop-watch.ts";
+import { foldText, writeFold } from "./fold-mode.ts";
 import { startBlockWatch, type BlockWatch } from "./block-watch.ts";
 import { fileBundleStore } from "./outage.ts";
 import type { ExchangeRound } from "./peers.ts";
@@ -102,7 +105,8 @@ const port = (name: string, fallback: number): number => {
 };
 
 /** This function makes the service of the runtime from the environment and the private files. */
-async function runtime(): Promise<ServiceBuilder> {
+// The mode `fold` (AL-153) folds the log and writes the snapshot of the start, then it gives no service (`fold-mode.ts`).
+async function runtime(fold: boolean): Promise<ServiceBuilder | undefined> {
   const name = process.env["SERVICE_PROFILE"] ?? "local";
   const profile = PROFILES[name];
   if (profile === undefined) throw new Error(`SERVICE_PROFILE is "${name}". The profiles are: ${Object.keys(PROFILES).join(", ")}.`);
@@ -126,7 +130,11 @@ async function runtime(): Promise<ServiceBuilder> {
   // The last good set holds the keys, thus each file that the start writes has the permissions 0600.
   const checkOf: CheckOf = name === "daemon" ? daemonCheck : instanceCheck;
   const files = privateFiles(home, configPath(process.env, process.cwd()));
-  const loaded = await startConfig(files, checkOf, { write: (path, text) => writeFileAtomic(path, text, { mode: 0o600 }), remove: (path) => rm(path, { force: true }) });
+  // The mode fold is not a start: it does not change the start marker or the last good set. Thus it uses the set that the next start uses.
+  const startPorts = fold
+    ? { write: () => Promise.resolve(), remove: () => Promise.resolve() }
+    : { write: (path: string, text: string) => writeFileAtomic(path, text, { mode: 0o600 }), remove: (path: string) => rm(path, { force: true }) };
+  const loaded = await startConfig(files, checkOf, startPorts);
   if (loaded.use === "good") out.error(`The runtime uses the last good set ${GOOD_FILE} of the private files:\n- ${loaded.fallback.join("\n- ")}`);
   for (const note of loaded.notes) out.error(note);
   // The settings of this copy of the system, from the files of the start.
@@ -363,6 +371,19 @@ async function runtime(): Promise<ServiceBuilder> {
   if (instance.runtime.skipped > 0) {
     out.error(`The log has ${String(instance.runtime.skipped)} events of types that this build does not know. A later build wrote them. The runtime skips them.`);
   }
+  // The mode fold writes the snapshot of this fold. Then it closes the files in the sequence of the shutdown of the service.
+  if (fold) {
+    const store = snapshot.store;
+    if (store === undefined) throw new Error(`The file ${START_SNAPSHOT_FILE} did not open. The mode fold writes no snapshot.`);
+    blockWatch?.phase("fold: write of the snapshot");
+    const transitKeeper = instance.transit;
+    const rows = await writeFold({
+      runtime: instance.runtime,
+      closes: [() => store.close(), () => readings.close(), () => quotas.close(), () => transitKeeper?.close(), () => instance.shapes.close(), () => log.close(), () => held.lock.release()],
+    });
+    out.log(foldText(rows, instance.runtime.start.events));
+    return undefined;
+  }
 
   // The listener of the exchange is on the address listen of copy.json. Only the token check of the host guards it.
   const copies = instance.copies;
@@ -405,7 +426,7 @@ async function runtime(): Promise<ServiceBuilder> {
   return service;
 }
 
-const MODES = ["supervise", "load"];
+const MODES = ["supervise", "load", "fold"];
 const mode = process.argv[2];
 if (mode !== undefined && !MODES.includes(mode)) throw new Error(`The first argument is "${mode}". Give no argument for the runtime, or one of: ${MODES.join(", ")}.`);
 
@@ -420,6 +441,11 @@ const signal = signalWarning();
 if (signal !== null) out.warn(signal);
 
 // The process exits after the shutdown of the service.
-const started = mode === "supervise" ? supervisor(process.argv[3]) : await runtime();
+const started = mode === "supervise" ? supervisor(process.argv[3]) : await runtime(mode === "fold");
+// The mode fold has no service. Its timers of the telemetry and of the watches end with the process.
+if (started === undefined) {
+  await blockWatch?.stop();
+  process.exit(0);
+}
 await started.run();
 await blockWatch?.stop();
