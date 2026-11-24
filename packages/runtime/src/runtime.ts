@@ -5,11 +5,12 @@
  * that it gets.
  */
 import { isFrameClock, type WallClock } from "@mark1russell7/algebra/clock";
-import { channelDownPolicy, DEFAULT_SEND_LIMITS, downChannels, heldPersons, indicatorBreadth, knowsReport, limitShare, matchPlaces, observeConditions, ONLY_COPY, type StoreBound, type WatchedPlace, type ChannelQuota, type ChannelSnapshot, type CopyWatch, type DrillWatch, type Duration, type EntryTimes, type Exhaustion, type FetchOutcome, type HeldPerson, type Incident, type IndicatorBreadth, type Instant, type LatenessFolds, type LoopBlock, type MergeState, type ObserveCondition, type Report, type ReportId, type SourceDescriptor, type SourceId, type StoreFill, type SourceProcedures, type Watch, type ZoneRegions } from "@mark1russell7/alerts";
+import { channelDownPolicy, DEFAULT_SEND_LIMITS, downChannels, heldPersons, indicatorBreadth, knowsReport, limitShare, matchPlaces, observeConditions, ONLY_COPY, type StoreBound, type WatchedPlace, type ChannelQuota, type ChannelSnapshot, type CopyWatch, type DrillWatch, type Duration, type EntryTimes, type Exhaustion, type FetchOutcome, type HeldPerson, type Incident, type IndicatorBreadth, type Instant, type LatenessFolds, type LoopBlock, type MergeState, type ObserveCondition, type Report, type ReportId, type SourceDescriptor, type SourceId, type StoreFill, type SourceProcedures, type Watch, type ZoneRegions, type JointDown } from "@mark1russell7/alerts";
 import type { ChunkOptions, FoldMark, FoldSnapshot } from "@mark1russell7/sqlite";
 import { errorMessage } from "@mark1russell7/text";
 import { compareCodeUnits } from "@mark1russell7/text/order";
 import type { BalanceWatch } from "./balance.ts";
+import type { JointWatch } from "./joint.ts";
 import type { LimitWatch } from "./use.ts";
 import { channelWatch, lastFetchSuccess } from "./channel-watch.ts";
 import { createDispatcher, type DeliveryOptions, type DeliveryStep } from "./delivery.ts";
@@ -115,6 +116,11 @@ export interface RuntimeOptions {
    * watch, next to its fetches. Each level of a use is a line of system reports.
    */
   readonly uses?: readonly LimitWatch[];
+  /**
+   * The watch of the joint down time of the copies (AL-148). Each pass starts its `check`, next to its fetches. Each stage
+   * of the joint down time is a line of system reports. With no watch, each open line of the joint down time ends.
+   */
+  readonly joint?: JointWatch;
   /**
    * The other watches that read on a schedule: for example the watch of the replies of the texts. Each pass starts
    * `check` of each watch, next to its fetches. A step of the wall clock moves their times.
@@ -534,7 +540,7 @@ export function openRuntime(options: RuntimeOptions): Runtime {
   // Each watch that reads on a schedule: the balance watches and the other reads.
   const uses = options.uses ?? [];
   if (new Set(uses.map((watch) => watch.id)).size !== uses.length) throw new Error("Two watches of a limit have the same id. Give one watch to each limit.");
-  const scheduled: readonly ReadWatch[] = [...watches, ...uses, ...(options.reads ?? [])];
+  const scheduled: readonly ReadWatch[] = [...watches, ...uses, ...(options.joint === undefined ? [] : [options.joint]), ...(options.reads ?? [])];
 
   // A fault of the store of a gate ends no line of a quota. The notes of the heartbeat tell of the fault.
   const readQuotas = (): readonly ChannelQuota[] | undefined => {
@@ -665,7 +671,7 @@ export function openRuntime(options: RuntimeOptions): Runtime {
       const stores = readStores();
       // The persons with a hold of the send limit (AL-81). With no delivery, no person has a hold, and each open line stays.
       const held = dispatcher === undefined ? undefined : heldOf(at);
-      const view = systemView(state, config, at, { drills: drilled.snapshots, ...(quotas === undefined ? {} : { quotas }), ...(stores === undefined ? {} : { stores }), bounds: readBounds(), balances: watches.flatMap((watch) => watch.balance() ?? []), uses: uses.flatMap((watch) => watch.use() ?? []), ...(options.copies === undefined ? {} : { copies: options.copies.watches(), copy: self, drillWatches: options.drillWatches ?? [] }), ...(folds === undefined ? {} : { folds }), ...(exhausted === undefined ? {} : { exhausted }), ...(held === undefined ? {} : { held }), ...(channels === undefined ? {} : { channels: channels.snapshots() }), ...(observing === undefined ? {} : { observing }) });
+      const view = systemView(state, config, at, { drills: drilled.snapshots, ...(quotas === undefined ? {} : { quotas }), ...(stores === undefined ? {} : { stores }), bounds: readBounds(), balances: watches.flatMap((watch) => watch.balance() ?? []), uses: uses.flatMap((watch) => watch.use() ?? []), ...jointPart(options.joint), ...(options.copies === undefined ? {} : { copies: options.copies.watches(), copy: self, drillWatches: options.drillWatches ?? [] }), ...(folds === undefined ? {} : { folds }), ...(exhausted === undefined ? {} : { exhausted }), ...(held === undefined ? {} : { held }), ...(channels === undefined ? {} : { channels: channels.snapshots() }), ...(observing === undefined ? {} : { observing }) });
       folds = view.folds;
       const event = systemEvent(view);
       if (event !== undefined) conflicts.push(...append([event]));
@@ -783,4 +789,11 @@ function* counted<T>(events: Iterable<T>, each: (event: T) => void): Generator<T
     each(event);
     yield event;
   }
+}
+
+// The joint down time in the view: `null` with no watch, thus each open line ends. Before the first check, no field keeps each open line.
+function jointPart(watch: JointWatch | undefined): { readonly joint?: JointDown | null } {
+  if (watch === undefined) return { joint: null };
+  const joint = watch.joint();
+  return joint === undefined ? {} : { joint };
 }

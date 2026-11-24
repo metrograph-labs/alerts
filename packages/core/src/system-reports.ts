@@ -10,7 +10,7 @@
 import { canonicalJson } from "@mark1russell7/rigor-generators";
 import { countOf } from "@mark1russell7/text/english";
 import { compareCodeUnits } from "@mark1russell7/text/order";
-import { BALANCE_KIND, CHANNEL_KIND, CLOCK_KIND, CONTEXT_KINDS, COPY_KIND, COVERAGE_KIND, DRILL_KIND, ESCALATION_KIND, hasKind, HEALTH_KIND, LIMIT_KIND, LOG_KIND, LOOP_KIND, matchPlaces, PERSON_SUBJECT, QUOTA_KIND, REDUNDANCY_KIND, STORE_KIND, USE_KIND } from "./assess.ts";
+import { BALANCE_KIND, CHANNEL_KIND, CLOCK_KIND, CONTEXT_KINDS, COPY_KIND, COVERAGE_KIND, DRILL_KIND, ESCALATION_KIND, hasKind, HEALTH_KIND, JOINT_KIND, LIMIT_KIND, LOG_KIND, LOOP_KIND, matchPlaces, PERSON_SUBJECT, QUOTA_KIND, REDUNDANCY_KIND, STORE_KIND, USE_KIND } from "./assess.ts";
 import { isPrivate } from "./audience.ts";
 import type {
   Area,
@@ -24,6 +24,8 @@ import type {
   HealthState,
   Incident,
   Instant,
+  JointDown,
+  JointStage,
   Kind,
   LimitUse,
   Observation,
@@ -71,7 +73,7 @@ export const LOG_SUBJECT = "alerts.log";
 
 /**
  * The subject system of a copy of the system. The id of a subject is the id of the copy. A report of another copy is about
- * that copy. A block of the event loop is about this copy (AL-88).
+ * that copy. A block of the event loop is about this copy (AL-88). The joint down time is about the id `all`: the copies together (AL-148).
  */
 export const COPY_SUBJECT = "alerts.copy";
 
@@ -94,6 +96,9 @@ export const QUOTA_STAGES: readonly QuotaStage[] = ["low", "reserve", "spent"];
 
 /** The stages of a balance. `empty` holds `low`. `unread` comes from the time of the last read. */
 export const BALANCE_STAGES: readonly BalanceStage[] = ["low", "empty", "unread"];
+
+/** The stages of the joint down time of the copies (AL-148). `unread` comes from the time of the last read. */
+export const JOINT_STAGES: readonly JointStage[] = ["over", "unread"];
 
 /** The stages of the use of a hard limit (AL-111). `level` comes from the last read that passed. `unread` comes from its time. */
 export const USE_STAGES: readonly UseStage[] = ["level", "unread"];
@@ -374,6 +379,12 @@ export interface SystemSnapshot {
    * condition. With no list, each open line of a use stays open. Only one copy reports the stage `level` (`reportsShared`).
    */
   readonly uses?: readonly LimitUse[];
+  /**
+   * The watch of the joint down time of the copies (AL-148). Each stage that `jointStages` gives is a condition. The value
+   * `null` tells that this copy has no watch: each open line of the joint down time ends. With no field, each open line
+   * stays open. Only one copy reports the stage `over` (`reportsShared`).
+   */
+  readonly joint?: JointDown | null;
   /** The id of this copy. With the watches of the other copies, it chooses the copy that reports the facts of a shared account. */
   readonly copy?: string;
   /**
@@ -531,6 +542,22 @@ export function useLevelsReached(use: LimitUse): number[] {
 }
 
 /**
+ * This function gives the stages of the joint down time of the copies at the time `at`, in the order of `JOINT_STAGES` (AL-148).
+ *
+ * - `over` comes from the last read that passed, also when the read is old. The down time must be longer than the limit.
+ * - `unread` starts at `jointUnreadAt`. A read that passes ends it.
+ */
+export function jointStages(joint: JointDown, at: Instant): JointStage[] {
+  const reached: Readonly<Record<JointStage, boolean>> = { over: joint.read !== undefined && joint.read.down > joint.limit, unread: at >= jointUnreadAt(joint) };
+  return JOINT_STAGES.filter((stage) => reached[stage]);
+}
+
+/** This function gives the time of the stage `unread` of the joint down time: the maximum age after the last read. With no read, the age counts from the start. */
+export function jointUnreadAt(joint: JointDown): Instant {
+  return (joint.read?.at ?? joint.since) + joint.maxAge;
+}
+
+/**
  * This function gives the stages of another copy at the time `at`, in the order of `COPY_STAGES`.
  *
  * - `skew` and `config` come from the last read that passed, also when the read is old.
@@ -627,6 +654,7 @@ export function gapGrade(entry: Coverage, threatened: boolean): { readonly sever
  * - Each stage of a quota, each stage of a balance and each stage of another copy. Only one copy reports the stages
  *   `low` and `empty` of a balance (`reportsShared`). The stage `unread` is a fact of each copy.
  * - Each level that the use of a hard limit reached, and the stage `unread` of its watch. Only one copy reports a level (`reportsShared`).
+ * - Each stage of the joint down time of the copies (AL-148). Only one copy reports `over` (`reportsShared`).
  * - The latest step of the wall clock in `CLOCK_STEP_WINDOW` before `at`.
  * - The latest recovery of the log in `LOG_RECOVERY_WINDOW` before `at`.
  * - Each run of a drill that waits for its acknowledgment, and each drill whose last run failed.
@@ -684,6 +712,14 @@ export function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: 
         for (const level of useLevelsReached(use)) conditions.set(useName(use.id, stage, { level, month }), useCondition(use, stage, at, level));
       }
     }
+  }
+  // The joint down time is a fact of the shared check, and one copy reports it. The stage unread is a fact of this copy.
+  const joint = snapshot.joint ?? undefined;
+  if (joint !== undefined) {
+    for (const stage of jointStages(joint, at)) if (stage === "unread" || shared) conditions.set(jointName(stage), jointCondition(joint, stage, at));
+    // A watch with no read keeps its open line over. Thus after a restart, a failed first read sends no cancel and no new alert.
+    const over = jointName("over");
+    if (joint.read === undefined && shared && lines.open[over] !== undefined) conditions.set(over, jointCondition(joint, "over", at));
   }
   for (const watch of snapshot.copies ?? []) {
     for (const stage of copyStages(watch, at)) conditions.set(copyName(watch.copy, stage), copyCondition(watch, stage, at));
@@ -751,6 +787,7 @@ export function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: 
     if (condition === undefined && snapshot.quotas === undefined && name.startsWith(QUOTA_LINE)) continue;
     if (condition === undefined && snapshot.balances === undefined && name.startsWith(BALANCE_LINE)) continue;
     if (condition === undefined && snapshot.uses === undefined && name.startsWith(USE_LINE)) continue;
+    if (condition === undefined && snapshot.joint === undefined && name.startsWith(JOINT_LINE)) continue;
     if (condition === undefined && unreadUses.some((prefix) => name.startsWith(prefix))) continue;
     if (condition === undefined && snapshot.copies === undefined && name.startsWith(COPY_LINE)) continue;
     if (condition === undefined && snapshot.drills === undefined && name.startsWith(DRILL_LINE)) continue;
@@ -851,6 +888,13 @@ const BALANCE_LINE = "balance/";
 function balanceName(provider: string, stage: BalanceStage, floor?: number): string {
   const name = `${BALANCE_LINE}${encodeURIComponent(provider)}/${stage}`;
   return floor === undefined ? name : `${name}/${String(floor)}`;
+}
+
+// The start of the name of each line of the joint down time of the copies (AL-148).
+const JOINT_LINE = "joint/";
+
+function jointName(stage: JointStage): string {
+  return `${JOINT_LINE}${stage}`;
 }
 
 // The start of the name of each line of the use of a hard limit (AL-111).
@@ -1458,6 +1502,52 @@ function useCondition(use: LimitUse, stage: UseStage, at: Instant, level?: numbe
       level: level === undefined ? levels.map(String) : [String(level)],
       ...(read === undefined ? {} : { used: [String(read.used)], limit: [String(read.limit)], currency: [read.currency], month: [read.month] }),
       age: [String(at - (read?.at ?? use.since))],
+    },
+  };
+}
+
+// The text of a joint down time: minutes with one decimal, for example `13.6 min`.
+function minutesText(size: Duration): string {
+  return `${(size / 60_000).toFixed(1)} min`;
+}
+
+// The text of a window: whole days, or else whole hours. 7 days of milliseconds is `7 days`.
+function windowText(size: Duration): string {
+  const day = 24 * 3_600_000;
+  return size % day === 0 ? countOf(size / day, "day") : `${String(Math.round(size / 3_600_000))} h`;
+}
+
+// The condition of one stage of the joint down time of the copies (AL-148).
+function jointCondition(joint: JointDown, stage: JointStage, at: Instant): Condition {
+  const { window, limit, read } = joint;
+  const last = read === undefined ? `the start of the watch at ${new Date(joint.since).toISOString()}` : new Date(read.at).toISOString();
+  const text: Readonly<Record<JointStage, { readonly headline: string; readonly description: string }>> = {
+    over: {
+      headline: `No copy could tell the person for ${read === undefined ? "too long" : minutesText(read.down)} in the last ${windowText(window)}. The limit is ${minutesText(limit)}.`,
+      description: "The shared check of the copies was down for longer than the limit. Find the cause of each down span. When the copies share a cause, add or move a copy.",
+    },
+    unread: {
+      headline: `The joint down time of the copies has no read since ${last}.`,
+      description: "The watch cannot see a long down time of the copies. Examine the key of the management API and the network.",
+    },
+  };
+  const code = `${JOINT_KIND}.${stage}`;
+  return {
+    // A new down time is not a fact. Thus each stage gives one alert, and no update.
+    facts: { stage },
+    kind: { code, label: kindLabel(code) },
+    severity: "moderate",
+    urgency: "expected",
+    response: ["assess"],
+    areas: [],
+    about: [{ system: COPY_SUBJECT, id: "all", label: "All copies" }],
+    ...text[stage],
+    parameters: {
+      stage: [stage],
+      window: [String(window)],
+      limit: [String(limit)],
+      ...(read === undefined ? {} : { down: [String(read.down)], spans: [String(read.spans)] }),
+      age: [String(at - (read?.at ?? joint.since))],
     },
   };
 }

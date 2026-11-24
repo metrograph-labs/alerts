@@ -214,6 +214,11 @@ InterestGraph: build/index.d.ts#InterestGraph
 InterestRow: build/index.d.ts#InterestRow
 InterestsPayload: build/index.d.ts#InterestsPayload
 InterestsPerson: build/index.d.ts#InterestsPerson
+JOINT_KIND: build/index.d.ts#JOINT_KIND
+JOINT_STAGES: build/index.d.ts#JOINT_STAGES
+JointDown: build/index.d.ts#JointDown
+JointDownRead: build/index.d.ts#JointDownRead
+JointStage: build/index.d.ts#JointStage
 KIND_ALIASES: build/index.d.ts#KIND_ALIASES
 Kind: build/index.d.ts#Kind
 KindClass: build/index.d.ts#KindClass
@@ -681,6 +686,8 @@ isShape: build/index.d.ts#isShape
 isSignal: build/index.d.ts#isSignal
 join: build/index.d.ts#join
 joinRuns: build/index.d.ts#joinRuns
+jointStages: build/index.d.ts#jointStages
+jointUnreadAt: build/index.d.ts#jointUnreadAt
 kindClassSchema: build/index.d.ts#kindClassSchema
 kindCodeSchema: build/index.d.ts#kindCodeSchema
 kindLabel: build/index.d.ts#kindLabel
@@ -2462,6 +2469,31 @@ export interface InterestsPerson {
   readonly problem?: string;
 }
 
+### build/index.d.ts#JOINT_KIND
+export declare const JOINT_KIND = "system.joint";
+
+### build/index.d.ts#JOINT_STAGES
+export declare const JOINT_STAGES: readonly JointStage[];
+
+### build/index.d.ts#JointDown
+export interface JointDown {
+  readonly window: Duration;
+  readonly limit: Duration;
+  readonly maxAge: Duration;
+  readonly since: Instant;
+  readonly read?: JointDownRead;
+}
+
+### build/index.d.ts#JointDownRead
+export interface JointDownRead {
+  readonly down: Duration;
+  readonly spans: number;
+  readonly at: Instant;
+}
+
+### build/index.d.ts#JointStage
+export type JointStage = "over" | "unread";
+
 ### build/index.d.ts#KIND_ALIASES
 export declare const KIND_ALIASES: Readonly<Record<string, string>>;
 
@@ -3966,6 +3998,7 @@ export interface SystemSnapshot {
   readonly quotas?: readonly ChannelQuota[];
   readonly balances?: readonly ProviderBalance[];
   readonly uses?: readonly LimitUse[];
+  readonly joint?: JointDown | null;
   readonly copy?: string;
   readonly copies?: readonly CopyWatch[];
   readonly steps?: readonly ClockStep[];
@@ -4776,6 +4809,12 @@ export declare function join(a: MergeState, b: MergeState): MergeState;
 
 ### build/index.d.ts#joinRuns
 export declare function joinRuns(a: DrillRun, b: DrillRun): DrillRun;
+
+### build/index.d.ts#jointStages
+export declare function jointStages(joint: JointDown, at: Instant): JointStage[];
+
+### build/index.d.ts#jointUnreadAt
+export declare function jointUnreadAt(joint: JointDown): Instant;
 
 ### build/index.d.ts#kindClassSchema
 export declare const kindClassSchema: z.ZodType<KindClass, KindClass>;
