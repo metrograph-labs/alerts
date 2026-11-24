@@ -143,11 +143,32 @@ function isPoint(lat: number, lon: number): boolean {
  * of addition. Its day is at most `MAX_EVENT_AGE_DAYS` before the day of its addition. The function is pure.
  */
 export function keepEvent(event: GdeltEvent): boolean {
-  if (!REPORTED_ROOTS.includes(event.root) || !CITY_GEO_TYPES.includes(event.geoType) || !isPoint(event.lat, event.lon)) return false;
+  return CITY_GEO_TYPES.includes(event.geoType) && isPoint(event.lat, event.lon) && countEvent(event);
+}
+
+/**
+ * This function tells if an event counts in the census of the regions (AL-142). The event needs a reported root code and
+ * a time of addition. Its day is at most `MAX_EVENT_AGE_DAYS` before the day of its addition. The place can be a city, a
+ * region or a country. The function is pure.
+ */
+export function countEvent(event: GdeltEvent): boolean {
+  if (!REPORTED_ROOTS.includes(event.root)) return false;
   const added = addedTime(event.added);
   const day = dayStart(event.day);
   if (added === undefined || day === undefined) return false;
   return added - day < (MAX_EVENT_AGE_DAYS + 1) * 86_400_000;
+}
+
+/** The form of a first-level region of the United States in GDELT: `US` and the code of the state of the Postal Service. */
+const US_STATE_ADM1 = /^US([A-Z]{2})$/;
+
+/**
+ * This function gives the code of the state of an event in the United States, in the system `state` of the places. For
+ * example, the region `USTX` gives `TX`. It gives `undefined` for an event with no state or in another country.
+ */
+export function stateOf(event: GdeltEvent): string | undefined {
+  if (event.country !== "US") return undefined;
+  return US_STATE_ADM1.exec(event.adm1)?.[1];
 }
 
 /** This function gives the body of the observation of an event: the JSON text of the fields of `EVENT_FIELDS`, in that order. */

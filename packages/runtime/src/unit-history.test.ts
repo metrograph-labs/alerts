@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { bucketOf, HISTORY_BUCKET, MIN_READS, surpriseOf, type SignalUnit } from "@mark1russell7/alerts";
+import { bucketOf, HISTORY_BUCKET, MIN_READS, pairHistories, surpriseOf, type SignalUnit } from "@mark1russell7/alerts";
 import { openDatabase } from "@mark1russell7/sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import { openReadingStore, READINGS_FILE, type FileReadingStore, type ReadingStore } from "./readings.ts";
@@ -54,6 +54,18 @@ describe("the history of the signal units (AL-24)", () => {
       { unit: "place/place:a/rail", reads: 1, signals: 0 },
       { unit: RAIL, reads: 1, signals: 0 },
     ]);
+  });
+
+  it("gives the joint history of the pairs of one scope from the same hours (AL-24)", () => {
+    const store = openStore();
+    const history = unitHistory(store);
+    const road = "world/road-traffic";
+    history.record(T0, [{ unit: RAIL, signal: true }, { unit: road, signal: true }]);
+    history.record(T0 + HOUR, [{ unit: RAIL, signal: false }, { unit: road, signal: true }]);
+    history.record(T0 + 2 * HOUR, [{ unit: RAIL, signal: true }, { unit: road, signal: true }]);
+    expect(history.pairs(T0 + 2 * HOUR)).toEqual([{ a: RAIL, b: road, reads: 2, signalsA: 1, signalsB: 2, joint: 1 }]);
+    expect(history.pairs(T0 + 3 * HOUR)).toEqual(pairHistories(store.unitReads(Number.MIN_SAFE_INTEGER)));
+    expect(unitHistory(store).pairs(T0 + 3 * HOUR)).toEqual(history.pairs(T0 + 3 * HOUR));
   });
 
   it("adds no read for an hour with no read of a unit", () => {

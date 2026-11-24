@@ -5,7 +5,7 @@
  * that it gets.
  */
 import { isFrameClock, type WallClock } from "@mark1russell7/algebra/clock";
-import { bucketOf, channelDownPolicy, DEFAULT_SEND_LIMITS, downChannels, heldPersons, indicatorBreadth, indicatorSurprise, indicatorUnits, knowsReport, limitShare, matchPlaces, observeConditions, ONLY_COPY, type StoreBound, type WatchedPlace, type ChannelQuota, type ChannelSnapshot, type CopyWatch, type DrillWatch, type Duration, type EntryTimes, type Exhaustion, type FetchOutcome, type HeldPerson, type Incident, type IndicatorBreadth, type IndicatorSurprise, type Instant, type LatenessFolds, type LoopBlock, type MergeState, type ObserveCondition, type Report, type ReportId, type SourceDescriptor, type SourceId, type StoreFill, type SourceProcedures, type Watch, type ZoneRegions, type JointDown, type DriftCheck } from "@mark1russell7/alerts";
+import { bucketOf, channelDownPolicy, DEFAULT_SEND_LIMITS, downChannels, heldPersons, indicatorBreadth, indicatorSurprise, indicatorUnits, knowsReport, MIN_READS, limitShare, matchPlaces, observeConditions, ONLY_COPY, type StoreBound, type WatchedPlace, type ChannelQuota, type ChannelSnapshot, type CopyWatch, type DrillWatch, type Duration, type EntryTimes, type Exhaustion, type FetchOutcome, type HeldPerson, type Incident, type IndicatorBreadth, type IndicatorSurprise, type Instant, type LatenessFolds, type LoopBlock, type MergeState, type ObserveCondition, type Report, type ReportId, type SourceDescriptor, type SourceId, type StoreFill, type SourceProcedures, type Watch, type ZoneRegions, type JointDown, type DriftCheck } from "@mark1russell7/alerts";
 import type { ChunkOptions, FoldMark, FoldSnapshot } from "@mark1russell7/sqlite";
 import { errorMessage } from "@mark1russell7/text";
 import { compareCodeUnits } from "@mark1russell7/text/order";
@@ -698,7 +698,7 @@ export function openRuntime(options: RuntimeOptions): Runtime {
       const breadth = signals === undefined ? undefined : indicatorBreadth(signals, config.places, zones);
       // The surprise reads the history of the hours before this hour. Then the first pass of the hour writes its units.
       // A fault of the store gives no surprise or no write, and the pass continues.
-      const surprise = breadth === undefined || unitReads === undefined ? undefined : guarded("read", () => indicatorSurprise(breadth, unitReads.histories(bucketOf(at))));
+      const surprise = breadth === undefined || unitReads === undefined ? undefined : guarded("read", () => indicatorSurprise(breadth, unitReads.histories(bucketOf(at)), MIN_READS, unitReads.pairs(bucketOf(at))));
       if (breadth !== undefined) guarded("add", () => unitReads?.record(at, indicatorUnits(breadth)));
       // Each due drill starts before the view. Thus the system fold of the view gives its run, and the delivery step sends it.
       const drills = options.drills ?? [];

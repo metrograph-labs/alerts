@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fakeWallClock } from "@mark1russell7/algebra/clock";
-import { bucketOf, HISTORY_BUCKET, indicatorSurprise, readSeries, type MapResult, type MeasureDeclaration, type Observation, type ObservationId, type PlaceId, type Reading, type SourceDescriptor, type SourceId, type SourceProcedures, type WatchedPlace } from "@mark1russell7/alerts";
+import { bucketOf, HISTORY_BUCKET, indicatorSurprise, MIN_READS, readSeries, type MapResult, type MeasureDeclaration, type Observation, type ObservationId, type PlaceId, type Reading, type SourceDescriptor, type SourceId, type SourceProcedures, type WatchedPlace } from "@mark1russell7/alerts";
 import { afterEach, describe, expect, it } from "vitest";
 import { fetchStep, type FetchInput } from "./fetch.ts";
 import { openRuntimeLog } from "./log.ts";
@@ -269,7 +269,9 @@ describe("the readings in a pass of the runtime", () => {
         { unit: "world/river-levels", reads: 40, signals: 0 },
       ];
       expect(first.breadth).toBeDefined();
-      expect(first.surprise).toEqual(indicatorSurprise(first.breadth!, calm));
+      // The two units are of two scopes, thus the store has no pair, and each scope has an empty list of pairs.
+      expect(first.surprise).toEqual(indicatorSurprise(first.breadth!, calm, MIN_READS, []));
+      expect(first.surprise?.world.pairs).toEqual([]);
       expect(first.surprise?.world).toMatchObject({ units: 1, signals: 1, noRate: [] });
       expect(first.surprise?.places.map((place) => [place.place, place.signals])).toEqual([[KANSAS.id, 1]]);
       expect(first.surprise!.world.surprise).toBeGreaterThan(0);
