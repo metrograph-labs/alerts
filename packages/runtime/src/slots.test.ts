@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { nodeHostPorts } from "@mark1russell7/service/host";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FOLD_VERSION } from "./start-snapshot.ts";
 import {
@@ -19,6 +20,7 @@ import {
   loadStep,
   otherSlot,
   parseDeployFile,
+  parseSwapTarget,
   pnpmCall,
   readLive,
   readPackageLinks,
@@ -33,6 +35,7 @@ import {
   supervisorChanges,
   swapLink,
   swapRefusal,
+  withDeployLock,
   withMark,
   type LiveState,
   type StageMark,
@@ -42,6 +45,7 @@ const SHA = "1".repeat(40);
 const OTHER_SHA = "2".repeat(40);
 const goodMark: StageMark = { sha: SHA, at: "2026-11-19T02:00:00.000Z", checks: [...STAGE_CHECKS] };
 const linkTo = (slot: "a" | "b" | undefined): LiveState => ({ kind: "link", target: "live-x", slot });
+const TO_B = { slot: "b", commit: SHA.slice(0, 7) } as const;
 
 describe("the names and paths of the slots (AL-89)", () => {
   it("gives two slots next to the live path, and the other slot of each", () => {
@@ -159,13 +163,14 @@ describe("the marks of a stage and the swap rule (AL-89)", () => {
   });
 
   it("swaps only to a slot staged at its commit with each check and no change", () => {
-    const facts = { live: linkTo("a"), mark: goodMark, head: SHA, clean: true };
+    const facts = { target: TO_B, live: linkTo("a"), mark: goodMark, head: SHA, clean: true };
     expect(swapRefusal(facts)).toBeUndefined();
     expect(swapRefusal({ ...facts, live: { kind: "folder" } })).toContain("adopt");
     expect(swapRefusal({ ...facts, live: linkTo(undefined) })).toContain("adopt");
     expect(swapRefusal({ ...facts, head: undefined })).toContain("Slot b has no checkout");
     expect(swapRefusal({ ...facts, mark: undefined })).toContain("no stage");
-    expect(swapRefusal({ ...facts, head: OTHER_SHA })).toContain("no stage");
+    expect(swapRefusal({ ...facts, head: OTHER_SHA })).toContain("Slot b has the commit 2222222");
+    expect(swapRefusal({ ...facts, head: OTHER_SHA, target: { slot: "b", commit: OTHER_SHA.slice(0, 7) } })).toContain("no stage");
     expect(swapRefusal({ ...facts, mark: { ...goodMark, checks: ["install", "config"] } })).toContain("load");
     // A stage of the code before AL-112 step 2 wrote no file of the outage bundles. Thus a swap refuses its mark.
     expect(swapRefusal({ ...facts, mark: { ...goodMark, checks: ["install", "config", "load"] } })).toContain("bundles");
@@ -173,11 +178,90 @@ describe("the marks of a stage and the swap rule (AL-89)", () => {
   });
 
   it("refuses a swap when a package link of either slot resolves outside its slot (AL-144)", () => {
-    const facts = { live: linkTo("a"), mark: goodMark, head: SHA, clean: true };
+    const facts = { target: TO_B, live: linkTo("a"), mark: goodMark, head: SHA, clean: true };
     const bad = [{ path: "/x/live-a/node_modules/pkg", target: "/x/live/node_modules/.pnpm/pkg" }];
     expect(swapRefusal({ ...facts, foreign: { live: [], target: [] } })).toBeUndefined();
     expect(swapRefusal({ ...facts, foreign: { live: [], target: bad } })).toContain("Slot b has 1 package links outside its folder");
     expect(swapRefusal({ ...facts, foreign: { live: bad, target: [] } })).toContain("relink a");
+  });
+});
+
+describe("the swap as a compare and swap with the deploy lock (AL-167)", () => {
+  it("reads the target of a swap only from a slot name and the start of a commit", () => {
+    expect(parseSwapTarget(["a", "09f542f"])).toEqual({ slot: "a", commit: "09f542f" });
+    expect(parseSwapTarget(["b", SHA])).toEqual({ slot: "b", commit: SHA });
+    expect(parseSwapTarget([])).toBeUndefined();
+    expect(parseSwapTarget(["a"])).toBeUndefined();
+    expect(parseSwapTarget(["c", "09f542f"])).toBeUndefined();
+    expect(parseSwapTarget(["a", "09f5"])).toBeUndefined();
+    expect(parseSwapTarget(["a", "main"])).toBeUndefined();
+    expect(parseSwapTarget(["a", "09f542f", "x"])).toBeUndefined();
+  });
+
+  it("refuses a target that the live link names already, and a target slot with another commit", () => {
+    const facts = { target: TO_B, live: linkTo("a"), mark: goodMark, head: SHA, clean: true };
+    expect(swapRefusal(facts)).toBeUndefined();
+    // The crossed swaps of 2026-11-24: the link names slot b after a swap of another operator, and this swap wants slot b.
+    expect(swapRefusal({ ...facts, live: linkTo("b") })).toContain("a link to slot b already");
+    expect(swapRefusal({ ...facts, target: { slot: "b", commit: OTHER_SHA.slice(0, 7) } })).toContain(`not ${OTHER_SHA.slice(0, 7)}`);
+  });
+
+  describe("on the file system", () => {
+    let top = "";
+    beforeEach(async () => {
+      top = await mkdtemp(join(tmpdir(), "alerts-swap-lock-"));
+    });
+    afterEach(async () => {
+      await rm(top, { recursive: true, force: true });
+    });
+
+    /** This function is the swap of `deploy.ts` with no stage facts: the lock, the read of the link, the compare and the change. */
+    const lockedSwap = (slots: ReturnType<typeof slotsOf>, lock: string, slot: "a" | "b"): Promise<void> =>
+      withDeployLock(lock, nodeHostPorts(), async () => {
+        const live = await readLive(slots);
+        const refusal = swapRefusal({ target: { slot, commit: SHA.slice(0, 7) }, live, mark: goodMark, head: SHA, clean: true });
+        if (refusal !== undefined) throw new Error(refusal);
+        await swapLink(slots.live, slots[slot]);
+      });
+
+    it("lets one of two swaps at once change the link, and refuses the other", async () => {
+      const slots = slotsOf(join(top, "live"));
+      await mkdir(slots.a);
+      await mkdir(slots.b);
+      await swapLink(slots.live, slots.b);
+      const lock = join(top, "host", "deploy.lock");
+      const results = await Promise.allSettled([lockedSwap(slots, lock, "a"), lockedSwap(slots, lock, "a")]);
+      expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+      const refused = results.find((result) => result.status === "rejected");
+      expect(String(refused?.status === "rejected" ? refused.reason : "")).toMatch(/deploy lock|already/u);
+      expect(await readLive(slots)).toMatchObject({ kind: "link", slot: "a" });
+      // The lock goes at the end of each swap. Thus the next deploy takes it.
+      await expect(lockedSwap(slots, lock, "b")).resolves.toBeUndefined();
+      expect(await readLive(slots)).toMatchObject({ kind: "link", slot: "b" });
+    });
+
+    it("refuses the second of two crossed swaps, thus the link keeps the slot of the first", async () => {
+      const slots = slotsOf(join(top, "live"));
+      await mkdir(slots.a);
+      await mkdir(slots.b);
+      await swapLink(slots.live, slots.b);
+      const lock = join(top, "host", "deploy.lock");
+      // Two operators read slot b as live, and each wants slot a. The first swap goes. The second finds slot a live.
+      await lockedSwap(slots, lock, "a");
+      await expect(lockedSwap(slots, lock, "a")).rejects.toThrow("a link to slot a already");
+      expect(await readLive(slots)).toMatchObject({ kind: "link", slot: "a" });
+    });
+
+    it("does no work while another live process holds the lock", async () => {
+      const lock = join(top, "host", "deploy.lock");
+      let ran = 0;
+      await withDeployLock(lock, nodeHostPorts(), async () => {
+        await expect(withDeployLock(lock, nodeHostPorts(), async () => void ran++)).rejects.toThrow("holds the deploy lock");
+      });
+      expect(ran).toBe(0);
+      await withDeployLock(lock, nodeHostPorts(), async () => void ran++);
+      expect(ran).toBe(1);
+    });
   });
 });
 

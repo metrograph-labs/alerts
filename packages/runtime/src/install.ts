@@ -42,10 +42,11 @@ import { pageWarning, readPageState } from "./api.ts";
 import { alertsHome, configPath, readText, SECRETS_FILE } from "./config.ts";
 import { readCopySettings } from "./copy.ts";
 import { checkOfPingUrl, checksRequest, checkTimesProblem, heartbeatGap } from "./heartbeat.ts";
-import { discoveryPid, hostFileText, hostReadyWindow, hostTask, PROBE_TIMEOUT, readinessProbe, RUNTIME_GRACE, runtimeDiscovery, supervisorDiscovery } from "./host.ts";
+import { discoveryPid, hostFileText, hostFolder, hostReadyWindow, hostTask, PROBE_TIMEOUT, readinessProbe, RUNTIME_GRACE, runtimeDiscovery, supervisorDiscovery } from "./host.ts";
 import { checksKeys, daemonCheck, INSTANCE_TIMES, LOUD_STEADY, USER_AGENT_NAME } from "./instance.ts";
 import { checkStart, GOOD_FILE, privateFiles, readStartTexts, requestRestart, restartUse, type RestartOutcome } from "./reload.ts";
-import { liveRoot } from "./slots.ts";
+import { codeReport, readRunningCode } from "./running.ts";
+import { checkoutOf, liveRoot, readLive, slotsOf } from "./slots.ts";
 
 const ACTIONS = ["install", "remove", "status", "restart"] as const;
 const action = process.argv[2];
@@ -200,6 +201,14 @@ if (action === "install") {
     },
   );
   process.exitCode = reportRestart(outcome);
+  // A ready runtime can run the other slot, when a swap crossed this restart (AL-167). Its record of its start tells it.
+  if (outcome.kind === "restarted" && outcome.ready) {
+    const code = codeReport(await readLive(slotsOf(checkoutOf(root))), await readRunningCode(hostFolder(home)), outcome.to);
+    if (code.kind === "other") {
+      console.error(code.line);
+      process.exitCode = 1;
+    } else console.log(code.line);
+  }
   const pageLine = pageWarning(await readPageState(root));
   if (pageLine !== undefined) console.error(pageLine);
 } else {

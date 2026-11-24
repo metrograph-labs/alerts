@@ -9,9 +9,12 @@
  * - `stage <commit> [--page]` checks out the commit in the other slot and installs its dependencies with the lockfile.
  *   Then it checks the private files and the load of the code, with the new code. `--page` also builds the local page.
  *   The live slot does not change.
- * - `swap` points the live path at the staged slot in one step. The runtime takes the new code at its next start.
- *   `node src/install.ts restart` from the live path starts it at once. A second `swap` goes back to the old slot.
- *   A swap refuses a slot with a package link outside its folder (AL-144).
+ * - `swap <a|b> <commit>` points the live path at the staged slot in one step. The runtime takes the new code at its next start.
+ *   `node src/install.ts restart` from the live path starts it at once. A swap to the old slot goes back to it.
+ *   A swap refuses a slot with a package link outside its folder (AL-144). It is a compare and swap (AL-167). It refuses
+ *   a target slot that the live link names already, or a target slot with another commit.
+ * - `stage`, `swap`, `relink`, `adopt` and `fold` hold the deploy lock in the host folder (AL-167). A second deploy on
+ *   the host stops at its start. `status` takes no lock. It also tells the slot and the commit of the running runtime.
  * - `relink [a|b]` removes the `node_modules` folders of a slot and installs them again at its own path. With no
  *   name, it takes the other slot. For the live slot, stop the boot task first.
  * - On Windows, `adopt` also relinks slot a, because the junctions of pnpm name the old path of the checkout.
@@ -34,6 +37,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { writeFileAtomic } from "@procedures/fs/files";
 import { runCommand, type CommandResult } from "@procedures/shell/command";
+import { nodeHostPorts } from "@mark1russell7/service/host";
 import { errorMessage } from "@mark1russell7/text";
 import { alertsHome, readText as readFileText } from "./config.ts";
 import { hostFolder } from "./host.ts";
@@ -41,6 +45,7 @@ import {
   adoptLive,
   checkoutOf,
   DEPLOY_FILE,
+  DEPLOY_LOCK_FILE,
   FOLD_FILE,
   foldChange,
   foldStep,
@@ -51,6 +56,7 @@ import {
   loadStep,
   otherSlot,
   parseDeployFile,
+  parseSwapTarget,
   pnpmCall,
   readLive,
   readPackageLinks,
@@ -64,13 +70,16 @@ import {
   swapLink,
   swapRefusal,
   textHash,
+  withDeployLock,
   withMark,
   type DeployFile,
   type ForeignLinks,
   type SlotName,
+  type SwapTarget,
 } from "./slots.ts";
+import { codeReport, readRunningCode } from "./running.ts";
 
-const USAGE = "The command is: node src/deploy.ts status | adopt | stage <commit> [--page] | swap | relink [a|b] | fold";
+const USAGE = "The command is: node src/deploy.ts status | adopt | stage <commit> [--page] | swap <a|b> <commit> | relink [a|b] | fold";
 
 const root = liveRoot(process.env, process.argv[1], join(fileURLToPath(new URL(".", import.meta.url)), ".."));
 const slots = slotsOf(checkoutOf(root));
@@ -176,6 +185,10 @@ async function status(): Promise<void> {
     const stage = mark === undefined ? "no stage" : `staged ${mark.sha.slice(0, 7)} at ${mark.at}, checks ${mark.checks.join(" ")}${mark.sha === head ? "" : " (not the commit of the slot)"}`;
     console.log(`slot ${name}: ${head === undefined ? "no checkout" : head.slice(0, 7)}, ${stage}`);
   }
+  // The probes do not tell the code of the runtime. The record of its last start tells it (AL-167).
+  const report = codeReport(live, await readRunningCode(hostFolder(home)));
+  if (report.kind === "other") console.error(report.line);
+  else console.log(report.line);
 }
 
 async function stage(commit: string, page: boolean): Promise<void> {
@@ -225,7 +238,7 @@ async function stage(commit: string, page: boolean): Promise<void> {
   console.log(`Slot ${slot} is staged at ${sha.slice(0, 7)}: ${STAGE_CHECKS.join(", ")} passed.`);
   await tellSupervisor(live, slot);
   await tellFold(live, slot);
-  console.log("Start `deploy.ts swap` to put it live.");
+  console.log(`Start \`deploy.ts swap ${slot} ${sha.slice(0, 7)}\` to put it live.`);
 }
 
 /** This function gives the package links of a slot that resolve outside the slot (AL-144). */
@@ -251,7 +264,8 @@ async function relink(slot: SlotName): Promise<void> {
   console.log(`Slot ${slot} is installed again at its path: each package link resolves in the slot.`);
 }
 
-async function swap(): Promise<void> {
+/** This function swaps the live link to `target`, after the compare of the target with the slots (AL-167). Call it with the deploy lock. */
+async function swap(target: SwapTarget): Promise<void> {
   const live = await readLive(slots);
   const from = live.kind === "link" ? live.slot : undefined;
   const slot = from === undefined ? undefined : otherSlot(from);
@@ -259,7 +273,7 @@ async function swap(): Promise<void> {
   const mark = slot === undefined ? undefined : (await readMarks()).marks[slot];
   const clean = slot !== undefined && (await cleanOf(slots[slot]));
   const foreign = from === undefined || slot === undefined ? undefined : { live: await foreignOf(from), target: await foreignOf(slot) };
-  const refusal = swapRefusal({ live, mark, head, clean, foreign });
+  const refusal = swapRefusal({ target, live, mark, head, clean, foreign });
   if (refusal !== undefined) throw new Error(refusal);
   if (from === undefined || slot === undefined) throw new Error("The live path is not a link to a slot.");
   await swapLink(slots.live, slots[slot]);
@@ -270,23 +284,19 @@ async function swap(): Promise<void> {
 }
 
 const [command, ...rest] = process.argv.slice(2);
+const target = command === "swap" ? parseSwapTarget(rest) : undefined;
+// Each command that changes a slot or the live link holds the deploy lock (AL-167). Thus two deploys do not cross.
+const locked = (work: () => Promise<void>): Promise<void> => withDeployLock(join(hostFolder(home), DEPLOY_LOCK_FILE), nodeHostPorts(), work);
 let code = 0;
 try {
   if (command === "status" && rest.length === 0) await status();
-  else if (command === "adopt" && rest.length === 0) {
-    await adoptLive(slots);
-    console.log("The checkout is slot a now, and the live path is a link to it.");
-    const foreign = await foreignOf("a");
-    if (foreign.length > 0) {
-      console.log(`Slot a has ${foreign.length} package links to its old path. The install of slot a starts again.`);
-      await relink("a");
-    }
-  } else if (command === "stage" && rest.length >= 1 && rest.length <= 2 && (rest[1] === undefined || rest[1] === "--page") && rest[0] !== "--page") {
-    await stage(rest[0] ?? "", rest[1] === "--page");
-  } else if (command === "swap" && rest.length === 0) await swap();
+  else if (command === "adopt" && rest.length === 0) await locked(adopt);
+  else if (command === "stage" && rest.length >= 1 && rest.length <= 2 && (rest[1] === undefined || rest[1] === "--page") && rest[0] !== "--page") {
+    await locked(() => stage(rest[0] ?? "", rest[1] === "--page"));
+  } else if (target !== undefined) await locked(() => swap(target));
   else if (command === "relink" && rest.length <= 1 && (rest[0] === undefined || rest[0] === "a" || rest[0] === "b")) {
-    await relink((rest[0] as SlotName | undefined) ?? otherSlot(await liveSlot()));
-  } else if (command === "fold" && rest.length === 0) await foldLive();
+    await locked(async () => relink((rest[0] as SlotName | undefined) ?? otherSlot(await liveSlot())));
+  } else if (command === "fold" && rest.length === 0) await locked(foldLive);
   else {
     console.error(USAGE);
     code = 2;
@@ -296,3 +306,14 @@ try {
   code = 1;
 }
 process.exitCode = code;
+
+/** This function makes the checkout slot `a`, and relinks it when its package links name its old path. */
+async function adopt(): Promise<void> {
+  await adoptLive(slots);
+  console.log("The checkout is slot a now, and the live path is a link to it.");
+  const foreign = await foreignOf("a");
+  if (foreign.length > 0) {
+    console.log(`Slot a has ${foreign.length} package links to its old path. The install of slot a starts again.`);
+    await relink("a");
+  }
+}
