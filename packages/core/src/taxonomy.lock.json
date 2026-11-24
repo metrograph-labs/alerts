@@ -118,6 +118,7 @@
   "infra.power.grid-emergency",
   "infra.power.load-shedding",
   "infra.power.outage",
+  "infra.power.physical-attack",
   "infra.power.psps",
   "infra.saas",
   "infra.saas.outage",

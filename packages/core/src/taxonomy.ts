@@ -311,6 +311,7 @@ export const TAXONOMY: Readonly<Record<string, KindEntry>> = {
   "infra.power.grid-emergency": entry("Grid emergency or conservation appeal", "A grid operator warns that supply is short, asks people to save power, or orders rotating outages."),
   "infra.power.load-shedding": entry("Scheduled load shedding", "Rotating power cuts by a published schedule and stage when a national grid lacks supply."),
   "infra.power.outage": entry("Power outage", "Loss of electric power to customers in an area, with counts of customers out and restoration estimates."),
+  "infra.power.physical-attack": entry("Physical attack on the power grid", "Gunfire, sabotage, vandalism or theft at a substation or a power line cuts the power of an area."),
   "infra.power.psps": entry("Planned power shutoff for wildfire safety", "A utility turns off power in an area ahead of high wind to prevent its lines from starting fires."),
   "infra.saas": entry("Online services", "The web services, apps and platforms that people use."),
   "infra.saas.outage": entry("Online service outage", "An outage of a web service, app or platform that a person uses, from its own status page or user reports."),
