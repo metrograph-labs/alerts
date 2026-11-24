@@ -442,6 +442,8 @@ const SCHEMA_NAMES = [
   "copyPeerSchema",
   "copyReadSchema",
   "copySettingsSchema",
+  "copySounderDeviceSchema",
+  "copySounderSchema",
   "copyStageSchema",
   "correlationKeySchema",
   "coverageSchema",

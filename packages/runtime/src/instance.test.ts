@@ -25,6 +25,7 @@ import {
   type ReportId,
   type SecretLookup,
   type CopySettings,
+  type CopySounder,
   type SourceId,
   type SpendConfig,
   type TellConfig,
@@ -1495,7 +1496,8 @@ describe("the sounder channel of the instance (AL-41)", () => {
   const SOUND = ["beep-tool", "--private-arg"];
   // One sound for each level. Thus the play ends after the first sound, and no timer stays after a test.
   const ONE = { "life-safety": 1, urgent: 1, notice: 1, digest: 1 } as const;
-  const SOUNDING: CopySettings = { ...ONLY_COPY, sounder: { devices: { desk: { sound: SOUND } }, sounds: ONE } };
+  const SOUNDER: CopySounder = { devices: { desk: { sound: SOUND } }, sounds: ONE };
+  const SOUNDING: CopySettings = { ...ONLY_COPY, sounder: SOUNDER };
   // Each policy sends the alert to the sounder at once, next to the Pushover message.
   const sounded = (steps = true): AlertConfig => ({
     ...CONFIG,
@@ -1533,7 +1535,7 @@ describe("the sounder channel of the instance (AL-41)", () => {
     const message = messageOf(() => open(store(SECRETS), CONFIG, 0, TEST_FETCH_LIMIT, { copy: bad, sounderRunner: runner().run }));
     expect(message).toContain("The file copy.json: the field sounder:");
     for (const arg of SOUND) expect(message).not.toContain(arg);
-    expect(copySounderProblems({ ...CLOUD, leaveChannels: [SOUNDER_CHANNEL], sounder: SOUNDING.sounder })).toEqual([
+    expect(copySounderProblems({ ...CLOUD, leaveChannels: [SOUNDER_CHANNEL], sounder: SOUNDER })).toEqual([
       "The file copy.json: the copy has the field sounder, and its field leaveChannels names the channel sounder. Remove one of the two.",
     ]);
     expect(copySounderProblems(SOUNDING)).toEqual([]);
