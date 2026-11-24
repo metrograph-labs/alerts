@@ -46,7 +46,7 @@ import {
   type MergeState,
   type Report,
   type ReportId,
-  type SourceDescriptor,
+  type HealthSource,
   type SystemLines,
   type Tombstone,
 } from "@mark1russell7/alerts";
@@ -56,7 +56,8 @@ import { retention, retiredEvent, RETIRE_EVERY, type RetentionOptions } from "./
 
 /** What the fold reads from the configuration: the descriptors of the sources, the options of the health and the retention. */
 export interface FoldContext {
-  readonly sources: readonly SourceDescriptor[];
+  /** The sources. The fold reads only the fields of `HealthSource` (AL-156), thus the key of a snapshot holds only these fields. */
+  readonly sources: readonly HealthSource[];
   readonly health?: HealthOptions;
   /**
    * The retention of old incidents (AL-109). With it, the fold retires on a cadence of the event time, with no event in
@@ -369,13 +370,13 @@ function assigned<V>(record: Readonly<Record<string, V>>, key: string, value: V,
 }
 
 // The descriptor of each source id, one index for each array of descriptors. The first descriptor of an id wins, as in a find.
-const sourceIndexes = new WeakMap<readonly SourceDescriptor[], ReadonlyMap<string, SourceDescriptor>>();
+const sourceIndexes = new WeakMap<readonly HealthSource[], ReadonlyMap<string, HealthSource>>();
 
 // The descriptor of a source id, or undefined when the context has no source with the id.
-function sourceOf(sources: readonly SourceDescriptor[], id: string): SourceDescriptor | undefined {
+function sourceOf(sources: readonly HealthSource[], id: string): HealthSource | undefined {
   let index = sourceIndexes.get(sources);
   if (index === undefined) {
-    const map = new Map<string, SourceDescriptor>();
+    const map = new Map<string, HealthSource>();
     for (const source of sources) if (!map.has(source.id)) map.set(source.id, source);
     index = map;
     sourceIndexes.set(sources, index);

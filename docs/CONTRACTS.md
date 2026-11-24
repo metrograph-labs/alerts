@@ -1637,6 +1637,10 @@ The start reads the snapshot only when its key and its mark agree with the log. 
 2. The id of the first event of the log, and the count of its `recovered` events. A new log and a salvage give a new key.
 3. The hash of the context of the fold: the sources, the health options, the retention with its defaults, the link policy and the expectations.
 
+The key holds only the fields of a source that the fold reads (`HealthSource`: `id`, `interval`, `slowAfter` and `maxQuiet`). Thus a change of the title, the kinds or the origins of a source keeps the snapshot (AL-156). The types hold this rule: `FoldContext` and the health functions take only `HealthSource`.
+
+A key of the old form holds the whole descriptors. When the new key gives no snapshot, the start reads the old key. This read is for one deploy, and AL-156 removes it.
+
 The store also checks that the log has the event of the mark at the position of the mark. In each other case, the start folds the whole log:
 
 - The file has no snapshot, or a snapshot of another key or of another log.

@@ -10,6 +10,19 @@
 import type { Machine, Transition } from "@mark1russell7/algebra";
 import type { CanaryResult, Duration, FetchFailure, FetchRecord, HealthState, Instant, SourceDescriptor, SourceHealth, SourceId } from "./contracts.ts";
 
+/**
+ * The fields of a source descriptor that the health reads (AL-156). The health functions take only these fields. Thus a
+ * change of another field of a descriptor, for example its kinds or its title, does not change a health.
+ */
+export type HealthSource = Pick<SourceDescriptor, "id" | "interval" | "slowAfter" | "maxQuiet">;
+
+/** This function gives the fields of a descriptor that the health reads, with no other field (AL-156). */
+export function healthSource(descriptor: HealthSource): HealthSource {
+  return descriptor.maxQuiet === undefined
+    ? { id: descriptor.id, interval: descriptor.interval, slowAfter: descriptor.slowAfter }
+    : { id: descriptor.id, interval: descriptor.interval, slowAfter: descriptor.slowAfter, maxQuiet: descriptor.maxQuiet };
+}
+
 /** The events of the health machine. */
 export const HEALTH_EVENTS: {
   readonly passed: "app.fetch-passed";
@@ -165,7 +178,7 @@ export function startHealth(source: SourceId, at: Instant): HealthTrack {
  * This function adds the record of one fetch. The record is an event at the end of the fetch. The
  * timers that end before that time fire first.
  */
-export function observeFetch(track: HealthTrack, record: FetchRecord, descriptor: SourceDescriptor, options: HealthOptions = {}): HealthStep {
+export function observeFetch(track: HealthTrack, record: FetchRecord, descriptor: HealthSource, options: HealthOptions = {}): HealthStep {
   const end = Math.max(track.time, record.at + record.took);
   const transitions: Transition[] = [];
   let next = fire(track, end, descriptor, options, transitions);
@@ -189,7 +202,7 @@ export function observeFetch(track: HealthTrack, record: FetchRecord, descriptor
 }
 
 /** This function moves the health to a time. The timers that end by that time fire. */
-export function advanceHealth(track: HealthTrack, now: Instant, descriptor: SourceDescriptor, options: HealthOptions = {}): HealthStep {
+export function advanceHealth(track: HealthTrack, now: Instant, descriptor: HealthSource, options: HealthOptions = {}): HealthStep {
   const transitions: Transition[] = [];
   return stepOf(fire(track, now, descriptor, options, transitions), descriptor, options, transitions);
 }
@@ -199,7 +212,7 @@ export function advanceHealth(track: HealthTrack, now: Instant, descriptor: Sour
  * adds the records in the order of their ends.
  */
 export function health(
-  descriptor: SourceDescriptor,
+  descriptor: HealthSource,
   start: Instant,
   records: readonly FetchRecord[],
   now: Instant,
@@ -217,7 +230,7 @@ export function health(
 }
 
 // The timers that end after the last step and by `to` fire in the order of their ends.
-function fire(track: HealthTrack, to: Instant, descriptor: SourceDescriptor, options: HealthOptions, transitions: Transition[]): HealthTrack {
+function fire(track: HealthTrack, to: Instant, descriptor: HealthSource, options: HealthOptions, transitions: Transition[]): HealthTrack {
   let next = track;
   for (const timer of deadlines(track, descriptor, options).filter((t) => t.at > track.time && t.at <= to).sort((a, b) => a.at - b.at)) {
     next = change(next, timer.on, timer.at, descriptor, options, transitions);
@@ -225,7 +238,7 @@ function fire(track: HealthTrack, to: Instant, descriptor: SourceDescriptor, opt
   return next.time >= to ? next : { ...next, time: to };
 }
 
-function deadlines(track: HealthTrack, descriptor: SourceDescriptor, options: HealthOptions): { readonly at: Instant; readonly on: HealthEvent }[] {
+function deadlines(track: HealthTrack, descriptor: HealthSource, options: HealthOptions): { readonly at: Instant; readonly on: HealthEvent }[] {
   const found: { at: Instant; on: HealthEvent }[] = [{ at: track.staleFrom + staleAfter(descriptor, options), on: HEALTH_EVENTS.stale }];
   const quiet = maxQuiet(descriptor);
   if (quiet !== undefined && track.quietFrom !== undefined) {
@@ -235,7 +248,7 @@ function deadlines(track: HealthTrack, descriptor: SourceDescriptor, options: He
 }
 
 // One event at one time: the state becomes the state of the conditions.
-function change(track: HealthTrack, on: HealthEvent, at: Instant, descriptor: SourceDescriptor, options: HealthOptions, transitions: Transition[]): HealthTrack {
+function change(track: HealthTrack, on: HealthEvent, at: Instant, descriptor: HealthSource, options: HealthOptions, transitions: Transition[]): HealthTrack {
   const time = Math.max(track.time, at);
   const to = classify({ ...track, time }, descriptor, options).state;
   if (to === track.state) return { ...track, time };
@@ -259,7 +272,7 @@ function changedReason(passed: PassedFetch): string {
  * The conditions in the order of their weight. The first condition that holds gives the state:
  * failing, then unknown, then changed, then silent, then slow, then healthy.
  */
-function classify(track: HealthTrack, descriptor: SourceDescriptor, options: HealthOptions): { readonly state: HealthState; readonly reason: string } {
+function classify(track: HealthTrack, descriptor: HealthSource, options: HealthOptions): { readonly state: HealthState; readonly reason: string } {
   const failAfter = Math.max(1, options.failAfter ?? DEFAULT_FAIL_AFTER);
   if (track.failures >= failAfter) {
     return { state: "failing", reason: `The last ${track.failures} fetches failed: ${track.lastFailure?.failure.kind ?? "unknown"}.` };
@@ -283,7 +296,7 @@ function classify(track: HealthTrack, descriptor: SourceDescriptor, options: Hea
   return { state: "healthy", reason: "The last fetch passed." };
 }
 
-function stepOf(track: HealthTrack, descriptor: SourceDescriptor, options: HealthOptions, transitions: readonly Transition[]): HealthStep {
+function stepOf(track: HealthTrack, descriptor: HealthSource, options: HealthOptions, transitions: readonly Transition[]): HealthStep {
   const { reason } = classify(track, descriptor, options);
   const health: SourceHealth = {
     source: track.source,
@@ -298,11 +311,11 @@ function stepOf(track: HealthTrack, descriptor: SourceDescriptor, options: Healt
 }
 
 // Each limit is 1 or more, so an event never meets a limit at the time that it sets the limit.
-function staleAfter(descriptor: SourceDescriptor, options: HealthOptions): Duration {
+function staleAfter(descriptor: HealthSource, options: HealthOptions): Duration {
   return Math.max(1, options.staleAfter ?? DEFAULT_STALE_INTERVALS * descriptor.interval);
 }
 
-function maxQuiet(descriptor: SourceDescriptor): Duration | undefined {
+function maxQuiet(descriptor: HealthSource): Duration | undefined {
   return descriptor.maxQuiet === undefined ? undefined : Math.max(1, descriptor.maxQuiet);
 }
 

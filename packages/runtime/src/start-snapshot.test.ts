@@ -1,14 +1,14 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { reportId, type Expectation, type ObservationId, type Report, type ReportId, type SourceId } from "@mark1russell7/alerts";
+import { reportId, type Expectation, type ObservationId, type Report, type ReportId, type SourceDescriptor, type SourceId } from "@mark1russell7/alerts";
 import { canonicalHash, random } from "@mark1russell7/rigor-generators";
 import { afterEach, describe, expect, it } from "vitest";
 import { entryIndex } from "./entries.ts";
 import { envelope, type RuntimeEvent } from "./events.ts";
 import { importOf, sharedItem } from "./exchange.ts";
 import type { FoldRow } from "@mark1russell7/sqlite";
-import { FOLD_VERSION, openStartSnapshot, readSnapshot, SNAPSHOT_UPGRADES, snapshotKey, snapshotRows, startReadText, type StartSnapshot } from "./start-snapshot.ts";
+import { FOLD_VERSION, openStartSnapshot, readSnapshot, SNAPSHOT_UPGRADES, snapshotKey, snapshotRows, startReadText, wholeSourcesKey, type StartSnapshot } from "./start-snapshot.ts";
 import { EMPTY_RUNTIME, fold, rebuild, type FoldContext, type RuntimeState } from "./state.ts";
 
 const T0 = Date.UTC(2026, 3, 1, 18, 0, 0);
@@ -157,6 +157,23 @@ describe("the key of the snapshot of a start (AL-105)", () => {
     ].map((other) => other.key);
     for (const other of others) expect(other).not.toBe(key);
     expect(new Set(others).size).toBe(others.length);
+  });
+
+  it("reads only the fields of a source that the fold reads (AL-156)", () => {
+    const source: SourceDescriptor = { id: API, title: "A feed", origins: ["https://feed.example"], dependsOn: [], uses: ["internet"], kinds: ["met"], coverage: "global", transport: "poll", interval: MINUTE, slowAfter: 10_000, auth: "none" };
+    const key = snapshotKey({ sources: [source] }, LOG);
+    // A change of a field that the fold does not read keeps the key.
+    for (const other of [{ ...source, title: "Another title" }, { ...source, kinds: ["met", "geo"] }, { ...source, origins: [] }, { ...source, canary: "x" }]) {
+      expect(snapshotKey({ sources: [other] }, LOG)).toEqual(key);
+    }
+    // A change of a field that the fold reads changes it.
+    for (const other of [{ ...source, interval: 2 * MINUTE }, { ...source, slowAfter: 20_000 }, { ...source, maxQuiet: HOUR }]) {
+      expect(snapshotKey({ sources: [other] }, LOG)).not.toEqual(key);
+    }
+    // The key of the old form reads the whole descriptor, thus it is another key.
+    expect(wholeSourcesKey({ sources: [source] }, LOG)).not.toEqual(key);
+    const retitled: SourceDescriptor = { ...source, title: "Another title" };
+    expect(wholeSourcesKey({ sources: [retitled] }, LOG)).not.toEqual(wholeSourcesKey({ sources: [source] }, LOG));
   });
 });
 
