@@ -821,6 +821,33 @@ The webhook channel (`@mark1russell7/alerts-channel-webhook`, AL-55) sends each 
 - The User-Agent of each request is `alerts-runtime`. The receiver gets no contact of the configuration.
 - The channel has no probe, because each probe is a request to the receiver.
 
+The sounder channel (`@mark1russell7/alerts-channel-sounder`, AL-41) makes a sound on a device in the home of the person:
+
+- The channel needs no phone, no push service and no internet link. Its descriptor uses only the power of the cell.
+- A sounder is the adapter of one device: the speaker of a computer, a siren, or a radio node with a buzzer.
+- The first adapter is `commandSounder`. It starts a program for each sound, as an argument list with no shell.
+- The runner of the program is a parameter. Thus the package has no dependency other than the core.
+- The channel gives the pattern of the sounds. The level `life-safety` has 60 sounds at most, `urgent` has 3, and each other level has 1.
+- The options can set the count of each level and the wait between two sounds. The default wait is 1 second.
+- A send makes the first sound before its answer. Thus an accepted send tells that the device made a sound.
+- The other sounds come after the answer. A failed sound does not stop them.
+- The sounds stop at a cancel, at the end time of the message, or after the count of the level.
+- One device makes one sound at a time. The sounds of two messages on one device come in turns.
+- The channel repeats, thus the dispatcher keeps the copy id of each send. `cancel({ copy })` stops one copy.
+- `cancel({ receipt })` stops each copy of the delivery key. A cancel is idempotent, and it stops the program of a sound in progress.
+- A device has no silent mode. The channel refuses a quiet message with the kind `quiet`.
+- The channel sends no message after its end time. It gives `expired`.
+- A device shows no text. The descriptor has no why line, and its limits of the title and the body are 0.
+- The channel has no acknowledgement. A person stops the sounds with an acknowledgement on another channel, which cancels the plan.
+- `status` gives `delivered` after a sound, and `failed` when the last sound failed. The dispatcher does not poll it.
+- The sounds are in memory only. A restart of the runtime ends them, and `status` then gives `accepted` with that reason.
+- The address has one field that is not necessary, `device`: the name of a sounder. A system with one sounder needs no name.
+- A program that did not start gives `refused`. A program that passed its time limit of 5 seconds gives `timeout`.
+- An exit code other than 0 gives `server`. A message of a failure holds no argument of the program.
+- The channel has a probe only when a sounder has one. A probe makes no sound.
+- The fact `breaksThrough` is true only for a device that sets its own loudness. A person can set the volume of a computer to zero.
+- The runtime does not load the channel at this time. The next step adds it to the instance, with the command of the copy.
+
 The supervisor sends a notice to a receiver when the runtime stops again and again (`loop-notice.ts`, AL-55). A runtime in a loop sends no alert, because the runtime is the sender:
 
 - The URL is the value of the key `SUPERVISOR_WEBHOOK_URL` of `secrets.env`. Each copy has its own file, thus its own receiver.
