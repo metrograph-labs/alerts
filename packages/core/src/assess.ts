@@ -99,11 +99,12 @@ const EARTHQUAKE_TABLE: LevelTable = {
 /**
  * The kinds of context. With the default policy, a report of such a kind reaches the digest at most. It starts no
  * escalation. A feed of the service alerts of public transit holds many alerts each day. Thus only a moderate or
- * higher severity reaches the digest, and a minor alert stays in the map and the log.
+ * higher severity reaches the digest, and a minor alert stays in the map and the log. The status of the FAA gives a ground
+ * stop or a ground delay program at a large airport on most days of bad weather (AL-165).
  *
  * The count of its alerts is an indicator reading. A policy of the configuration can give the kinds a different level.
  */
-export const CONTEXT_KINDS: readonly string[] = ["transport.transit"];
+export const CONTEXT_KINDS: readonly string[] = ["transport.transit", "transport.air.disruption"];
 
 /**
  * The table of the kinds of context. It gives `digest` at most. A minor or unknown severity, or the urgency
@@ -315,7 +316,7 @@ export const DEFAULT_ASSESS_POLICY: AssessPolicy = {
     // A message of the operator reaches only the persons of its addresses (AL-92). An urgent `needs-you` reaches `urgent`.
     { id: "system-tell", kinds: [TELL_KIND], statuses: ["system"], ...TELL_TABLE },
     { id: "system", kinds: [HEALTH_KIND, COVERAGE_KIND, QUOTA_KIND, BALANCE_KIND, CLOCK_KIND, LOG_KIND, COPY_KIND, LOOP_KIND, DRILL_KIND, CHANNEL_KIND, STORE_KIND, LIMIT_KIND, USE_KIND, JOINT_KIND, DRIFT_KIND, REDUNDANCY_KIND, PLACE_KIND], statuses: ["system"], ...SYSTEM_TABLE },
-    // The service alerts of public transit are context. Their counts are indicator readings.
+    // The service alerts of public transit and the programs at airports are context. Their counts are indicator readings.
     { id: "context", kinds: CONTEXT_KINDS, ...CONTEXT_TABLE },
   ],
   otherwise: OTHER_TABLE,
