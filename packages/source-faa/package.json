@@ -10,7 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
-    "airports": "node scripts/airport-states.mjs"
+    "airports": "node scripts/airport-states.ts"
   },
   "dependencies": {
     "@mark1russell7/alerts": "workspace:*",
