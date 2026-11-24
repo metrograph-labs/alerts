@@ -27,7 +27,7 @@ import type { RuntimeLog } from "./log.ts";
 import { cutIncidents, modeEvents, modeStatus, observeStep, type ModeStatus, type ObserveParts } from "./observe.ts";
 import { READING_RETENTION, type ReadingStore } from "./readings.ts";
 import { SNAPSHOT_MISSES, snapshotStep } from "./snapshot.ts";
-import { FOLD_VERSION, readSnapshot, SNAPSHOT_UPGRADES, snapshotKey, snapshotRows, wholeSourcesKey, type StartRead, type StartSnapshot } from "./start-snapshot.ts";
+import { FOLD_VERSION, readSnapshot, SNAPSHOT_UPGRADES, snapshotKey, snapshotRows, type StartRead, type StartSnapshot } from "./start-snapshot.ts";
 import { retention, type RetentionOptions } from "./retention.ts";
 import type { ReadWatch } from "./schedule.ts";
 import { seriesReads } from "./series-reads.ts";
@@ -818,16 +818,14 @@ function readStart(store: FoldSnapshot | undefined, log: RuntimeLog, config: Vie
   if (first === undefined) return {};
   try {
     const snapshotLog = { first, recoveries: counts.get("recovered") ?? 0 };
-    // The new key first, then the key of the old form over the whole descriptors (AL-156, for one deploy).
-    for (const key of [snapshotKey(config, snapshotLog), wholeSourcesKey(config, snapshotLog)]) {
-      const current = store.read(key, log, (mark, rows) => ({ mark, snapshot: readSnapshot(rows) }));
-      if (current !== undefined) return current;
-      for (const [version, upgrade] of Object.entries(SNAPSHOT_UPGRADES)) {
-        const from = Number(version);
-        if (from === FOLD_VERSION) continue;
-        const old = store.read({ ...key, version: from }, log, (mark, rows) => ({ mark, snapshot: readSnapshot(rows) }));
-        if (old !== undefined && !newEventsUpTo(log, counts, upgrade.since, old.mark.seq)) return { mark: old.mark, snapshot: upgrade.upgrade(old.snapshot), upgraded: from };
-      }
+    const key = snapshotKey(config, snapshotLog);
+    const current = store.read(key, log, (mark, rows) => ({ mark, snapshot: readSnapshot(rows) }));
+    if (current !== undefined) return current;
+    for (const [version, upgrade] of Object.entries(SNAPSHOT_UPGRADES)) {
+      const from = Number(version);
+      if (from === FOLD_VERSION) continue;
+      const old = store.read({ ...key, version: from }, log, (mark, rows) => ({ mark, snapshot: readSnapshot(rows) }));
+      if (old !== undefined && !newEventsUpTo(log, counts, upgrade.since, old.mark.seq)) return { mark: old.mark, snapshot: upgrade.upgrade(old.snapshot), upgraded: from };
     }
     return {};
   } catch (error) {

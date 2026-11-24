@@ -12,7 +12,7 @@ import { DRIFT_LIMIT, driftWatch } from "./drift.ts";
 import { envelope, EVENT_TYPES, FOLD_TYPES, type RuntimeEvent } from "./events.ts";
 import { openRuntimeLog, type RuntimeLog } from "./log.ts";
 import { keepsAtBound, openRuntime, REPORT_LIMIT, type Pass, type RuntimeOptions } from "./runtime.ts";
-import { snapshotKey, wholeSourcesKey, type StartRead } from "./start-snapshot.ts";
+import { snapshotKey, type StartRead } from "./start-snapshot.ts";
 import { rebuild, type RuntimeState } from "./state.ts";
 import type { ViewConfig } from "./view.ts";
 
@@ -332,7 +332,7 @@ describe("a restart from the snapshot of the start (AL-105)", () => {
   it("upgrades a snapshot of the old fold, and folds the whole log when a loop event is in the snapshot (AL-153)", async () => {
     const seed = SEEDS[0]!;
     // A snapshot of the fold after 20 passes, written again as a snapshot of version 1: the rows of version 2 less the rows of the blocks.
-    const oldSnapshot = async (place: string, loop: boolean, whole = false): Promise<{ readonly log: RuntimeLog; readonly store: ReturnType<typeof openFoldSnapshot>; readonly head: number }> => {
+    const oldSnapshot = async (place: string, loop: boolean): Promise<{ readonly log: RuntimeLog; readonly store: ReturnType<typeof openFoldSnapshot>; readonly head: number }> => {
       const clock = fakeWallClock(T0);
       const store = openFoldSnapshot(join(place, "snapshot.sqlite"));
       const sources = [worldSource(API, MINUTE, seed, warningsOf(seed), clock)];
@@ -347,9 +347,7 @@ describe("a restart from the snapshot of the start (AL-105)", () => {
       const first = [...log.entries({ after: 0, types: EVENT_TYPES, limit: 1 })][0]!.event.id;
       const key = snapshotKey(runtime.config, { first, recoveries: 0 });
       const read = store.read(key, log, (mark, rows) => ({ mark, rows: [...rows] }))!;
-      // The key of the old form over the whole descriptors, as a runtime before AL-156 wrote it.
-      const written = whole ? wholeSourcesKey(runtime.config, { first, recoveries: 0 }) : key;
-      store.write({ ...written, version: 1 }, read.mark, read.rows.filter((row) => !["state.blocks", "state.blocks[]"].includes(row.part.replace(/^~/u, ""))));
+      store.write({ ...key, version: 1 }, read.mark, read.rows.filter((row) => !["state.blocks", "state.blocks[]"].includes(row.part.replace(/^~/u, ""))));
       await runtime.close();
       log.close();
       log = openRuntimeLog(join(place, "runtime.sqlite"));
@@ -367,18 +365,6 @@ describe("a restart from the snapshot of the start (AL-105)", () => {
       const upgraded = reopen(log, store);
       expect(upgraded.start).toEqual({ events: expect.any(Number), snapshot: { seq: head, id: expect.any(String) }, upgraded: 1 });
       expect(upgraded.start.events).toBeLessThan([...log.read(FOLD_TYPES)].length);
-      expect(upgraded.state()).toEqual(rebuild(log.read(FOLD_TYPES), upgraded.config));
-      await upgraded.close();
-    } finally {
-      log.close();
-      store.close();
-    }
-
-    // A snapshot of the old fold with the key of the old form (AL-156): the start reads it with the upgrade.
-    ({ log, store, head } = await oldSnapshot(folder(), false, true));
-    try {
-      const upgraded = reopen(log, store);
-      expect(upgraded.start).toEqual({ events: expect.any(Number), snapshot: { seq: head, id: expect.any(String) }, upgraded: 1 });
       expect(upgraded.state()).toEqual(rebuild(log.read(FOLD_TYPES), upgraded.config));
       await upgraded.close();
     } finally {
