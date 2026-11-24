@@ -1035,6 +1035,8 @@ describe("the private configuration", () => {
     for (const configFrom of ["Cloud", "", 2]) fails(copySettingsSchema, { ...home, configFrom });
     holds(copySettingsSchema, { ...home, leaveChannels: ["webhook"] });
     for (const leaveChannels of ["webhook", [""], [2]]) fails(copySettingsSchema, { ...home, leaveChannels });
+    holds(copySettingsSchema, { ...home, leaveSources: ["gdelt"] });
+    for (const leaveSources of ["gdelt", [""], [2]]) fails(copySettingsSchema, { ...home, leaveSources });
     for (const accounts of [{ nwws: 0 }, { nwws: 1.5 }, { nwws: "2" }, { "": 2 }, []]) fails(copySettingsSchema, { ...home, accounts });
     holds(copyListenSchema, { host: "home.example.ts.net", port: 65535 });
     holds(copyPeerSchema, { id: "c-2", url: "https://[fd7a:115c::1]:4751/exchange" });
@@ -1069,6 +1071,13 @@ describe("the private configuration", () => {
     expect(copyProblems({ ...base, leaveChannels: [webhook, PUSHOVER, webhook] })).toEqual(["leaveChannels[2]: the channel webhook is in the list already."]);
     expect(copyProblems({ format: COPY_FORMAT, id: "home", rank: 0, leaveChannels: [webhook] })).toEqual([
       "leaveChannels: a copy with no other copies sends on each channel. Thus it leaves no channel.",
+    ]);
+    // A copy leaves a source only to other copies, and it names each source one time (AL-160).
+    const gdelt = "gdelt" as SourceId;
+    expect(copyProblems({ ...base, leaveSources: [gdelt] })).toEqual([]);
+    expect(copyProblems({ ...base, leaveSources: [gdelt, gdelt] })).toEqual(["leaveSources[1]: the source gdelt is in the list already."]);
+    expect(copyProblems({ format: COPY_FORMAT, id: "home", rank: 0, leaveSources: [gdelt] })).toEqual([
+      "leaveSources: a copy with no other copies reads each source. Thus it leaves no source.",
     ]);
     // A rank is lower than the count of the copies.
     expect(copyProblems({ ...base, rank: 2 })).toHaveLength(1);

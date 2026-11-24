@@ -41,6 +41,33 @@
       "scale": "linear"
     },
     {
+      "id": "gdelt",
+      "title": "The place shares its position with GDELT: 1, and each start and each 15 minutes read one event file of the real size",
+      "kind": "level",
+      "unit": "1",
+      "min": 0,
+      "max": 1,
+      "scale": "linear"
+    },
+    {
+      "id": "score",
+      "title": "The persons with a score rule, from the first person",
+      "kind": "level",
+      "unit": "{person}",
+      "min": 0,
+      "max": 10000,
+      "scale": "linear"
+    },
+    {
+      "id": "chain",
+      "title": "The configuration has the stack of an alert chain of 11 parts: 1, and each view gives the states of its goal",
+      "kind": "level",
+      "unit": "1",
+      "min": 0,
+      "max": 1,
+      "scale": "linear"
+    },
+    {
       "id": "eventBytes",
       "title": "The bytes of the description of one version of an alert",
       "kind": "request",
@@ -100,7 +127,7 @@
       "env": {}
     },
     "seed": {
-      "argv": ["node", "scripts/seed-home.ts", "{store}", "{variable.log}", "{variable.feeds}", "{variable.persons}", "{variable.incidents}"],
+      "argv": ["node", "scripts/seed-home.ts", "{store}", "{variable.log}", "{variable.feeds}", "{variable.persons}", "{variable.incidents}", "{variable.gdelt}", "{variable.score}", "{variable.chain}"],
       "cwd": "packages/testkit",
       "env": {}
     },
@@ -115,14 +142,15 @@
       "lines": [
         { "kind": "pass", "ev": "lab-pass", "title": "The end of a pass of the loop" },
         { "kind": "write", "ev": "lab-snapshot-write", "title": "A write of the start snapshot" },
-        { "kind": "amounts", "ev": "lab-amounts", "title": "The routes, the holds and the suppressions after a pass" }
+        { "kind": "amounts", "ev": "lab-amounts", "title": "The routes, the holds and the suppressions after a pass" },
+        { "kind": "readings", "ev": "lab-readings", "title": "A collection of the live metrics" }
       ]
     }
   },
   "services": [
     {
       "id": "feeds",
-      "title": "The fake of the feeds: the NWS alerts of the classes event and update, the canary, and empty transit feeds",
+      "title": "The fake of the feeds: the NWS alerts of the classes event and update, the canary, empty transit feeds and the event files of GDELT",
       "fake": {
         "argv": ["node", "scripts/fake-feeds.ts", "{port}", "{workload}"],
         "cwd": "packages/testkit",

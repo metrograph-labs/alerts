@@ -978,6 +978,7 @@ export function readsGdelt(config: AlertConfig): boolean {
  *   from a fact of the channels.
  * - A spend entry of a channel gives its cap and the watch of the balance of its account.
  * - The times of the loop come from the limits of the runtime.
+ * - The copy does not read a source of the field `leaveSources` of its settings (AL-160).
  */
 export function openInstance(options: InstanceOptions): Instance {
   const { clock } = options;
@@ -1032,7 +1033,12 @@ export function openInstance(options: InstanceOptions): Instance {
       : undefined;
   // The source of the messages of the operator reads the merge state of the runtime at each fetch. The first fetch is after the start.
   const intake = options.tell === undefined ? undefined : tellSource(options.tell, () => runtime.state().merge.reports, () => wall.now());
-  const sources: readonly SourceProcedures[] = [...polled, ...(stream === undefined ? [] : [stream]), ...(intake === undefined ? [] : [intake])];
+  // A copy does not read a source that it leaves to the other copies (AL-160). The exchange gives it their reports. The
+  // pace keeps a place for each made source, thus a left source only gives one more free place.
+  const leftSources = new Set<string>(copy.leaveSources ?? []);
+  const sources: readonly SourceProcedures[] = [...polled, ...(stream === undefined ? [] : [stream]), ...(intake === undefined ? [] : [intake])].filter(
+    (source) => !leftSources.has(source.describe().id),
+  );
 
   const descriptors = sources.map((source) => source.describe());
   const kinds = [...new Set(descriptors.flatMap((descriptor) => descriptor.kinds))];

@@ -8,7 +8,7 @@ import { wallClock } from "@mark1russell7/algebra/clock";
 import { MeterProvider } from "@opentelemetry/sdk-metrics";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { collectReadings, PullMetricReader } from "@mark1russell7/otel-ts/pull";
-import { DEFAULT_LEVELS, LAB_AMOUNTS, LAB_PASS, LAB_READY, LAB_SNAPSHOT_WRITE, MEASURE_CONFIG, measureConfig, readSeedRecord, SEED_RECORD_FILE, seededLine, seedHome } from "./seed-home.ts";
+import { DEFAULT_LEVELS, LAB_AMOUNTS, LAB_PASS, LAB_READINGS, LAB_READY, LAB_SNAPSHOT_WRITE, MEASURE_CONFIG, measureConfig, readSeedRecord, SEED_RECORD_FILE, seededLine, seedHome } from "./seed-home.ts";
 import type { SeedStoreResult } from "./seed-store.ts";
 
 // A small home: approximately 1 hour of the live mix, with small cache files.
@@ -71,7 +71,7 @@ describe("seedHome", { timeout: 30_000 }, () => {
 describe("seedHome with levels", { timeout: 30_000 }, () => {
   it("writes the levels in the seed record, and a person for each level of the persons", () => {
     const home = join(dir, "levels");
-    expect(readSeedRecord(home).levels).toEqual(LEVELS);
+    expect(readSeedRecord(home).levels).toEqual({ ...DEFAULT_LEVELS, ...LEVELS });
     expect(JSON.parse(readFileSync(join(home, CONFIG_FILE), "utf8"))).toEqual(measureConfig(LEVELS.persons));
     expect(leveled.open).toBe(LEVELS.incidents);
     expect(leveled.transit?.near).toBe(LEVELS.feeds);
@@ -128,12 +128,13 @@ describe("capacity-app.json", () => {
     }
   });
 
-  it("names the pass line, the snapshot write line and the amounts line of the lab run, each kind and each event one time (CAP-65, AL-154)", () => {
+  it("names the pass, snapshot write, amounts and readings lines of the lab run, each kind and each event one time (CAP-65, AL-154, AL-135)", () => {
     const lines = app.start.run.lines ?? [];
     expect(lines.map(({ kind, ev }) => ({ kind, ev }))).toEqual([
       { kind: "pass", ev: LAB_PASS },
       { kind: "write", ev: LAB_SNAPSHOT_WRITE },
       { kind: "amounts", ev: LAB_AMOUNTS },
+      { kind: "readings", ev: LAB_READINGS },
     ]);
     for (const each of lines) expect(each.title.length, each.ev).toBeGreaterThan(0);
     expect(app.start.seed.lines).toBeUndefined();
