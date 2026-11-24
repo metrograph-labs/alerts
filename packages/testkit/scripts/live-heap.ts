@@ -85,6 +85,11 @@ const incidents = measured.first.view.incidents.filter((incident) => incident.li
 const routes = measured.first.delivery?.routes.length ?? 0;
 // The routes with a send in their plan: the incidents that reach a person at this pass.
 const sending = measured.first.delivery?.routes.filter((item) => item.plan.sends.length > 0).length ?? 0;
+// The holds of the send limit and the suppressions of the throttle in the state after the first pass (AL-154). Each one is
+// an event of the log, thus they give the size of the write of the first pass.
+const { holds: heldList, suppressions: suppressedList } = measured.instance.runtime.state();
+const holds = heldList.length;
+const suppressions = suppressedList.length;
 // A live instance keeps only the time of its first pass. The measure drops its own copy of the pass too.
 Reflect.deleteProperty(measured, "first");
 for (let index = 0; index < 4; index += 1) gc();
@@ -92,7 +97,7 @@ await new Promise((resolve) => setTimeout(resolve, 50));
 gc();
 const { heapUsed: heap, external, rss } = process.memoryUsage();
 if (snap !== undefined) writeHeapSnapshot(snap);
-process.stdout.write(`${JSON.stringify({ alerts, persons, feeds: transit, live, incidents, routes, heap, external, rss, peakRss: peakRss(), blockWatch: watching, ms: Math.round(ms), ...(profile === undefined ? {} : { sending, profile }) })}\n`);
+process.stdout.write(`${JSON.stringify({ alerts, persons, feeds: transit, live, incidents, routes, holds, suppressions, heap, external, rss, peakRss: peakRss(), blockWatch: watching, ms: Math.round(ms), ...(profile === undefined ? {} : { sending, profile }) })}\n`);
 await measured.close();
 await watch?.stop();
 await rm(dir, { recursive: true, force: true });
