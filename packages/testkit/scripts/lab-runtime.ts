@@ -22,6 +22,9 @@
  * The runtime gets a meter of the OpenTelemetry SDK (AL-132). After the ready line and after each pass line, the script
  * collects the meter with the reader of `@mark1russell7/otel-ts/pull` (AL-135). Then it writes one line `lab-readings` with the readings of the series of `capacity-app.json` at the wall time.
  *
+ * Before each line `lab-readings`, the script writes one line `lab-amounts` with the count of the routes of the pass, of the
+ * holds and of the suppressions of the state (AL-154). The start laws read them as the variables of kind `run`.
+ *
  * The start times each write of the snapshot (the option `timeSnapshot`, AL-115). At the end of each write, the script writes one
  * line `lab-snapshot-write` with the times of the write (CAP-65). The field `at` is the time of the start of the write on the wall clock.
  *
@@ -32,7 +35,7 @@ import { openMeasuredRuntime, type SnapshotWriteTime } from "@mark1russell7/aler
 import { delay, wallClock } from "@mark1russell7/algebra/clock";
 import { MeterProvider } from "@opentelemetry/sdk-metrics";
 import { collectReadings, PullMetricReader } from "@mark1russell7/otel-ts/pull";
-import { LAB_PASS, LAB_READINGS, LAB_READY, LAB_SNAPSHOT_WRITE, readSeedRecord } from "../src/seed-home.ts";
+import { LAB_AMOUNTS, LAB_PASS, LAB_READINGS, LAB_READY, LAB_SNAPSHOT_WRITE, readSeedRecord } from "../src/seed-home.ts";
 
 const [home, feeds, channels] = process.argv.slice(2);
 if (home === undefined) throw new Error("Give the home folder of the seed.");
@@ -54,6 +57,12 @@ const onSnapshotWrite = (write: SnapshotWriteTime): void => {
   line({ ev: LAB_SNAPSHOT_WRITE, at: new Date(at).toISOString(), longestMs: write.longestMs, writeMs: write.writeMs, rowsMs: write.rowsMs, wallMs: write.wallMs, cpuMs: write.cpuMs });
 };
 const measured = await openMeasuredRuntime(home, { wall, startSnapshot: true, timeSnapshot: true, onSnapshotWrite, transitLimit: record.levels.feeds, report, meter, ...services });
+// The amounts of the state after a pass (AL-154). The holds and the suppressions are events of the log. The routes are one for
+// each live incident and each person.
+const amounts = (routes: number): void => {
+  const { holds, suppressions } = measured.instance.runtime.state();
+  line({ ev: LAB_AMOUNTS, amounts: { routes, holds: holds.length, suppressions: suppressions.length } });
+};
 const readings = async (): Promise<void> => {
   const at = wall.now();
   // One series for each metric: the sum over its attributes. Thus each series is one metric id of capacity-app.json.
@@ -71,6 +80,7 @@ line({
   incidents: record.levels.incidents,
   routes: measured.first.delivery?.routes.length ?? 0,
 });
+amounts(measured.first.delivery?.routes.length ?? 0);
 await readings();
 const retry = measured.instance.loop.times.retryCap;
 let wakeAt = measured.first.wakeAt;
@@ -79,6 +89,7 @@ for (;;) {
   const started = performance.now();
   const pass = await measured.pass();
   line({ ev: LAB_PASS, at: pass.at, ms: Math.round(performance.now() - started), fetched: pass.fetched.length });
+  amounts(pass.delivery?.routes.length ?? 0);
   await readings();
   wakeAt = pass.wakeAt;
 }
