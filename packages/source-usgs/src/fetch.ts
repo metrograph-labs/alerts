@@ -7,9 +7,9 @@
  */
 
 import { observationId, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch } from "@mark1russell7/alerts";
-import { answerStore, createRequester } from "@mark1russell7/alerts-fetch";
+import { createRequester } from "@mark1russell7/alerts-fetch";
 import { isRecord, type Fields } from "@mark1russell7/optional/read";
-import type { Condition, Pace, Reply, Transport } from "polite-crawler/api";
+import { keptReplies, type Condition, type Pace, type Reply, type Transport } from "polite-crawler/api";
 
 import { EVENT_FIELDS, SOURCE_ID } from "./map.ts";
 
@@ -152,8 +152,8 @@ export function readAnswer(reply: Reply, url: string, fetched: Instant, latency:
  * Each fetch is one conditional GET (`poll` of polite-crawler) of the whole feed, with the date of the
  * last full answer. The feed has no ETag. A 304 answer has no body. Then the fetch gives the
  * observations of the last full answer again, unchanged. The fetch gives no cursor: the feed holds each
- * event of the past day. The fetch keeps the last full answer as compressed bytes (`answerStore`), and it
- * reads the answer again at a 304.
+ * event of the past day. The fetch keeps the last full answer as compressed bytes (`keptReplies` of
+ * `polite-crawler/api`), and it reads the answer again at a 304.
  */
 export function createUsgsFetch(options: UsgsFetchOptions): (input: UsgsFetchInput, signal?: FetchSignal) => Promise<FetchOutcome> {
   const requester = createRequester({
@@ -168,7 +168,7 @@ export function createUsgsFetch(options: UsgsFetchOptions): (input: UsgsFetchInp
   const now = options.pace.now;
   const conditions = new Map<string, Condition>();
   // The last full answer, with its time of fetch and its latency. A 304 answer gives its read again.
-  const lastAnswer = answerStore<{ readonly fetched: Instant; readonly latency: number }>();
+  const lastAnswer = keptReplies<{ readonly fetched: Instant; readonly latency: number }>();
 
   return async (_input, signal) => {
     const requested = await requester.get({ path: FEED_PATH, what: "the earthquakes of the past day", conditions }, signal);
