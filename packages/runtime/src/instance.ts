@@ -97,6 +97,7 @@ import { createEnergyChartsSource, ENERGY_CHARTS_DESCRIPTOR } from "@mark1russel
 import { createEia930Source, type Eia930FetchOptions } from "@mark1russell7/alerts-source-eia-930";
 import { createFaaSource, FAA_DESCRIPTOR } from "@mark1russell7/alerts-source-faa";
 import { createKevSource, KEV_DESCRIPTOR } from "@mark1russell7/alerts-source-cisa-kev";
+import { createCsafSource, CSAF_PROVIDERS, csafDescriptor, type CsafFetchOptions } from "@mark1russell7/alerts-source-csaf";
 import { createGdeltSource, GDELT_DESCRIPTOR } from "@mark1russell7/alerts-source-gdelt";
 import { createRadarAnomaliesSource, createRadarOutagesSource, type RadarSourceOptions } from "@mark1russell7/alerts-source-cloudflare-radar";
 import { AWS_DOMAIN, AWS_KIND, createAwsSource } from "@mark1russell7/alerts-source-aws";
@@ -466,6 +467,9 @@ const PROVIDER_FEEDS = [
  * CISA KEV gives the known exploited flaws of software, with no area. The work `software` of `WORK_DEFAULTS` in the core
  * names their kind.
  *
+ * The CSAF providers (`source-csaf`) give the security advisories of CISA and of vendors of control systems, with no
+ * area. No work names their kinds: a person gets an advisory when the person names its CVE id or its kind.
+ *
  * The instance also reads the status pages that one of its persons can get (`pagesFor` of `source-statuspage`). They are
  * not in this list, because the persons choose them. The feeds of Google Cloud (`source-gcp`), AWS (`source-aws`)
  * and Azure (`source-azure`) have the same rule.
@@ -485,6 +489,7 @@ export const INSTANCE_SOURCES: readonly SourceDescriptor[] = [
   ENERGY_CHARTS_DESCRIPTOR,
   FAA_DESCRIPTOR,
   KEV_DESCRIPTOR,
+  ...CSAF_PROVIDERS.map((provider) => csafDescriptor(provider)),
 ];
 
 /**
@@ -1027,6 +1032,7 @@ export function openInstance(options: InstanceOptions): Instance {
     createFaaSource,
     ...(eiaKey === "" ? [] : [eiaFactory(eiaKey)]),
     createKevSource,
+    ...CSAF_PROVIDERS.map((provider) => (fetchOptions: CsafFetchOptions) => createCsafSource(provider, fetchOptions)),
     ...(readsGdelt(options.config.config) ? [createGdeltSource] : []),
     ...(radarToken === "" ? [] : radarFactories(radarToken)),
     ...feeds.map((feed) => feed.create),
