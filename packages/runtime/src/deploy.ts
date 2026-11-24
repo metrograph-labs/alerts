@@ -11,6 +11,10 @@
  *   The live slot does not change.
  * - `swap` points the live path at the staged slot in one step. The runtime takes the new code at its next start.
  *   `node src/install.ts restart` from the live path starts it at once. A second `swap` goes back to the old slot.
+ *   A swap refuses a slot with a package link outside its folder (AL-144).
+ * - `relink [a|b]` removes the `node_modules` folders of a slot and installs them again at its own path. With no
+ *   name, it takes the other slot. For the live slot, stop the boot task first.
+ * - On Windows, `adopt` also relinks slot a, because the junctions of pnpm name the old path of the checkout.
  *
  * A swap back to older code is a rollback. Do it only when the new code wrote no new kind of event to the log.
  * When the files of the supervisor change, the stage and the swap tell it. The supervisor takes them only at a restart
@@ -22,7 +26,7 @@
  * `ALERTS_LIVE=<live> node <other slot>/packages/runtime/src/deploy.ts stage <commit>`, and then `swap`.
  * The exit code is 0 for success, 1 for a refusal or a failed step, and 2 for a wrong command. The output holds no value of a private file.
  */
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { constants, setPriority, tmpdir, totalmem } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -35,6 +39,7 @@ import {
   adoptLive,
   checkoutOf,
   DEPLOY_FILE,
+  foreignLinks,
   liveRoot,
   installArgs,
   loadStep,
@@ -42,6 +47,7 @@ import {
   parseDeployFile,
   pnpmCall,
   readLive,
+  readPackageLinks,
   runStep,
   SERVICE_PACKAGE,
   slotsOf,
@@ -54,10 +60,11 @@ import {
   textHash,
   withMark,
   type DeployFile,
+  type ForeignLinks,
   type SlotName,
 } from "./slots.ts";
 
-const USAGE = "The command is: node src/deploy.ts status | adopt | stage <commit> [--page] | swap";
+const USAGE = "The command is: node src/deploy.ts status | adopt | stage <commit> [--page] | swap | relink [a|b]";
 
 const root = liveRoot(process.env, process.argv[1], join(fileURLToPath(new URL(".", import.meta.url)), ".."));
 const slots = slotsOf(checkoutOf(root));
@@ -121,6 +128,11 @@ async function tellSupervisor(live: SlotName, slot: SlotName): Promise<void> {
       ? "The supervisor does not change."
       : `The supervisor changes: ${changes.join(", ")}. The supervisor takes the change only at a restart of the boot task.`,
   );
+  // A supervisor older than AL-89 starts each runtime from the real path of its slot, thus from the old slot (AL-144).
+  const own = await readText(join(slots[live], ...SUPERVISOR_FILES[0].split("/")));
+  if (own !== undefined && !own.includes("entryRoot")) {
+    console.log(`The supervisor of slot ${live} is older than AL-89: it starts each runtime from slot ${live} until the restart of the boot task.`);
+  }
 }
 
 /** This function reads the live slot, or throws when the live path is not a link to a slot. */
@@ -191,6 +203,29 @@ async function stage(commit: string, page: boolean): Promise<void> {
   console.log("Start `deploy.ts swap` to put it live.");
 }
 
+/** This function gives the package links of a slot that resolve outside the slot (AL-144). */
+const foreignOf = async (slot: SlotName): Promise<ForeignLinks["live"]> => foreignLinks(slots[slot], await readPackageLinks(slots[slot]));
+
+/**
+ * This function removes the `node_modules` folders of a slot and installs them again at the path of the slot (AL-144).
+ * A removal does not follow a link. Thus it does not touch the folder that a junction names.
+ */
+async function relink(slot: SlotName): Promise<void> {
+  const folder = slots[slot];
+  if ((await headOf(folder)) === undefined) throw new Error(`Slot ${slot} has no checkout.`);
+  const call = pnpmCall(process.env, process.execPath);
+  if ("refused" in call) throw new Error(call.refused);
+  setPriority(constants.priority.PRIORITY_LOW);
+  const packages = await readdir(join(folder, "packages")).catch(() => [] as string[]);
+  for (const path of [join(folder, "node_modules"), ...packages.map((name) => join(folder, "packages", name, "node_modules"))]) {
+    await rm(path, { recursive: true, force: true });
+  }
+  await step("install", call.program, [...call.prefix, ...installArgs(false)], folder, { CI: "1", COREPACK_ENABLE_DOWNLOAD_PROMPT: "0" });
+  const left = await foreignOf(slot);
+  if (left.length > 0) throw new Error(`Slot ${slot} still has ${left.length} package links outside its folder after the install.`);
+  console.log(`Slot ${slot} is installed again at its path: each package link resolves in the slot.`);
+}
+
 async function swap(): Promise<void> {
   const live = await readLive(slots);
   const from = live.kind === "link" ? live.slot : undefined;
@@ -198,7 +233,8 @@ async function swap(): Promise<void> {
   const head = slot === undefined ? undefined : await headOf(slots[slot]);
   const mark = slot === undefined ? undefined : (await readMarks()).marks[slot];
   const clean = slot !== undefined && (await cleanOf(slots[slot]));
-  const refusal = swapRefusal({ live, mark, head, clean });
+  const foreign = from === undefined || slot === undefined ? undefined : { live: await foreignOf(from), target: await foreignOf(slot) };
+  const refusal = swapRefusal({ live, mark, head, clean, foreign });
   if (refusal !== undefined) throw new Error(refusal);
   if (from === undefined || slot === undefined) throw new Error("The live path is not a link to a slot.");
   await swapLink(slots.live, slots[slot]);
@@ -214,9 +250,17 @@ try {
   else if (command === "adopt" && rest.length === 0) {
     await adoptLive(slots);
     console.log("The checkout is slot a now, and the live path is a link to it.");
+    const foreign = await foreignOf("a");
+    if (foreign.length > 0) {
+      console.log(`Slot a has ${foreign.length} package links to its old path. The install of slot a starts again.`);
+      await relink("a");
+    }
   } else if (command === "stage" && rest.length >= 1 && rest.length <= 2 && (rest[1] === undefined || rest[1] === "--page") && rest[0] !== "--page") {
     await stage(rest[0] ?? "", rest[1] === "--page");
   } else if (command === "swap" && rest.length === 0) await swap();
+  else if (command === "relink" && rest.length <= 1 && (rest[0] === undefined || rest[0] === "a" || rest[0] === "b")) {
+    await relink((rest[0] as SlotName | undefined) ?? otherSlot(await liveSlot()));
+  }
   else {
     console.error(USAGE);
     code = 2;
