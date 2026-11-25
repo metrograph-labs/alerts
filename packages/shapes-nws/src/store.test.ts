@@ -1,11 +1,12 @@
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import type { RegionCode } from "@mark1russell7/alerts";
 import type { Exchange, Reply, Transport } from "polite-crawler/api";
 import { HostScheduler } from "polite-crawler/politeness";
 import { afterEach, describe, expect, it } from "vitest";
-import { memoryCache, openShapeCache, SHAPES_FILE, type ShapeCache } from "./cache.ts";
+import { memoryCache, openShapeCache, SHAPES_FILE, type FileShapeCache, type ShapeCache } from "./cache.ts";
 import { createShapeStore, HOST_RETRY_MS, RETRY_MS, type ShapeStoreOptions } from "./store.ts";
 
 const BASE = "https://nws.test";
@@ -236,13 +237,72 @@ describe("the store of the shapes", () => {
     const path = join(folder, SHAPES_FILE);
     const first = setup(kansas(), { cache: openShapeCache(path) });
     await first.store.refresh({ wanted: KANSAS, until: FAR });
+    const shape = first.store.lookup({ system: "ugc", code: "KSZ083" });
     first.cache.close();
     const second = setup(kansas(), { cache: openShapeCache(path) });
     expect(codes(second.store)).toHaveLength(6);
-    expect(second.store.lookup({ system: "ugc", code: "KSZ083" })).toEqual(first.store.lookup({ system: "ugc", code: "KSZ083" }));
+    expect(second.store.lookup({ system: "ugc", code: "KSZ083" })).toEqual(shape);
     expect(await second.store.refresh({ wanted: KANSAS, until: FAR })).toMatchObject({ requests: 0, stop: "done" });
     expect(second.sent).toEqual([]);
     second.cache.close();
+  });
+
+  describe("the shapes of the file (AL-115)", () => {
+    /** This function gives a file cache with the records of one refresh of Kansas, and a count of its reads of shapes. */
+    async function filled() {
+      const folder = mkdtempSync(join(tmpdir(), "alerts-shapes-lazy-"));
+      folders.push(folder);
+      const path = join(folder, SHAPES_FILE);
+      const first = setup(kansas(), { cache: openShapeCache(path) });
+      await first.store.refresh({ wanted: KANSAS, until: FAR });
+      first.cache.close();
+      return path;
+    }
+    function counted(inner: FileShapeCache) {
+      let reads = 0;
+      const cache: ShapeCache = { ...inner, outline: (key) => ((reads += 1), inner.outline(key)) };
+      return { cache, reads: () => reads, close: () => inner.close() };
+    }
+
+    it("reads no shapes at the start, reads the shapes of a zone at its first use, and keeps them", async () => {
+      const file = counted(openShapeCache(await filled()));
+      const { store } = setup(kansas(), { cache: file.cache });
+      expect(file.reads()).toBe(0);
+      const first = store.lookup({ system: "ugc", code: "KSZ083" });
+      expect(first).toHaveLength(1);
+      expect(file.reads()).toBe(1);
+      expect(store.lookup({ system: "ugc", code: "KSZ083" })).toBe(first);
+      expect(codes(store)).toHaveLength(6);
+      expect(file.reads()).toBe(6);
+      expect(store.region({ system: "ugc", code: "KSZ083" })?.shapes).toBe(first);
+      expect(file.reads()).toBe(6);
+      file.close();
+    });
+
+    it("does not keep the shapes of a zone that is not in use after a 304", async () => {
+      const file = counted(openShapeCache(await filled()));
+      const { store, advance } = setup(kansas(), { cache: file.cache });
+      advance(8 * DAY);
+      expect(await store.refresh({ wanted: KANSAS, until: FAR + 8 * DAY })).toMatchObject({ requests: 11, failures: [], stop: "done" });
+      const after = file.reads();
+      expect(store.lookup({ system: "ugc", code: "KSC173" })).toHaveLength(1);
+      expect(file.reads()).toBe(after + 1);
+      file.close();
+    });
+
+    it("asks again for a zone with shapes that do not parse in the file, with no validators", async () => {
+      const path = await filled();
+      const db = new DatabaseSync(path);
+      db.prepare("UPDATE zones SET shapes = '[' WHERE id = 'KSC173'").run();
+      db.close();
+      const cache = openShapeCache(path);
+      const { store, sent } = setup(kansas(), { cache });
+      expect(store.lookup({ system: "ugc", code: "KSC173" })).toBeUndefined();
+      expect(await store.refresh({ wanted: KANSAS, until: FAR })).toMatchObject({ requests: 1, failures: [], stop: "done" });
+      expect(sent).toEqual(["/zones/county/KSC173"]);
+      expect(store.lookup({ system: "ugc", code: "KSC173" })).toHaveLength(1);
+      cache.close();
+    });
   });
 
   it("refuses a second refresh during a refresh, and throws the reason of an abort", async () => {

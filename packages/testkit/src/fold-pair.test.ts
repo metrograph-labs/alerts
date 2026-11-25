@@ -7,7 +7,7 @@ const CASES = ["168", "off"] as const;
 
 // The lines of 5 jobs of 6 rounds. On the case 168 the head takes `share` of the base, and on the case off the same time.
 // The A/A pairs differ by at most 2 % in each round. Each job has its own global rounds, as `measure` gives them.
-function linesOf(share: number, headIncidents: (round: number) => string = () => "same"): BenchLine[] {
+function linesOf(share: number, headIncidents: (round: number) => string = () => "same", folds: { readonly base?: number; readonly head?: number } = {}): BenchLine[] {
   return ["1", "2", "3", "4", "5"].flatMap((job) =>
     CASES.flatMap((name, caseIndex) =>
       Array.from({ length: 6 }, (_, index) => {
@@ -17,8 +17,8 @@ function linesOf(share: number, headIncidents: (round: number) => string = () =>
         const b = name === "168" ? a * share : a;
         const noise = 1 + 0.01 * ((round % 3) - 1);
         const fields = {
-          a: { peakRss: 400_000_000 + round, extra: { incidents: "same", count: 10, heap: 150_000_000 } },
-          b: { peakRss: 380_000_000 + round, extra: { incidents: headIncidents(round), count: 10, heap: 160_000_000 } },
+          a: { peakRss: 400_000_000 + round, extra: { incidents: "same", ...(folds.base === undefined ? {} : { fold: folds.base }), count: 10, heap: 150_000_000 } },
+          b: { peakRss: 380_000_000 + round, extra: { incidents: headIncidents(round), ...(folds.head === undefined ? {} : { fold: folds.head }), count: 10, heap: 160_000_000 } },
         };
         return [
           { record: "pair" as const, pair: PAIR, job, case: name, round, first, a, b: b * (1 + 0.01 * (round % 2)), fields },
@@ -69,8 +69,17 @@ describe("the fold pair bench", () => {
   it("fails the gate when the two builds give different incidents in one record", () => {
     const lines = linesOf(0.5, (round) => (round === 13 ? "other" : "same"));
     const same = sameIncidents(lines);
-    expect(same.find((item) => item.case === "168")).toEqual({ case: "168", records: 30, differ: 1, missing: 0 });
+    expect(same.find((item) => item.case === "168")).toEqual({ case: "168", records: 30, differ: 1, declared: 0, missing: 0 });
     expect(gateCases(readOf(lines, new Map()), same, 5)).toEqual([{ case: "same incidents", outcome: "beyond" }]);
+  });
+
+  it("fails the gate for different incidents of one fold version, and passes a change that a new fold version declares (AL-172)", () => {
+    const other = (): string => "other";
+    const one = sameIncidents(linesOf(0.5, other, { base: 2, head: 2 }));
+    expect(one.find((item) => item.case === "168")).toEqual({ case: "168", records: 30, differ: 30, declared: 0, missing: 0 });
+    const declared = sameIncidents(linesOf(0.5, other, { base: 2, head: 3 }));
+    expect(declared.find((item) => item.case === "168")).toEqual({ case: "168", records: 30, differ: 0, declared: 30, missing: 0 });
+    expect(gateCases(readOf(linesOf(0.5), new Map()), declared, 5)).toEqual([{ case: "same incidents", outcome: "within" }]);
   });
 
   it("gives the largest memory of each build on each case", () => {

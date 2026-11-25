@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { entryIndex } from "./entries.ts";
 import { envelope, type RuntimeEvent } from "./events.ts";
 import { importOf, sharedItem } from "./exchange.ts";
-import type { FoldRow, FoldSnapshot } from "@mark1russell7/sqlite";
+import type { FoldSnapshot } from "@mark1russell7/sqlite";
 import { FOLD_VERSION, openStartSnapshot, openStartSnapshots, readSnapshot, snapshotFileName, START_SNAPSHOT_FILE, START_SNAPSHOTS_FOLDER, SNAPSHOT_UPGRADES, snapshotKey, snapshotRows, startReadText, type StartSnapshot } from "./start-snapshot.ts";
 import { EMPTY_RUNTIME, fold, rebuild, type FoldContext, type RuntimeState } from "./state.ts";
 
@@ -341,6 +341,18 @@ const DIGESTS: Readonly<Record<number, readonly string[]>> = {
     "19f892aac112680c4bf165f86f3e6b75410552fbacb20a80f142b1ca12154bab",
     "e929c3703c2d58fc5aa679c6d4401610af738a0de29fd99f51e23f4a9a8cab69",
   ],
+  // Version 3 (AL-172) changes the retirement of an incident that a person knows. The seeded snapshots keep their rows.
+  3: [
+    "d1a591b9261f7cd3bd1d6af2b4e2ab3c815812a9e73b442473570b443d12de1d",
+    "ce9e3aa1a06a6c7b9157c1c132216efc1a3557de1e39496555f589207f1e4d4e",
+    "75890383cfb4f381773541b34afca7c5eed12b6fb1e976551b594d29847116bb",
+    "e664fc900fb57cbae22b938a87916db07f01573fd1ca5caf1ec91bce3830e1cf",
+    "bfade8145362d938d08b31c4e7cbffda0c6c4232a4079e3b067d98dccf6181a7",
+    "0a99d0eb9cf69a82ab8a21b4f06ea132e3611ff6560fb673d030b149cd754c50",
+    "ccbee4225413f0ceefdf24aff8b27f2b8a9632b74179f1d6cc60f2912d212779",
+    "19f892aac112680c4bf165f86f3e6b75410552fbacb20a80f142b1ca12154bab",
+    "e929c3703c2d58fc5aa679c6d4401610af738a0de29fd99f51e23f4a9a8cab69",
+  ],
 };
 const POOL = ["w0", "w1", "w2", "w3"];
 const AFTER = [0, MINUTE, 10 * MINUTE, HOUR, 3 * HOUR, 7 * HOUR, 24 * HOUR];
@@ -399,7 +411,6 @@ function seededSnapshots(): StartSnapshot[] {
 }
 
 // True for a row of the blocks of the event loop, the part of the state that version 2 adds (AL-88).
-const blockRow = (row: FoldRow): boolean => ["state.blocks", "state.blocks[]"].includes(row.part.replace(/^~/u, ""));
 
 describe("the version of the fold (AL-105)", () => {
   it("pins the hash of the snapshot of each seeded log", () => {
@@ -407,20 +418,10 @@ describe("the version of the fold (AL-105)", () => {
     expect(digests, `The digests of FOLD_VERSION ${String(FOLD_VERSION)}: ${JSON.stringify(digests)}`).toEqual(DIGESTS[FOLD_VERSION]);
   });
 
-  it("upgrades a snapshot of version 1 to the snapshot of the fold, with no fold of the log (AL-153)", () => {
-    expect(FOLD_VERSION, "A new version of the fold also changes SNAPSHOT_UPGRADES and this test.").toBe(2);
-    expect(Object.keys(SNAPSHOT_UPGRADES)).toEqual(["1"]);
-    const upgrade = SNAPSHOT_UPGRADES[1]!;
-    expect(upgrade.since).toEqual(["loop"]);
-    const snapshots = seededSnapshots();
-    snapshots.forEach((snapshot, index) => {
-      // The seeded logs have no loop event. Thus the rows of version 2 less the rows of the blocks are the rows of version 1.
-      const rows = [...snapshotRows(snapshot)];
-      const old = rows.filter((row) => !blockRow(row));
-      expect(old.length).toBeLessThan(rows.length);
-      expect(canonicalHash(old, { form: "json" })).toBe(DIGESTS[1]![index]);
-      expect(upgrade.upgrade(readSnapshot(old))).toEqual(readSnapshot(rows));
-    });
+  it("has no upgrade to version 3 of the fold (AL-153, AL-172)", () => {
+    expect(FOLD_VERSION, "A new version of the fold also changes SNAPSHOT_UPGRADES and this test.").toBe(3);
+    // An upgrade gives a snapshot of FOLD_VERSION. A told incident of version 3 retires at another time, thus no upgrade gives its state.
+    expect(Object.keys(SNAPSHOT_UPGRADES)).toEqual([]);
   });
 });
 

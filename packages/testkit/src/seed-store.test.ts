@@ -158,6 +158,15 @@ describe("seedStore", () => {
     for (const code of codes) expect(code).toMatch(/^ZZZ\d{3}$/u);
   });
 
+  it("puts the sources of the option observe in observe mode at the start of the log (AL-172)", async () => {
+    const observed = await seedStore(join(dir, "h"), { log: SIZE, seed: "al-103", observe: ["gtfs-seed-"] });
+    const modes = eventsOf(observed.path).filter((event) => event.type === "mode");
+    expect(modes.map((event) => (event.type === "mode" ? [event.source, event.mode, event.time] : []))).toEqual(
+      [1, 2, 3, 4].map((feed) => [`gtfs-seed-${String(feed)}`, "observe", observed.start]),
+    );
+    expect(events.some((event) => event.type === "mode")).toBe(false);
+  });
+
   it("refuses a size that is not above 0", async () => {
     await expect(seedStore(join(dir, "d"), { log: 0, seed: 1 })).rejects.toThrow(/not a finite number above 0/u);
   });

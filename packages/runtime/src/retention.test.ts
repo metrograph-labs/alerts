@@ -3,6 +3,7 @@ import {
   DEFAULT_LINK_POLICY,
   incidents,
   linkRule,
+  OBSERVE_WINDOW,
   QUIET_HORIZON,
   RETENTION_HORIZON,
   reportId,
@@ -28,7 +29,7 @@ import { describe, expect, it } from "vitest";
 import { envelope, type RuntimeEvent } from "./events.ts";
 import { importOf, sharedItem } from "./exchange.ts";
 import { openRuntimeLog } from "./log.ts";
-import { quietKeeps, retention, retiredEvent, RETIRE_EVERY } from "./retention.ts";
+import { ENTRY_KEEP, quietKeeps, retention, retiredEvent, RETIRE_EVERY } from "./retention.ts";
 import { openRuntime } from "./runtime.ts";
 import { cancelledKeys, EMPTY_RUNTIME, fold, rebuild, type FoldContext, type RuntimeState } from "./state.ts";
 
@@ -374,7 +375,8 @@ describe("the retirement in the pass", () => {
 
 describe("retention", () => {
   it("gives the defaults of the core and an interval of one hour", () => {
-    expect(retention()).toEqual({ horizon: 7 * DAY, life: TOMBSTONE_LIFE, every: RETIRE_EVERY, quiet: QUIET_HORIZON });
+    expect(retention()).toEqual({ horizon: 7 * DAY, life: TOMBSTONE_LIFE, every: RETIRE_EVERY, quiet: QUIET_HORIZON, told: QUIET_HORIZON });
+    expect(retention({ quiet: HOUR }).told).toBe(HOUR);
     expect(RETIRE_EVERY).toBe(HOUR);
     // A horizon that is shorter than the quiet horizon is also the quiet horizon.
     expect(retention({ horizon: 2 * HOUR }).quiet).toBe(2 * HOUR);
@@ -386,6 +388,7 @@ describe("retention", () => {
     expect(() => retention({ every: 0 })).toThrow("The interval of the retirements is 0");
     expect(() => retention({ quiet: -1 })).toThrow("The quiet horizon of the retention is -1");
     expect(() => retention({ quiet: 8 * DAY })).toThrow(`The quiet horizon of the retention is ${8 * DAY}, longer than the horizon ${7 * DAY}.`);
+    expect(() => retention({ told: 8 * DAY })).toThrow(`The time told of the retention is ${8 * DAY}, longer than the horizon ${7 * DAY}.`);
   });
 });
 
@@ -393,9 +396,9 @@ describe("the incidents that are not quiet (AL-109)", () => {
   const w1 = report("w1", T0 + SECOND);
   const base: RuntimeEvent[] = [started("run-a", T0), fetched("fetch:1", T0 + SECOND, [w1])];
   const incidentOf = (state: RuntimeState) => incidents(state.merge, T0 + 2 * HOUR, { link: linkRule(DEFAULT_LINK_POLICY) })[0]!;
-  const keeps = (events: readonly RuntimeEvent[], expectations: Parameters<typeof quietKeeps>[1] = []): boolean => {
+  const keeps = (events: readonly RuntimeEvent[], expectations: Parameters<typeof quietKeeps>[1] = [], at = T0 + 2 * HOUR): boolean => {
     const state = foldAll([...base, ...events]);
-    return quietKeeps(state, expectations)(incidentOf(state));
+    return quietKeeps(state, expectations, at)(incidentOf(state));
   };
 
   it("keeps no incident with no escalation, hold, suppression, observed source or expectation", () => {
@@ -413,11 +416,32 @@ describe("the incidents that are not quiet (AL-109)", () => {
     expect(keeps([suppression])).toBe(true);
   });
 
+  it("keeps an incident with an escalation start, a hold or a suppression only for ENTRY_KEEP after the entry (AL-172)", () => {
+    expect(ENTRY_KEEP).toBe(DAY);
+    const entry = escalation(W1, T0 + 2 * SECOND);
+    expect(keeps([entry], [], T0 + 2 * SECOND + ENTRY_KEEP)).toBe(true);
+    expect(keeps([entry], [], T0 + 2 * SECOND + ENTRY_KEEP + 1)).toBe(false);
+  });
+
+  it("keeps an incident with an alert that has no cancel, and not a digest (AL-172)", () => {
+    expect(keeps([delivered("k1", W1, T0 + 2 * SECOND)])).toBe(true);
+    expect(keeps([delivered("k1", W1, T0 + 2 * SECOND), cancelled("k1", T0 + 3 * SECOND)])).toBe(false);
+    const digest: RuntimeEvent = { ...envelope("delivery", "delivery:d1", T0 + 2 * SECOND), delivery: { ...delivery("d1", W1, T0 + 2 * SECOND), level: "digest" } };
+    expect(keeps([digest])).toBe(false);
+  });
+
   it("keeps an incident with a report of a source in observe mode, and not after the source goes live", () => {
     const observe: RuntimeEvent = { ...envelope("mode", "mode:1", T0), source: API, mode: "observe", reason: "a test" };
     const live: RuntimeEvent = { ...envelope("mode", "mode:2", T0 + 2 * SECOND), source: API, mode: "live", reason: "a test" };
     expect(keeps([observe])).toBe(true);
     expect(keeps([observe, live])).toBe(false);
+  });
+
+  it("keeps an incident of a source in observe mode only for the observe window after the receipt of its report (AL-172)", () => {
+    const observe: RuntimeEvent = { ...envelope("mode", "mode:1", T0), source: API, mode: "observe", reason: "a test" };
+    // The verdict counts the report until the end of the window. After that, nothing reads the report.
+    expect(keeps([observe], [], T0 + SECOND + OBSERVE_WINDOW)).toBe(true);
+    expect(keeps([observe], [], T0 + SECOND + OBSERVE_WINDOW + 1)).toBe(false);
   });
 
   it("keeps an incident with a report that starts the check of an expectation", () => {
@@ -434,6 +458,21 @@ describe("the cadence of the retirement (AL-109)", () => {
   const expectRebuild = (events: readonly RuntimeEvent[], context: FoldContext = RETAIN): void => {
     for (let count = 1; count <= events.length; count += 1) expect(rebuild(events.slice(0, count), context)).toEqual(foldIn(events.slice(0, count), context));
   };
+
+  it("retires an incident of a source in observe mode one observe window after the receipt, not at the horizon (AL-172)", () => {
+    const events = [
+      started("run-a", T0),
+      { ...envelope("mode", "mode:1", T0), source: API, mode: "observe", reason: "a test" } as RuntimeEvent,
+      fetched("fetch:1", T0 + SECOND, [report("w1", T0 + SECOND)]),
+      // The verdict still counts the report at the end of its window, thus it stays.
+      fetched("fetch:2", T0 + SECOND + OBSERVE_WINDOW, []),
+      // At the next step, nothing reads the report, and its quiet horizon is over.
+      fetched("fetch:3", T0 + SECOND + OBSERVE_WINDOW + 2 * HOUR, []),
+    ];
+    expect(ids(foldIn(events.slice(0, 4)).merge.reports)).toEqual([W1]);
+    expect(foldIn(events).merge.reports).toEqual([]);
+    expectRebuild(events);
+  });
 
   it("retires a quiet incident at the first event one interval after the last step, and the log has no retired event", () => {
     // The warning expires at T0 + 1 h, thus its quiet horizon of 6 h ends at T0 + 7 h.
@@ -458,16 +497,53 @@ describe("the cadence of the retirement (AL-109)", () => {
     expect(foldIn(events, CONTEXT).retiredAt).toBeUndefined();
   });
 
-  it("keeps an incident that a person got for the full horizon", () => {
+  it("keeps an incident that a person got until the cancel of its alert, and then until the quiet horizon (AL-172)", () => {
+    // The warning expires at T0 + 1 h. Its alert has no cancel, thus the alert can still ring.
     const events = [
       started("run-a", T0),
       fetched("fetch:1", T0 + SECOND, [report("w1", T0 + SECOND)]),
       delivered("k1", W1, T0 + 2 * SECOND),
       fetched("fetch:2", T0 + 2 * DAY, []),
-      fetched("fetch:3", T0 + HOUR + RETENTION_HORIZON, []),
+      cancelled("k1", T0 + 2 * DAY + SECOND),
+      // The cancel is done, and the quiet horizon ended long ago. The next step retires the incident.
+      fetched("fetch:3", T0 + 2 * DAY + HOUR, []),
     ];
+    expect(ids(foldIn(events.slice(0, 5)).merge.reports)).toEqual([W1]);
+    const state = foldIn(events);
+    expect(state.merge.reports).toEqual([]);
+    expect(state.merge.deliveries).toEqual([]);
+    expectRebuild(events);
+    // With no cancel, the incident keeps the full horizon.
+    const open = [...events.slice(0, 4), fetched("fetch:3", T0 + HOUR + RETENTION_HORIZON - MINUTE, []), fetched("fetch:4", T0 + 2 * HOUR + RETENTION_HORIZON, [])];
+    expect(ids(foldIn(open.slice(0, 5)).merge.reports)).toEqual([W1]);
+    expect(foldIn(open).merge.reports).toEqual([]);
+  });
+
+  it("retires an incident with only a digest at the quiet horizon: a digest gets no cancel (AL-172)", () => {
+    const digest: RuntimeEvent = { ...envelope("delivery", "delivery:d1", T0 + 2 * SECOND), delivery: { ...delivery("d1", W1, T0 + 2 * SECOND), level: "digest" } };
+    const events = [started("run-a", T0), fetched("fetch:1", T0 + SECOND, [report("w1", T0 + SECOND)]), digest, fetched("fetch:2", T0 + 7 * HOUR - MINUTE, []), fetched("fetch:3", T0 + 8 * HOUR, [])];
     expect(ids(foldIn(events.slice(0, 4)).merge.reports)).toEqual([W1]);
     expect(foldIn(events).merge.reports).toEqual([]);
+    expectRebuild(events);
+  });
+
+  it("gives no new send for a copy of a told report after its retirement (AL-172)", () => {
+    const events = [
+      started("run-a", T0),
+      fetched("fetch:1", T0 + SECOND, [report("w1", T0 + SECOND)]),
+      delivered("k1", W1, T0 + 2 * SECOND),
+      cancelled("k1", T0 + HOUR),
+      fetched("fetch:2", T0 + 8 * HOUR, []),
+      // The feed lists the old warning again, also with an open expiry in the future.
+      fetched("fetch:3", T0 + 9 * HOUR, [report("w1", T0 + 9 * HOUR), { ...report("w1", T0 + 9 * HOUR), expires: T0 + 30 * DAY }]),
+    ];
+    const state = foldIn(events);
+    expect(state.own.merge.retired.map((one) => one.report)).toEqual([W1]);
+    expect(state.merge.reports).toEqual([]);
+    const now = T0 + 9 * HOUR + SECOND;
+    const found = incidents(state.merge, now, { link });
+    const routes = route({ state: state.merge, incidents: found, recipients: [RECIPIENT], places: [KANSAS], starts: state.starts, ends: state.escalationEnds, cancelled: cancelledKeys(state), channels: [POLLED], now });
+    expect(routes.flatMap((one) => one.plan.sends)).toEqual([]);
     expectRebuild(events);
   });
 
@@ -516,7 +592,8 @@ describe("the cadence of the retirement (AL-109)", () => {
 });
 
 describe("the retirement of an orphan key (AL-47)", () => {
-  const options = retention();
+  // The told incident keeps the full horizon here, thus the key keeps its age at the retirement (AL-172).
+  const options = retention({ told: RETENTION_HORIZON });
   const link = linkRule(DEFAULT_LINK_POLICY);
   // An own delivery of k1, and its cancel from the other copy.
   const first: RuntimeEvent[] = [

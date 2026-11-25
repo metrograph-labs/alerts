@@ -18,24 +18,28 @@ export interface CachedList {
   readonly condition?: Condition;
 }
 
-/** The record of one zone: its name and its shapes, at the time of the fetch. */
-export interface CachedZone {
+/** The head of the record of one zone: its name and the time of the fetch, with no shapes. The plan reads only heads. */
+export interface ZoneHead {
   readonly kind: ZoneKind;
   readonly id: string;
   readonly state: string;
   readonly name: string;
   readonly fetched: Instant;
-  readonly shapes: readonly MapShape[];
   /** The validators of the answer, for the next conditional request. */
   readonly condition?: Condition;
+}
+
+/** The record of one zone: its name and its shapes, at the time of the fetch. */
+export interface CachedZone extends ZoneHead {
+  readonly shapes: readonly MapShape[];
 }
 
 /** The records of the store, by their keys. */
 export interface ShapeState {
   /** The lists, by `listKey`. */
   readonly lists: ReadonlyMap<string, CachedList>;
-  /** The zones, by `zoneKey`. */
-  readonly zones: ReadonlyMap<string, CachedZone>;
+  /** The heads of the zones, by `zoneKey`. */
+  readonly zones: ReadonlyMap<string, ZoneHead>;
 }
 
 /** This function gives the key of a list in the records. */

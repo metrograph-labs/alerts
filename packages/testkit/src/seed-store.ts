@@ -14,6 +14,7 @@
  *
  * The options `shapes` and `transit` also write the cache of the zone shapes and the copy of the transit catalog, from
  * `seed-files.ts`. The option `open` adds reports that stay live at the end of the log, at the areas that the caller gives (AL-126).
+ * The option `observe` puts sources in observe mode at the start of the log, as the new sources of a live copy (AL-172).
  *
  * The function folds each event into a state, as a live copy does. Thus the retirements keep the state bounded, and the
  * log ends in the state of a copy that operated for the days of the log.
@@ -219,6 +220,11 @@ export interface SeedStoreOptions {
   readonly near?: NearFeeds;
   /** The reports that stay live at the end of the log (AL-126). They come after the log of the byte size `log`. */
   readonly open?: OpenReports;
+  /**
+   * The starts of the ids of the sources in observe mode (AL-172). The log starts with a `mode` event for each source of
+   * the mix with one of these starts. An example is `gtfs-seed-`. The default puts no source in observe mode.
+   */
+  readonly observe?: readonly string[];
 }
 
 /**
@@ -360,6 +366,8 @@ export async function seedStore(dir: string, options: SeedStoreOptions): Promise
 
   try {
     add([{ ...envelope("started", `started:seed-run-${String(runs)}`, start), run: `seed-run-${String(runs)}` }]);
+    const observed = plans.filter((plan) => (options.observe ?? []).some((prefix) => plan.id.startsWith(prefix)));
+    add(observed.map((plan): RuntimeEvent => ({ ...envelope("mode", `mode:${plan.id}`, start), source: plan.id, mode: "observe", reason: "seed" })));
     while (onDisk + pendingBytes < options.log) {
       const plan = earliest(plans);
       const at = Math.min(plan.next, nextExchange, nextStart, delivery?.due ?? Number.POSITIVE_INFINITY);
