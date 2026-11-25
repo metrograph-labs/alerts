@@ -6330,7 +6330,9 @@
     "path": [
       "rata.digitraffic.fi"
     ],
-    "subjectIds": null,
+    "subjectIds": [
+      "iso3166"
+    ],
     "risks": [],
     "decision": "adopt",
     "adapter": "@mark1russell7/alerts-source-digitraffic-rail",
