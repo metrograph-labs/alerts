@@ -2550,5 +2550,11 @@
     "name": "The Chicago Police Department",
     "issues": null,
     "note": "The city portal gives the crime records of the department."
+  },
+  {
+    "id": "apha",
+    "name": "The Animal and Plant Health Agency (APHA) of the United Kingdom",
+    "issues": null,
+    "note": "APHA confirms the cases of notifiable animal diseases for the Department for Environment, Food and Rural Affairs."
   }
 ]

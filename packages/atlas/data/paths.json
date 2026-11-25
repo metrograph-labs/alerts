@@ -2298,12 +2298,6 @@
     "note": "The host of the feed of honeywell-product-security."
   },
   {
-    "id": "www.iana.org",
-    "name": "www.iana.org",
-    "kind": "host",
-    "note": "The host of the feed of iana-tz."
-  },
-  {
     "id": "www.ibm.com",
     "name": "www.ibm.com",
     "kind": "host",
@@ -2854,5 +2848,11 @@
     "name": "data.cityofchicago.org",
     "kind": "host",
     "note": "The host of the feed of chicago-crimes."
+  },
+  {
+    "id": "data.iana.org",
+    "name": "data.iana.org",
+    "kind": "host",
+    "note": "The host of the data files of iana-tz."
   }
 ]

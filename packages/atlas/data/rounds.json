@@ -1377,5 +1377,44 @@
       "members": 1757,
       "cause": "Round 26 adds 4 planned sources and 1 later source. 2 classes get 2 sources, so the gaps go from 104 to 102."
     }
+  },
+  {
+    "round": 27,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round read the 7 classes that round 26 did not read. One fetch went to each URL, with a plain user agent. A refusal stays a refusal: the round tried no other route.",
+    "lists": [
+      "The gaps of the atlas on main, with their reasons: packages/atlas/data/classes.json",
+      "The not-read list of round 26: packages/atlas/data/rounds.json"
+    ],
+    "queries": [],
+    "notes": [
+      "iana-tz moves from later to plan: the leap second list is in the public domain, with its expiry date. The class infra.timekeeping has 1 source with no risk.",
+      "defra-avian-influenza-zones is new. The class health.animal-disease has 1 source with no risk.",
+      "Refused: the search API of CourtListener gave 405 with a page of human verification, and its terms page gave 403.",
+      "The search API of GOV.UK gives the guidance pages of APHA, not cases, so the round reads the page of cases.",
+      "Not read in this round: market.credit.rating, transport.air.notam, infra.telecom.outage and civic.school-closure. The round knew no candidate URL for them."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 102,
+      "cover": {
+        "adopted": 55,
+        "paths": 55,
+        "origins": 5
+      },
+      "total": {
+        "adopted": 152,
+        "paths": 152,
+        "origins": 73
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 35,
+      "dimensions": 9,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 27 adds 1 planned source and moves 1 source from later to plan. 2 classes get their first source, so the gaps stay at 102."
+    }
   }
 ]

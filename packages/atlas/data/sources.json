@@ -5246,7 +5246,7 @@
       "url": null,
       "automated": "unclear",
       "redistribution": "unclear",
-      "note": "The page redirected to wiki.free.law; not read."
+      "note": "Round 27: the terms page gave 403 to a plain request. The search API gave 405 with a page of human verification."
     },
     "cost": "unknown",
     "delay": "unknown",
@@ -5265,8 +5265,11 @@
     "risks": [],
     "decision": "later",
     "adapter": null,
-    "reason": "Known open court data; facts for round 2.",
-    "evidence": [],
+    "reason": "Later: the API and the terms page refuse a plain request, and the round tries no other route. The API documents a token.",
+    "evidence": [
+      "https://www.courtlistener.com/api/rest/v4/search/?type=o&order_by=dateFiled%20desc",
+      "https://www.courtlistener.com/terms/"
+    ],
     "round": 1
   },
   {
@@ -10891,37 +10894,39 @@
   },
   {
     "id": "iana-tz",
-    "name": "IANA time zone database releases",
+    "name": "IANA time zone database: the leap second list and the data releases",
     "classes": [
       "infra.timekeeping"
     ],
-    "url": "https://www.iana.org/time-zones",
+    "url": "https://data.iana.org/time-zones/data/leap-seconds.list",
     "access": "file",
     "auth": "none",
     "terms": {
-      "url": null,
-      "automated": "unclear",
-      "redistribution": "unclear",
-      "note": "Updated periodically; latest 2026f on 2026-10-27. Mailing list not named on the page."
+      "url": "https://data.iana.org/time-zones/tzdb/LICENSE",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The LICENSE file puts the tz code and data in the public domain. The leap second list also says so."
     },
     "cost": "free",
-    "delay": "on release",
-    "history": "unknown",
+    "delay": "One read on 2026-11-25 gave a file changed on 2026-10-28, from IERS Bulletin C. The list states its own expiry date: 2027-06-28.",
+    "history": "The list holds the 28 offsets since 1972.",
     "rateLimit": "unknown",
     "calibration": null,
-    "coverage": "World time zone rules.",
+    "coverage": "Each leap second since 1972, the date of the last change and the expiry date of the list. The data folder also holds the time zone rules of each release.",
     "origins": [
       "iana"
     ],
     "path": [
-      "www.iana.org"
+      "data.iana.org"
     ],
     "subjectIds": null,
     "risks": [],
-    "decision": "later",
+    "decision": "plan",
     "adapter": null,
-    "reason": "Low volume, high impact for schedules.",
+    "reason": "A public-domain list in a fixed text format, with no key. A new leap second or a list near its expiry date changes the schedules of the systems that keep time.",
     "evidence": [
+      "https://data.iana.org/time-zones/data/leap-seconds.list",
+      "https://data.iana.org/time-zones/tzdb/LICENSE",
       "https://www.iana.org/time-zones"
     ],
     "round": 1
@@ -24143,6 +24148,43 @@
     "evidence": [
       "https://data.cityofchicago.org/resource/ijzp-q8t2.json",
       "https://data.cityofchicago.org/api/views/ijzp-q8t2.json"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 27,
+    "decision": "plan",
+    "id": "defra-avian-influenza-zones",
+    "name": "Bird flu cases and disease control zones in England (GOV.UK content API)",
+    "classes": [
+      "health.animal-disease"
+    ],
+    "url": "https://www.gov.uk/api/content/guidance/avian-influenza-bird-flu-cases-and-disease-control-zones-in-england",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.gov.uk/help/terms-conditions",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The content of GOV.UK is under the Open Government Licence v3.0. The atlas already reads other GOV.UK content API pages."
+    },
+    "delay": "One read on 2026-11-25 gave the last change on 2026-11-13. The page has 307 dated changes.",
+    "history": "The change history of the page holds each change, with a note.",
+    "rateLimit": "unknown",
+    "coverage": "The confirmed cases of bird flu in England, the control zones around them and the housing orders. Each change has a time and a note.",
+    "origins": [
+      "apha"
+    ],
+    "path": [
+      "www.gov.uk"
+    ],
+    "reason": "The authority of England gives its bird flu cases as JSON with a dated change history, under an open licence and with no key.",
+    "evidence": [
+      "https://www.gov.uk/api/content/guidance/avian-influenza-bird-flu-cases-and-disease-control-zones-in-england"
     ]
   }
 ]

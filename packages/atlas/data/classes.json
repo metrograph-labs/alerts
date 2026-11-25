@@ -138,7 +138,7 @@
     "references": [
       "No hazard list names this class."
     ],
-    "gap": "Find Case Law has Atom feeds, but its terms put computational analysis outside the open licence. CourtListener was not read.",
+    "gap": "No live source. Find Case Law forbids computational analysis in its licence. Round 27: the API and the terms page of CourtListener refuse a plain request.",
     "round": 1
   },
   {
@@ -1080,7 +1080,7 @@
       "CISA sectors: Food and Agriculture",
       "FEMA lifelines: Food, Hydration, Shelter > Agriculture"
     ],
-    "gap": "Round 1 found 0 adopted or planned sources with no risk. aphis-hpai is later, woah-wahis is later: see the reason of each.",
+    "gap": "One source: defra-avian-influenza-zones, for England. aphis-hpai is later, woah-wahis is later: see the reason of each.",
     "round": 1
   },
   {
@@ -1631,7 +1631,7 @@
     "references": [
       "No reference list names this class. Found by the search for missing classes."
     ],
-    "gap": "IERS Bulletin C is later, because no terms page was found.",
+    "gap": "One source: iana-tz, the leap second list. Its data comes from IERS Bulletin C (iers-bulletin-c), so a second source needs a different origin.",
     "round": 1
   },
   {
