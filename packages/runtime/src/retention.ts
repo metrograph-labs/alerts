@@ -102,21 +102,25 @@ export function quietKeeps(state: RuntimeState, expectations: readonly Expectati
   const cancelled = new Set(state.cancelled);
   for (const delivery of state.merge.deliveries) if (delivery.level !== "digest" && !cancelled.has(delivery.key)) held.add(delivery.incident);
   const reports = new Map(state.merge.reports.map((report) => [report.id, report]));
-  const run = `${DRILL_KIND}.run`;
-  // The report is a run of the last start of its drill: the filter of `drillRunOf`, with no copy and no config.
-  // The kind comes first: the fold reads this for each report of each kept incident, and few reports are drill runs.
-  const lastRun = (report: Report): boolean => {
-    if (report.kind.code !== run || report.onset === undefined) return false;
-    const start = state.drills[report.parameters["drill"]?.[0] ?? ""];
-    return start !== undefined && report.onset >= start;
-  };
+  // The run reports of the last start of each drill: the filter of `drillRunOf`, with no copy and no config. One pass of
+  // the reports at each step finds them, not a test in `needed`: the core reads `needed` for each report of each incident.
+  if (Object.keys(state.drills).length > 0) for (const report of state.merge.reports) if (lastRun(state, report)) held.add(report.id);
   const needed = (id: ReportId): boolean => {
     if (held.has(id)) return true;
     const report = reports.get(id);
     if (report === undefined) return false;
-    return lastRun(report) || (observing.has(report.source) && report.received >= counted) || expectations.some((expectation) => expectation.from === report.source && reportPasses(expectation.when, report));
+    return (observing.has(report.source) && report.received >= counted) || expectations.some((expectation) => expectation.from === report.source && reportPasses(expectation.when, report));
   };
   return (incident) => incident.reports.some(needed);
+}
+
+const DRILL_RUN = `${DRILL_KIND}.run`;
+
+// The report is a run of the last start of its drill (AL-187).
+function lastRun(state: RuntimeState, report: Report): boolean {
+  if (report.kind.code !== DRILL_RUN || report.onset === undefined) return false;
+  const start = state.drills[report.parameters["drill"]?.[0] ?? ""];
+  return start !== undefined && report.onset >= start;
 }
 
 /**
