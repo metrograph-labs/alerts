@@ -75,7 +75,9 @@ export function purlOf(ecosystem: string, name: string): string | undefined {
  */
 export function packagePurl(pkg: { readonly ecosystem: string; readonly name: string; readonly purl?: string }): string | undefined {
   if (pkg.purl !== undefined && /^pkg:[a-z][a-z0-9.+-]*\/[^?#@]+/.test(pkg.purl)) {
-    const bare = pkg.purl.replace(/[?#].*$/, "");
+    // A search for one character, not a pattern with `.*`, thus a long input takes linear time.
+    const cut = pkg.purl.search(/[?#]/);
+    const bare = cut < 0 ? pkg.purl : pkg.purl.slice(0, cut);
     // A version follows the last `@`, but an npm scope in a purl is `%40`, so each `@` starts the version.
     const at = bare.indexOf("@");
     return at < 0 ? bare : bare.slice(0, at);

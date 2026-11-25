@@ -291,11 +291,11 @@ describe("the fetch of the GitHub repository", () => {
   it("reads each new MAL file of the compare at the head commit, with one request to the API", async () => {
     const { fetch, sent } = fetchWith(GITHUB, github);
     const outcome = await fetch({ watch: WATCH, cursor: { base: BASE } }, undefined);
-    expect(sent.filter((exchange) => exchange.url.startsWith(API))).toHaveLength(1);
+    expect(sent.filter((exchange) => new URL(exchange.url).origin === API)).toHaveLength(1);
     expect(sent[0]!.url).toBe(`${API}/repos/ossf/malicious-packages/compare/${BASE}...main`);
-    const raw = sent.filter((exchange) => exchange.url.startsWith(RAW)).map((exchange) => exchange.url.slice(exchange.url.lastIndexOf("/") + 1));
+    const raw = sent.filter((exchange) => new URL(exchange.url).origin === RAW).map((exchange) => exchange.url.slice(exchange.url.lastIndexOf("/") + 1));
     expect(raw).toEqual(["MAL-2026-20354.json", "MAL-2026-20612.json", "MAL-2026-20613.json", "MAL-2026-20614.json", "MAL-2026-20615.json", "MAL-2026-20611.json"]);
-    expect(sent.filter((exchange) => exchange.url.startsWith(RAW)).every((exchange) => exchange.url.includes(`/${HEAD}`))).toBe(true);
+    expect(sent.filter((exchange) => new URL(exchange.url).origin === RAW).every((exchange) => exchange.url.includes(`/${HEAD}`))).toBe(true);
     const bodies = bodiesOf(outcome);
     expect(bodies).toHaveLength(2);
     expect((bodies[0] as unknown as HeadBody).newest).toBe("2026-11-25T17:19:29Z");
