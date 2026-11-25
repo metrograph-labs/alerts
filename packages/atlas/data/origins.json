@@ -2562,5 +2562,17 @@
     "name": "The Security Council of the United Nations",
     "issues": null,
     "note": "The committees of the Security Council keep the Consolidated List of their sanctions."
+  },
+  {
+    "id": "meteoswiss",
+    "name": "MeteoSwiss, the Federal Office of Meteorology and Climatology of Switzerland",
+    "issues": null,
+    "note": "MeteoSwiss measures the pollen of Switzerland at its stations."
+  },
+  {
+    "id": "seattle-pd",
+    "name": "The Seattle Police Department",
+    "issues": null,
+    "note": "The department publishes the offenses of its reports on the open data portal of the city."
   }
 ]

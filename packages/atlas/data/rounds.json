@@ -1453,5 +1453,42 @@
       "members": 1757,
       "cause": "Round 28 adds 3 planned sources. civic.sanctions and infra.internet.bgp get a second origin, so the gaps go from 102 to 100."
     }
+  },
+  {
+    "round": 29,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took classes with one source and looked for a second source with a different origin. One fetch went to each URL, with a plain user agent.",
+    "lists": [
+      "The classes with one source, from the gaps of the atlas on main: packages/atlas/data/classes.json"
+    ],
+    "queries": [],
+    "notes": [
+      "meteoswiss-pollen is new. With dwd-pollen-index, env.pollen has 2 sources from 2 origins.",
+      "cdc-nwss-wastewater is new. The old CDC dataset 2ew6-ywp6 stopped in 2025-09. With rivm-wastewater-sars2, health.wastewater-signal has 2 origins.",
+      "seattle-spd-crime is new. With chicago-crimes, security.crime has 2 origins.",
+      "The API documentation of the American Meteor Society gave 410, and the data page of the NASA landslide nowcast gave 404."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 97,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 35,
+      "dimensions": 9,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 29 adds 3 planned sources. env.pollen, health.wastewater-signal and security.crime get a second origin, so the gaps go from 100 to 97."
+    }
   }
 ]

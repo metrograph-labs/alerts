@@ -24311,5 +24311,119 @@
       "https://stat.ripe.net/data/bgp-updates/data.json?resource=193.0.0.0/21",
       "https://stat.ripe.net/data/routing-status/data.json?resource=AS3333"
     ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 29,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "meteoswiss-pollen",
+    "name": "MeteoSwiss open data: the pollen values of each station (CSV files)",
+    "classes": [
+      "env.pollen"
+    ],
+    "url": "https://data.geo.admin.ch/api/stac/v1/collections/ch.meteoschweiz.ogd-pollen/items",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://opendatadocs.meteoswiss.ch/general/terms-of-use",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The terms put the open data under CC BY 4.0, also for commercial use. Each copy names the source MeteoSwiss."
+    },
+    "delay": "One read at about 14:20 UTC on 2026-11-25 gave items changed at 14:17 UTC. Each station has a file of the current hour and a daily file.",
+    "history": "Each station has historical files from the start of its series, and a file of the recent values.",
+    "coverage": "The pollen counts of 19 stations in Switzerland, for each type of pollen, each hour and each day.",
+    "origins": [
+      "meteoswiss"
+    ],
+    "path": [
+      "data.geo.admin.ch"
+    ],
+    "reason": "Open files with no key, from an origin apart from the DWD. It is the second source of pollen, for Switzerland.",
+    "evidence": [
+      "https://data.geo.admin.ch/api/stac/v1/collections/ch.meteoschweiz.ogd-pollen",
+      "https://opendatadocs.meteoswiss.ch/general/terms-of-use"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 29,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "cdc-nwss-wastewater",
+    "name": "CDC National Wastewater Surveillance System: the data of SARS-CoV-2, influenza A, measles and mpox",
+    "classes": [
+      "health.wastewater-signal"
+    ],
+    "url": "https://data.cdc.gov/resource/j9g8-acpt.json",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.cdc.gov/api/views/j9g8-acpt.json",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The data is a work of the US government on the open data portal of the CDC, with a query API."
+    },
+    "delay": "One read on 2026-11-25 gave the four datasets changed on 2026-11-20. The CDC changes them each week.",
+    "history": "Each dataset holds the samples of each site since the start of its series.",
+    "coverage": "The wastewater samples of the treatment plants of the US, for each site and each sample date. One dataset for each pathogen.",
+    "origins": [
+      "cdc"
+    ],
+    "path": [
+      "data.cdc.gov"
+    ],
+    "reason": "A query API with no key, from an origin apart from RIVM. It is the second source of wastewater signals, for the US. The old dataset 2ew6-ywp6 stopped in 2025.",
+    "evidence": [
+      "https://data.cdc.gov/api/catalog/v1?q=wastewater",
+      "https://data.cdc.gov/resource/2ew6-ywp6.json"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 29,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "seattle-spd-crime",
+    "name": "Seattle Police Department: SPD Crime Data, 2008 to the present",
+    "classes": [
+      "security.crime"
+    ],
+    "url": "https://data.seattle.gov/resource/tazs-3rd5.json",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.seattle.gov/api/views/tazs-3rd5.json",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The licence field of the dataset is Public Domain. The terms page of the city gave 404 in round 29."
+    },
+    "delay": "One read on 2026-11-25 gave rows changed at 16:16 UTC on 2026-11-24, with the newest report at 00:33 on that day. The city changes the dataset each day.",
+    "history": "The dataset holds the offenses of each report since 2008.",
+    "coverage": "Each offense that the Seattle Police Department reports, with its category, its time and its block.",
+    "origins": [
+      "seattle-pd"
+    ],
+    "path": [
+      "data.seattle.gov"
+    ],
+    "reason": "A query API with no key, of a second large city. With chicago-crimes it gives security.crime two origins.",
+    "evidence": [
+      "https://data.seattle.gov/resource/tazs-3rd5.json?$limit=1",
+      "https://data.seattle.gov/api/views/tazs-3rd5.json"
+    ]
   }
 ]
