@@ -3,7 +3,8 @@
  * SAME decoder writes the headers that it hears. The source reads the lines of the decoder, so it needs no internet.
  * The package gives the procedures of the source contract of `@mark1russell7/alerts`.
  *
- * The process of the receiver and the decoder is not part of this package yet (AL-185). A host fills the feed.
+ * The root is pure. The entry `@mark1russell7/alerts-source-nwr/receiver` has the process of the receiver and the decoder,
+ * which fills the feed. It needs Node.js.
  */
 
 import type { RegionCode, SourceProcedures } from "@mark1russell7/alerts";
