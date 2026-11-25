@@ -66,6 +66,9 @@ export const STOPPED_ONCE = "The last start with these private files stopped bef
 /** The reason of a start that uses the last good set, because the last starts with the same files stopped before they were ready. */
 export const STOPPED_START: string = `The last ${String(STOP_LIMIT)} starts with these private files stopped before the runtime was ready.`;
 
+/** The reason of a fold for the last good set (AL-169): the mode fold picked the set. */
+export const PICKED_GOOD = "The mode fold folds for the last good set.";
+
 /** The note of a start after the stops, when the last good set has the same texts as the private files. */
 export const STOPPED_SAME: string = `${STOPPED_START} The last good set has the same texts, thus the fault is not in the private files.`;
 
@@ -225,6 +228,8 @@ export interface StartedConfig extends CheckedStart {
   readonly fallback: readonly string[];
   /** The notes of the start that do not stop it, for example a failed write of the start marker. */
   readonly notes: readonly string[];
+  /** This value is true when the last good set has the same texts as the private files (AL-169). Then the two sets have one fold. */
+  readonly same: boolean;
   /**
    * This function marks the start as good. The runtime uses it when its service operates and one pass ended.
    * A start with the private files writes them as the last good set, and it removes the start marker.
@@ -241,18 +246,23 @@ export interface StartedConfig extends CheckedStart {
  * - One stop with the key gives a second try of the files, with the note `STOPPED_ONCE`.
  * - After `STOP_LIMIT` stops with the key, or a marker with the use `good`, the start uses the last good set.
  * - When the last good set has the same texts as the private files, the start uses the files again, with the note `STOPPED_SAME`.
+ *
+ * The mode fold gives `pick` (AL-169): it folds for one set, and the start marker does not choose it. With `files`, the
+ * stops of the marker do not count. With `good`, the function gives the last good set, or it throws `ConfigRefused`.
  */
-export async function startConfig(files: PrivateFiles, checkOf: CheckOf, ports: StartPorts): Promise<StartedConfig> {
+export async function startConfig(files: PrivateFiles, checkOf: CheckOf, ports: StartPorts, pick?: StartUse): Promise<StartedConfig> {
   const [texts, request, marker, good] = await Promise.all([readStartTexts(files), readRestartRequest(files), readAt(files.marker), readAt(files.good)]);
   const key = startKey(texts, request);
   const goodSet = parseGood(good);
   const same = goodSet.tag === "ok" && textsKey(goodSet.value) === textsKey(texts);
   const last = parseMarker(marker);
   // The stops with this key before this start. A marker with the use `good` holds the stops that gave way to the set.
-  const stops = last?.key !== key ? 0 : last.use === "good" ? Math.max(last.starts, STOP_LIMIT) : last.starts;
+  const stops = pick === "files" || last?.key !== key ? 0 : last.use === "good" ? Math.max(last.starts, STOP_LIMIT) : last.starts;
   const stopped = stops >= STOP_LIMIT;
   const problems: string[] = [];
-  if (stopped && !same) {
+  if (pick === "good") {
+    problems.push(PICKED_GOOD);
+  } else if (stopped && !same) {
     problems.push(STOPPED_START);
   } else {
     const checked = checkStart(texts, checkOf);
@@ -261,7 +271,7 @@ export async function startConfig(files: PrivateFiles, checkOf: CheckOf, ports: 
       const notes = [...told, ...(await writeMarker(files, ports, { key, use: "files", starts: stops + 1 }))];
       let marked: Promise<readonly string[]> | undefined;
       const ready = (): Promise<readonly string[]> => (marked ??= markGood(files, ports, texts, same));
-      return { ...checked.value, texts, request, use: "files", fallback: [], notes, ready };
+      return { ...checked.value, texts, request, use: "files", fallback: [], notes, same, ready };
     }
     problems.push(...checked.error);
   }
@@ -270,7 +280,7 @@ export async function startConfig(files: PrivateFiles, checkOf: CheckOf, ports: 
   if (fallback.tag === "err") throw new ConfigRefused([...problems, ...fallback.error.map((problem) => `The last good set ${GOOD_FILE}: ${problem}`)]);
   // A stopped start keeps the marker, with the use `good`. Files with problems need no marker, because the next check finds the problems again.
   const notes = stopped ? await writeMarker(files, ports, { key, use: "good", starts: stops }) : await removeMarker(files, ports);
-  return { ...fallback.value, texts, request, use: "good", fallback: problems, notes, ready: () => Promise.resolve([]) };
+  return { ...fallback.value, texts, request, use: "good", fallback: problems, notes, same, ready: () => Promise.resolve([]) };
 }
 
 // The mark of a good start with the private files: the last good set gets the files, and the marker goes.

@@ -33,7 +33,7 @@ import { loadPriors } from "./priors.ts";
 import { openReadingStore, READINGS_FILE } from "./readings.ts";
 import { checkStart, privateFiles, readStartTexts } from "./reload.ts";
 import type { Pass } from "./runtime.ts";
-import { openStartSnapshot, START_SNAPSHOT_FILE, type OpenedStartSnapshot } from "./start-snapshot.ts";
+import { openStartSnapshots, START_SNAPSHOTS_FOLDER, type OpenedStartSnapshot } from "./start-snapshot.ts";
 import { openTransitCache, TRANSIT_FILE } from "./transit.ts";
 
 /** The fake keys of a measure with no option `keys`: the token of the Pushover application and one Pushover user key. */
@@ -346,8 +346,8 @@ export async function openMeasuredRuntime(home: string, options: MeasuredOptions
     const quotas = new SqliteHostStateStore(join(home, "quotas.sqlite"));
     const { log, recovered } = openCheckedRuntimeLog(join(home, "runtime.sqlite"), { now: () => wall.now() });
     if (recovered !== undefined) report(`The log file was broken. The new log kept ${String(recovered.added)} events and lost ${String(recovered.lost)}.`);
-    const snapshot: OpenedStartSnapshot = options.startSnapshot === true ? openStartSnapshot(join(home, START_SNAPSHOT_FILE)) : {};
-    if (snapshot.fault !== undefined) report(`The file ${START_SNAPSHOT_FILE} did not open (${snapshot.fault}).`);
+    const snapshot: OpenedStartSnapshot = options.startSnapshot === true ? openStartSnapshots(home) : {};
+    if (snapshot.fault !== undefined) report(`The folder ${START_SNAPSHOTS_FOLDER} did not open (${snapshot.fault}).`);
     if (recovered !== undefined) snapshot.store?.clear();
     const shapes = openShapeCache(join(home, SHAPES_FILE));
     const readings = openReadingStore(join(home, READINGS_FILE));
