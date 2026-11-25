@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json.schemastore.org/package",
+  "name": "@mark1russell7/alerts-format-datex",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The reader of DATEX II situation publications (version 3) for the alert system: the class, the type, the validity and the cause of each record.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json"
+  },
+  "dependencies": {
+    "@mark1russell7/alerts-format-cap": "workspace:*",
+    "@mark1russell7/optional": "^1.5.0",
+    "@nodable/entities": "^3.1.0",
+    "fast-xml-parser": "^5.12.1"
+  },
+  "devDependencies": {
+    "@mark1russell7/cue": "^2.0.0",
+    "@types/node": "^26.6.5",
+    "@vitest/coverage-v8": "^5.0.3",
+    "fast-check": "^4.10.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
+  }
+}
