@@ -12,6 +12,7 @@ import {
   azureSizesFor,
   choiceCount,
   computeMeter,
+  countryFragment,
   distinctRows,
   fixedSlotId,
   fragmentInput,
@@ -45,6 +46,7 @@ interface OfferSpec {
   readonly memory?: string;
   readonly term?: "on-demand" | "spot";
   readonly currency?: string;
+  readonly country?: string;
 }
 
 function offer(spec: OfferSpec): MeteredObservation {
@@ -57,7 +59,7 @@ function offer(spec: OfferSpec): MeteredObservation {
       source: spec.provider,
       sourceId: `${spec.plan}/${spec.region}/${term}`,
       title: `${spec.provider} ${spec.plan}`,
-      location: { provider: spec.provider, region: spec.region },
+      location: { provider: spec.provider, region: spec.region, ...(spec.country === undefined ? {} : { country: spec.country }) },
       term: { kind: term },
       specs: [{ name: "memory", value: spec.memory ?? "2048 MiB" }],
     },
@@ -351,6 +353,65 @@ describe("the live copies", () => {
     expect(() => placementLayer(input(offers, { fixed }))).toThrow(RangeError);
     expect(() => placementLayer(input(offers, { chances, fixed: [fixed[1]!, fixed[1]!] }))).toThrow(RangeError);
     expect(() => fragmentInput(CHANCES, siteFragment("home"))).toThrow(RangeError);
+  });
+});
+
+describe("the country of each copy (AL-146)", () => {
+  // Three offers of one cost: provider-a and provider-b in one country, provider-c in a second country.
+  const offers = [
+    offer({ provider: "provider-a", region: "region-1", plan: "small", hourly: 0.01, country: "NL" }),
+    offer({ provider: "provider-b", region: "region-1", plan: "small", hourly: 0.01, country: "NL" }),
+    offer({ provider: "provider-c", region: "region-1", plan: "small", hourly: 0.01, country: "DE" }),
+  ];
+  const chances: PlacementChances = { ...CHANCES, country: { works: 0.995, kind: "assumed", source: "a test input" } };
+  const sharedIds = (build: ReturnType<typeof placementLayer>): readonly string[] => (build.layer.shared ?? []).map((each) => each.id);
+
+  it("adds no country fragment without a country input", () => {
+    const build = placementLayer(input(offers));
+    expect(sharedIds(build).some((id) => id.startsWith("country:"))).toBe(false);
+    expect(build.unplaced).toEqual([]);
+  });
+
+  it("puts the fragment of its country in each candidate, with the country input", () => {
+    const build = placementLayer(input(offers, { chances }));
+    expect(sharedIds(build)).toEqual(expect.arrayContaining([countryFragment("NL"), countryFragment("DE")]));
+    const uses = build.layer.slots[0]?.candidates.find((candidate) => candidate.key === "provider-c/region-1")?.uses;
+    expect(uses).toContain(countryFragment("DE"));
+    expect(fragmentInput(chances, countryFragment("DE"))).toBe(chances.country);
+    expect(checkPlacement(build.layer, build.base).filter((fault) => fault.level === "error")).toEqual([]);
+  });
+
+  it("gives two copies in two countries a larger chance than two copies in one country at the same cost", () => {
+    const rows = distinctRows(planCopies(placementLayer(input(offers, { chances })), TODAY).front);
+    const two = rows.filter((row) => Object.values(row.choice).every((value) => value !== null));
+    expect(two.length).toBeGreaterThan(0);
+    expect(two.every((row) => Object.values(row.choice).some((value) => value?.startsWith("provider-c/") === true))).toBe(true);
+  });
+
+  it("gives a live copy at a provider the country of the offers of its region, and a site the country of its name", () => {
+    const fixed: readonly FixedCopy[] = [
+      { kind: "site", site: "home", country: "DE" },
+      { kind: "cloud", provider: "provider-a", region: "region-1" },
+    ];
+    const build = placementLayer(input(offers, { chances: { ...chances, site: { works: 0.99, kind: "assumed", source: "a test input" } }, fixed, copies: 1 }));
+    expect(build.layer.slots[0]?.candidates[0]?.uses).toContain(countryFragment("DE"));
+    expect(build.layer.slots[1]?.candidates[0]?.uses).toContain(countryFragment("NL"));
+    expect(build.unplaced).toEqual([]);
+  });
+
+  it("lists each copy and candidate with no known country", () => {
+    const more = [...offers, offer({ provider: "provider-d", region: "region-2", plan: "small", hourly: 0.01 })];
+    const fixed: readonly FixedCopy[] = [{ kind: "cloud", provider: "provider-e", region: "region-3" }];
+    const build = placementLayer(input(more, { chances, fixed, copies: 1 }));
+    expect(build.unplaced).toEqual(["provider-d/region-2", "provider-e/region-3"]);
+    const uses = build.layer.slots[1]?.candidates.find((candidate) => candidate.key === "provider-d/region-2")?.uses ?? [];
+    expect(uses.some((id) => id.startsWith("country:"))).toBe(false);
+  });
+
+  it("refuses a country that is not two capital letters, and a country fragment with no input", () => {
+    const bad: readonly FixedCopy[] = [{ kind: "cloud", provider: "provider-a", region: "region-1", country: "nl" }];
+    expect(() => placementLayer(input(offers, { chances, fixed: bad }))).toThrow(RangeError);
+    expect(() => fragmentInput(CHANCES, countryFragment("NL"))).toThrow(RangeError);
   });
 });
 
