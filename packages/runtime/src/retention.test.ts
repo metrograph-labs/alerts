@@ -567,7 +567,9 @@ describe("a retirement changes no verdict and sends nothing (AL-189)", () => {
       });
       expect(retiring.time).toBe(kept.time);
       const expected = readers(kept, kept.time);
-      expect(readers(retiring, kept.time), `the event ${String(index)}: ${event.id}`).toEqual(expected);
+      const actual = readers(retiring, kept.time);
+      // One assertion for each reader, thus a failure names the reader.
+      for (const name of Object.keys(expected) as (keyof typeof expected)[]) expect(actual[name], `the reader ${name} after the event ${String(index)}: ${event.id}`).toEqual(expected[name]);
       passed += expected.verdicts.filter((verdict) => verdict?.state === "passed").length;
       sends += expected.routes.flatMap((entry) => entry.plan.sends).length;
     }
