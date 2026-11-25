@@ -26445,5 +26445,80 @@
       "https://www.maritime.dot.gov/msci-advisories"
     ],
     "round": 39
+  },
+  {
+    "id": "cdc-foodborne-investigations",
+    "name": "CDC list of active foodborne outbreak investigations",
+    "classes": [
+      "health.outbreak.foodborne"
+    ],
+    "url": "https://www.cdc.gov/foodborne-outbreaks/active-investigations/index.html",
+    "access": "page",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "A work of the US government. The page returned 403 to the user agent of the round, so the round did not read its terms."
+    },
+    "cost": "free",
+    "delay": "unknown",
+    "history": "unknown",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "Multistate foodborne outbreaks in the United States that the CDC investigates.",
+    "origins": [
+      "cdc"
+    ],
+    "path": [
+      "www.cdc.gov"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "The page returned 403, and the round did not go around the block. The content API of the CDC has no feed of these investigations.",
+    "evidence": [
+      "https://www.cdc.gov/foodborne-outbreaks/active-investigations/index.html",
+      "https://tools.cdc.gov/api/v2/resources/media?mediatype=Feed%20-%20Import&max=200"
+    ],
+    "round": 40
+  },
+  {
+    "id": "gc-news-phac",
+    "name": "Government of Canada news API: the news releases of the PHAC",
+    "classes": [
+      "health.outbreak"
+    ],
+    "url": "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=publichealthagencyofcanada&sort=publishedDate&orderBy=desc&pick=50&format=json",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.canada.ca/en/transparency/terms.html",
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The terms page gave no answer in 30 seconds, so the round did not read it."
+    },
+    "cost": "free",
+    "delay": "The same day: each release has its time of publication.",
+    "history": "The API gives older releases with a date filter.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "The news releases of the Public Health Agency of Canada: the start and the end of an outbreak, and border measures. The public health notices of food outbreaks are not in the releases.",
+    "origins": [
+      "phac"
+    ],
+    "path": [
+      "api.io.canada.ca"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "The API gives JSON with no key, but the terms of canada.ca were not read. A note of the terms of Canada can limit commercial use (AL-195).",
+    "evidence": [
+      "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=publichealthagencyofcanada&sort=publishedDate&orderBy=desc&pick=40&format=json"
+    ],
+    "round": 40
   }
 ]

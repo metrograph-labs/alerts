@@ -279,7 +279,7 @@
     "id": "cdc",
     "name": "US Centers for Disease Control and Prevention",
     "issues": null,
-    "note": "The records of cdc-han, cdc-nwss, cdc-travel-notices name this issuer."
+    "note": "The records of cdc-han, cdc-nwss, cdc-travel-notices, cdc-foodborne-investigations name this issuer."
   },
   {
     "id": "census",
@@ -2543,7 +2543,7 @@
     "id": "phac",
     "name": "The Public Health Agency of Canada (PHAC)",
     "issues": null,
-    "note": "PHAC gives the Health Infobase data of Canada."
+    "note": "PHAC gives the Health Infobase data of Canada. The records of gc-news-phac name this issuer."
   },
   {
     "id": "chicago-pd",

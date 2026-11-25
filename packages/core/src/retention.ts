@@ -9,12 +9,16 @@
  *   An example is a copy from the log of another copy of the system.
  * - `pruneTombstones` drops each tombstone after its time `until`, thus the tombstones also have a bound.
  *
- * A retirement removes whole incidents. The groups of reports are the connected components of the links, thus the
- * removal of a whole group changes no other group. The test of this module holds it.
+ * - `lateRetirements` gives the old reports of a live incident that can leave it (AL-177). A stream of updates of one
+ *   live event thus has a bound in the merge state.
+ *
+ * A retirement removes whole incidents, or reports that leave one group with the same values. The groups of reports are
+ * the connected components of the links, thus the removal of a whole group changes no other group. The test of this
+ * module holds it.
  */
 import { compareCodeUnits } from "@mark1russell7/text/order";
 import type { Duration, Incident, Instant, MergeState, ReportId } from "./contracts.ts";
-import { add } from "./merge.ts";
+import { add, endedReports, leavingReports, type LinkRule } from "./merge.ts";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -66,6 +70,122 @@ export const TOMBSTONE_LIFE: Duration = 30 * DAY;
  * cancelled report. Each error is on the safe side: an incident stays longer, not shorter.
  */
 export function retirements(state: MergeState, found: readonly Incident[], at: Instant, horizon: Duration = RETENTION_HORIZON, quiet?: QuietRule): ReportId[] {
+  return wholeOf(found, limitsOf(state, at, horizon, quiet));
+}
+
+/** The options of `lateRetirements`. */
+export interface LateOptions {
+  /** The link rule of the groups, the same rule that gave `found`. */
+  readonly link?: LinkRule | undefined;
+  /** This function tells if a reader keeps a report. A report that a reader keeps does not leave. The default keeps no report. */
+  readonly keeps?: ((report: ReportId) => boolean) | undefined;
+}
+
+/**
+ * This function gives the reports that leave the live incidents at a time, in the order of their ids (AL-177). `found`
+ * is the incidents of `state` at `at`. A candidate is a report of a live incident with 2 or more reports, with these
+ * properties:
+ *
+ * - No delivery and no acknowledgment names it. When a person knows the incident, the candidate is not its anchor.
+ * - The rule `keeps` does not keep it.
+ * - Its last change is at or before the limit of `retirements` for its incident.
+ *
+ * The function `leavingReports` tests the candidates from the oldest change. A report leaves only when the reports
+ * that stay keep one group and the same values. Thus the incident keeps its heads, its deliveries and its corroboration. A stream of updates of one event keeps the reports in the horizon and the last reports of each origin.
+ */
+export function lateRetirements(
+  state: MergeState,
+  found: readonly Incident[],
+  at: Instant,
+  horizon: Duration = RETENTION_HORIZON,
+  quiet?: QuietRule,
+  options: LateOptions = {},
+): ReportId[] {
+  return lateOf(state, found, at, limitsOf(state, at, horizon, quiet), options);
+}
+
+/** The two lists of `allRetirements`. */
+export interface AllRetirements {
+  /** The reports of the incidents that retire as a whole, from `retirements`. */
+  readonly whole: ReportId[];
+  /** The reports that leave the live incidents, from `lateRetirements`. */
+  readonly late: ReportId[];
+}
+
+/**
+ * This function gives the results of `retirements` and `lateRetirements` with one pass over the state. A step that
+ * needs both lists uses it. The limits of the pass do not stay after the call.
+ */
+export function allRetirements(
+  state: MergeState,
+  found: readonly Incident[],
+  at: Instant,
+  horizon: Duration = RETENTION_HORIZON,
+  quiet?: QuietRule,
+  options: LateOptions = {},
+): AllRetirements {
+  const limits = limitsOf(state, at, horizon, quiet);
+  return { whole: wholeOf(found, limits), late: lateOf(state, found, at, limits, options) };
+}
+
+function wholeOf(found: readonly Incident[], { changed, limitOf }: Limits): ReportId[] {
+  return found
+    .filter((incident) => {
+      if (incident.live) return false;
+      const until = limitOf(incident);
+      return incident.reports.every((report) => (changed.get(report) ?? Infinity) <= until);
+    })
+    .flatMap((incident) => incident.reports)
+    .sort(compareCodeUnits);
+}
+
+function lateOf(state: MergeState, found: readonly Incident[], at: Instant, { changed, told, limitOf, widest }: Limits, options: LateOptions): ReportId[] {
+  const old = (report: ReportId): boolean => (changed.get(report) ?? Infinity) <= widest;
+  // The latest limit of all incidents comes first. It reads no rule, thus a live incident with no old report costs one pass of its reports.
+  const live = found.filter((incident) => incident.live && incident.reports.length > 1 && incident.reports.some(old));
+  if (live.length === 0) return [];
+  const ended = endedReports(state, at);
+  const out: ReportId[] = [];
+  for (const incident of live) {
+    const until = limitOf(incident);
+    const known = incident.reports.some((report) => told.has(report));
+    const candidates = incident.reports.filter(
+      (report) => (changed.get(report) ?? Infinity) <= until && !told.has(report) && !(known && report === incident.anchor) && !(options.keeps?.(report) ?? false),
+    );
+    if (candidates.length === 0) continue;
+    const order = candidates.sort((a, b) => changed.get(a)! - changed.get(b)! || compareCodeUnits(a, b));
+    // An incident object of `incidents` stays the same while its reports and its live reports stay. The last change of a
+    // candidate is at or before the time, thus its life does not change. Then the same candidates give the same result.
+    const held = lateCache.get(incident);
+    if (held !== undefined && held.link === options.link && sameList(held.order, order)) {
+      out.push(...held.leaving);
+      continue;
+    }
+    const leaving = leavingReports({ state, group: incident.reports, order, at, ended, link: options.link });
+    lateCache.set(incident, { order, link: options.link, leaving });
+    out.push(...leaving);
+  }
+  return out.sort(compareCodeUnits);
+}
+
+// The last result of `leavingReports` for each incident object, with its candidates and its link rule.
+const lateCache = new WeakMap<Incident, { readonly order: readonly ReportId[]; readonly link: LinkRule | undefined; readonly leaving: readonly ReportId[] }>();
+
+const sameList = (a: readonly ReportId[], b: readonly ReportId[]): boolean => a.length === b.length && a.every((id, index) => id === b[index]);
+
+/**
+ * The limits of one pass. They give the last change of each report and the reports that a person knows. They also give
+ * the limit of each incident and the latest limit.
+ */
+interface Limits {
+  readonly changed: ReadonlyMap<ReportId, Instant>;
+  readonly told: ReadonlySet<ReportId>;
+  readonly limitOf: (incident: Incident) => Instant;
+  readonly widest: Instant;
+}
+
+/** This function gives the limits of `retirements` and `lateRetirements` at a time. */
+function limitsOf(state: MergeState, at: Instant, horizon: Duration, quiet: QuietRule | undefined): Limits {
   const changed = new Map<ReportId, Instant>();
   const touch = (report: ReportId, time: Instant): void => {
     const held = changed.get(report);
@@ -88,14 +208,7 @@ export function retirements(state: MergeState, found: readonly Incident[], at: I
     if (quiet === undefined || (quiet.keeps?.(incident) ?? false)) return limit;
     return incident.reports.some((report) => told.has(report)) ? toldLimit : quietLimit;
   };
-  return found
-    .filter((incident) => {
-      if (incident.live) return false;
-      const until = limitOf(incident);
-      return incident.reports.every((report) => (changed.get(report) ?? Infinity) <= until);
-    })
-    .flatMap((incident) => incident.reports)
-    .sort(compareCodeUnits);
+  return { changed, told, limitOf, widest: Math.max(limit, quietLimit, toldLimit) };
 }
 
 /** This function gives the state with a tombstone for each report, until the time `until`. It removes the parts of the reports. */
