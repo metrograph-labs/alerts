@@ -1566,5 +1566,48 @@
       "members": 1757,
       "cause": "Round 31 adds 3 planned sources and moves 1 later source to plan. Four classes get a second origin, so the gaps go from 94 to 90. The later record of Scottish Water has an unknown path."
     }
+  },
+  {
+    "round": 32,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took classes with one source and looked for a second origin. It searched the catalog of ArcGIS Online and read the terms of each planned source. One fetch went to each URL, with a plain user agent.",
+    "lists": [
+      "The classes with one source, from the gaps of the atlas on main: packages/atlas/data/classes.json",
+      "The search API of ArcGIS Online, for open shelters, harmful algal blooms and avian influenza: https://www.arcgis.com/sharing/rest/search"
+    ],
+    "queries": [],
+    "notes": [
+      "redcross-open-shelters is new. With fema-open-shelters, rescue.shelter-open has 2 sources from 2 origins.",
+      "avinor-flight-data is new. With faa-nas-status, transport.air.disruption has 2 sources from 2 origins.",
+      "njdep-hab-sampling is new. With ca-fhab-reports, env.water.harmful-algal-bloom has 2 sources from 2 origins.",
+      "elexon-bmrs-syswarn is new. With ercot-txans, infra.power.grid-emergency has 2 sources from 2 origins.",
+      "sidc-product-archive is later. The archive needs no email, but the flare alert reads GOES data and the data policy of the ROB limits the use.",
+      "The NICT site gives the flares and protons of GOES as images, and its terms permit private use only. The ESA SWE portal gives its products after a registration.",
+      "usfs-recreation-status is later, because its open status has no time and no cause.",
+      "The APHIS page of the flocks with avian influenza gave 403. The CFIA gives its flocks only on a page, and the layers of British Columbia and APHIS on ArcGIS Online have restricted terms.",
+      "The layer of open shelters of California tells users not to aggregate its data, so the round did not plan it."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 86,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 35,
+      "dimensions": 9,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 32 adds 4 planned sources and 2 later sources. Four classes get a second source, so the gaps go from 90 to 86. No layer of the cover changes."
+    }
   }
 ]

@@ -694,7 +694,7 @@
     "references": [
       "UNDRR-ISC HIPs 2025: BI0603 Harmful Algal Blooms, CH0605 Marine Toxins"
     ],
-    "gap": "One source: ca-fhab-reports, for California. epa-cyan-api and noaa-hab-forecasts are later: see the reason of each.",
+    "gap": null,
     "round": 1
   },
   {
@@ -976,7 +976,7 @@
       "EM-DAT: Space weather > Radio disturbance",
       "UNDRR-ISC HIPs 2025: ET0103 Solar Flare, ET0102 Ionospheric Disturbance"
     ],
-    "gap": "Round 6 adopts swpc-products-json, the only source with no risk. Its only origin is the NWS. swpc-email is later: see the reason of each.",
+    "gap": "Round 6 adopts swpc-products-json, the only source with no risk. Its only origin is the NWS. swpc-email and sidc-product-archive are later: see the reason of each. Round 32: the NICT site permits private use only.",
     "round": 1
   },
   {
@@ -991,7 +991,7 @@
       "EM-DAT: Space weather > Energetic particles",
       "UNDRR-ISC HIPs 2025: ET0104 Solar Energetic Particles"
     ],
-    "gap": "Round 6 adopts swpc-products-json, the only source with no risk. Its only origin is the NWS. swpc-email is later: see the reason of each.",
+    "gap": "Round 6 adopts swpc-products-json, the only source with no risk. Its only origin is the NWS. swpc-email is later: see its reason. Round 32: the NICT site shows the proton flux of GOES, and it permits private use only.",
     "round": 1
   },
   {
@@ -1080,7 +1080,7 @@
       "CISA sectors: Food and Agriculture",
       "FEMA lifelines: Food, Hydration, Shelter > Agriculture"
     ],
-    "gap": "One source: defra-avian-influenza-zones, for England. aphis-hpai is later, woah-wahis is later: see the reason of each.",
+    "gap": "One source: defra-avian-influenza-zones, for England. aphis-hpai is later, woah-wahis is later: see the reason of each. Round 32: the APHIS page of flocks gave 403, and the CFIA gives its flocks only on a page.",
     "round": 1
   },
   {
@@ -1451,7 +1451,7 @@
       "CISA sectors: Energy",
       "FEMA Lifelines: Energy > Power Grid"
     ],
-    "gap": "One source: ercot-txans. Round 24: the RSS address of the Flex Alerts of CAISO returned 404, and the HTML of its page of notices has no feed link.",
+    "gap": null,
     "round": 1
   },
   {
@@ -2744,7 +2744,7 @@
       "CAP 1.2: Rescue",
       "FEMA Lifelines: Food, Hydration, Shelter > Shelter"
     ],
-    "gap": "One source: fema-open-shelters, for the US. Round 24 read it again, and it answered. No second source of open shelters is known.",
+    "gap": null,
     "round": 1
   },
   {
@@ -2846,7 +2846,7 @@
     "references": [
       "No hazard list names this class. Found by the search for missing classes."
     ],
-    "gap": "One source. Forest Service and state park notices are for round 2.",
+    "gap": "One source: nps-alerts-api. Round 32: usfs-recreation-status is later, because its open status has no time and no cause.",
     "round": 1
   },
   {
@@ -3304,7 +3304,7 @@
       "FEMA Lifelines: Transportation > Aviation",
       "CISA sectors: Transportation Systems > Aviation"
     ],
-    "gap": "One source for the US. Eurocontrol and other regions were not opened.",
+    "gap": null,
     "round": 1
   },
   {

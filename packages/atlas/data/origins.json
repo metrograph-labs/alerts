@@ -1736,7 +1736,7 @@
     "id": "sidc",
     "name": "SIDC, the Solar Influences Data Analysis Center (RWC-Belgium)",
     "issues": null,
-    "note": "The records of sidc-alerts-email name this issuer."
+    "note": "The records of sidc-alerts-email and sidc-product-archive name this issuer."
   },
   {
     "id": "siemens",
@@ -2309,7 +2309,7 @@
     "id": "neso",
     "name": "NESO, the National Energy System Operator of Great Britain",
     "issues": null,
-    "note": "The records of neso-data-portal and carbon-intensity-gb name this body."
+    "note": "The records of neso-data-portal, carbon-intensity-gb and elexon-bmrs-syswarn name this body. Elexon publishes the system warnings of NESO."
   },
   {
     "id": "network-rail",
@@ -2586,5 +2586,29 @@
     "name": "Scottish Water",
     "issues": null,
     "note": "The water company of Scotland. It monitors its storm overflows. The record of scottish-water-overflows names this issuer."
+  },
+  {
+    "id": "american-red-cross",
+    "name": "The American Red Cross",
+    "issues": null,
+    "note": "The Red Cross runs its National Shelter System and publishes its open shelters. The record of redcross-open-shelters names this issuer."
+  },
+  {
+    "id": "avinor",
+    "name": "Avinor, the operator of the state airports of Norway",
+    "issues": null,
+    "note": "Avinor publishes the flights of its 43 airports. The record of avinor-flight-data names this issuer."
+  },
+  {
+    "id": "njdep",
+    "name": "The New Jersey Department of Environmental Protection (NJDEP)",
+    "issues": null,
+    "note": "The department samples blooms in fresh water and sets the advisory tiers. The record of njdep-hab-sampling names this issuer."
+  },
+  {
+    "id": "usda-fs",
+    "name": "USDA FS (the Forest Service)",
+    "issues": null,
+    "note": "The Forest Service publishes the status of its recreation sites. The record of usfs-recreation-status names this issuer."
   }
 ]
