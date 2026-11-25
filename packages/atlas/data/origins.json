@@ -705,7 +705,7 @@
     "id": "federal-reserve-board",
     "name": "The Board of Governors of the Federal Reserve System",
     "issues": null,
-    "note": "The records of fed-fomc-calendar, fed-rss name this issuer."
+    "note": "The records of fed-fomc-calendar, fed-rss and fed-h41-tga name this issuer."
   },
   {
     "id": "federal-reserve-financial-services",
@@ -2057,7 +2057,7 @@
     "id": "uscg",
     "name": "US Coast Guard (NAVCEN and the National Response Center)",
     "issues": null,
-    "note": "The records of nrc-uscg-reports, uscg-navcen name this issuer."
+    "note": "The records of nrc-uscg-reports, uscg-navcen and uscg-navcen-msi-files name this issuer."
   },
   {
     "id": "usda-aphis",
@@ -2574,5 +2574,17 @@
     "name": "The Seattle Police Department",
     "issues": null,
     "note": "The department publishes the offenses of its reports on the open data portal of the city."
+  },
+  {
+    "id": "quebec-msss",
+    "name": "The Ministry of Health and Social Services of Quebec (MSSS)",
+    "issues": null,
+    "note": "The ministry publishes the data of the emergency rooms of Quebec from its provincial console each hour."
+  },
+  {
+    "id": "scottish-water",
+    "name": "Scottish Water",
+    "issues": null,
+    "note": "The water company of Scotland. It monitors its storm overflows. The record of scottish-water-overflows names this issuer."
   }
 ]

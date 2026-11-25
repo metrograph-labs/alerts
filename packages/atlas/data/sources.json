@@ -11100,13 +11100,13 @@
     "access": "file",
     "auth": "none",
     "terms": {
-      "url": null,
+      "url": "https://hpiers.obspm.fr/iers/bul/bulc/README",
       "automated": "unclear",
-      "redistribution": "unclear",
-      "note": "No terms page was opened. The files carry no licence statement in the lines read."
+      "redistribution": "allowed",
+      "note": "Round 31: the README of the folder puts its files under a Creative Commons Attribution licence. The leap-seconds.list file says that it is in the public domain."
     },
     "cost": "free",
-    "delay": "Twice a year. Bulletin C 72 is dated 6 July 2026.",
+    "delay": "Twice a year. Bulletin C 72 is dated 6 July 2026. The file read on 2026-11-25 expires on 28 June 2027.",
     "history": "The leap-seconds.list file holds each leap second since 1972 and an expiry date.",
     "rateLimit": "unknown",
     "calibration": null,
@@ -11119,14 +11119,15 @@
     ],
     "subjectIds": null,
     "risks": [],
-    "decision": "later",
+    "decision": "plan",
     "adapter": null,
-    "reason": "The authority for leap seconds in a standard NTP file format. Bulletin C 72 says no leap second at the end of December 2026. Its terms are unclear.",
+    "reason": "The authority for leap seconds, in the NTP file format with no key. Its origin is apart from IANA. Bulletin C 72 says that no leap second comes at the end of December 2026.",
     "evidence": [
       "https://hpiers.obspm.fr/iers/bul/bulc/ntp/leap-seconds.list",
+      "https://hpiers.obspm.fr/iers/bul/bulc/README",
       "https://hpiers.obspm.fr/iers/bul/bulc/bulletinc.dat"
     ],
-    "round": 18
+    "round": 31
   },
   {
     "id": "ifrc-go-appeals",
@@ -14543,7 +14544,7 @@
       "url": null,
       "automated": "unclear",
       "redistribution": "unclear",
-      "note": "The portal and its API answered 503 at 03:04 UTC on 2026-11-18, so no terms were read."
+      "note": "The portal and its API answered 503 at 03:04 UTC on 2026-11-18 and at 16:21 UTC on 2026-11-25, so no terms were read."
     },
     "cost": "free",
     "delay": "unknown",
@@ -14562,12 +14563,12 @@
     "risks": [],
     "decision": "later",
     "adapter": null,
-    "reason": "Official warnings to mariners and the reports of attacks on ships. At 03:04 UTC on 2026-11-18, the API answered 503 with a page that tells of the maintenance of the portal.",
+    "reason": "Official warnings to mariners and the reports of attacks on ships. On 2026-11-18 and on 2026-11-25, the API answered 503 with a page that tells of the maintenance of the portal.",
     "evidence": [
       "https://msi.nga.mil/api/publications/broadcast-warn?output=json&status=A",
       "https://msi.nga.mil/api/publications/asam?output=json&sort=date&minOccurDate=2026-09-01"
     ],
-    "round": 12
+    "round": 31
   },
   {
     "id": "nhc-rss",
@@ -21307,10 +21308,10 @@
       "url": "https://fiscaldata.treasury.gov/api-documentation/",
       "automated": "allowed",
       "redistribution": "allowed",
-      "note": "The docs say no account or token is needed and the data is offered free, without restriction, and may be copied, adapted and redistributed for commercial or non-commercial purposes. My test call to the debt_to_penny endpoint failed to connect from the research machine."
+      "note": "The docs say that no account or token is necessary. The data is free, with no restriction, for copies, changes and redistribution. Round 31: a call to the API answered with JSON."
     },
     "cost": "free",
-    "delay": "unknown (a release calendar is linked, not opened)",
+    "delay": "One read at 16:24 UTC on 2026-11-25 gave the Daily Treasury Statement of 2026-11-23.",
     "history": "Full dataset history.",
     "rateLimit": "unknown (none stated)",
     "calibration": "not applicable",
@@ -21327,9 +21328,10 @@
     "adapter": null,
     "reason": "Open data with clear terms; the Daily Treasury Statement cash balance can show a debt-limit squeeze.",
     "evidence": [
-      "https://fiscaldata.treasury.gov/api-documentation/"
+      "https://fiscaldata.treasury.gov/api-documentation/",
+      "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/dts/operating_cash_balance?sort=-record_date&page[size]=3"
     ],
-    "round": 1
+    "round": 31
   },
   {
     "id": "trickest-cve",
@@ -24427,6 +24429,161 @@
     "evidence": [
       "https://data.seattle.gov/resource/tazs-3rd5.json?$limit=1",
       "https://data.seattle.gov/api/views/tazs-3rd5.json"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": [
+      "point"
+    ],
+    "risks": [],
+    "adapter": null,
+    "round": 31,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "uscg-navcen-msi-files",
+    "name": "USCG NAVCEN: the files of the Local Notice to Mariners (GeoJSON)",
+    "classes": [
+      "transport.sea.navigational-warning"
+    ],
+    "url": "https://navcen.uscg.gov/msi",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "Round 31 found no terms page. The page www.navcen.uscg.gov/msi/ and the robots.txt file gave 403. The notices are works of the US government."
+    },
+    "delay": "One read at 16:22 UTC on 2026-11-25 gave a hazard changed at 13:41 UTC on the same day. The file index had a time of 16:20 UTC.",
+    "history": "unknown (the files hold the notices in force)",
+    "coverage": "US waters in NAVAREA IV and XII. On 2026-11-25 the file of hazards had 144 points in force: obstructions, shoaling, wrecks and other hazards.",
+    "origins": [
+      "uscg"
+    ],
+    "path": [
+      "navcen.uscg.gov"
+    ],
+    "reason": "Open GeoJSON files of the Coast Guard with no key. They give the hazards, the changes of aids and the discrepancies of the Local Notice to Mariners.",
+    "evidence": [
+      "https://navcen.uscg.gov/msi",
+      "https://navcen.uscg.gov/sites/default/files/msi/fileIndexNew.json",
+      "https://navcen.uscg.gov/sites/default/files/msi/hazNav_1.geojson"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 31,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "fed-h41-tga",
+    "name": "Federal Reserve H.4.1: the Treasury General Account (CSV of the Data Download Program)",
+    "classes": [
+      "civic.economy.fiscal"
+    ],
+    "url": "https://www.federalreserve.gov/datadownload/Download.aspx?rel=H41",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.federalreserve.gov/disclaimer.htm",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The policy page puts the information of the Board website in the public domain, unless it tells otherwise. A copy cites the Board. The page tells nothing of automated reading."
+    },
+    "delay": "Each Thursday the release gives the values of the Wednesday before. One read on 2026-11-25 gave the Wednesday 2026-11-18.",
+    "history": "The query has the parameters lastobs, from and to. The page also gives all the data of H.4.1 as one file.",
+    "coverage": "The United States: the cash of the Treasury at the Federal Reserve each week, as the level of Wednesday and the average of the week.",
+    "origins": [
+      "federal-reserve-board"
+    ],
+    "path": [
+      "www.federalreserve.gov"
+    ],
+    "reason": "The Federal Reserve is the bank of the Treasury, so its balance sheet gives the cash of the Treasury from a second origin. A low balance shows a debt-limit squeeze.",
+    "evidence": [
+      "https://www.federalreserve.gov/datadownload/Download.aspx?rel=H41",
+      "https://www.federalreserve.gov/datadownload/Output.aspx?rel=H41&series=f52e72511be65e16f71d4f5858951312&lastobs=1&from=&to=&filetype=csv&label=include&layout=seriescolumn&type=package",
+      "https://www.federalreserve.gov/disclaimer.htm"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 31,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "quebec-msss-emergency-rooms",
+    "name": "Quebec MSSS: the hourly file of the situation in the emergency rooms (CSV)",
+    "classes": [
+      "health.hospital-capacity"
+    ],
+    "url": "https://www.donneesquebec.ca/recherche/dataset/fichier-horaire-des-donnees-de-la-situation-a-l-urgence",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.donneesquebec.ca/licence/",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The catalog of Donnees Quebec gives the licence CC BY 4.0. Round 31 did not read a page on automated reading."
+    },
+    "delay": "The catalog gives an update each hour. One read at 16:29 UTC on 2026-11-25 gave the update of 15:45 UTC.",
+    "history": "unknown (a second file gives the last 7 days)",
+    "coverage": "Quebec: each emergency room with its stretchers, the occupied stretchers and the patients there for more than 24 and 48 hours. One read had 120 rooms.",
+    "origins": [
+      "quebec-msss"
+    ],
+    "path": [
+      "msss.gouv.qc.ca"
+    ],
+    "reason": "Open hourly data with no key, from an origin apart from the CDC. On 2026-11-25, 52 of 120 rooms had more patients on stretchers than stretchers.",
+    "evidence": [
+      "https://www.donneesquebec.ca/recherche/api/3/action/package_search?q=urgences%20horaire&rows=5",
+      "https://www.msss.gouv.qc.ca/professionnels/statistiques/documents/urgences/Releve_horaire_urgences_7jours.csv"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 31,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "scottish-water-overflows",
+    "name": "Scottish Water: the near real-time data of the storm overflows",
+    "classes": [
+      "env.water.sewage-overflow"
+    ],
+    "url": "https://www.scottishwater.co.uk/Help-and-Resources/Open-Data/Overflow-Map-Data",
+    "access": "api",
+    "auth": "unknown",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The documentation page gave 403 on 2026-11-25, so round 31 read no terms. Search results tell of an open licence with credit to Scottish Water."
+    },
+    "delay": "unknown",
+    "history": "unknown",
+    "coverage": "Scotland: the monitored storm overflows. Search results tell of an update each hour.",
+    "origins": [
+      "scottish-water"
+    ],
+    "path": [
+      "unknown"
+    ],
+    "reason": "A possible second origin of overflows, apart from the companies of England. The documentation page gave 403, and the API host from search results has no DNS record.",
+    "evidence": [
+      "https://www.scottishwater.co.uk/Help-and-Resources/Open-Data/Overflow-Map-Data"
     ]
   }
 ]

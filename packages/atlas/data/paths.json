@@ -2235,7 +2235,7 @@
     "id": "www.federalreserve.gov",
     "name": "www.federalreserve.gov",
     "kind": "host",
-    "note": "The host of the feed of fed-fomc-calendar, fed-rss."
+    "note": "The host of the feed of fed-fomc-calendar, fed-rss and fed-h41-tga."
   },
   {
     "id": "www.fema.gov",
@@ -2890,5 +2890,17 @@
     "name": "data.seattle.gov",
     "kind": "host",
     "note": "The host of the feed of seattle-spd-crime."
+  },
+  {
+    "id": "navcen.uscg.gov",
+    "name": "navcen.uscg.gov",
+    "kind": "host",
+    "note": "The host of the feed of uscg-navcen-msi-files. The name with www gave 403 to the page of the files on 2026-11-25."
+  },
+  {
+    "id": "msss.gouv.qc.ca",
+    "name": "msss.gouv.qc.ca",
+    "kind": "host",
+    "note": "The host of the feed of quebec-msss-emergency-rooms. The name with www sends a redirect to it."
   }
 ]

@@ -197,7 +197,7 @@
     "references": [
       "https://fiscaldata.treasury.gov/api-documentation/"
     ],
-    "gap": "Only the Treasury Fiscal Data API, and my test call to it failed to connect.",
+    "gap": null,
     "round": 1
   },
   {
@@ -711,7 +711,7 @@
       "FEMA lifelines: Water Systems > Wastewater Management",
       "UNDRR-ISC HIPs 2025: TL0503 Wastewater, TL0214 Drain and Sewer Flooding"
     ],
-    "gap": "The storm overflow hub of Water UK gives the overflows of England. No second source was found.",
+    "gap": "The storm overflow hub of Water UK gives the overflows of England. No second source was found. Round 31: the documentation page of Scottish Water gave 403.",
     "round": 1
   },
   {
@@ -1128,7 +1128,7 @@
       "FEMA Lifelines: Health and Medical > Medical Care, Patient Movement",
       "CISA sectors: Healthcare and Public Health"
     ],
-    "gap": "The NHSN hospital data of the CDC gives the beds in use each week in the US. No second source was found.",
+    "gap": null,
     "round": 1
   },
   {
@@ -1631,7 +1631,7 @@
     "references": [
       "No reference list names this class. Found by the search for missing classes."
     ],
-    "gap": "One source: iana-tz, the leap second list. Its data comes from IERS Bulletin C (iers-bulletin-c), so a second source needs a different origin.",
+    "gap": null,
     "round": 1
   },
   {
@@ -3175,7 +3175,7 @@
       "CISA sectors: Transportation Systems > Maritime",
       "FEMA Lifelines: Transportation > Maritime"
     ],
-    "gap": "No live source. Round 24: the NGA MSI API returned 503 again. MARAD sends its maritime advisories by email only, with no feed.",
+    "gap": "No live source. Rounds 24 and 31: the NGA MSI API returned 503 again. MARAD sends its maritime advisories by email only, with no feed.",
     "round": 1
   },
   {
@@ -3397,7 +3397,7 @@
       "CAP 1.2: Transport",
       "FEMA Lifelines: Transportation > Maritime"
     ],
-    "gap": "One source: dma-niord-warnings, for Danish waters. The Digitraffic faults of aids to navigation are a partial fit. NGA MSI returned 503, and the Portuguese OGC API did not answer.",
+    "gap": null,
     "round": 1
   },
   {
