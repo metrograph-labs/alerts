@@ -2360,8 +2360,7 @@ describe("the context key of an instance (AL-169)", () => {
   const keys = (secret: SecretLookup) => {
     const { instance, clock, net } = open(secret);
     const parsed = parseConfig(JSON.stringify(CONFIG), INSTANCE_CHANNELS, secret);
-    if (parsed.tag === "err") throw new Error(parsed.error.join("
-"));
+    if (parsed.tag === "err") throw new Error(parsed.error.join("\n"));
     const wall: WallClock = { time: "wall", now: () => clock.now(), after: (ms, run) => clock.after(ms, run) };
     return { mode: instanceContextKey({ config: parsed.value, secret, transport: net.transport }, clock, wall), runtime: instance.runtime.contextKey() };
   };

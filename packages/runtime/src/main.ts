@@ -489,8 +489,7 @@ async function keyMode(): Promise<void> {
   };
   const good = existsSync(join(home, GOOD_FILE)) ? await keyOf("good") : null;
   // One line of JSON on the standard output. The stage reads the last line.
-  process.stdout.write(`${JSON.stringify({ files: await keyOf("files"), good })}
-`);
+  process.stdout.write(`${JSON.stringify({ files: await keyOf("files"), good })}\n`);
 }
 
 const MODES = ["supervise", "load", "fold", "key"];

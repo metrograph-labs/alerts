@@ -56,6 +56,7 @@ import {
   type NodeKey,
   type OptInRecord,
   type ParsedConfig,
+  type Report,
   type ScorePriors,
   type SecretLookup,
   type SourceDescriptor,
@@ -93,7 +94,7 @@ import { createShapeStore, type ShapeCache, type ShapeStore } from "@mark1russel
 import { createNwsSource, NWS_DESCRIPTOR } from "@mark1russell7/alerts-source-nws-api";
 import { COPY_EXPECTATION, createNwwsSource, SOURCE_ID as NWWS_SOURCE, type NwwsAccount, type OpenSession } from "@mark1russell7/alerts-source-nwws";
 import { createGfzSource, createIndexSource, GFZ_DESCRIPTOR, HP30_DESCRIPTOR, HP30_INDEX, type GfzFetchOptions } from "@mark1russell7/alerts-source-gfz";
-import { createCatalogFetch, createGtfsSource, type GtfsFeed, type GtfsFetchOptions } from "@mark1russell7/alerts-source-gtfs-alerts";
+import { createCatalogFetch, createGtfsSource, type CatalogCopy, type GtfsFeed, type GtfsFetchOptions } from "@mark1russell7/alerts-source-gtfs-alerts";
 import { createEnergyChartsSource, ENERGY_CHARTS_DESCRIPTOR } from "@mark1russell7/alerts-source-energy-charts";
 import { createEia930Source, type Eia930FetchOptions } from "@mark1russell7/alerts-source-eia-930";
 import { createFaaSource, FAA_DESCRIPTOR } from "@mark1russell7/alerts-source-faa";
@@ -140,7 +141,7 @@ import { channelQuota } from "./quota.ts";
 import { keptPass, openRuntime, type CopyChecks, type KeptPass, type Pass, type Runtime, type RuntimeOptions } from "./runtime.ts";
 import { contextKey, START_SNAPSHOT_EVERY, START_SNAPSHOT_FLOOR } from "./start-snapshot.ts";
 import { addZoneCodes, codesAtFix, keepShapes, placeCodesKey, refreshUntil, shapeSources, type InstanceShapes, type ShapeOutcome, type ZoneCodeCounts } from "./shapes.ts";
-import { chooseFeeds, feedsKey, keepTransit, type InstanceTransit, type TransitCache, type TransitOutcome } from "./transit.ts";
+import { chooseFeeds, feedsKey, keepTransit, type ChosenFeeds, type InstanceTransit, type TransitCache, type TransitOutcome } from "./transit.ts";
 import { fixReads, type PositionIntake } from "./position-intake.ts";
 import { tellSource, type TellIntake } from "./tell-intake.ts";
 import { DELAY_LIMITS, nextFetch } from "./view.ts";
@@ -1030,11 +1031,22 @@ export function readsGdelt(config: AlertConfig): boolean {
 /** The options of the build of the sources of an instance (AL-169). The key mode of the start builds the same sources. */
 export type SourceBuildOptions = Pick<InstanceOptions, "config" | "secret" | "transport" | "transit" | "transitLimit" | "copy" | "nwwsOpen" | "tell">;
 
+/** The sources of an instance, and the parts of their build that the instance uses again (AL-169). */
+export interface InstanceSourceBuild {
+  readonly transitCopy: CatalogCopy | undefined;
+  readonly chosen: ChosenFeeds;
+  readonly pace: Pace & { readonly scheduler: HostScheduler };
+  readonly agent: string;
+  readonly copy: CopySettings;
+  readonly sources: readonly SourceProcedures[];
+  readonly descriptors: readonly SourceDescriptor[];
+}
+
 /**
  * This function builds the sources of an instance, and the parts of the build that the instance uses again (AL-169). The
  * function `reports` gives the merge reports to the source of the messages of the operator. The build sends no request.
  */
-export function instanceSources(options: SourceBuildOptions, clock: Clock, wall: WallClock, reports: () => readonly Report[]) {
+export function instanceSources(options: SourceBuildOptions, clock: Clock, wall: WallClock, reports: () => readonly Report[]): InstanceSourceBuild {
   // A report of a status page has no area. Thus the instance reads only the pages that one of its persons can get.
   // The stack of the alert chain reads the pages and the feeds of its subjects too (AL-90).
   const chainConfig = options.config.config.chain;
@@ -1097,7 +1109,7 @@ export function instanceSources(options: SourceBuildOptions, clock: Clock, wall:
   );
 
   const descriptors = sources.map((source) => source.describe());
-  return { watches, pages, feeds, transitCopy, chosen, pace, agent, copy, account, stream, sources, descriptors };
+  return { transitCopy, chosen, pace, agent, copy, sources, descriptors };
 }
 
 /**
@@ -1135,7 +1147,7 @@ export function openInstance(options: InstanceOptions): Instance {
   const { clock } = options;
   // A change of the wall clock of CLOCK_STEP_ABOVE or less is a drift. A larger change is a step of the clock.
   const wall = frameClock(options.wall, clock, { driftLimit: CLOCK_STEP_ABOVE });
-  const { watches, pages, feeds, transitCopy, chosen, pace, agent, copy, account, stream, sources, descriptors } = instanceSources(options, clock, wall, () => runtime.state().merge.reports);
+  const { transitCopy, chosen, pace, agent, copy, sources, descriptors } = instanceSources(options, clock, wall, () => runtime.state().merge.reports);
   const kinds = [...new Set(descriptors.flatMap((descriptor) => descriptor.kinds))];
 
   const { config, recipients } = options.config;

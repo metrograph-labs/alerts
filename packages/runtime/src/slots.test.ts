@@ -450,9 +450,7 @@ describe("the key step of a stage (AL-169)", () => {
   });
 
   it("reads the last line of the output, and refuses another form", () => {
-    expect(startKeysOf('a line
-{"files":"3:a","good":null}
-')).toEqual({ files: "3:a", good: null });
+    expect(startKeysOf('a line\n{"files":"3:a","good":null}\n')).toEqual({ files: "3:a", good: null });
     expect(startKeysOf('{"files":"3:a","good":"3:b"}')).toEqual({ files: "3:a", good: "3:b" });
     expect(startKeysOf("")).toBeUndefined();
     expect(startKeysOf("not json")).toBeUndefined();

@@ -506,8 +506,7 @@ export interface StartKeys {
 
 /** This function reads the last line of the output of the mode key. An output of another form gives undefined. */
 export function startKeysOf(stdout: string): StartKeys | undefined {
-  const line = stdout.trim().split("
-").at(-1);
+  const line = stdout.trim().split("\n").at(-1);
   if (line === undefined) return undefined;
   let value: unknown;
   try {
