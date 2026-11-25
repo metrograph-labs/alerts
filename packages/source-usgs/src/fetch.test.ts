@@ -45,6 +45,9 @@ const json = (body: string, status = 200, headers: Record<string, string> = {}):
 /** The answer 304 of a conditional GET: no body. */
 const NOT_MODIFIED: Reply = { status: 304, statusText: "Not Modified", headers: { "last-modified": LAST_MODIFIED }, body: "" };
 
+/** This function gives the requests for the feed. The felt events of the feed also give requests for their ShakeMap. */
+const feedRequests = (sent: readonly Exchange[]): Exchange[] => sent.filter((exchange) => exchange.url === URL_OF_FEED);
+
 /** This function makes a fetch whose transport gives the replies in turn, and then the last reply again. */
 const fetchWith = (replies: readonly Reply[]) => {
   const sent: Exchange[] = [];
@@ -152,7 +155,9 @@ describe("createUsgsFetch", () => {
   it("asks for the whole feed with no place in the request", async () => {
     const { fetch, sent } = fetchWith([json(FEED, 200, { "last-modified": LAST_MODIFIED })]);
     const outcome = await fetch({ watch: WATCH });
-    expect(sent.map((exchange) => exchange.url)).toEqual([URL_OF_FEED]);
+    expect(feedRequests(sent)).toHaveLength(1);
+    // Each other request reads the detail of a felt event, by its id. No request names a place of the watch.
+    expect(sent.filter((exchange) => exchange.url !== URL_OF_FEED).every((exchange) => exchange.url.startsWith(`${BASE}/earthquakes/feed/v1.0/detail/`))).toBe(true);
     expect(sent[0]?.headers).toMatchObject({ accept: "application/geo+json, application/json", "user-agent": "alerts-tests" });
     expect(outcome).toMatchObject({ ok: true, complete: true, asOf: GENERATED });
     expect(outcome.ok && outcome.cursor).toBeUndefined();
@@ -163,7 +168,7 @@ describe("createUsgsFetch", () => {
     const { fetch, sent } = fetchWith([json(FEED, 200, { "last-modified": LAST_MODIFIED }), NOT_MODIFIED]);
     const one = await fetch({ watch: WATCH });
     const two = await fetch({ watch: WATCH });
-    expect(sent.map((exchange) => exchange.headers["if-modified-since"])).toEqual([undefined, LAST_MODIFIED]);
+    expect(feedRequests(sent).map((exchange) => exchange.headers["if-modified-since"])).toEqual([undefined, LAST_MODIFIED]);
     expect(two).toEqual(one);
   });
 
@@ -181,14 +186,14 @@ describe("createUsgsFetch", () => {
     const { fetch, sent } = fetchWith([NOT_MODIFIED]);
     expect(failureOf(await fetch({ watch: WATCH }))).toEqual({ kind: "network", message: `a 304 answer with no earlier full answer: ${URL_OF_FEED}` });
     await fetch({ watch: WATCH });
-    expect(sent.map((exchange) => exchange.headers["if-modified-since"])).toEqual([undefined, undefined]);
+    expect(feedRequests(sent).map((exchange) => exchange.headers["if-modified-since"])).toEqual([undefined, undefined]);
   });
 
   it("fails for a cut body, sends no condition after it, and fails for an answer that is not 2xx", async () => {
     const { fetch, sent } = fetchWith([json(FEED.slice(0, 500), 200, { "last-modified": LAST_MODIFIED }), json(FEED)]);
     expect(failureOf(await fetch({ watch: WATCH }))).toMatchObject({ kind: "network", message: expect.stringContaining("truncated") as string });
     expect((await fetch({ watch: WATCH })).ok).toBe(true);
-    expect(sent.map((exchange) => exchange.headers["if-modified-since"])).toEqual([undefined, undefined]);
+    expect(feedRequests(sent).map((exchange) => exchange.headers["if-modified-since"])).toEqual([undefined, undefined]);
     const down = await fetchWith([json("{}", 503)]).fetch({ watch: WATCH });
     expect(down.ok).toBe(false);
   });

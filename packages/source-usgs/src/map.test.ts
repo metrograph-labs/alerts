@@ -276,7 +276,11 @@ describe("mapObservation with the ShakeMap contours", () => {
   it("gives the region of the grid as the area of a band that the grid reaches", () => {
     const { reports, problems } = mapObservation(withShake(CONTOURS));
     expect(problems).toEqual([]);
-    expect(reports.map((report) => [report.severity, report.areas.map((area) => area.type), report.parameters["bandShape"], report.parameters["bandRadiusKm"]])).toEqual([["minor", ["polygon"], ["shakemap"], undefined]]);
+    // The felt band of the grid has one polygon for each separate region, and each polygon is one area.
+    const felt = CONTOURS.bands.find((band) => band.from === FELT_INTENSITY);
+    expect(felt?.polygons.length).toBeGreaterThan(0);
+    expect(reports.map((report) => [report.severity, report.areas.length, report.parameters["bandShape"], report.parameters["bandRadiusKm"]])).toEqual([["minor", felt?.polygons.length, ["shakemap"], undefined]]);
+    expect(reports[0]?.areas.every((area) => area.type === "polygon")).toBe(true);
     expect(reports[0]?.parameters["shakemapVersion"]).toEqual(["1795616312537"]);
     expect(reportSchema.safeParse(reports[0]).success).toBe(true);
     const epicenter = { id: "epicenter" as PlaceId, at: [-104.8395, 36.9498] as [number, number], codes: [], bufferKm: 0 };
