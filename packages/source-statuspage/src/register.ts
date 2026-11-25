@@ -119,7 +119,8 @@ export const STATUS_PAGES: readonly StatusPage[] = [
   page("netlify", "Netlify", "www.netlifystatus.com", "netlify.com", CLOUD),
   page("newrelic", "New Relic", "status.newrelic.com", "newrelic.com", SAAS),
   page("npm", "npm", "status.npmjs.org", "npmjs.com", SAAS),
-  page("openai", "OpenAI", "status.openai.com", "openai.com", SAAS, [INCIDENT_IO]),
+  // The summary of this page has no list of incidents since 2026-11-25. The list of the latest incidents has them.
+  { ...page("openai", "OpenAI", "status.openai.com", "openai.com", SAAS, [INCIDENT_IO]), format: "incident-list" },
   { ...page("pushover", "Pushover", "status.pushover.net", "pushover.net", SAAS, [STATUSIQ]), format: "statusiq", components: PUSHOVER_KEYS },
   page("reddit", "Reddit", "www.redditstatus.com", "reddit.com", SAAS),
   page("render", "Render", "status.render.com", "render.com", CLOUD),

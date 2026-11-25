@@ -1407,7 +1407,7 @@
     "id": "provider:arcgis-online",
     "name": "ArcGIS Online of Esri",
     "kind": "provider",
-    "note": "The NIFC open data site is an ArcGIS Hub site of Esri."
+    "note": "The NIFC open data site is an ArcGIS Hub site of Esri. The layers of redcross-open-shelters and njdep-hab-sampling are on ArcGIS Online."
   },
   {
     "id": "provider:atlassian-statuspage",
@@ -2235,7 +2235,7 @@
     "id": "www.federalreserve.gov",
     "name": "www.federalreserve.gov",
     "kind": "host",
-    "note": "The host of the feed of fed-fomc-calendar, fed-rss."
+    "note": "The host of the feed of fed-fomc-calendar, fed-rss and fed-h41-tga."
   },
   {
     "id": "www.fema.gov",
@@ -2890,5 +2890,53 @@
     "name": "data.seattle.gov",
     "kind": "host",
     "note": "The host of the feed of seattle-spd-crime."
+  },
+  {
+    "id": "navcen.uscg.gov",
+    "name": "navcen.uscg.gov",
+    "kind": "host",
+    "note": "The host of the feed of uscg-navcen-msi-files. The name with www gave 403 to the page of the files on 2026-11-25."
+  },
+  {
+    "id": "msss.gouv.qc.ca",
+    "name": "msss.gouv.qc.ca",
+    "kind": "host",
+    "note": "The host of the feed of quebec-msss-emergency-rooms. The name with www sends a redirect to it."
+  },
+  {
+    "id": "services.arcgis.com",
+    "name": "services.arcgis.com",
+    "kind": "host",
+    "note": "A host of ArcGIS Online of Esri. The host of the feed of redcross-open-shelters."
+  },
+  {
+    "id": "services1.arcgis.com",
+    "name": "services1.arcgis.com",
+    "kind": "host",
+    "note": "A host of ArcGIS Online of Esri. The host of the feed of njdep-hab-sampling."
+  },
+  {
+    "id": "asrv.avinor.no",
+    "name": "asrv.avinor.no",
+    "kind": "host",
+    "note": "The host of the feed of avinor-flight-data. The old name flydata.avinor.no sends a redirect to the documentation page."
+  },
+  {
+    "id": "data.elexon.co.uk",
+    "name": "data.elexon.co.uk",
+    "kind": "host",
+    "note": "The host of the Insights API of Elexon, the feed of elexon-bmrs-syswarn."
+  },
+  {
+    "id": "apps.fs.usda.gov",
+    "name": "apps.fs.usda.gov",
+    "kind": "host",
+    "note": "The host of the map services of the Forest Service, the feed of usfs-recreation-status."
+  },
+  {
+    "id": "www.sidc.be",
+    "name": "www.sidc.be",
+    "kind": "host",
+    "note": "The host of the product archive of the SIDC, the feed of sidc-product-archive."
   }
 ]

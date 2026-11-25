@@ -1384,7 +1384,7 @@
       "url": null,
       "automated": "unclear",
       "redistribution": "unclear",
-      "note": "No download seen on the index page; subpages per category."
+      "note": "No download seen on the index page; subpages per category. Round 32: the page of the commercial and backyard flocks gave 403 with Access Denied."
     },
     "cost": "free",
     "delay": "unknown",
@@ -1404,9 +1404,10 @@
     "adapter": null,
     "reason": "The official US record of avian influenza detections by county. The decision is later because a page source needs terms that let automated reading.",
     "evidence": [
-      "https://www.aphis.usda.gov/livestock-poultry-disease/avian/avian-influenza/hpai-detections"
+      "https://www.aphis.usda.gov/livestock-poultry-disease/avian/avian-influenza/hpai-detections",
+      "https://www.aphis.usda.gov/livestock-poultry-disease/avian/avian-influenza/hpai-detections/commercial-backyard-flocks"
     ],
-    "round": 1
+    "round": 32
   },
   {
     "id": "apple-security-releases",
@@ -11100,13 +11101,13 @@
     "access": "file",
     "auth": "none",
     "terms": {
-      "url": null,
+      "url": "https://hpiers.obspm.fr/iers/bul/bulc/README",
       "automated": "unclear",
-      "redistribution": "unclear",
-      "note": "No terms page was opened. The files carry no licence statement in the lines read."
+      "redistribution": "allowed",
+      "note": "Round 31: the README of the folder puts its files under a Creative Commons Attribution licence. The leap-seconds.list file says that it is in the public domain."
     },
     "cost": "free",
-    "delay": "Twice a year. Bulletin C 72 is dated 6 July 2026.",
+    "delay": "Twice a year. Bulletin C 72 is dated 6 July 2026. The file read on 2026-11-25 expires on 28 June 2027.",
     "history": "The leap-seconds.list file holds each leap second since 1972 and an expiry date.",
     "rateLimit": "unknown",
     "calibration": null,
@@ -11119,14 +11120,15 @@
     ],
     "subjectIds": null,
     "risks": [],
-    "decision": "later",
+    "decision": "plan",
     "adapter": null,
-    "reason": "The authority for leap seconds in a standard NTP file format. Bulletin C 72 says no leap second at the end of December 2026. Its terms are unclear.",
+    "reason": "The authority for leap seconds, in the NTP file format with no key. Its origin is apart from IANA. Bulletin C 72 says that no leap second comes at the end of December 2026.",
     "evidence": [
       "https://hpiers.obspm.fr/iers/bul/bulc/ntp/leap-seconds.list",
+      "https://hpiers.obspm.fr/iers/bul/bulc/README",
       "https://hpiers.obspm.fr/iers/bul/bulc/bulletinc.dat"
     ],
-    "round": 18
+    "round": 31
   },
   {
     "id": "ifrc-go-appeals",
@@ -14543,7 +14545,7 @@
       "url": null,
       "automated": "unclear",
       "redistribution": "unclear",
-      "note": "The portal and its API answered 503 at 03:04 UTC on 2026-11-18, so no terms were read."
+      "note": "The portal and its API answered 503 at 03:04 UTC on 2026-11-18 and at 16:21 UTC on 2026-11-25, so no terms were read."
     },
     "cost": "free",
     "delay": "unknown",
@@ -14562,12 +14564,12 @@
     "risks": [],
     "decision": "later",
     "adapter": null,
-    "reason": "Official warnings to mariners and the reports of attacks on ships. At 03:04 UTC on 2026-11-18, the API answered 503 with a page that tells of the maintenance of the portal.",
+    "reason": "Official warnings to mariners and the reports of attacks on ships. On 2026-11-18 and on 2026-11-25, the API answered 503 with a page that tells of the maintenance of the portal.",
     "evidence": [
       "https://msi.nga.mil/api/publications/broadcast-warn?output=json&status=A",
       "https://msi.nga.mil/api/publications/asam?output=json&sort=date&minOccurDate=2026-09-01"
     ],
-    "round": 12
+    "round": 31
   },
   {
     "id": "nhc-rss",
@@ -21307,10 +21309,10 @@
       "url": "https://fiscaldata.treasury.gov/api-documentation/",
       "automated": "allowed",
       "redistribution": "allowed",
-      "note": "The docs say no account or token is needed and the data is offered free, without restriction, and may be copied, adapted and redistributed for commercial or non-commercial purposes. My test call to the debt_to_penny endpoint failed to connect from the research machine."
+      "note": "The docs say that no account or token is necessary. The data is free, with no restriction, for copies, changes and redistribution. Round 31: a call to the API answered with JSON."
     },
     "cost": "free",
-    "delay": "unknown (a release calendar is linked, not opened)",
+    "delay": "One read at 16:24 UTC on 2026-11-25 gave the Daily Treasury Statement of 2026-11-23.",
     "history": "Full dataset history.",
     "rateLimit": "unknown (none stated)",
     "calibration": "not applicable",
@@ -21327,9 +21329,10 @@
     "adapter": null,
     "reason": "Open data with clear terms; the Daily Treasury Statement cash balance can show a debt-limit squeeze.",
     "evidence": [
-      "https://fiscaldata.treasury.gov/api-documentation/"
+      "https://fiscaldata.treasury.gov/api-documentation/",
+      "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/dts/operating_cash_balance?sort=-record_date&page[size]=3"
     ],
-    "round": 1
+    "round": 31
   },
   {
     "id": "trickest-cve",
@@ -24427,6 +24430,396 @@
     "evidence": [
       "https://data.seattle.gov/resource/tazs-3rd5.json?$limit=1",
       "https://data.seattle.gov/api/views/tazs-3rd5.json"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": [
+      "point"
+    ],
+    "risks": [],
+    "adapter": null,
+    "round": 31,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "uscg-navcen-msi-files",
+    "name": "USCG NAVCEN: the files of the Local Notice to Mariners (GeoJSON)",
+    "classes": [
+      "transport.sea.navigational-warning"
+    ],
+    "url": "https://navcen.uscg.gov/msi",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "Round 31 found no terms page. The page www.navcen.uscg.gov/msi/ and the robots.txt file gave 403. The notices are works of the US government."
+    },
+    "delay": "One read at 16:22 UTC on 2026-11-25 gave a hazard changed at 13:41 UTC on the same day. The file index had a time of 16:20 UTC.",
+    "history": "unknown (the files hold the notices in force)",
+    "coverage": "US waters in NAVAREA IV and XII. On 2026-11-25 the file of hazards had 144 points in force: obstructions, shoaling, wrecks and other hazards.",
+    "origins": [
+      "uscg"
+    ],
+    "path": [
+      "navcen.uscg.gov"
+    ],
+    "reason": "Open GeoJSON files of the Coast Guard with no key. They give the hazards, the changes of aids and the discrepancies of the Local Notice to Mariners.",
+    "evidence": [
+      "https://navcen.uscg.gov/msi",
+      "https://navcen.uscg.gov/sites/default/files/msi/fileIndexNew.json",
+      "https://navcen.uscg.gov/sites/default/files/msi/hazNav_1.geojson"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 31,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "fed-h41-tga",
+    "name": "Federal Reserve H.4.1: the Treasury General Account (CSV of the Data Download Program)",
+    "classes": [
+      "civic.economy.fiscal"
+    ],
+    "url": "https://www.federalreserve.gov/datadownload/Download.aspx?rel=H41",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.federalreserve.gov/disclaimer.htm",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The policy page puts the information of the Board website in the public domain, unless it tells otherwise. A copy cites the Board. The page tells nothing of automated reading."
+    },
+    "delay": "Each Thursday the release gives the values of the Wednesday before. One read on 2026-11-25 gave the Wednesday 2026-11-18.",
+    "history": "The query has the parameters lastobs, from and to. The page also gives all the data of H.4.1 as one file.",
+    "coverage": "The United States: the cash of the Treasury at the Federal Reserve each week, as the level of Wednesday and the average of the week.",
+    "origins": [
+      "federal-reserve-board"
+    ],
+    "path": [
+      "www.federalreserve.gov"
+    ],
+    "reason": "The Federal Reserve is the bank of the Treasury, so its balance sheet gives the cash of the Treasury from a second origin. A low balance shows a debt-limit squeeze.",
+    "evidence": [
+      "https://www.federalreserve.gov/datadownload/Download.aspx?rel=H41",
+      "https://www.federalreserve.gov/datadownload/Output.aspx?rel=H41&series=f52e72511be65e16f71d4f5858951312&lastobs=1&from=&to=&filetype=csv&label=include&layout=seriescolumn&type=package",
+      "https://www.federalreserve.gov/disclaimer.htm"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 31,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "quebec-msss-emergency-rooms",
+    "name": "Quebec MSSS: the hourly file of the situation in the emergency rooms (CSV)",
+    "classes": [
+      "health.hospital-capacity"
+    ],
+    "url": "https://www.donneesquebec.ca/recherche/dataset/fichier-horaire-des-donnees-de-la-situation-a-l-urgence",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.donneesquebec.ca/licence/",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The catalog of Donnees Quebec gives the licence CC BY 4.0. Round 31 did not read a page on automated reading."
+    },
+    "delay": "The catalog gives an update each hour. One read at 16:29 UTC on 2026-11-25 gave the update of 15:45 UTC.",
+    "history": "unknown (a second file gives the last 7 days)",
+    "coverage": "Quebec: each emergency room with its stretchers, the occupied stretchers and the patients there for more than 24 and 48 hours. One read had 120 rooms.",
+    "origins": [
+      "quebec-msss"
+    ],
+    "path": [
+      "msss.gouv.qc.ca"
+    ],
+    "reason": "Open hourly data with no key, from an origin apart from the CDC. On 2026-11-25, 52 of 120 rooms had more patients on stretchers than stretchers.",
+    "evidence": [
+      "https://www.donneesquebec.ca/recherche/api/3/action/package_search?q=urgences%20horaire&rows=5",
+      "https://www.msss.gouv.qc.ca/professionnels/statistiques/documents/urgences/Releve_horaire_urgences_7jours.csv"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 31,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "scottish-water-overflows",
+    "name": "Scottish Water: the near real-time data of the storm overflows",
+    "classes": [
+      "env.water.sewage-overflow"
+    ],
+    "url": "https://www.scottishwater.co.uk/Help-and-Resources/Open-Data/Overflow-Map-Data",
+    "access": "api",
+    "auth": "unknown",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The documentation page gave 403 on 2026-11-25, so round 31 read no terms. Search results tell of an open licence with credit to Scottish Water."
+    },
+    "delay": "unknown",
+    "history": "unknown",
+    "coverage": "Scotland: the monitored storm overflows. Search results tell of an update each hour.",
+    "origins": [
+      "scottish-water"
+    ],
+    "path": [
+      "unknown"
+    ],
+    "reason": "A possible second origin of overflows, apart from the companies of England. The documentation page gave 403, and the API host from search results has no DNS record.",
+    "evidence": [
+      "https://www.scottishwater.co.uk/Help-and-Resources/Open-Data/Overflow-Map-Data"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 32,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "redcross-open-shelters",
+    "name": "American Red Cross: the open shelters of its National Shelter System (ArcGIS feature layer view)",
+    "classes": [
+      "rescue.shelter-open"
+    ],
+    "url": "https://services.arcgis.com/pGfbNJoYypmNq86F/arcgis/rest/services/Shelters_Prod_EA_view/FeatureServer/0",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.arcgis.com/home/item.html?id=bc4f03b7ec3e4c8d86c3e2ebcd92e047",
+      "automated": "unclear",
+      "redistribution": "limited",
+      "note": "The licence of the item gives the data for situational awareness and for maps and applications of shelters, with the Red Cross as the source. It does not give unrestricted redistribution, commercial use or changes. It tells nothing of automated reading."
+    },
+    "delay": "The item gives an update each 60 seconds. One read at 17:04 UTC on 2026-11-25 gave a last change of the data at 06:55 UTC on the same day.",
+    "history": "None: the layer holds only the shelters that are open now.",
+    "coverage": "The US states and territories: each open shelter of the Red Cross with its name, its place, its status, its type and its pet type. On 2026-11-25 the layer had 2 open emergency shelters.",
+    "origins": [
+      "american-red-cross"
+    ],
+    "path": [
+      "services.arcgis.com",
+      "provider:arcgis-online"
+    ],
+    "reason": "Open JSON queries with no key, from the shelter system of the Red Cross. FEMA also shows Red Cross shelters, but this path and this issuer are apart from FEMA.",
+    "evidence": [
+      "https://www.arcgis.com/sharing/rest/search?q=%22open%20shelters%22%20type%3A%22Feature%20Service%22&num=50&f=json",
+      "https://services.arcgis.com/pGfbNJoYypmNq86F/arcgis/rest/services/Shelters_Prod_EA_view/FeatureServer/0?f=json",
+      "https://services.arcgis.com/pGfbNJoYypmNq86F/arcgis/rest/services/Shelters_Prod_EA_view/FeatureServer/0/query?where=1%3D1&outFields=active_state,active_site_status,active_site_type&returnGeometry=false&f=json"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 32,
+    "decision": "plan",
+    "rateLimit": "The page tells users to read each 3 minutes at most, and to keep a copy in their own service.",
+    "id": "avinor-flight-data",
+    "name": "Avinor: the flights and their status at the airports of Norway (XML feed)",
+    "classes": [
+      "transport.air.disruption"
+    ],
+    "url": "https://asrv.avinor.no/XmlFeed/v1.0",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://partner.avinor.no/en/services/flight-data/",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The terms of use set no limit on the use of the data, if the use obeys the law of Norway. Avinor can stop the access of a user who harms its reputation. The page tells users to read the feed each 3 minutes."
+    },
+    "delay": "Minutes: one read at 17:05 UTC on 2026-11-25 gave a lastUpdate of the same second. Each flight has a status code and a status time.",
+    "history": "The feed gives the flights from some hours before to some hours after the time of the read, with the parameters TimeFrom and TimeTo.",
+    "coverage": "The 43 airports of Avinor in Norway, with no private airport. One read for Oslo had 179 flights: 1 cancelled, 122 with a new time, 30 departed and 25 arrived.",
+    "origins": [
+      "avinor"
+    ],
+    "path": [
+      "asrv.avinor.no"
+    ],
+    "reason": "The operator of the airports of Norway gives the status of each flight with no key and with open terms. An adapter counts the cancelled and the late flights of each airport.",
+    "evidence": [
+      "https://partner.avinor.no/en/services/flight-data/",
+      "https://asrv.avinor.no/XmlFeed/v1.0?TimeFrom=1&TimeTo=7&airport=OSL"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 32,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "njdep-hab-sampling",
+    "name": "NJDEP: the samples and advisory tiers of harmful algal blooms in New Jersey (ArcGIS feature layer)",
+    "classes": [
+      "env.water.harmful-algal-bloom"
+    ],
+    "url": "https://services1.arcgis.com/QWdNfRs7lkPq4g4Q/arcgis/rest/services/NJDEP_Production_HAB_Sampling_2021_public/FeatureServer/0",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.arcgis.com/home/item.html?id=a84a0473c7d94ce89fea7b5cb6cd46f6",
+      "automated": "unclear",
+      "redistribution": "limited",
+      "note": "The Data Distribution Agreement of NJDEP is in the licence of the item. A copy keeps all the metadata, and a product credits NJDEP GIS with its disclaimer. It tells nothing of automated reading."
+    },
+    "delay": "Days: one read on 2026-11-25 gave a last change of the data at 13:00 UTC on the same day, and the newest site visit on 2026-11-12.",
+    "history": "2,329 records on 2026-11-25, with samples from the years before.",
+    "coverage": "New Jersey: each sample of a fresh water body after a report of a bloom, with the cell count, the toxins, the county and the advisory tier. The layer also has fields with the names of staff, and an adapter does not read them.",
+    "origins": [
+      "njdep"
+    ],
+    "path": [
+      "services1.arcgis.com",
+      "provider:arcgis-online"
+    ],
+    "reason": "Open JSON queries with no key, from a state apart from California. Each record has an advisory tier, so an adapter makes a report of each advisory.",
+    "evidence": [
+      "https://www.arcgis.com/sharing/rest/search?q=%22harmful%20algal%22%20advisory%20type%3A%22Feature%20Service%22&num=60&sortField=modified&sortOrder=desc&f=json",
+      "https://services1.arcgis.com/QWdNfRs7lkPq4g4Q/arcgis/rest/services/NJDEP_Production_HAB_Sampling_2021_public/FeatureServer/0?f=json",
+      "https://services1.arcgis.com/QWdNfRs7lkPq4g4Q/arcgis/rest/services/NJDEP_Production_HAB_Sampling_2021_public/FeatureServer/0/query?where=1%3D1&returnCountOnly=true&f=json"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 32,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "elexon-bmrs-syswarn",
+    "name": "Elexon BMRS: the system warnings of NESO for Great Britain (SYSWARN, JSON)",
+    "classes": [
+      "infra.power.grid-emergency"
+    ],
+    "url": "https://data.elexon.co.uk/bmrs/api/v1/datasets/SYSWARN",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The licence of the BMRS open data lets each user copy, publish, adapt and use the data, also for commercial use, with the attribution statement of Elexon. It tells nothing of automated reading. The API needs no key."
+    },
+    "delay": "Minutes: one read at 17:07 UTC on 2026-11-25 gave a warning published at 14:39 UTC on the same day.",
+    "history": "The dataset query takes a range of publish times. The range from 2026-05-01 gave 355 warnings.",
+    "coverage": "Great Britain: the warnings of the electricity control centre of NESO. From 2026-05-01 to 2026-11-25 they had 32 Electricity Margin Notices and 5 negative reserve margin warnings.",
+    "origins": [
+      "neso"
+    ],
+    "path": [
+      "data.elexon.co.uk"
+    ],
+    "reason": "An Electricity Margin Notice tells of a low margin of the grid, the same kind as a conservation appeal of ERCOT. The warnings are open JSON with no key, from an origin apart from ERCOT.",
+    "evidence": [
+      "https://data.elexon.co.uk/bmrs/api/v1/system/warnings?format=json",
+      "https://data.elexon.co.uk/bmrs/api/v1/datasets/SYSWARN?publishDateTimeFrom=2026-05-01T00:00:00Z&publishDateTimeTo=2026-11-25T18:00:00Z&format=json",
+      "https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 32,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "usfs-recreation-status",
+    "name": "USDA Forest Service: the open status of the recreation sites (EDW map service)",
+    "classes": [
+      "safety.public-lands-closure"
+    ],
+    "url": "https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_RecreationOpportunities_01/MapServer/0",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The service description gives no warranty and tells users to verify the limits of the data. It gives no licence. The data are works of the US government."
+    },
+    "delay": "unknown: the records have no time of change.",
+    "history": "None: each site has its status now.",
+    "coverage": "The recreation sites of the national forests of the US. On 2026-11-25 the layer had 5,939 open sites, 2,694 closed sites and 305 temporarily closed sites.",
+    "origins": [
+      "usda-fs"
+    ],
+    "path": [
+      "apps.fs.usda.gov"
+    ],
+    "reason": "The field openstatus has no time and no cause. A closure for the winter and a closure for a hazard have the same value, so a report needs more data.",
+    "evidence": [
+      "https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_RecreationOpportunities_01/MapServer?f=json",
+      "https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_RecreationOpportunities_01/MapServer/0?f=json"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 32,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "sidc-product-archive",
+    "name": "SIDC (RWC-Belgium): the latest message of each alert product (plain text archive)",
+    "classes": [
+      "geo.space-weather",
+      "geo.space-weather.radio-blackout"
+    ],
+    "url": "https://www.sidc.be/spaceweatherservices/managed/services/archive/product/flaremail",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.astro.oma.be/en/information/data-policy/",
+      "automated": "unclear",
+      "redistribution": "limited",
+      "note": "The data policy of the Royal Observatory of Belgium permits private, educational or scientific use only. A commercial use needs the written consent of the director general."
+    },
+    "delay": "One read on 2026-11-25 gave a flare alert of 2026-10-10 and a Presto message of 2026-11-01.",
+    "history": "None: each address gives only the latest message of its product.",
+    "coverage": "The Sun and the space near the Earth. The flare alert tells of a large flare in the X-ray data of the GOES satellites of NOAA.",
+    "origins": [
+      "sidc"
+    ],
+    "path": [
+      "www.sidc.be"
+    ],
+    "reason": "The archive gives the alerts with no account and no email. But the flare alert reads the GOES data of NOAA, and the data policy limits the use, as the policy of BoM does.",
+    "evidence": [
+      "https://www.sidc.be/spaceweatherservices/managed/services/archive/product/flaremail",
+      "https://www.sidc.be/spaceweatherservices/managed/services/archive/product/presto/",
+      "https://www.astro.oma.be/en/information/data-policy/"
     ]
   }
 ]

@@ -1791,6 +1791,49 @@ importers:
         specifier: ^5.0.3
         version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
+  packages/source-nwr:
+    dependencies:
+      '@mark1russell7/alerts':
+        specifier: workspace:*
+        version: link:../core
+      '@mark1russell7/alerts-format-nws':
+        specifier: workspace:*
+        version: link:../format-nws
+      '@mark1russell7/algebra':
+        specifier: ^0.9.9
+        version: 0.9.11(zod@4.6.7)
+      '@mark1russell7/service':
+        specifier: ^0.12.2
+        version: 0.12.2(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
+      '@mark1russell7/text':
+        specifier: ^0.0.18
+        version: 0.0.18
+      '@procedures/shell':
+        specifier: ^0.68.0
+        version: 0.68.1(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
+    devDependencies:
+      '@mark1russell7/cue':
+        specifier: ^2.0.0
+        version: 2.1.4
+      '@mark1russell7/rigor-generators':
+        specifier: ^0.2.4
+        version: 0.2.4
+      '@types/node':
+        specifier: ^26.6.5
+        version: 26.6.6
+      '@vitest/coverage-v8':
+        specifier: ^5.0.3
+        version: 5.1.1(vitest@5.1.1)
+      fast-check:
+        specifier: ^4.10.2
+        version: 4.11.0
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.0.3
+        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+
   packages/source-nws-api:
     dependencies:
       '@mark1russell7/alerts':
@@ -2517,15 +2560,6 @@ packages:
 
   '@mark1russell7/algebra@0.8.10':
     resolution: {integrity: sha512-+BrWHJHSMF/BTOegejCY14W2/3B4gmNhrSwLxitgQF0OYb7NcaovLILnDrDjNtTFgxuuA5Gd2jtlLJprTUO5Yw==}
-    engines: {node: '>=22.19'}
-    peerDependencies:
-      zod: ^4.1.0
-    peerDependenciesMeta:
-      zod:
-        optional: true
-
-  '@mark1russell7/algebra@0.9.10':
-    resolution: {integrity: sha512-PRLI84T/sJhOdddwAyTKJR8Mv3r1ux57xXIEH2zg+K7CUHTDRkuPuYT9byPy1KGfbR1dNviRHNgDM7OmesHbWw==}
     engines: {node: '>=22.19'}
     peerDependencies:
       zod: ^4.1.0
@@ -5121,13 +5155,6 @@ snapshots:
     optionalDependencies:
       zod: 4.6.7
 
-  '@mark1russell7/algebra@0.9.10(zod@4.6.7)':
-    dependencies:
-      '@mark1russell7/quantity': 0.4.3(zod@4.6.7)
-      '@mark1russell7/rigor-statistics': 0.2.21
-    optionalDependencies:
-      zod: 4.6.7
-
   '@mark1russell7/algebra@0.9.11(zod@4.6.7)':
     dependencies:
       '@mark1russell7/quantity': 0.4.8(zod@4.6.7)
@@ -5387,7 +5414,7 @@ snapshots:
 
   '@mark1russell7/service@0.11.9(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)':
     dependencies:
-      '@mark1russell7/algebra': 0.9.10(zod@4.6.7)
+      '@mark1russell7/algebra': 0.9.11(zod@4.6.7)
       '@mark1russell7/collections': 0.11.2(zod@4.6.7)
       '@mark1russell7/files': 0.0.3
       '@mark1russell7/quantity': 0.4.3(zod@4.6.7)
@@ -5773,7 +5800,7 @@ snapshots:
 
   '@procedures/client@0.68.0(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))':
     dependencies:
-      '@mark1russell7/algebra': 0.9.9(zod@4.6.7)
+      '@mark1russell7/algebra': 0.9.11(zod@4.6.7)
       '@mark1russell7/coeval': 0.38.1(zod@4.6.7)
       '@mark1russell7/collections': 0.10.2(zod@4.6.7)
       '@mark1russell7/quantity': 0.4.3(zod@4.6.7)

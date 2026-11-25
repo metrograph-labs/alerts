@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json.schemastore.org/package",
+  "name": "@mark1russell7/alerts-source-nwr",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The source adapter of the alert system for NOAA Weather Radio: the SAME headers that a receiver and a decoder of the machine hear.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./receiver": "./src/receiver.ts",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json"
+  },
+  "dependencies": {
+    "@mark1russell7/alerts": "workspace:*",
+    "@mark1russell7/alerts-format-nws": "workspace:*",
+    "@mark1russell7/algebra": "^0.9.9",
+    "@mark1russell7/service": "^0.12.2",
+    "@mark1russell7/text": "^0.0.18",
+    "@procedures/shell": "^0.68.0"
+  },
+  "devDependencies": {
+    "@mark1russell7/cue": "^2.0.0",
+    "@mark1russell7/rigor-generators": "^0.2.4",
+    "@types/node": "^26.6.5",
+    "@vitest/coverage-v8": "^5.0.3",
+    "fast-check": "^4.10.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
+  }
+}

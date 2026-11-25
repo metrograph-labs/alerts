@@ -8,6 +8,9 @@
 - `openai-20261118.json` comes from the real answer to `https://status.openai.com/api/v2/summary.json`. The site sent it at 2026-11-18 04:53:17 UTC.
 - The fixture keeps 4 components and the one incident, with no change. The incident has no `shortlink`, no `started_at` and no components.
 - The answer had `Content-Type: application/json` and no `ETag`. incident.io hosts the page.
+- `openai-incidents-20261125.json` comes from the real answer to `https://status.openai.com/api/v2/incidents.json`. The site sent it at 2026-11-25 16:20 UTC.
+- The real answer had 25 incidents. The fixture keeps the head of the page and the 2 latest incidents with no change. Both are in the state `resolved`.
+- On that day the summary of the page had only `page`, `status` and `components`, with no list of incidents. The tests make an open incident from this list, and each such test tells it.
 - `twilio-incidents-20261118.json` comes from the real answer to `https://status.twilio.com/api/v2/incidents.json`. The site sent it at 2026-11-18 14:24:25 UTC.
 - The real answer had 50 incidents. The fixture keeps the head of the page and 2 incidents with no change. The incident `269ytwp2jgqq` is on the path of an alert, and `smg76w4fhp05` is of a carrier in APAC.
 - Both incidents are in the state `resolved`. The answer had `Content-Type: application/json` and an `ETag`.
