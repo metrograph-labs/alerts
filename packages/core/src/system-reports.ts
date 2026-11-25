@@ -220,6 +220,12 @@ export interface LoopBlock {
   readonly at: Instant;
   /** The length of the block in milliseconds. */
   readonly size: Duration;
+  /** The processor time of the thread in the block, in milliseconds (AL-180). A block with much less processor time than its length waited. */
+  readonly cpu?: Duration;
+  /** The count of the reads of memory pages from the disk in the block, for example from swap (AL-180). */
+  readonly faults?: number;
+  /** The time of the pauses of the garbage collector in the block, in milliseconds (AL-180). */
+  readonly gc?: Duration;
 }
 
 /** The shortest block of the event loop that is a condition (AL-88). The runtime records only blocks of this length or longer. */
@@ -252,6 +258,31 @@ export function blockClass(size: Duration): Duration {
 /** This function gives the length of a block in a text: tenths of a second under 10 s, and else whole seconds. 1840 ms is `1.8 s`. */
 export function blockSizeText(size: Duration): string {
   return size < 10_000 ? `${(Math.round(size / 100) / 10).toFixed(1)} s` : `${String(Math.round(size / 1000))} s`;
+}
+
+/**
+ * This function gives the cause of a block in a text, from its processor time, its page reads and its pauses (AL-180). It
+ * gives `undefined` for a block with none of them. A block with less processor time than half its length was a wait.
+ */
+export function blockCauseText(block: LoopBlock): string | undefined {
+  const parts: string[] = [];
+  if (block.cpu !== undefined) parts.push(`${blockSizeText(block.cpu)} of processor time`);
+  if (block.faults !== undefined) parts.push(`${countOf(block.faults, "page read")} from the disk`);
+  if (block.gc !== undefined) parts.push(`${blockSizeText(block.gc)} of pauses of the garbage collector`);
+  if (parts.length === 0) return undefined;
+  const last = parts.pop() ?? "";
+  const list = parts.length === 0 ? last : `${parts.join(", ")} and ${last}`;
+  const kind = block.cpu === undefined ? "" : block.cpu * 2 < block.size ? " Thus the block was mostly a wait, for example for swap or the disk." : " Thus the block was mostly work of the processor.";
+  return `The block had ${list}.${kind}`;
+}
+
+/** This function gives the measures of the cause of a block (AL-180), with no field for a measure that the block lacks. */
+export function blockCause(block: Pick<LoopBlock, "cpu" | "faults" | "gc">): Pick<LoopBlock, "cpu" | "faults" | "gc"> {
+  return {
+    ...(block.cpu === undefined ? {} : { cpu: block.cpu }),
+    ...(block.faults === undefined ? {} : { faults: block.faults }),
+    ...(block.gc === undefined ? {} : { gc: block.gc }),
+  };
 }
 
 /**
@@ -1843,6 +1874,13 @@ function lineClass(line: SystemLine | undefined): Duration {
 function loopCondition(blocks: readonly LoopBlock[], copy: string | undefined, held: Duration): Condition {
   const code = `${LOOP_KIND}.block`;
   const longest = blocks.reduce((found, block) => (block.size > found.size ? block : found));
+  // The cause is not a fact: thus a new cause of the same class gives no update (AL-180).
+  const cause = blockCauseText(longest);
+  const measures = {
+    ...(longest.cpu === undefined ? {} : { cpu: [String(longest.cpu)] }),
+    ...(longest.faults === undefined ? {} : { faults: [String(longest.faults)] }),
+    ...(longest.gc === undefined ? {} : { gc: [String(longest.gc)] }),
+  };
   return {
     facts: { class: Math.max(held, blockClass(longest.size)) },
     kind: { code, label: kindLabel(code) },
@@ -1853,9 +1891,9 @@ function loopCondition(blocks: readonly LoopBlock[], copy: string | undefined, h
     areas: [],
     about: [{ system: COPY_SUBJECT, id: copy ?? "this", label: copy === undefined ? "This copy" : `Copy ${copy}` }],
     headline: `The event loop of the runtime was blocked for ${blockSizeText(longest.size)}.`,
-    description: `In the last hour, the event loop of the runtime was blocked ${countOf(blocks.length, "time")} for 1 s or more. During a block, the runtime sends no alert and answers no probe.`,
+    description: `In the last hour, the event loop of the runtime was blocked ${countOf(blocks.length, "time")} for 1 s or more. During a block, the runtime sends no alert and answers no probe.${cause === undefined ? "" : ` In the longest block: ${cause}`}`,
     instruction: "Examine the memory, the disk and the processor load of the computer. A longer block can stop the runtime.",
-    parameters: { longest: [String(longest.size)], at: [String(longest.at)], count: [String(blocks.length)] },
+    parameters: { longest: [String(longest.size)], at: [String(longest.at)], count: [String(blocks.length)], ...measures },
   };
 }
 
