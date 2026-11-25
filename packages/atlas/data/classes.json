@@ -349,7 +349,7 @@
     "references": [
       "No hazard list names this class. Found by the search for missing classes."
     ],
-    "gap": "Per district and per local media. No national source.",
+    "gap": "One source: naad-alerts, for Canada. Round 36: the closures of NSW need a token, and the closures of Taiwan need a member login.",
     "round": 1
   },
   {
@@ -1583,7 +1583,7 @@
       "CAP 1.2: Infra",
       "CISA sectors: Food and Agriculture"
     ],
-    "gap": "FEWS NET is the only live source. The IPC API and HungerMap need a key. HDX HAPI refused the read with a bot block.",
+    "gap": null,
     "round": 19
   },
   {
@@ -1616,7 +1616,7 @@
       "CISA sectors: Communications",
       "FEMA Lifelines: Communications"
     ],
-    "gap": "No live source. Round 24: the FCC gives a DIRS report only while DIRS is active, as a PDF. No access route of Downdetector is confirmed.",
+    "gap": null,
     "round": 1
   },
   {
@@ -2832,7 +2832,7 @@
     "references": [
       "NWS/SAME: EAN Emergency Action Notification"
     ],
-    "gap": "Round 1 found 0 adopted or planned sources with no risk. ipaws-open has a risk, so the gate does not count it: see the risks of the record. Round 1 found no other source.",
+    "gap": null,
     "round": 1
   },
   {
@@ -3001,7 +3001,7 @@
       "Citizen",
       "MAX Security: Shooting"
     ],
-    "gap": "Round 1 found 0 adopted or planned sources with no risk. Round 1 found no other source.",
+    "gap": null,
     "round": 1
   },
   {
@@ -3127,7 +3127,7 @@
     "references": [
       "UNDRR-ISC HIPs 2025: SO Explosive Ordnance"
     ],
-    "gap": "No structured source. Local police and city notices report these.",
+    "gap": null,
     "round": 1
   },
   {
@@ -3334,7 +3334,7 @@
     "references": [
       "CISA sectors: Transportation Systems > Aviation"
     ],
-    "gap": "The FAA API portal rendered only Loading. Access terms not seen.",
+    "gap": "One source: faa-tfr-list, for the United States. Round 36: the NOTAM API of NAV CANADA answers, but its terms forbid commercial use. faa-notam-api needs an account.",
     "round": 1
   },
   {

@@ -5,23 +5,25 @@
  * reports of one event have the same correlation keys, so they join in one incident.
  *
  * The feed gives only the strongest value of the intensity map. So each disc comes from the law of a point, moved
- * by that value. Along the fault of a large event, the shaking is stronger than the disc gives. The contours of the
- * ShakeMap product replace these discs (AL-14).
+ * by that value. Along the fault of a large event, the shaking is stronger than the disc gives. Thus, when the body
+ * has the contours of the ShakeMap product (`shakemap.ts`), the region of a band on the grid replaces its disc. A
+ * band that the grid does not reach keeps its disc: the low-resolution grid smooths the strongest value.
  *
  * The feed is a snapshot: it holds the events of the past day. An event that the USGS deletes leaves the
  * feed with no cancel. A new version of an event, for example a new magnitude, is a new body. Thus the
  * key of a report holds the id of its observation, and the ids of the event join the versions in one incident.
  *
  * The catalog gives the type `nuclear explosion` to a nuclear test. Such an event gives one report of a nuclear
- * detonation, with the felt disc of the shaking as its area. The feed gives no yield and no wind, so the map draws no
+ * detonation, with the felt area of the shaking: the area of the weakest band. The feed gives no yield and no wind, so the map draws no
  * zone of fallout. A person who watches the topic of the kind gets each test at each distance. The type often comes
  * after a review, so the first version can be an earthquake. The ids of the event join the two versions in one incident.
  */
 
 import { categoryOf, kindLabel, Problems, reportId, type Area, type Certainty, type MapResult, type Observation, type Report, type SourceId } from "@mark1russell7/alerts";
-import { bandDiscs, FELT_INTENSITY, intensityAt, lawAt, type BandDisc } from "@mark1russell7/alerts-quake";
+import { bandDiscs, FELT_INTENSITY, INTENSITY_BANDS, intensityAt, lawAt, type BandDisc, type IntensityBand } from "@mark1russell7/alerts-quake";
 import { isRecord, type Fields } from "@mark1russell7/optional/read";
 import { errorMessage } from "@mark1russell7/text";
+import { readShakeContours } from "./shakemap.ts";
 
 /** The id of this source. */
 export const SOURCE_ID = "usgs" as SourceId;
@@ -91,6 +93,14 @@ export function eventIds(text: string): string[] {
   return [...new Set(text.split(",").filter((id) => /^[a-z0-9]+$/.test(id)))].sort();
 }
 
+/** The areas of one band: the region on the ShakeMap grid, or the disc of the law. */
+interface BandArea extends IntensityBand {
+  readonly areas: Area[];
+  readonly shape: "shakemap" | "disc";
+  /** The radius of the disc. A region of the grid has none. */
+  readonly radiusKm?: number;
+}
+
 /** This function maps the fields of one event to one report for each band, and can throw. `mapObservation` catches each error. */
 function mapEvent(fields: Fields, observation: Observation, problems: Problems): Report[] {
   // The feed also holds quarry blasts, explosions and other events. Only an earthquake and a nuclear test give a report.
@@ -116,6 +126,14 @@ function mapEvent(fields: Fields, observation: Observation, problems: Problems):
   const discs = bandDiscs(law, magnitude, depthKm, bias);
   // An event below the felt level at its epicenter keeps one report of the felt band, with a disc of radius 0.
   const bands: readonly BandDisc[] = discs.length > 0 ? discs : [{ severity: "minor", from: FELT_INTENSITY, radiusKm: 0 }];
+  const shake = fields["shakemap"] === undefined ? undefined : readShakeContours(fields["shakemap"]);
+  if (fields["shakemap"] !== undefined && shake === undefined) problems.add("shakemap", "the ShakeMap contours do not have the structure of shakeContours: the map uses the discs");
+  const shaped = INTENSITY_BANDS.flatMap((band): BandArea[] => {
+    const region = shake?.bands.find((each) => each.from === band.from);
+    if (region !== undefined) return [{ ...band, shape: "shakemap", areas: region.polygons.map((rings): Area => ({ type: "polygon", rings })) }];
+    const disc = bands.find((each) => each.from === band.from);
+    return disc === undefined ? [] : [{ ...band, shape: "disc", radiusKm: disc.radiusKm, areas: [{ type: "circle", center: [lon, lat], radiusKm: disc.radiusKm }] }];
+  });
   const status = fields["status"];
   const certainty = typeof status === "string" ? CERTAINTY[status] : undefined;
   if (certainty === undefined) problems.add("status", `the status ${JSON.stringify(status)} is not known: the certainty is unknown`);
@@ -127,12 +145,11 @@ function mapEvent(fields: Fields, observation: Observation, problems: Problems):
   const alert = text("alert");
   const magnitudeType = text("magType");
   const net = text("net") ?? "us";
-  // A nuclear test gives one report, with the felt disc: the largest disc.
-  const chosen = nuclear ? [bands.reduce((largest, band) => (band.radiusKm > largest.radiusKm ? band : largest))] : bands;
+  // A nuclear test gives one report, with the felt area: the area of the weakest band, the last band of INTENSITY_BANDS.
+  const chosen = nuclear ? shaped.slice(-1) : shaped;
   const kind = nuclear ? NUCLEAR_KIND : EARTHQUAKE_KIND;
   return chosen.map((band): Report => {
     const key = `${id}@${observation.id}/${nuclear ? "nuclear" : band.severity}`;
-    const areas: Area[] = [{ type: "circle", center: [lon, lat], radiusKm: band.radiusKm }];
     return {
       id: reportId({ source: SOURCE_ID, key, sent: time }),
       source: SOURCE_ID,
@@ -155,7 +172,7 @@ function mapEvent(fields: Fields, observation: Observation, problems: Problems):
       received: observation.fetched,
       onset: time,
       expires: time + REPORT_LIFE_MS,
-      areas,
+      areas: band.areas,
       ...(place === undefined ? {} : { areaText: place }),
       about: [],
       sender: net,
@@ -171,7 +188,9 @@ function mapEvent(fields: Fields, observation: Observation, problems: Problems):
         intensityBias: [bias.toFixed(2)],
         intensityLaw: [law.id],
         bandIntensity: [String(band.from)],
-        bandRadiusKm: [String(band.radiusKm)],
+        bandShape: [band.shape],
+        ...(band.radiusKm === undefined ? {} : { bandRadiusKm: [String(band.radiusKm)] }),
+        ...(shake === undefined ? {} : { shakemapVersion: [shake.version] }),
         ...(alert === undefined ? {} : { pager: [alert] }),
         tsunami: [String(fields["tsunami"])],
       },

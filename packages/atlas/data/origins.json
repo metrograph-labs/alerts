@@ -2712,5 +2712,41 @@
     "name": "Politie, the police of the Netherlands",
     "issues": null,
     "note": "The police of the Netherlands publish the missing persons in an open data API. The record of politie-missing-persons names this issuer."
+  },
+  {
+    "id": "de-warning-authorities",
+    "name": "The German authorities that warn through MoWaS and NINA: the BBK, the states, the districts and the police",
+    "issues": null,
+    "note": "The authorities send their warnings through MoWaS, the warning system of the federal government. The record of bbk-nina-api names this issuer."
+  },
+  {
+    "id": "canada-alerting-authorities",
+    "name": "The authorized government authorities of the National Public Alerting System of Canada",
+    "issues": null,
+    "note": "The authorities send their public alerts to the NAAD System. The record of naad-alerts names this issuer."
+  },
+  {
+    "id": "nav-canada",
+    "name": "NAV CANADA, the operator of the civil air navigation system of Canada",
+    "issues": null,
+    "note": "NAV CANADA publishes the NOTAMs of Canada. The record of nav-canada-notam names this issuer."
+  },
+  {
+    "id": "nsw-education",
+    "name": "The NSW Department of Education",
+    "issues": null,
+    "note": "The department publishes the closures of the public schools of New South Wales. The record of nsw-school-closures names this issuer."
+  },
+  {
+    "id": "dgpa",
+    "name": "The Directorate-General of Personnel Administration of Taiwan (DGPA)",
+    "issues": null,
+    "note": "The DGPA announces the closures of work and schools for natural disasters. The record of dgpa-closures names this issuer."
+  },
+  {
+    "id": "wvde",
+    "name": "The West Virginia Department of Education",
+    "issues": null,
+    "note": "The department publishes the school closings of West Virginia. The record of wvde-closings names this issuer."
   }
 ]

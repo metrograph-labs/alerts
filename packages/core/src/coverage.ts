@@ -8,7 +8,7 @@
  */
 import { minimumHittingSet, type HittingSetChoice } from "@mark1russell7/collections/graph";
 import { CONTEXT_KINDS, hasKind, LIFE_SAFETY_KINDS, regionContains } from "./assess.ts";
-import type { Coverage, HealthState, RegionCode, SourceDescriptor, SourceHealth, SourceId, WatchedPlace } from "./contracts.ts";
+import type { Coverage, HealthState, PlaceId, RegionCode, SourceDescriptor, SourceHealth, SourceId, WatchedPlace } from "./contracts.ts";
 import { CELL_RESOURCES } from "./contracts.ts";
 import { isShape, shapeDistanceKm } from "./shapes.ts";
 
@@ -139,11 +139,36 @@ export function coverage(input: CoverageInput, policy: CoveragePolicy = DEFAULT_
   const states = new Map<SourceId, HealthState>(input.health.map((entry) => [entry.source, entry.state]));
   const late = new Set(input.late ?? []);
   const up = input.sources.filter((source) => policy.up.includes(states.get(source.id) ?? "unknown") && !late.has(source.id));
-  const { containing } = input;
-  const places = containing === undefined ? input.places : input.places.map((place) => ({ ...place, codes: placeCodesWithContaining(place.codes, containing) }));
-  return places.flatMap((place) =>
+  return expandedPlaces(input).flatMap((place) =>
     input.kinds.map((kind) => coverageOf(place.id, kind, up.filter((source) => sourceCovers(source, place, kind)), requiredFor(policy, kind), policy)),
   );
+}
+
+/** The sources that cover one kind at one place, whatever their health. */
+export interface CoverageCandidates {
+  readonly place: PlaceId;
+  readonly kind: string;
+  /** The sources that cover the kind at the place when they are up, in the order of the input. */
+  readonly sources: readonly SourceId[];
+}
+
+/**
+ * This function gives the sources that cover each kind at each place, whatever their health and lateness. The order is
+ * the order of `coverage`. A source that is down is in this list, but not in the list of `coverage`. The list depends
+ * only on the sources, the places and the kinds, thus a caller can keep it until they change.
+ *
+ * @throws RangeError when `containing` gives more than `MAX_PLACE_CODES` codes for one place.
+ */
+export function coverageCandidates(input: Pick<CoverageInput, "sources" | "places" | "kinds" | "containing">): CoverageCandidates[] {
+  return expandedPlaces(input).flatMap((place) =>
+    input.kinds.map((kind) => ({ place: place.id, kind, sources: input.sources.filter((source) => sourceCovers(source, place, kind)).map((source) => source.id) })),
+  );
+}
+
+/** This function gives the places of an input, each with the codes that `containing` adds. */
+function expandedPlaces(input: Pick<CoverageInput, "places" | "containing">): readonly WatchedPlace[] {
+  const { containing } = input;
+  return containing === undefined ? input.places : input.places.map((place) => ({ ...place, codes: placeCodesWithContaining(place.codes, containing) }));
 }
 
 /**

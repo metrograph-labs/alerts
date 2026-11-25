@@ -4,6 +4,7 @@ import { ACTIVE_LAW, bandDiscs, FELT_INTENSITY, intensityAt, lawAt } from "@mark
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { eventBody, readAnswer } from "./fetch.ts";
+import { intensityGridOf, shakeContours, type ShakeContours } from "./shakemap.ts";
 import { EARTHQUAKE_KIND, EVENT_SYSTEM, eventIds, mapObservation, NUCLEAR_KIND, REPORT_LIFE_MS, SOURCE_ID, USGS_ORIGIN } from "./map.ts";
 
 const fixture = (name: string): string => readFileSync(new URL(`../fixtures/${name}`, import.meta.url), "utf8");
@@ -107,6 +108,7 @@ describe("mapObservation", () => {
       intensityBias: [bias.toFixed(2)],
       intensityLaw: [ACTIVE_LAW.id],
       bandIntensity: ["5.5"],
+      bandShape: ["disc"],
       bandRadiusKm: [String(discs[0]?.radiusKm)],
       tsunami: ["0"],
       ...(typeof properties["alert"] === "string" ? { pager: [properties["alert"]] } : {}),
@@ -255,5 +257,59 @@ describe("the bands of the shaking at a place", () => {
     const radius = radiusOf(felt);
     const places = [placeAt(felt, "in", radius - 2), placeAt(felt, "out", radius + 2), placeAt(felt, "near", radius + 2, 5)];
     expect(matchPlaces({ areas: felt.areas }, places).map((match) => match.place)).toEqual(["in", "near"]);
+  });
+});
+
+describe("mapObservation with the ShakeMap contours", () => {
+  /** The real event us6000ude6 (M4.1, MMI 5.23) with the contours of its real low-resolution grid. */
+  const detail = JSON.parse(fixture("detail-us6000ude6.geojson")) as Record<string, unknown> & { properties: Record<string, unknown> };
+  const { products: _products, ...properties } = detail.properties;
+  const EVENT = { ...detail, id: "us6000ude6", properties };
+  const grid = intensityGridOf(JSON.parse(fixture("shakemap-us6000ude6-mmi-low.covjson")));
+  if (grid === undefined) throw new Error("the fixture has no grid");
+  const CONTOURS = shakeContours("1795616312537", grid);
+  const withShake = (contours: unknown): Observation => {
+    const body = JSON.stringify({ ...JSON.parse(eventBody(EVENT)), shakemap: contours });
+    return { id: observationId({ source: SOURCE_ID, contentType: "application/json", url: URL_OF_FEED, body }), source: SOURCE_ID, fetched: FETCHED, contentType: "application/json", body, transport: { latency: 0 } };
+  };
+
+  it("gives the region of the grid as the area of a band that the grid reaches", () => {
+    const { reports, problems } = mapObservation(withShake(CONTOURS));
+    expect(problems).toEqual([]);
+    // The felt band of the grid has one polygon for each separate region, and each polygon is one area.
+    const felt = CONTOURS.bands.find((band) => band.from === FELT_INTENSITY);
+    expect(felt?.polygons.length).toBeGreaterThan(0);
+    expect(reports.map((report) => [report.severity, report.areas.length, report.parameters["bandShape"], report.parameters["bandRadiusKm"]])).toEqual([["minor", felt?.polygons.length, ["shakemap"], undefined]]);
+    expect(reports[0]?.areas.every((area) => area.type === "polygon")).toBe(true);
+    expect(reports[0]?.parameters["shakemapVersion"]).toEqual(["1795616312537"]);
+    expect(reportSchema.safeParse(reports[0]).success).toBe(true);
+    const epicenter = { id: "epicenter" as PlaceId, at: [-104.8395, 36.9498] as [number, number], codes: [], bufferKm: 0 };
+    const far = { id: "far" as PlaceId, at: [-105.9, 36.1] as [number, number], codes: [], bufferKm: 0 };
+    expect(matchPlaces({ areas: reports[0]?.areas ?? [] }, [epicenter, far]).map((match) => match.place)).toEqual(["epicenter"]);
+  });
+
+  it("keeps the disc of a band that the grid does not reach", () => {
+    // The feed gives MMI 6.0, but the low-resolution grid reaches only the felt band.
+    const strong = { ...EVENT, properties: { ...properties, mmi: 6 } };
+    const body = JSON.stringify({ ...JSON.parse(eventBody(strong)), shakemap: CONTOURS });
+    const { reports } = mapObservation({ ...withShake(CONTOURS), body });
+    expect(reports.map((report) => [report.severity, report.parameters["bandShape"]])).toEqual([
+      ["moderate", ["disc"]],
+      ["minor", ["shakemap"]],
+    ]);
+  });
+
+  it("uses the discs, with a problem, for contours with a different structure", () => {
+    const broken: ShakeContours = { version: "1", bands: [{ from: 4.2, polygons: [] }] };
+    const { reports, problems } = mapObservation(withShake(broken));
+    expect(problems).toEqual([{ path: "shakemap", message: expect.stringContaining("the map uses the discs") as string, fatal: false, lossy: true }]);
+    expect(reports.map((report) => report.parameters["bandShape"])).toEqual([["disc"]]);
+  });
+
+  it("gives a nuclear test the region of the weakest band", () => {
+    const test = { ...EVENT, properties: { ...properties, type: "nuclear explosion" } };
+    const body = JSON.stringify({ ...JSON.parse(eventBody(test)), shakemap: CONTOURS });
+    const { reports } = mapObservation({ ...withShake(CONTOURS), body });
+    expect(reports.map((report) => [report.kind.code, report.areas[0]?.type, report.parameters["bandIntensity"]])).toEqual([[NUCLEAR_KIND, "polygon", [String(FELT_INTENSITY)]]]);
   });
 });

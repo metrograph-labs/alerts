@@ -4,20 +4,39 @@
  * of the feed.
  *
  * The feed is global. The fetch asks with no filter, so a request names no place of the watch.
+ *
+ * A felt event can have a ShakeMap product. Then the fetch also reads the detail of the event and the grid of its
+ * intensity. It adds the region of each band of the shaking to the body (`shakemap.ts`).
  */
 
 import { observationId, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch } from "@mark1russell7/alerts";
-import { createRequester } from "@mark1russell7/alerts-fetch";
+import { createRequester, type Requester } from "@mark1russell7/alerts-fetch";
+import { FELT_INTENSITY } from "@mark1russell7/alerts-quake";
 import { isRecord, type Fields } from "@mark1russell7/optional/read";
 import { keptReplies, type Condition, type Pace, type Reply, type Transport } from "polite-crawler/api";
 
-import { EVENT_FIELDS, SOURCE_ID } from "./map.ts";
+import { EVENT_FIELDS, NUCLEAR_TYPE, SOURCE_ID } from "./map.ts";
+import { intensityGridOf, shakeContours, shakeProductOf, type ShakeContours, type ShakeProduct } from "./shakemap.ts";
 
 /** The base URL of the earthquake site of the USGS. */
 export const USGS_BASE_URL = "https://earthquake.usgs.gov";
 
 /** The path of the feed: the events of magnitude 2.5 or more of the past day, updated each minute. */
 export const FEED_PATH = "/earthquakes/feed/v1.0/summary/2.5_day.geojson";
+
+/** This function gives the path of the detail of one event, with its products. */
+export function detailPath(id: string): string {
+  return `/earthquakes/feed/v1.0/detail/${id}.geojson`;
+}
+
+/**
+ * The most events whose ShakeMap the fetch reads in one fetch. Each event takes two requests. The other events wait
+ * for the next fetch, so one fetch stays short.
+ */
+export const SHAKEMAP_READS = 2;
+
+/** The time in milliseconds before the fetch reads the ShakeMap of an event again after a failure. */
+export const SHAKEMAP_RETRY_MS = 600_000;
 
 /** The options of the fetch function of the USGS source. */
 export interface UsgsFetchOptions {
@@ -83,9 +102,137 @@ export function eventFields(feature: unknown): Fields | undefined {
  * This function gives the body of the observation of one feature: the JSON text of `eventFields`.
  * The fetch keeps no count of felt reports and no time of the last change. Those values change each few
  * minutes after an event that people feel, and a new body each time gives a new report.
+ *
+ * With `contours`, the body also has the field `shakemap`: the regions of the bands on the ShakeMap grid. A new
+ * version of the product gives a new body.
  */
-export function eventBody(feature: unknown): string {
-  return JSON.stringify(eventFields(feature) ?? feature);
+export function eventBody(feature: unknown, contours?: ShakeContours): string {
+  const fields = eventFields(feature);
+  if (fields === undefined) return JSON.stringify(feature);
+  return JSON.stringify(contours === undefined ? fields : { ...fields, shakemap: contours });
+}
+
+/** This function gives the id of a feature, or an empty text for a value that is not a feature. */
+function featureId(feature: unknown): string {
+  return isRecord(feature) && typeof feature["id"] === "string" ? feature["id"] : "";
+}
+
+/** An event of the feed with a ShakeMap product, and the time of its last change. */
+export interface ShakeEvent {
+  readonly id: string;
+  readonly updated: number;
+}
+
+/**
+ * This function gives the events of a body of the feed that have a ShakeMap product and an intensity of the felt
+ * level or more. Only an earthquake and a nuclear test count. A body that does not parse gives no event.
+ */
+export function shakeEvents(body: string): ShakeEvent[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return [];
+  }
+  const features = isRecord(parsed) && Array.isArray(parsed["features"]) ? (parsed["features"] as unknown[]) : [];
+  return features.flatMap((feature): ShakeEvent[] => {
+    const properties = isRecord(feature) && isRecord(feature["properties"]) ? feature["properties"] : {};
+    const { types, mmi, updated, type } = properties;
+    const id = featureId(feature);
+    const felt = isNumber(mmi) && (mmi as number) >= FELT_INTENSITY;
+    const shaken = type === "earthquake" || type === NUCLEAR_TYPE;
+    const listed = typeof types === "string" && types.includes(",shakemap,");
+    return /^[a-z0-9]+$/.test(id) && listed && felt && shaken && isNumber(updated) ? [{ id, updated: updated as number }] : [];
+  });
+}
+
+/** The ShakeMap of one event that the fetch keeps. */
+interface KeptShake {
+  /** The time of the change of the event at the last read. It is absent after a failure with no earlier read. */
+  readonly updated?: number;
+  /** The contours of the last read. An event with no product or no usable grid has none. */
+  readonly contours?: ShakeContours;
+  /** After a failure: the time of the next read. */
+  readonly retryAt?: Instant;
+}
+
+/** The result of one read of the ShakeMap of an event. A failure keeps the earlier contours. */
+type ShakeRead = { readonly ok: false } | { readonly ok: true; readonly contours?: ShakeContours };
+
+/** The store of the ShakeMap contours of the events of the feed. */
+interface ShakeStore {
+  /** This method reads the ShakeMap of each event that changed, at most `SHAKEMAP_READS` events. */
+  refresh(events: readonly ShakeEvent[], signal?: FetchSignal): Promise<void>;
+  /** This method gives the contours of an event, or `undefined`. */
+  contoursOf(id: string): ShakeContours | undefined;
+}
+
+/** This function parses a JSON text, and gives `undefined` for a text that does not parse. */
+function parsed(text: string): unknown {
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * This function makes the store of the ShakeMap contours. The store reads the detail of an event when the event
+ * changed, and the grid only when the version of the product changed. It keeps only the events of the last feed.
+ * After a failure, it keeps the earlier contours and reads again after `SHAKEMAP_RETRY_MS`.
+ */
+function createShakeStore(requester: Requester, now: () => Instant): ShakeStore {
+  const kept = new Map<string, KeptShake>();
+  const readGrid = async (product: ShakeProduct, signal?: FetchSignal): Promise<ShakeRead> => {
+    // The fetch asks only the host of the feed.
+    const url = new URL(product.gridUrl);
+    if (url.host !== requester.host) return { ok: true };
+    const grid = await requester.get({ path: `${url.pathname}${url.search}`, what: "the grid of the shaking of an earthquake" }, signal);
+    if (!grid.ok) return { ok: false };
+    const body = parsed(grid.answer.reply.body);
+    if (body === undefined) return { ok: false };
+    const values = intensityGridOf(body);
+    if (values === undefined) return { ok: true };
+    try {
+      return { ok: true, contours: shakeContours(product.version, values) };
+    } catch {
+      // gridRegion refuses a grid across the antimeridian. Then the bands keep their discs.
+      return { ok: true };
+    }
+  };
+  const read = async (id: string, earlier: ShakeContours | undefined, signal?: FetchSignal): Promise<ShakeRead> => {
+    const detail = await requester.get({ path: detailPath(id), what: "the detail of an earthquake" }, signal);
+    if (!detail.ok) return { ok: false };
+    const body = parsed(detail.answer.reply.body);
+    if (body === undefined) return { ok: false };
+    const product = shakeProductOf(body);
+    if (product === undefined) return { ok: true };
+    if (earlier?.version === product.version) return { ok: true, contours: earlier };
+    return readGrid(product, signal);
+  };
+  return {
+    async refresh(events, signal) {
+      const live = new Set(events.map((event) => event.id));
+      for (const id of [...kept.keys()]) if (!live.has(id)) kept.delete(id);
+      let reads = 0;
+      for (const event of events) {
+        const earlier = kept.get(event.id);
+        if (earlier?.updated === event.updated) continue;
+        if (earlier?.retryAt !== undefined && now() < earlier.retryAt) continue;
+        if (reads >= SHAKEMAP_READS) break;
+        reads += 1;
+        const result = await read(event.id, earlier?.contours, signal);
+        const contours = result.ok ? result.contours : earlier?.contours;
+        const updated = result.ok ? event.updated : earlier?.updated;
+        kept.set(event.id, {
+          ...(updated === undefined ? {} : { updated }),
+          ...(contours === undefined ? {} : { contours }),
+          ...(result.ok ? {} : { retryAt: now() + SHAKEMAP_RETRY_MS }),
+        });
+      }
+    },
+    contoursOf: (id) => kept.get(id)?.contours,
+  };
 }
 
 /** This function tells if a feature has the structure of the feed: each field of `EVENT_FIELDS` with its type. */
@@ -115,8 +262,10 @@ interface Read {
  *
  * A complete feed has the time of its data (`asOf`): the time `generated` of its metadata. A cache can
  * give an old feed, and the runtime reads an old feed by this time.
+ *
+ * The function `contoursOf` gives the ShakeMap contours of an event by its id. The default gives none.
  */
-export function readAnswer(reply: Reply, url: string, fetched: Instant, latency: number): Read | undefined {
+export function readAnswer(reply: Reply, url: string, fetched: Instant, latency: number, contoursOf: (id: string) => ShakeContours | undefined = () => undefined): Read | undefined {
   const contentType = reply.headers["content-type"] ?? "application/json";
   const lastModified = reply.headers["last-modified"];
   const transport = { url, status: reply.status, latency, ...(lastModified === undefined ? {} : { lastModified }) };
@@ -141,7 +290,7 @@ export function readAnswer(reply: Reply, url: string, fetched: Instant, latency:
   const counted = metadata["count"] === features.length;
   const complete = features.length > 0 && counted && isNumber(generated) && features.every(isFeedEvent);
   // The feed has one feature for each event. One body twice gives one observation.
-  const bodies = [...new Set(features.map(eventBody))];
+  const bodies = [...new Set(features.map((feature) => eventBody(feature, contoursOf(featureId(feature)))))];
   return { observations: bodies.map(observation), complete, ...(complete ? { asOf: generated as Instant } : {}) };
 }
 
@@ -169,6 +318,7 @@ export function createUsgsFetch(options: UsgsFetchOptions): (input: UsgsFetchInp
   const conditions = new Map<string, Condition>();
   // The last full answer, with its time of fetch and its latency. A 304 answer gives its read again.
   const lastAnswer = keptReplies<{ readonly fetched: Instant; readonly latency: number }>();
+  const shakes = createShakeStore(requester, now);
 
   return async (_input, signal) => {
     const requested = await requester.get({ path: FEED_PATH, what: "the earthquakes of the past day", conditions }, signal);
@@ -177,7 +327,8 @@ export function createUsgsFetch(options: UsgsFetchOptions): (input: UsgsFetchInp
     let read: Read | undefined;
     if (answer.classified.outcome === "not-modified") {
       const previous = await lastAnswer.get(url).catch(() => undefined);
-      read = previous === undefined ? undefined : readAnswer(previous.reply, url, previous.extra.fetched, previous.extra.latency);
+      if (previous !== undefined) await shakes.refresh(shakeEvents(previous.reply.body), signal);
+      read = previous === undefined ? undefined : readAnswer(previous.reply, url, previous.extra.fetched, previous.extra.latency, shakes.contoursOf);
       if (read === undefined) {
         lastAnswer.delete(url);
         // A 304 with no earlier full answer: the next request sends no condition
@@ -186,7 +337,8 @@ export function createUsgsFetch(options: UsgsFetchOptions): (input: UsgsFetchInp
       }
     } else {
       const fetched = now();
-      read = readAnswer(answer.reply, url, fetched, latency);
+      await shakes.refresh(shakeEvents(answer.reply.body), signal);
+      read = readAnswer(answer.reply, url, fetched, latency, shakes.contoursOf);
       if (read === undefined) {
         // poll keeps the condition of each 2xx answer. A body that does not parse must not be the base of a later 304.
         conditions.delete(url);

@@ -3046,5 +3046,53 @@
     "name": "api.politie.nl",
     "kind": "host",
     "note": "The host of the open data API of the police of the Netherlands, the feed of politie-missing-persons."
+  },
+  {
+    "id": "warnung.bund.de",
+    "name": "warnung.bund.de",
+    "kind": "host",
+    "note": "The host of the NINA API of the BBK, the feed of bbk-nina-api."
+  },
+  {
+    "id": "rss.naad-adna.pelmorex.com",
+    "name": "rss.naad-adna.pelmorex.com",
+    "kind": "host",
+    "note": "The host of the Atom feed of the NAAD System, the feed of naad-alerts."
+  },
+  {
+    "id": "agricultural-production-hotspots.ec.europa.eu",
+    "name": "agricultural-production-hotspots.ec.europa.eu",
+    "kind": "host",
+    "note": "The host of the ASAP files of the JRC, the file of jrc-asap-hotspots."
+  },
+  {
+    "id": "tfr.faa.gov",
+    "name": "tfr.faa.gov",
+    "kind": "host",
+    "note": "The host of the TFR list of the FAA, the feed of faa-tfr-list."
+  },
+  {
+    "id": "plan.navcanada.ca",
+    "name": "plan.navcanada.ca",
+    "kind": "host",
+    "note": "The host of the flight planning site of NAV CANADA, the API of nav-canada-notam."
+  },
+  {
+    "id": "portal.data.nsw.gov.au",
+    "name": "portal.data.nsw.gov.au",
+    "kind": "host",
+    "note": "The host of the ArcGIS services of the NSW Government, the layer of nsw-school-closures."
+  },
+  {
+    "id": "alerts.ncdr.nat.gov.tw",
+    "name": "alerts.ncdr.nat.gov.tw",
+    "kind": "host",
+    "note": "The host of the CAP platform of the NCDR of Taiwan, the feed of dgpa-closures."
+  },
+  {
+    "id": "wvde.state.wv.us",
+    "name": "wvde.state.wv.us",
+    "kind": "host",
+    "note": "The host of the site of the West Virginia Department of Education, the page of wvde-closings."
   }
 ]
