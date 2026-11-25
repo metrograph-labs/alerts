@@ -68,6 +68,7 @@ import { createTellIntake, tellHost, tellToken } from "./tell-intake.ts";
 import { heartbeat, heldOf } from "./heartbeat.ts";
 import type { Pass } from "./runtime.ts";
 import { COVERAGE_FILE, coverageFile } from "./coverage-file.ts";
+import { LAG_FILE, lagFile } from "./lag-file.ts";
 import { holdHome } from "./home-lock.ts";
 import { quotaNote } from "./quota.ts";
 import { replyNotes } from "./replies.ts";
@@ -208,6 +209,11 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
     write: (text) => writeFileAtomic(join(home, COVERAGE_FILE), text, { mode: 0o600 }),
     onError: (error) => out.error(`A write of ${COVERAGE_FILE} failed: ${error instanceof Error ? error.name : typeof error}.`),
   });
+  // The lag of each feed from the reports of the merge state, for the delays of the atlas (AL-14). The measure reads each report, thus it comes at most one time in each hour.
+  const lagReport = lagFile({
+    write: (text) => writeFileAtomic(join(home, LAG_FILE), text, { mode: 0o600 }),
+    onError: (error) => out.error(`A measure or write of ${LAG_FILE} failed: ${error instanceof Error ? error.name : typeof error}.`),
+  });
   const pushoverQuota = quotaGate(PUSHOVER_QUOTA, { key: "pushover:app", store: quotas, now: () => wall.now() });
   const pushoverReserveNotices = quotaGate(PUSHOVER_RESERVE_NOTICES, { key: "pushover:reserve-notices", store: quotas, now: () => wall.now() });
 
@@ -289,6 +295,7 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
     // The use reads of the cap of Twilio go into the private folder when they change (AL-91).
     if (instance.useReads !== undefined) uses.update(instance.useReads());
     coverageReport.update(pass.view);
+    lagReport.update(pass.view.at, () => instance.runtime.state().merge.reports);
     if (marked || service.lifecycle?.state !== "running") return;
     marked = true;
     blockWatch?.phase("run after the good start");
