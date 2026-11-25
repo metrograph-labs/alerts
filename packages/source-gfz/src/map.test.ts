@@ -32,7 +32,7 @@ describe("mapObservation", () => {
     const results = STORM_OBSERVATIONS.map(mapObservation);
     expect(results.flatMap((result) => result.problems)).toEqual([]);
     const reported = results.flatMap((result) => result.reports.map((report) => report.parameters["interval"]![0]));
-    expect(reported).toEqual(ENTRIES.filter((entry) => geomagneticLevel(entry.Kp as number)! >= 1).map((entry) => entry.datetime));
+    expect(reported).toEqual(ENTRIES.filter((entry) => geomagneticLevel(entry["Kp"] as number)! >= 1).map((entry) => entry.datetime));
     expect(reported).toHaveLength(14);
   });
 
