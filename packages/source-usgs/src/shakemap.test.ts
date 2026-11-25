@@ -83,3 +83,22 @@ describe("shakeContours", () => {
     expect(() => shakeContours("1", { ...grid, x: { start: 178, stop: 182, num: 51 } })).toThrow();
   });
 });
+
+describe("the ShakeMap of a large event", () => {
+  /** The real low-resolution grid of the M7.8 event us6000jllz in Turkey on 2023-02-06. */
+  const grid = intensityGridOf(JSON.parse(readFileSync(new URL("../fixtures/shakemap-us6000jllz-mmi-low.covjson", import.meta.url), "utf8")));
+  if (grid === undefined) throw new Error("the fixture has no grid");
+  const contours = shakeContours("1", grid);
+
+  it("holds the extreme shaking along the fault, far outside the disc of the band", () => {
+    expect(contours.bands.map((band) => band.from)).toEqual([7.5, 6.5, 5.5, FELT_INTENSITY]);
+    // The disc of the extreme band from the law has a radius of 39.84 km (the core fixture usgs-us6000jllz-bands.json).
+    // This point is 132 km from the epicenter, and each grid value around it is 8 or more.
+    expect(locatePoint({ lon: 36.2, lat: 36.2333 }, regionOf(contours, 7.5))).toBe("inside");
+    expect(locatePoint({ lon: 37.0143, lat: 37.2256 }, regionOf(contours, 7.5))).toBe("inside");
+  });
+
+  it("keeps the body of a large event small", () => {
+    expect(JSON.stringify(contours).length).toBeLessThan(40_000);
+  });
+});
