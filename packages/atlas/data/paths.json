@@ -2872,5 +2872,17 @@
     "name": "stat.ripe.net",
     "kind": "host",
     "note": "The host of the feed of ripestat-data-api."
+  },
+  {
+    "id": "data.geo.admin.ch",
+    "name": "data.geo.admin.ch",
+    "kind": "host",
+    "note": "The host of the feed of meteoswiss-pollen."
+  },
+  {
+    "id": "data.seattle.gov",
+    "name": "data.seattle.gov",
+    "kind": "host",
+    "note": "The host of the feed of seattle-spd-crime."
   }
 ]

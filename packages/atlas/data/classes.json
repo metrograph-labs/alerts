@@ -598,7 +598,7 @@
     "references": [
       "None of the lists names it. Found by search for health signals."
     ],
-    "gap": "DWD gives a pollen index for Germany. The Google Pollen API is a commercial API. No second open source was found.",
+    "gap": null,
     "round": 1
   },
   {
@@ -880,7 +880,7 @@
       "EM-DAT: Impact > Airburst",
       "UNDRR-ISC HIPs 2025: ET0201 Airburst"
     ],
-    "gap": "Only the JPL Fireball API was confirmed. It lists events after the fact. Public fireball report networks were not opened in round 1.",
+    "gap": "Only the JPL Fireball API was confirmed. It lists events after the fact. Public fireball report networks were not opened in round 1. Round 29: the API documentation page of the American Meteor Society gave 410.",
     "round": 1
   },
   {
@@ -896,7 +896,7 @@
       "EM-DAT: Mass movement (dry and wet)",
       "UNDRR-ISC HIPs 2025: GH0300-GH0311"
     ],
-    "gap": "No national real-time landslide warning feed was found. USGS gives assessments and monitoring stations. NWS flash flood warnings sometimes name debris flows, but this was not confirmed.",
+    "gap": "No national real-time landslide warning feed was found. USGS gives assessments and monitoring stations. NWS flash flood warnings sometimes name debris flows, but this was not confirmed. Round 29: the data page of the NASA landslide nowcast (LHASA) gave 404.",
     "round": 1
   },
   {
@@ -1232,7 +1232,7 @@
     "references": [
       "None of the lists names it. Found by search for early health signals."
     ],
-    "gap": "One source: rivm-wastewater-sars2, for the Netherlands. Round 26: the trend file of Health Infobase (Canada) has no date, so it is later. cdc-nwss and wastewaterscan are later.",
+    "gap": null,
     "round": 1
   },
   {
@@ -3098,7 +3098,7 @@
       "Crisis24: crime risk",
       "Riskline: crime"
     ],
-    "gap": "One source: chicago-crimes, for one city. Round 26: the Los Angeles dataset stops in 2024-12, and the dataset of one more large city comes each quarter. The police.uk API is later.",
+    "gap": null,
     "round": 1
   },
   {
