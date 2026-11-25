@@ -1527,5 +1527,44 @@
       "members": 1757,
       "cause": "Round 30 moves 2 later sources to plan. Three classes get a second origin, so the gaps go from 97 to 94."
     }
+  },
+  {
+    "round": 31,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took classes with one source, read again the later sources of these classes and looked for a second origin. One fetch went to each URL, with a plain user agent.",
+    "lists": [
+      "The classes with one source, from the gaps of the atlas on main: packages/atlas/data/classes.json"
+    ],
+    "queries": [],
+    "notes": [
+      "uscg-navcen-msi-files is new. With dma-niord-warnings, transport.sea.navigational-warning has 2 sources from 2 origins.",
+      "The Digitraffic nautical-warning v1 path gave 404 again, and the marine OpenAPI document still has no such path. The host of the Portuguese OGC API has no DNS record.",
+      "fed-h41-tga is new. The Federal Reserve gives the cash of the Treasury each week, so civic.economy.fiscal has 2 origins. The Treasury API answered this time.",
+      "iers-bulletin-c moves to plan: the README of its folder gives an open licence, and the file says that it is in the public domain. infra.timekeeping has 2 origins.",
+      "quebec-msss-emergency-rooms is new. With cdc-nhsn-hrd, health.hospital-capacity has 2 origins.",
+      "The NGA MSI API gave 503 again. The documentation page of the Scottish Water overflows gave 403, so scottish-water-overflows is later."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 90,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 35,
+      "dimensions": 9,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 31 adds 3 planned sources and moves 1 later source to plan. Four classes get a second origin, so the gaps go from 94 to 90. The later record of Scottish Water has an unknown path."
+    }
   }
 ]
