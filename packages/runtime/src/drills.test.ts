@@ -16,9 +16,12 @@ import {
   type DrillWatch,
   type EscalationPolicy,
   type Message,
+  type ObservationId,
   type PersonId,
   type PlaceId,
   type QuietWindow,
+  type SourceId,
+  type SourceProcedures,
   type Recipient,
   type WatchedPlace,
 } from "@mark1russell7/alerts";
@@ -29,7 +32,8 @@ import { openRuntime, type CopyChecks, type RuntimeOptions } from "./runtime.ts"
 
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
-const DAY = 24 * 60 * MINUTE;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
 const PUSHOVER = "pushover" as ChannelId;
 const SMS = "sms" as ChannelId;
 const PERSON = "person-1" as PersonId;
@@ -162,7 +166,17 @@ function channel(id: ChannelId, ack: ChannelDescriptor["ack"], now: () => number
   return { procedures, calls };
 }
 
-function open(options: { readonly status?: () => DeliveryStatus; readonly drills?: readonly CopyDrill[]; readonly copies?: CopyChecks; readonly drillWatches?: readonly DrillWatch[]; readonly log?: RuntimeLog; readonly clock?: ReturnType<typeof fakeWallClock> } = {}) {
+// A source that gives one new observation and no report at each fetch: the events that move the time of the fold.
+function ticks(clock: ReturnType<typeof fakeWallClock>): SourceProcedures {
+  const id = "ticks" as SourceId;
+  return {
+    describe: () => ({ id, title: "The source ticks", origins: ["nws"], dependsOn: ["provider:ticks"], uses: ["internet"], kinds: ["met"], coverage: [{ type: "code", system: "ugc", code: "KSZ083" }], transport: "poll", interval: HOUR, slowAfter: 10_000, auth: "none" }),
+    fetch: async () => ({ ok: true, observations: [{ id: `ticks:${String(clock.now())}` as ObservationId, source: id, fetched: clock.now(), contentType: "application/json", body: "{}", transport: { latency: 0 } }], complete: true }),
+    map: () => ({ reports: [], problems: [] }),
+  };
+}
+
+function open(options: { readonly ticks?: boolean; readonly status?: () => DeliveryStatus; readonly drills?: readonly CopyDrill[]; readonly copies?: CopyChecks; readonly drillWatches?: readonly DrillWatch[]; readonly log?: RuntimeLog; readonly clock?: ReturnType<typeof fakeWallClock> } = {}) {
   const clock = options.clock ?? fakeWallClock(T0);
   const log = options.log ?? openRuntimeLog(":memory:");
   const pushover = channel(PUSHOVER, "poll", () => clock.now(), options.status);
@@ -170,7 +184,8 @@ function open(options: { readonly status?: () => DeliveryStatus; readonly drills
   const runtime = openRuntime({
     log,
     clock,
-    sources: [],
+    sources: options.ticks === true ? [ticks(clock)] : [],
+    ...(options.ticks === true ? { retention: {} } : {}),
     watch: () => ({ places: [KANSAS], kinds: ["met"] }),
     view: VIEW,
     run: `run-${clock.now()}`,
@@ -211,6 +226,29 @@ describe("the drills in the passes of the runtime (AL-43)", () => {
     await again.runtime.pass();
     expect(drillEvents(log).length).toBe(1);
     expect(again.pushover.send).toEqual([]);
+    log.close();
+  });
+
+  it("keeps a passed run passed after the retirement of old incidents, and sends no failure (AL-187)", async () => {
+    // On a live copy, the retirement one day after the escalation start removed the acknowledgment of a passed run. Then
+    // the verdict gave no-ack, and the failure called the person.
+    const { clock, log, runtime, pushover, sms } = open({ ticks: true, status: () => ({ state: "acknowledged", at: T0 + 20 * SECOND }) });
+    await runtime.pass();
+    await clock.advance(30 * SECOND);
+    await runtime.pass();
+    await clock.advance(SECOND);
+    await runtime.pass();
+    expect(drillRunOf(runtime.state(), COPY, DRILL)?.acked).toBe(T0 + 20 * SECOND);
+    // The retention has its defaults of a live copy, and the source moves the time of the fold each hour.
+    for (let hour = 0; hour < 48; hour += 1) {
+      await clock.advance(HOUR);
+      await runtime.pass();
+    }
+    expect(runtime.state().retiredAt).toBeGreaterThan(T0 + DAY);
+    expect(drillRunOf(runtime.state(), COPY, DRILL)?.acked).toBe(T0 + 20 * SECOND);
+    expect(drillLines(runtime.state().lines)).toEqual([]);
+    expect(sms.send).toEqual([]);
+    expect(pushover.send.length).toBe(1);
     log.close();
   });
 
