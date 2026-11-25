@@ -579,6 +579,8 @@ balanceStageSchema: build/index.d.ts#balanceStageSchema
 balanceStages: build/index.d.ts#balanceStages
 balanceUnreadAt: build/index.d.ts#balanceUnreadAt
 basemapToleranceKm: build/index.d.ts#basemapToleranceKm
+blockCause: build/index.d.ts#blockCause
+blockCauseText: build/index.d.ts#blockCauseText
 blockClass: build/index.d.ts#blockClass
 blockSizeText: build/index.d.ts#blockSizeText
 breadthOf: build/index.d.ts#breadthOf
@@ -2933,6 +2935,9 @@ export interface LogRecovery {
 export interface LoopBlock {
   readonly at: Instant;
   readonly size: Duration;
+  readonly cpu?: Duration;
+  readonly faults?: number;
+  readonly gc?: Duration;
 }
 
 ### build/index.d.ts#MAGNITUDE_PARAMETER
@@ -4662,6 +4667,12 @@ export declare function balanceUnreadAt(balance: ProviderBalance): Instant;
 
 ### build/index.d.ts#basemapToleranceKm
 export declare function basemapToleranceKm(regions: readonly MapRegion[]): number | undefined;
+
+### build/index.d.ts#blockCause
+export declare function blockCause(block: Pick<LoopBlock, "cpu" | "faults" | "gc">): Pick<LoopBlock, "cpu" | "faults" | "gc">;
+
+### build/index.d.ts#blockCauseText
+export declare function blockCauseText(block: LoopBlock): string | undefined;
 
 ### build/index.d.ts#blockClass
 export declare function blockClass(size: Duration): Duration;
