@@ -10,8 +10,10 @@ import { createUsgsFetch, type UsgsFetchOptions } from "./fetch.ts";
 import { mapObservation } from "./map.ts";
 
 export { USGS_DESCRIPTOR } from "./descriptor.ts";
-export { createUsgsFetch, eventBody, eventFields, FEED_PATH, isFeedEvent, readAnswer, USGS_BASE_URL } from "./fetch.ts";
-export type { UsgsFetchInput, UsgsFetchOptions } from "./fetch.ts";
+export { createUsgsFetch, detailPath, eventBody, eventFields, FEED_PATH, isFeedEvent, readAnswer, SHAKEMAP_READS, SHAKEMAP_RETRY_MS, shakeEvents, USGS_BASE_URL } from "./fetch.ts";
+export type { ShakeEvent, UsgsFetchInput, UsgsFetchOptions } from "./fetch.ts";
+export { intensityGridOf, readShakeContours, SHAKEMAP_GRID, SHAKEMAP_TOLERANCE_KM, shakeContours, shakeProductOf } from "./shakemap.ts";
+export type { ShakeBand, ShakeContours, ShakeProduct, ShakeRings } from "./shakemap.ts";
 export { EARTHQUAKE_KIND, EVENT_FIELDS, EVENT_SYSTEM, eventIds, mapObservation, NUCLEAR_KIND, NUCLEAR_TYPE, REPORT_LIFE_MS, SOURCE_ID, USGS_ORIGIN } from "./map.ts";
 
 /**
