@@ -1,0 +1,167 @@
+{
+ "data": {
+  "running": [
+   {
+    "trainType": {
+     "trainCategory": {
+      "name": "Commuter"
+     }
+    },
+    "timeTableRows": [
+     {
+      "differenceInMinutes": 1,
+      "actualTime": "2026-11-25T13:15:46.000Z"
+     }
+    ]
+   },
+   {
+    "trainType": {
+     "trainCategory": {
+      "name": "Commuter"
+     }
+    },
+    "timeTableRows": [
+     {
+      "differenceInMinutes": 1,
+      "actualTime": "2026-11-25T13:29:50.000Z"
+     }
+    ]
+   },
+   {
+    "trainType": {
+     "trainCategory": {
+      "name": "Commuter"
+     }
+    },
+    "timeTableRows": [
+     {
+      "differenceInMinutes": 8,
+      "actualTime": "2026-11-25T13:30:48.000Z"
+     }
+    ]
+   },
+   {
+    "trainType": {
+     "trainCategory": {
+      "name": "Long-distance"
+     }
+    },
+    "timeTableRows": [
+     {
+      "differenceInMinutes": 0,
+      "actualTime": "2026-11-25T13:31:56.000Z"
+     }
+    ]
+   },
+   {
+    "trainType": {
+     "trainCategory": {
+      "name": "Long-distance"
+     }
+    },
+    "timeTableRows": [
+     {
+      "differenceInMinutes": 30,
+      "actualTime": "2026-11-25T13:24:28.000Z"
+     }
+    ]
+   },
+   {
+    "trainType": {
+     "trainCategory": {
+      "name": "Long-distance"
+     }
+    },
+    "timeTableRows": [
+     {
+      "differenceInMinutes": 6,
+      "actualTime": "2026-11-25T13:32:43.000Z"
+     }
+    ]
+   },
+   {
+    "trainType": {
+     "trainCategory": {
+      "name": "Cargo"
+     }
+    },
+    "timeTableRows": [
+     {
+      "differenceInMinutes": -26,
+      "actualTime": "2026-11-25T12:47:25.000Z"
+     }
+    ]
+   },
+   {
+    "trainType": {
+     "trainCategory": {
+      "name": "Cargo"
+     }
+    },
+    "timeTableRows": [
+     {
+      "differenceInMinutes": 32,
+      "actualTime": "2026-11-25T13:13:55.000Z"
+     }
+    ]
+   },
+   {
+    "trainType": {
+     "trainCategory": {
+      "name": "Shunting"
+     }
+    },
+    "timeTableRows": [
+     {
+      "differenceInMinutes": -13,
+      "actualTime": "2026-11-24T17:51:05.000Z"
+     }
+    ]
+   }
+  ],
+  "cancelled": [
+   {
+    "trainType": {
+     "trainCategory": {
+      "name": "Commuter"
+     }
+    }
+   },
+   {
+    "trainType": {
+     "trainCategory": {
+      "name": "Commuter"
+     }
+    }
+   },
+   {
+    "trainType": {
+     "trainCategory": {
+      "name": "Commuter"
+     }
+    }
+   },
+   {
+    "trainType": {
+     "trainCategory": {
+      "name": "Long-distance"
+     }
+    }
+   },
+   {
+    "trainType": {
+     "trainCategory": {
+      "name": "Cargo"
+     }
+    }
+   },
+   {
+    "trainType": {
+     "trainCategory": {
+      "name": "Cargo"
+     }
+    }
+   }
+  ]
+ }
+}
