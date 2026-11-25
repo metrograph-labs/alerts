@@ -2051,6 +2051,9 @@ importers:
       '@mark1russell7/alerts-quake':
         specifier: workspace:*
         version: link:../quake
+      '@mark1russell7/geo':
+        specifier: ^0.5.15
+        version: 0.5.15
       '@mark1russell7/optional':
         specifier: ^1.5.0
         version: 1.5.0
@@ -2640,6 +2643,10 @@ packages:
 
   '@mark1russell7/geo@0.5.13':
     resolution: {integrity: sha512-Z5FIUCzFSGS6GB6iSvZmfzJshpKPpOoteXxPQSDpcfVDa+XYJ2dJwaz+Zq1SrCO8VyBJX4oa4dNVSr5nO2EC2Q==}
+    engines: {node: '>=22.12'}
+
+  '@mark1russell7/geo@0.5.15':
+    resolution: {integrity: sha512-Lc2gRjjsgGoj9Wp+o3lvBBU2bDI8b5+nCMSFwWziNU4+RKahkWNtLybhQ+oE6cUm4t61dUOq9BJNeGOkE6wOaQ==}
     engines: {node: '>=22.12'}
 
   '@mark1russell7/guidebook@0.1.1':
@@ -5233,6 +5240,11 @@ snapshots:
   '@mark1russell7/files@0.0.6': {}
 
   '@mark1russell7/geo@0.5.13':
+    dependencies:
+      '@mark1russell7/optional': 1.5.0
+      '@mark1russell7/predicates': 0.1.5
+
+  '@mark1russell7/geo@0.5.15':
     dependencies:
       '@mark1russell7/optional': 1.5.0
       '@mark1russell7/predicates': 0.1.5
