@@ -243,7 +243,7 @@
       "CISA sectors: Government Services and Facilities",
       "FEMA Lifelines: Safety and Security > Government Service"
     ],
-    "gap": "OPM covers only the DC area and names no feed. State and city closures are separate.",
+    "gap": "One source: opm-status, for the DC area only. State and city closures are separate. Round 35: OPM gives its status as JSON, so opm-status moves to plan.",
     "round": 1
   },
   {
@@ -632,7 +632,7 @@
       "FEMA lifelines: Hazardous Materials",
       "CAP 1.2: Env"
     ],
-    "gap": "Round 1 found 1 adopted or planned source with no risk: noaa-incidentnews. nrc-uscg-reports is later: see the reason of each.",
+    "gap": "Round 1 found 1 adopted or planned source with no risk: noaa-incidentnews. nrc-uscg-reports is later: see the reason of each. Round 34: losco-active-spills is later, because its layer gives no licence.",
     "round": 1
   },
   {
@@ -660,7 +660,7 @@
     "references": [
       "None of the lists names it directly. HIPs 2025: TL0503 Wastewater"
     ],
-    "gap": "Only EPA BEACON was confirmed, with no stated update speed. States and counties post daily status on their own pages.",
+    "gap": null,
     "round": 1
   },
   {
@@ -711,7 +711,7 @@
       "FEMA lifelines: Water Systems > Wastewater Management",
       "UNDRR-ISC HIPs 2025: TL0503 Wastewater, TL0214 Drain and Sewer Flooding"
     ],
-    "gap": "The storm overflow hub of Water UK gives the overflows of England. No second source was found. Round 31: the documentation page of Scottish Water gave 403.",
+    "gap": "The storm overflow hub of Water UK gives the overflows of England. No second source was found. Round 31: the documentation page of Scottish Water gave 403. Round 33: the layer of Scottish Water on ArcGIS Online gives only the totals of each year.",
     "round": 1
   },
   {
@@ -726,7 +726,7 @@
     "references": [
       "None of the lists names it. Found by search for local fire orders."
     ],
-    "gap": "No national feed. Counties, states and land agencies post orders on pages. NPS alerts carry fire restrictions for parks only.",
+    "gap": null,
     "round": 1
   },
   {
@@ -830,7 +830,7 @@
     "references": [
       "NWS VTEC phenomena: DF Debris Flow"
     ],
-    "gap": "Round 1 found 1 adopted or planned source with no risk: iem-vtec. usgs-landslide-program is later: see the reason of each.",
+    "gap": null,
     "round": 1
   },
   {
@@ -896,7 +896,7 @@
       "EM-DAT: Mass movement (dry and wet)",
       "UNDRR-ISC HIPs 2025: GH0300-GH0311"
     ],
-    "gap": "No national real-time landslide warning feed was found. USGS gives assessments and monitoring stations. NWS flash flood warnings sometimes name debris flows, but this was not confirmed. Round 29: the data page of the NASA landslide nowcast (LHASA) gave 404.",
+    "gap": null,
     "round": 1
   },
   {
@@ -1080,7 +1080,7 @@
       "CISA sectors: Food and Agriculture",
       "FEMA lifelines: Food, Hydration, Shelter > Agriculture"
     ],
-    "gap": "One source: defra-avian-influenza-zones, for England. aphis-hpai is later, woah-wahis is later: see the reason of each. Round 32: the APHIS page of flocks gave 403, and the CFIA gives its flocks only on a page.",
+    "gap": "One source: defra-avian-influenza-zones, for England. aphis-hpai is later, woah-wahis is later: see the reason of each. Round 32: the APHIS page of flocks gave 403, and the CFIA gives its flocks only on a page. Round 34: ecdc-wnv-animal-outbreaks is later, because each query of its layer failed.",
     "round": 1
   },
   {
@@ -1112,7 +1112,7 @@
     "references": [
       "UNDRR-ISC HIPs 2025: CH0604 Opioids & Other Addictive Substances, CH0603 Methanol"
     ],
-    "gap": "Round 1 found 1 adopted or planned source with no risk: cdc-han. cfsre-nps-discovery is later: see the reason of each.",
+    "gap": "Round 1 found 1 adopted or planned source with no risk: cdc-han. cfsre-nps-discovery is later: see the reason of each. Round 34: nsw-health-drug-warnings is later, because its warnings come only on a page.",
     "round": 1
   },
   {
@@ -1185,7 +1185,7 @@
       "UNDRR-ISC HIPs 2025: BI0104 Foodborne Diseases, BI0210 E. coli, BI0218 Listeriosis",
       "CISA sectors: Food and Agriculture"
     ],
-    "gap": "Round 1 found 0 adopted or planned sources with no risk. fda-core-investigations is later, fsis-recall-api is later: see the reason of each.",
+    "gap": "Round 1 found 0 adopted or planned sources with no risk. fda-core-investigations is later, fsis-recall-api is later: see the reason of each. Round 34: the feed of public health updates of the PHAC gave no answer in 120 seconds.",
     "round": 1
   },
   {
@@ -1285,7 +1285,7 @@
       "UNDRR-ISC HIPs 2025: TL Supply Chain Failure",
       "https://tracker.gasbuddy.com/"
     ],
-    "gap": "Round 1 found 1 adopted or planned source with no risk: eia-api. gasbuddy-availability-tracker is later: see the reason of each.",
+    "gap": null,
     "round": 1
   },
   {
@@ -1465,7 +1465,7 @@
     "references": [
       "No reference list names this class. Found by the search for missing classes."
     ],
-    "gap": "One source: eskom-loadshedding-status, for South Africa. The facts of EskomSePush are not read, and the terms of the AEMO notices are not read.",
+    "gap": null,
     "round": 1
   },
   {
@@ -1647,7 +1647,7 @@
       "CISA sectors: Water and Wastewater Systems",
       "FEMA Lifelines: Water Systems > Potable Water"
     ],
-    "gap": "No national feed exists in the US. Notices are per utility. Round 2 checks state boil-water feeds.",
+    "gap": null,
     "round": 1
   },
   {
@@ -2091,7 +2091,7 @@
     "references": [
       "https://gasprices.aaa.com/"
     ],
-    "gap": "EIA is the only adopt or candidate source (weekly retail prices); AAA daily averages have no API and no stated terms.",
+    "gap": null,
     "round": 1
   },
   {
@@ -2846,7 +2846,7 @@
     "references": [
       "No hazard list names this class. Found by the search for missing classes."
     ],
-    "gap": "One source: nps-alerts-api. Round 32: usfs-recreation-status is later, because its open status has no time and no cause.",
+    "gap": null,
     "round": 1
   },
   {
@@ -2984,7 +2984,7 @@
     "references": [
       "UNDRR-ISC HIPs 2025: BI0604 Human-Wildlife Conflict"
     ],
-    "gap": "Only NPS alerts of this kind were seen.",
+    "gap": null,
     "round": 1
   },
   {
@@ -3035,7 +3035,7 @@
       "MAX Security: Military",
       "Liveuamap"
     ],
-    "gap": "Round 1 found 1 adopted or planned source with no risk: gdelt-events. acled-api is later, ucdp-api is later: see the reason of each.",
+    "gap": null,
     "round": 1
   },
   {
@@ -3082,7 +3082,7 @@
       "Riskline: unrest",
       "Crisis24"
     ],
-    "gap": "ACLED is weekly. GDELT is fast but noisy (machine-coded news).",
+    "gap": null,
     "round": 1
   },
   {
@@ -3143,7 +3143,7 @@
       "Crisis24",
       "Riskline"
     ],
-    "gap": "Only commercial risk products and travel advice text cover this.",
+    "gap": null,
     "round": 1
   },
   {
@@ -3189,7 +3189,7 @@
     "references": [
       "NWS/SAME: MEP Missing and Endangered Persons"
     ],
-    "gap": "Round 1 found 0 adopted or planned sources with no risk. ipaws-open has a risk, so the gate does not count it: see the risks of the record. Round 1 found no other source.",
+    "gap": null,
     "round": 1
   },
   {
@@ -3427,7 +3427,7 @@
     "references": [
       "FEMA Lifelines: Transportation > Mass Transit"
     ],
-    "gap": "One source gives these alerts: the GTFS Realtime feeds of the agencies (gtfs-rt-alerts). The catalog of the Mobility Database finds the feeds and gives no alert.",
+    "gap": "One source gives these alerts: the GTFS Realtime feeds of the agencies (gtfs-rt-alerts). The catalog of the Mobility Database finds the feeds and gives no alert. Round 33: tfl-unified-api is later, because its terms page gave 403.",
     "round": 1
   }
 ]

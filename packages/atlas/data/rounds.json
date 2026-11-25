@@ -1609,5 +1609,157 @@
       "members": 1757,
       "cause": "Round 32 adds 4 planned sources and 2 later sources. Four classes get a second source, so the gaps go from 90 to 86. No layer of the cover changes."
     }
+  },
+  {
+    "round": 33,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took the classes with a gap and ranked them by their value to a person at home. It tried infra.power.load-shedding first. It searched open data catalogs and ArcGIS Online, and read the terms and the robots.txt of each candidate. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The data catalog of British Columbia, for park advisories: https://catalogue.data.gov.bc.ca/api/3/action/package_search?q=parks%20advisories",
+      "Data.NSW, for Beachwatch: https://data.nsw.gov.au/data/api/3/action/package_search?q=beachwatch",
+      "DATA.GOV.HK, for beach water quality: https://data.gov.hk/en-data/api/3/action/package_search?q=beach%20water%20quality",
+      "The search API of ArcGIS Online, for beach advisories, park closures and sewer overflows: https://www.arcgis.com/sharing/rest/search"
+    ],
+    "queries": [],
+    "notes": [
+      "aemo-market-notices moves from later to plan. The copyright permissions of AEMO permit each use with attribution. With eskom-loadshedding-status, infra.power.load-shedding has 2 sources from 2 origins.",
+      "nsw-rfs-fire-bans and bc-parks-advisories are new. With nps-alerts-api, fire.burn-ban has 3 sources.",
+      "bc-parks-advisories gives closures and wildlife advisories. With nps-alerts-api, safety.public-lands-closure and safety.wildlife each have 2 sources from 2 origins.",
+      "nsw-beachwatch and hk-epd-beach-grading are new. env.water.beach-advisory has 2 sources from 2 origins.",
+      "toronto-beach-water-quality is later, because it gives E. coli counts and no advisory. ea-bathing-water-quality is later, because the robots.txt blocks its data paths.",
+      "tfl-unified-api is later, because its terms page gave 403.",
+      "The layer of Scottish Water on ArcGIS Online gives only the totals of each year, so it is not a second source of overflows.",
+      "The API of the Department of Conservation of New Zealand needs a key from a portal with no static page. The round did not register.",
+      "The open data portal of Queensland gave no dataset of park alerts."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 81,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 35,
+      "dimensions": 9,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 33 adds 4 planned sources and 3 later sources, and moves 1 later source to plan. Five classes get a second source, so the gaps go from 86 to 81. No layer of the cover changes."
+    }
+  },
+  {
+    "round": 34,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took the classes with a gap and ranked them by their value to a person at home. It tried geo.landslide first. It searched open data catalogs, ArcGIS Online and the web, and read the terms and the robots.txt of each candidate. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The API documentation of NVE, for the landslide warnings: https://api.nve.no/doc/jordskredvarsling/",
+      "DATA.GOV.HK, for the weather warnings of Hong Kong: https://data.gov.hk/en-data/api/3/action/package_search?q=weather%20warning%20summary&rows=5",
+      "The open data page of the French fuel prices: https://www.prix-carburants.gouv.fr/rubrique/opendata/",
+      "The search API of ArcGIS Online, for spill layers: https://www.arcgis.com/sharing/rest/search",
+      "The map services of the ECDC, for animal disease layers: https://gis.ecdc.europa.eu/public/rest/services?f=json",
+      "The RSS page of NSW Health, for drug warnings: https://www.health.nsw.gov.au/Pages/rss.aspx",
+      "Open Government Canada, for avian influenza: https://open.canada.ca/data/api/3/action/package_search?q=avian%20influenza%20infected%20premises&rows=8"
+    ],
+    "queries": [
+      "prix carburants flux instantané v2 rupture carburant API",
+      "Public Health Agency of Canada public health notices outbreak RSS Atom feed",
+      "public drug warnings RSS feed health department nitazene alert feed",
+      "avian influenza outbreaks open data API GeoJSON official veterinary authority"
+    ],
+    "notes": [
+      "nve-landslide-warnings and hko-warning-summary are new. geo.landslide has 2 sources from 2 origins.",
+      "nve-landslide-warnings also gives the debris flows of Norway. With iem-vtec, geo.debris-flow has 2 sources from 2 origins.",
+      "prix-carburants-fr moves from later to plan. Its file gives each fuel stock-out at each station under the Licence Ouverte. With eia-api, infra.fuel.shortage and market.price.fuel each have 2 sources.",
+      "The robots.txt of data.economie.gouv.fr blocks its API path, so the record names the file of roulez-eco.",
+      "losco-active-spills is later, because its layer gives no licence.",
+      "ecdc-wnv-animal-outbreaks is later, because each query of its layer failed. The avian influenza folder of the same server needs a token.",
+      "nsw-health-drug-warnings is later, because the warnings come only on a page. The robots.txt blocks the RSS paths of the site.",
+      "The feed of public health updates of the PHAC gave no answer in 120 seconds. The round stopped the fetch and did not try again.",
+      "Open Government Canada gave no dataset of infected premises of avian influenza."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 77,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 34,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 34 adds 2 planned sources and 3 later sources, and moves 1 later source to plan. Four classes get a second source, so the gaps go from 81 to 77. The dimension fuel-prices gets a second live source. No layer of the cover changes."
+    }
+  },
+  {
+    "round": 35,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took the classes with a gap and ranked them by their value to a person at home. It tried the missing persons, the kidnappings, the water outages and armed conflict first. It searched open data catalogs and the web, and read the terms and the robots.txt of each candidate. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The API documentation of the FBI, for the posters of missing persons: https://www.fbi.gov/wanted/api",
+      "DATA.GOV.HK, for the missing persons and the water suspensions of Hong Kong: https://data.gov.hk/en-data/api/3/action/package_search?q=water%20supply%20suspension&rows=5",
+      "The open data platform of Taiwan, for the water outages: https://data.gov.tw/api/v2/rest/dataset/6050",
+      "The travel advisory API of the US State Department: https://cadataapi.state.gov/api/TravelAdvisories",
+      "The terms and the EULA of ACLED: https://acleddata.com/terms-and-conditions",
+      "The operating status of OPM as JSON: https://www.opm.gov/json/operatingstatus.json"
+    ],
+    "queries": [
+      "missing persons open data API JSON police official feed",
+      "台灣自來水公司 停水資訊 開放資料 API data.gov.tw",
+      "water supply interruptions open data feed API utility outages GeoJSON official water outages open data"
+    ],
+    "notes": [
+      "fbi-wanted-api and hkpf-missing-persons are new. security.missing-person has 2 sources from 2 origins.",
+      "fbi-wanted-api also gives the kidnapping cases. state-dept-advisories moves from later to plan with its JSON API, and it names the risk of kidnapping of each country. Thus security.kidnap has 2 sources from 2 origins.",
+      "hk-wsd-water-suspensions and taiwan-water-outages are new. infra.water.outage has 2 sources from 2 origins.",
+      "acled-api moves from later to plan. Its EULA grants a royalty-free licence for non-commercial use through the API. With gdelt-events, security.armed-conflict and security.civil-unrest each have 2 sources.",
+      "The read of taiwan-water-outages gave an empty list, so its fields come from the metadata of the dataset.",
+      "The records of hkpf-missing-persons and fbi-wanted-api name persons. The atlas holds no record of a person, and an adapter keeps only the case, its dates and its place.",
+      "opm-status moves from later to plan, because OPM gives its status as JSON. The class has 1 source, so its gap stays.",
+      "interpol-yellow-notices and politie-missing-persons are later, because each API gave 403. The round did not try again.",
+      "The UCDP API gave 401 and asks for a token. The catalog of data.govt.nz gave a bot check, so the round did not read its water shut-off dataset."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 72,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 34,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 35 adds 4 planned sources and 2 later sources, and moves 3 later sources to plan. Five classes get a second source, so the gaps go from 77 to 72. No layer of the cover changes."
+    }
   }
 ]
