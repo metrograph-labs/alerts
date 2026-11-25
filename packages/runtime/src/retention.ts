@@ -90,8 +90,8 @@ export function retention(options: RetentionOptions = {}): Required<RetentionOpt
  *
  * - An incident with a delivery above the digest level whose key has no cancel (AL-172). The escalation cancels each alert
  *   of an incident at its end. Until the cancel is done, an alert can still ring. A digest gets no cancel.
- * - An incident with a run report of the last start of a drill (AL-187). The verdict of the run reads its acknowledgment
- *   from this incident (`drillRunOf`). A retirement of the incident turns a passed run into a failed run, and the failure calls.
+ *
+ * The run of the last start of a drill keeps its incident past the horizon too (`drillPins`, `retiredEvent`).
  */
 export function quietKeeps(state: RuntimeState, expectations: readonly Expectation[], at: Instant): (incident: Incident) => boolean {
   const held = new Set<ReportId>();
@@ -102,9 +102,6 @@ export function quietKeeps(state: RuntimeState, expectations: readonly Expectati
   const cancelled = new Set(state.cancelled);
   for (const delivery of state.merge.deliveries) if (delivery.level !== "digest" && !cancelled.has(delivery.key)) held.add(delivery.incident);
   const reports = new Map(state.merge.reports.map((report) => [report.id, report]));
-  // The run reports of the last start of each drill: the filter of `drillRunOf`, with no copy and no config. One pass of
-  // the reports at each step finds them, not a test in `needed`: the core reads `needed` for each report of each incident.
-  if (Object.keys(state.drills).length > 0) for (const report of state.merge.reports) if (lastRun(state, report)) held.add(report.id);
   const needed = (id: ReportId): boolean => {
     if (held.has(id)) return true;
     const report = reports.get(id);
@@ -116,8 +113,19 @@ export function quietKeeps(state: RuntimeState, expectations: readonly Expectati
 
 const DRILL_RUN = `${DRILL_KIND}.run`;
 
+/**
+ * This function gives the run reports of the last start of each drill: the filter of `drillRunOf`, with no copy and no
+ * config. The verdict of a run reads its acknowledgment from the incident of the report. A retirement of the incident turns
+ * a passed run into a failed run, and the failure calls (AL-187). The next start of the drill replaces the run.
+ */
+export function drillPins(state: Pick<RuntimeState, "drills" | "merge">): ReadonlySet<ReportId> {
+  const pins = new Set<ReportId>();
+  if (Object.keys(state.drills).length > 0) for (const report of state.merge.reports) if (lastRun(state, report)) pins.add(report.id);
+  return pins;
+}
+
 // The report is a run of the last start of its drill (AL-187).
-function lastRun(state: RuntimeState, report: Report): boolean {
+function lastRun(state: Pick<RuntimeState, "drills">, report: Report): boolean {
   if (report.kind.code !== DRILL_RUN || report.onset === undefined) return false;
   const start = state.drills[report.parameters["drill"]?.[0] ?? ""];
   return start !== undefined && report.onset >= start;
@@ -133,6 +141,8 @@ function lastRun(state: RuntimeState, report: Report): boolean {
  * - The delivery of an own retired incident does not come back with it. Thus the orphan goes at the horizon after its time of entry.
  * - A key with no time of entry stays. Only a cancel that folds before the first own event has no entry: the state has no time then.
  * - A tombstone keeps each retired orphan key cancelled for the routes. Thus a late delivery of the key gives no repeat.
+ * - An incident with a run of the last start of a drill does not retire, also past the horizon (`drillPins`, AL-189). A
+ *   drill reads its last run until its next start, and a weekly drill reads it for 7 days or more.
  */
 export function retiredEvent(
   state: RuntimeState,
@@ -141,7 +151,8 @@ export function retiredEvent(
   { horizon, life, quiet, told }: Required<RetentionOptions>,
   expectations: readonly Expectation[] = [],
 ): RetiredEvent | undefined {
-  const found = incidents(state.merge, at, { link });
+  const pins = drillPins(state);
+  const found = incidents(state.merge, at, { link }).filter((incident) => !incident.reports.some((report) => pins.has(report)));
   const reports = retirements(state.merge, found, at, horizon, { horizon: quiet, told, keeps: quietKeeps(state, expectations, at) });
   const gone = new Set(reports);
   // A delivery key does not name its incident, thus the event names the cancelled keys of the deliveries of the incidents.

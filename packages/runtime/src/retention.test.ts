@@ -534,7 +534,11 @@ describe("a retirement changes no verdict and sends nothing (AL-189)", () => {
   function readers(state: RuntimeState, at: number) {
     const found = incidents(state.merge, at, { link });
     const cut = cutIncidents(state, state.merge, found, parts, at);
-    const routes = route({ state: state.merge, incidents: cut.sent, recipients: [WATCHER], places: [KANSAS], starts: state.starts, ends: state.escalationEnds, cancelled: cancelledKeys(state), channels: [POLLED], now: at });
+    // The one designed loss: the cancel of an alert older than the horizon retires with its incident. Each alert of a
+    // channel ends long before the horizon, thus that cancel changes nothing at the phone.
+    const old = at - (RETIRE.retention?.horizon ?? 0);
+    const moot = (entry: ReturnType<typeof route>[number]): boolean => !entry.incident.live && entry.plan.sends.length === 0 && entry.deliveries.every((delivery) => delivery.at <= old);
+    const routes = route({ state: state.merge, incidents: cut.sent, recipients: [WATCHER], places: [KANSAS], starts: state.starts, ends: state.escalationEnds, cancelled: cancelledKeys(state), channels: [POLLED], now: at }).filter((entry) => !moot(entry));
     const limited = limitRoutes({ routes, deliveries: state.merge.deliveries, holds: state.holds, limits: LIMITS, reports: state.merge.reports, now: at });
     const throttled = throttleRoutes({ routes: limited.routes, deliveries: state.merge.deliveries, suppressions: state.suppressions, reports: state.merge.reports, throttle: THROTTLE, now: at });
     const runs = DRILLS.map((drill) => drillRunOf(state, COPY, drill));
