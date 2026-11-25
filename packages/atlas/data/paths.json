@@ -1800,10 +1800,10 @@
     "note": "Each transit agency publishes its own feed."
   },
   {
-    "id": "travel.state.gov",
-    "name": "travel.state.gov",
+    "id": "cadataapi.state.gov",
+    "name": "cadataapi.state.gov",
     "kind": "host",
-    "note": "The host of the feed of state-dept-advisories."
+    "note": "The host of the travel advisory API of the State Department, the feed of state-dept-advisories."
   },
   {
     "id": "trust.okta.com",
@@ -3010,5 +3010,41 @@
     "name": "www.health.nsw.gov.au",
     "kind": "host",
     "note": "The host of the site of NSW Health, the page of nsw-health-drug-warnings."
+  },
+  {
+    "id": "api.fbi.gov",
+    "name": "api.fbi.gov",
+    "kind": "host",
+    "note": "The host of the Wanted API of the FBI, the feed of fbi-wanted-api."
+  },
+  {
+    "id": "www.police.gov.hk",
+    "name": "www.police.gov.hk",
+    "kind": "host",
+    "note": "The host of the site of the Hong Kong Police Force, the feed of hkpf-missing-persons."
+  },
+  {
+    "id": "www.esd.wsd.gov.hk",
+    "name": "www.esd.wsd.gov.hk",
+    "kind": "host",
+    "note": "The host of the open data files of the Water Supplies Department of Hong Kong, the feed of hk-wsd-water-suspensions."
+  },
+  {
+    "id": "web.water.gov.tw",
+    "name": "web.water.gov.tw",
+    "kind": "host",
+    "note": "The host of the open data files of Taiwan Water Corporation, the feed of taiwan-water-outages."
+  },
+  {
+    "id": "ws-public.interpol.int",
+    "name": "ws-public.interpol.int",
+    "kind": "host",
+    "note": "The host of the public notices API of INTERPOL, the feed of interpol-yellow-notices."
+  },
+  {
+    "id": "api.politie.nl",
+    "name": "api.politie.nl",
+    "kind": "host",
+    "note": "The host of the open data API of the police of the Netherlands, the feed of politie-missing-persons."
   }
 ]

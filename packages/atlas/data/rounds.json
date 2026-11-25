@@ -1709,5 +1709,57 @@
       "members": 1757,
       "cause": "Round 34 adds 2 planned sources and 3 later sources, and moves 1 later source to plan. Four classes get a second source, so the gaps go from 81 to 77. The dimension fuel-prices gets a second live source. No layer of the cover changes."
     }
+  },
+  {
+    "round": 35,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took the classes with a gap and ranked them by their value to a person at home. It tried the missing persons, the kidnappings, the water outages and armed conflict first. It searched open data catalogs and the web, and read the terms and the robots.txt of each candidate. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The API documentation of the FBI, for the posters of missing persons: https://www.fbi.gov/wanted/api",
+      "DATA.GOV.HK, for the missing persons and the water suspensions of Hong Kong: https://data.gov.hk/en-data/api/3/action/package_search?q=water%20supply%20suspension&rows=5",
+      "The open data platform of Taiwan, for the water outages: https://data.gov.tw/api/v2/rest/dataset/6050",
+      "The travel advisory API of the US State Department: https://cadataapi.state.gov/api/TravelAdvisories",
+      "The terms and the EULA of ACLED: https://acleddata.com/terms-and-conditions",
+      "The operating status of OPM as JSON: https://www.opm.gov/json/operatingstatus.json"
+    ],
+    "queries": [
+      "missing persons open data API JSON police official feed",
+      "台灣自來水公司 停水資訊 開放資料 API data.gov.tw",
+      "water supply interruptions open data feed API utility outages GeoJSON official water outages open data"
+    ],
+    "notes": [
+      "fbi-wanted-api and hkpf-missing-persons are new. security.missing-person has 2 sources from 2 origins.",
+      "fbi-wanted-api also gives the kidnapping cases. state-dept-advisories moves from later to plan with its JSON API, and it names the risk of kidnapping of each country. Thus security.kidnap has 2 sources from 2 origins.",
+      "hk-wsd-water-suspensions and taiwan-water-outages are new. infra.water.outage has 2 sources from 2 origins.",
+      "acled-api moves from later to plan. Its EULA grants a royalty-free licence for non-commercial use through the API. With gdelt-events, security.armed-conflict and security.civil-unrest each have 2 sources.",
+      "The read of taiwan-water-outages gave an empty list, so its fields come from the metadata of the dataset.",
+      "The records of hkpf-missing-persons and fbi-wanted-api name persons. The atlas holds no record of a person, and an adapter keeps only the case, its dates and its place.",
+      "opm-status moves from later to plan, because OPM gives its status as JSON. The class has 1 source, so its gap stays.",
+      "interpol-yellow-notices and politie-missing-persons are later, because each API gave 403. The round did not try again.",
+      "The UCDP API gave 401 and asks for a token. The catalog of data.govt.nz gave a bot check, so the round did not read its water shut-off dataset."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 72,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 34,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 35 adds 4 planned sources and 2 later sources, and moves 3 later sources to plan. Five classes get a second source, so the gaps go from 77 to 72. No layer of the cover changes."
+    }
   }
 ]
