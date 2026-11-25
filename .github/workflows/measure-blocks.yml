@@ -9,7 +9,9 @@
 # the gate does not count them. Runs 45022368162 and 45024642861 had parts of 164.7 ms and 276.4 ms with 150 ms of CPU time in each write.
 # In the record 45025694491, the worst part had 7.9 ms to 13.5 ms of CPU time. Thus the limit is 13.5 + 5.6, rounded up to 20 ms.
 # The gate counts the CPU time of a part apart from the pauses of the garbage collector in it (AL-174). On 2026-11-24 one
-# pause gave single parts of 50 to 83 ms, and each rerun passed. The limit stays 20 ms: the work is never more than the CPU time.
+# pause gave single parts of 50 to 83 ms, and each rerun passed. The records 45542046475 and 45545323723 give 10 runs of
+# this work: 8.6 ms to 20.8 ms, with 0 ms of the collector in the worst part. That runner had 219 ms of CPU time in the
+# write, and the other runners had 97 ms to 167 ms. Thus the limit is 20.8 + 12.2, which is 33 ms.
 # A study of the start on a small cloud machine is outside this workflow.
 # This file is a gate with paths (CI.md): the job changes gives the match, and the job Measure blocks OK gives the result.
 name: Measure blocks
@@ -84,7 +86,7 @@ jobs:
           PASSES: ${{ inputs.passes || '4' }}
           # The longest part of a snapshot write between two pauses, in ms. The script exits with 1 above it, and with 1
           # when the start that folds the whole log has no snapshot write. A run with no record is no read, not a pass.
-          BLOCK_LIMIT_MS: "20"
+          BLOCK_LIMIT_MS: "33"
         run: |
           mkdir -p "$GITHUB_WORKSPACE/blocks" "$RUNNER_TEMP/seed"
           node scripts/start-blocks.ts "$RUNNER_TEMP/seed" "$SIZE" "$PASSES" | tee "$GITHUB_WORKSPACE/blocks/records.jsonl"
