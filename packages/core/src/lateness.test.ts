@@ -547,6 +547,8 @@ describe("the gate: the miss rate in normal work", () => {
     return { censored, baseline: misses / judged.length };
   }
 
+  // Each case folds 8 seeds and takes about 6 s on a slow runner: more than the 5 s of vitest (a release run on 2026-11-25).
+  const GATE_TIMEOUT = 60_000;
   for (const { name, draw } of DELAYS) {
     for (const gap of GAPS) {
       it(`misses at 1.5 × (1 - quantile) or less, with delays ${name} and a gap of ${gap} ms`, () => {
@@ -559,7 +561,7 @@ describe("the gate: the miss rate in normal work", () => {
         );
         expect(mean(censored)).toBeLessThanOrEqual(1.5 * (1 - OPTIONS.quantile));
         for (const rate of censored) expect(rate).toBeLessThanOrEqual(2 * (1 - OPTIONS.quantile));
-      });
+      }, GATE_TIMEOUT);
     }
   }
 });
