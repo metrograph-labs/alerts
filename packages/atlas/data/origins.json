@@ -1736,7 +1736,7 @@
     "id": "sidc",
     "name": "SIDC, the Solar Influences Data Analysis Center (RWC-Belgium)",
     "issues": null,
-    "note": "The records of sidc-alerts-email name this issuer."
+    "note": "The records of sidc-alerts-email and sidc-product-archive name this issuer."
   },
   {
     "id": "siemens",
@@ -2309,7 +2309,7 @@
     "id": "neso",
     "name": "NESO, the National Energy System Operator of Great Britain",
     "issues": null,
-    "note": "The records of neso-data-portal and carbon-intensity-gb name this body."
+    "note": "The records of neso-data-portal, carbon-intensity-gb and elexon-bmrs-syswarn name this body. Elexon publishes the system warnings of NESO."
   },
   {
     "id": "network-rail",
@@ -2586,5 +2586,131 @@
     "name": "Scottish Water",
     "issues": null,
     "note": "The water company of Scotland. It monitors its storm overflows. The record of scottish-water-overflows names this issuer."
+  },
+  {
+    "id": "american-red-cross",
+    "name": "The American Red Cross",
+    "issues": null,
+    "note": "The Red Cross runs its National Shelter System and publishes its open shelters. The record of redcross-open-shelters names this issuer."
+  },
+  {
+    "id": "avinor",
+    "name": "Avinor, the operator of the state airports of Norway",
+    "issues": null,
+    "note": "Avinor publishes the flights of its 43 airports. The record of avinor-flight-data names this issuer."
+  },
+  {
+    "id": "njdep",
+    "name": "The New Jersey Department of Environmental Protection (NJDEP)",
+    "issues": null,
+    "note": "The department samples blooms in fresh water and sets the advisory tiers. The record of njdep-hab-sampling names this issuer."
+  },
+  {
+    "id": "usda-fs",
+    "name": "USDA FS (the Forest Service)",
+    "issues": null,
+    "note": "The Forest Service publishes the status of its recreation sites. The record of usfs-recreation-status names this issuer."
+  },
+  {
+    "id": "nsw-rfs",
+    "name": "The NSW Rural Fire Service",
+    "issues": null,
+    "note": "The fire service of New South Wales declares the total fire bans. The record of nsw-rfs-fire-bans names this issuer."
+  },
+  {
+    "id": "bc-parks",
+    "name": "BC Parks, the park agency of British Columbia",
+    "issues": null,
+    "note": "BC Parks publishes the advisories of the provincial parks. The record of bc-parks-advisories names this issuer."
+  },
+  {
+    "id": "bc-wildfire-service",
+    "name": "The BC Wildfire Service",
+    "issues": null,
+    "note": "The service sets the open fire prohibitions of each fire centre of British Columbia. The record of bc-parks-advisories names this issuer."
+  },
+  {
+    "id": "nsw-beachwatch",
+    "name": "Beachwatch, the beach water program of the NSW Government",
+    "issues": null,
+    "note": "The program samples the swimming sites of New South Wales and forecasts their pollution. The record of nsw-beachwatch names this issuer."
+  },
+  {
+    "id": "hk-epd",
+    "name": "The Environmental Protection Department of Hong Kong (EPD)",
+    "issues": null,
+    "note": "The department grades the water quality of the beaches of Hong Kong. The record of hk-epd-beach-grading names this issuer."
+  },
+  {
+    "id": "toronto-public-health",
+    "name": "Toronto Public Health",
+    "issues": null,
+    "note": "The health unit of Toronto tests its beaches for E. coli and posts the swim warnings. The record of toronto-beach-water-quality names this issuer."
+  },
+  {
+    "id": "tfl",
+    "name": "Transport for London (TfL)",
+    "issues": null,
+    "note": "The transport authority of London publishes the status of its lines. The record of tfl-unified-api names this issuer."
+  },
+  {
+    "id": "nve",
+    "name": "NVE (the Norwegian Water Resources and Energy Directorate)",
+    "issues": null,
+    "note": "NVE gives the landslide warnings of Norway. The record of nve-landslide-warnings names this issuer."
+  },
+  {
+    "id": "hko",
+    "name": "The Hong Kong Observatory",
+    "issues": null,
+    "note": "The weather service of Hong Kong issues the weather warnings and the landslip warning. The record of hko-warning-summary names this issuer."
+  },
+  {
+    "id": "losco",
+    "name": "LOSCO (the Louisiana Oil Spill Coordinator's Office)",
+    "issues": null,
+    "note": "The office keeps the spill response records of Louisiana. The record of losco-active-spills names this issuer."
+  },
+  {
+    "id": "nsw-health",
+    "name": "NSW Health, the health department of New South Wales",
+    "issues": null,
+    "note": "The department publishes the public drug warnings of the state. The record of nsw-health-drug-warnings names this issuer."
+  },
+  {
+    "id": "fbi",
+    "name": "The FBI (the Federal Bureau of Investigation of the United States)",
+    "issues": null,
+    "note": "The FBI publishes the posters of wanted and missing persons. The record of fbi-wanted-api names this issuer."
+  },
+  {
+    "id": "hkpf",
+    "name": "The Hong Kong Police Force",
+    "issues": null,
+    "note": "The police publish the appeals for missing persons of Hong Kong. The record of hkpf-missing-persons names this issuer."
+  },
+  {
+    "id": "hk-wsd",
+    "name": "The Water Supplies Department of Hong Kong",
+    "issues": null,
+    "note": "The department publishes the water suspension notices of Hong Kong. The record of hk-wsd-water-suspensions names this issuer."
+  },
+  {
+    "id": "taiwan-water",
+    "name": "Taiwan Water Corporation",
+    "issues": null,
+    "note": "The water utility of most of Taiwan publishes its water outage cases. The record of taiwan-water-outages names this issuer."
+  },
+  {
+    "id": "interpol",
+    "name": "INTERPOL",
+    "issues": null,
+    "note": "INTERPOL publishes the public yellow notices of missing persons. The record of interpol-yellow-notices names this issuer."
+  },
+  {
+    "id": "politie",
+    "name": "Politie, the police of the Netherlands",
+    "issues": null,
+    "note": "The police of the Netherlands publish the missing persons in an open data API. The record of politie-missing-persons names this issuer."
   }
 ]

@@ -1353,9 +1353,19 @@ function drillRunCondition(copy: string, drill: DrillConfig, run: DrillRun): Con
   };
 }
 
+// A time as a call can say it (AL-188): "15:00 UTC on 24 November 2026". An ISO time reads as a list of digits.
+const SPOKEN_TIME = new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+const SPOKEN_DAY = new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", day: "numeric", month: "long", year: "numeric" });
+
+// The time as a call can say it, in UTC.
+function spokenInstant(at: Instant): string {
+  return `${SPOKEN_TIME.format(at)} UTC on ${SPOKEN_DAY.format(at)}`;
+}
+
 function drillFailedCondition(copy: string, drill: DrillConfig, run: DrillRun, why: "no-ack" | "late-ack"): Condition {
   const code = `${DRILL_KIND}.failed`;
   const late = why === "late-ack";
+  const minutes = `${String(Math.round(drill.ackWithin / 60_000))} minutes`;
   return {
     // Each run and each reason is a new fact. Thus a late acknowledgment after a failure gives an update.
     facts: { copy, drill: drill.id, at: run.at, why },
@@ -1366,9 +1376,10 @@ function drillFailedCondition(copy: string, drill: DrillConfig, run: DrillRun, w
     onset: run.at + drill.ackWithin,
     areas: [],
     about: [{ system: DRILL_SUBJECT, id: drill.id, label: `Drill ${drill.id}` }],
-    headline: `The drill ${drill.id} failed: ${late ? "the acknowledgment came late" : "no acknowledgment came"}.`,
-    description: `The drill started at ${new Date(run.at).toISOString()} on the channel ${drill.path.channel}, from the copy ${copy}. A real warning on this path can also go without an answer.`,
-    instruction: "Examine the channel, the app and the settings of the phone. The next run of the drill tests the path again.",
+    headline: `The drill ${drill.id} failed: ${late ? `the acknowledgment came after ${minutes}` : `no acknowledgment came in ${minutes}`}.`,
+    // A call says the headline and the description (AL-188). Thus the description tells when the drill message went out.
+    description: `The drill message went out at ${spokenInstant(run.at)} on the channel ${drill.path.channel}, from the copy ${copy}. A real warning on this path can also go without an answer.`,
+    instruction: "Find the drill message in the app, and acknowledge it. Examine the channel, the app and the settings of the phone. The next run of the drill tests the path again.",
     parameters: { drill: [drill.id], copy: [copy], why: [why] },
   };
 }
