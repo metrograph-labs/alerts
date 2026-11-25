@@ -1235,5 +1235,49 @@
       "members": 1757,
       "cause": "Round 23 adds 1 class for a new code of the taxonomy, with a gap. The classes go from 213 to 214, and the gaps from 108 to 109. No source changes."
     }
+  },
+  {
+    "round": 24,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent, in a memory hold.",
+    "method": "The round read again each life-safety class whose gap reason was a failed read: a refusal, a time-out or a page that was not opened. One fetch went to each host, with a plain user agent. A refusal stays a refusal: the round tried no other route.",
+    "lists": [
+      "The gaps of the atlas on main, with their reasons: packages/atlas/data/classes.json"
+    ],
+    "queries": [
+      "FCC Disaster Information Reporting System DIRS public status reports communications outages",
+      "CAISO emergency notifications RSS feed Flex Alert EEA notices",
+      "MARAD MSCI U.S. Maritime Advisories RSS feed",
+      "NTSB CAROL public API aviation investigations data download"
+    ],
+    "notes": [
+      "Closed: security.travel-advisory (gac-travel-advice), safety.recall.drug and safety.recall.medical-device (mhra-alerts-govuk), safety.scam (ic3-psa-rss and scamwatch-rss).",
+      "fema-open-shelters answered, so it moves from later to plan. The class rescue.shelter-open still has 1 source.",
+      "eskom-loadshedding-status is new. The class infra.power.load-shedding still has 1 source.",
+      "Still refused or down: NAVCEN (403), NGA MSI (503), the Flex Alert feed of CAISO (404) and the NTSB API (502).",
+      "The page of FCC DIRS moved. Its reports are PDF files while DIRS is active, so it is no live feed.",
+      "The market and fiscal gaps are not in the scope of this round."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 105,
+      "cover": {
+        "adopted": 55,
+        "paths": 55,
+        "origins": 5
+      },
+      "total": {
+        "adopted": 152,
+        "paths": 152,
+        "origins": 73
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 35,
+      "dimensions": 9,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 24 adds 5 planned sources and moves fema-open-shelters to plan. 4 classes get 2 or more sources, so the gaps go from 109 to 105. The cover and total counts include the adoptions on main after round 23."
+    }
   }
 ]
