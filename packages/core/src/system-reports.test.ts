@@ -14,6 +14,8 @@ import {
   balanceStages,
   balanceFloorsBelow,
   balanceUnreadAt,
+  blockCause,
+  blockCauseText,
   blockClass,
   blockSizeText,
   CHANNEL_SUBJECT,
@@ -1264,6 +1266,19 @@ describe("the loop reports", () => {
     expect(kept.reports).toEqual([]);
     const end = START + 120_000 + 2 * LOOP_BLOCK_WINDOW - 1_000;
     expect(codes(systemReports(kept.lines, snapshot({ blocks: late, copy: "cloud" }), end).reports)).toEqual([["cancel", "system.loop.block"]]);
+  });
+
+  it("tells the cause of the longest block, and a new cause of the same class gives no update (AL-180)", () => {
+    const work = { at: START, size: 2_400, cpu: 2_300, faults: 0, gc: 900 };
+    expect(blockCauseText(work)).toBe("The block had 2.3 s of processor time, 0 page reads from the disk and 0.9 s of pauses of the garbage collector. Thus the block was mostly work of the processor.");
+    expect(blockCauseText({ at: START, size: 2_000, faults: 3 })).toBe("The block had 3 page reads from the disk.");
+    expect(blockCauseText({ at: START, size: 2_000 })).toBeUndefined();
+    expect(blockCause({ cpu: 1, gc: 0 })).toEqual({ cpu: 1, gc: 0 });
+    const opened = systemReports(NO_SYSTEM_LINES, snapshot({ blocks: [work], copy: "cloud" }), START + 5_000);
+    expect(opened.reports).toMatchObject([{ op: "alert", parameters: { longest: ["2400"], cpu: ["2300"], faults: ["0"], gc: ["900"] } }]);
+    expect(opened.reports[0]?.description).toContain("In the longest block: The block had 2.3 s of processor time");
+    const wait = [work, { at: START + 60_000, size: 2_600, cpu: 100, faults: 400 }];
+    expect(systemReports(opened.lines, snapshot({ blocks: wait, copy: "cloud" }), START + 65_000).reports).toEqual([]);
   });
 
   it("names this copy when the snapshot has no copy", () => {

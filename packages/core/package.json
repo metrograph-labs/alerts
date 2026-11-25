@@ -22,7 +22,7 @@
     "directory": "packages/core"
   },
   "license": "MIT",
-  "version": "0.2.5",
+  "version": "0.2.7",
   "type": "module",
   "sideEffects": false,
   "main": "./src/index.ts",
@@ -60,7 +60,7 @@
     "@mark1russell7/quantity": "^0.4.3",
     "@mark1russell7/rigor-generators": "^0.2.4",
     "@mark1russell7/rigor-statistics": "^0.2.21",
-    "@mark1russell7/text": "^0.0.17",
+    "@mark1russell7/text": "^0.0.18",
     "zod": "^4.6.7"
   },
   "devDependencies": {

@@ -26,7 +26,7 @@
           "measure-wea.yml",
           "measure-state.yml",
           "measure-fold.yml",
-    "measure-start.yml"
+          "measure-start.yml"
         ],
         "reason": "measure.yml and measure-wea.yml are measures of outside servers. measure-state.yml is a measure of the state for each quiet horizon, measure-fold.yml is a CPU profile of a start, and measure-start.yml is a CPU profile of a start with live alerts and persons. They are not gates. A pull request that changes a measure gets a smoke run, and no other pull request starts it."
       }
@@ -35,9 +35,9 @@
   "devDependencies": {
     "@mark1russell7/api-report": "^0.5.6",
     "@mark1russell7/boundaries": "^0.3.2",
-    "@mark1russell7/conventions": "^0.50.7",
+    "@mark1russell7/conventions": "^0.52.0",
     "@mark1russell7/cue": "^2.0.0",
-    "@mark1russell7/ste-lint": "^0.4.0",
+    "@mark1russell7/ste-lint": "^0.6.0",
     "@mark1russell7/template-cli": "^0.1.7",
     "@swc/core": "^1.15.0",
     "@types/node": "^26.6.5",

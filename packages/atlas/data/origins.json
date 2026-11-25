@@ -18,6 +18,12 @@
     "note": "The records of abusech-feodo-tracker, abusech-malwarebazaar, abusech-sslbl, abusech-threatfox, abusech-urlhaus name this issuer."
   },
   {
+    "id": "accc",
+    "name": "The Australian Competition and Consumer Commission (ACCC)",
+    "issues": null,
+    "note": "The records of scamwatch-rss name this issuer."
+  },
+  {
     "id": "accessnow",
     "name": "Access Now",
     "issues": null,
@@ -672,6 +678,12 @@
     "note": "The records of faa-nas-status, faa-notam-api name this issuer."
   },
   {
+    "id": "fbi-ic3",
+    "name": "The Internet Crime Complaint Center of the US FBI (IC3)",
+    "issues": null,
+    "note": "The records of ic3-psa-rss name this issuer."
+  },
+  {
     "id": "fcc",
     "name": "US Federal Communications Commission",
     "issues": null,
@@ -820,6 +832,12 @@
     "name": "GitLab",
     "issues": null,
     "note": "The record of gitlab-patch-releases-atom names this issuer."
+  },
+  {
+    "id": "global-affairs-canada",
+    "name": "Global Affairs Canada",
+    "issues": null,
+    "note": "The records of gac-travel-advice name this issuer."
   },
   {
     "id": "good-judgment",
@@ -1893,6 +1911,12 @@
     "name": "The UK Information Commissioner (ICO)",
     "issues": null,
     "note": "The record of uk-ico-incident-trends names this issuer."
+  },
+  {
+    "id": "uk-mhra",
+    "name": "The Medicines and Healthcare products Regulatory Agency of the United Kingdom (MHRA)",
+    "issues": null,
+    "note": "The records of mhra-alerts-govuk name this issuer."
   },
   {
     "id": "uk-national-archives",

@@ -684,6 +684,12 @@
     "note": "The host of the data of wfp-food-prices."
   },
   {
+    "id": "data.international.gc.ca",
+    "name": "data.international.gc.ca",
+    "kind": "host",
+    "note": "The host of the feed of gac-travel-advice."
+  },
+  {
     "id": "data.phishtank.com",
     "name": "data.phishtank.com",
     "kind": "host",
@@ -1126,6 +1132,12 @@
     "name": "ll.thespacedevs.com",
     "kind": "host",
     "note": "The host of the feed of launch-library-2."
+  },
+  {
+    "id": "loadshedding.eskom.co.za",
+    "name": "loadshedding.eskom.co.za",
+    "kind": "host",
+    "note": "The host of the feed of eskom-loadshedding-status."
   },
   {
     "id": "lore.kernel.org",
@@ -2298,6 +2310,12 @@
     "note": "The host of the feed of ibm-security-bulletins."
   },
   {
+    "id": "www.ic3.gov",
+    "name": "www.ic3.gov",
+    "kind": "host",
+    "note": "The host of the feed of ic3-psa-rss."
+  },
+  {
     "id": "www.imis.bfs.de",
     "name": "www.imis.bfs.de",
     "kind": "host",
@@ -2572,6 +2590,12 @@
     "name": "www.saferproducts.gov",
     "kind": "host",
     "note": "The host of the feed of cpsc-recalls-api."
+  },
+  {
+    "id": "www.scamwatch.gov.au",
+    "name": "www.scamwatch.gov.au",
+    "kind": "host",
+    "note": "The host of the feed of scamwatch-rss."
   },
   {
     "id": "www.se.com",

@@ -6,6 +6,7 @@
 import {
   add,
   addSystemReports,
+  blockCause,
   DEFAULT_LINK_POLICY,
   LOOP_BLOCK_WINDOW,
   EMPTY_STATE,
@@ -655,7 +656,7 @@ function foldRest(state: RuntimeState, event: RuntimeEvent, context: FoldContext
     }
     case "loop": {
       // Only the blocks of the window before this block stay. Thus the list stays short, and a rebuild gives the same list.
-      const blocks = [...state.blocks.filter((block) => event.time - block.at < LOOP_BLOCK_WINDOW), { at: event.time, size: event.size }];
+      const blocks = [...state.blocks.filter((block) => event.time - block.at < LOOP_BLOCK_WINDOW), { at: event.time, size: event.size, ...blockCause(event) }];
       return { ...base, blocks };
     }
     case "recovered": {

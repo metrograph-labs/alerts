@@ -199,6 +199,12 @@ export interface ClockEvent extends Envelope<"clock"> {
 export interface LoopEvent extends Envelope<"loop"> {
   /** The length of the block in milliseconds. */
   readonly size: Duration;
+  /** The processor time of the thread in the block, in milliseconds (AL-180). An event before AL-180 has none. */
+  readonly cpu?: Duration;
+  /** The count of the reads of memory pages from the disk in the block (AL-180). */
+  readonly faults?: number;
+  /** The time of the pauses of the garbage collector in the block, in milliseconds (AL-180). */
+  readonly gc?: Duration;
 }
 
 /**

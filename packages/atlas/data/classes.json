@@ -1302,7 +1302,7 @@
       "FEMA Lifelines: Energy > Fuel",
       "EM-DAT: Technological > Industrial > Explosion"
     ],
-    "gap": "PHMSA page returned 403. Both sources are slow records, not live alerts.",
+    "gap": "No live source. Round 24: the PHMSA page of the incident files opens. The files come each month, so they are a record, not an alert.",
     "round": 1
   },
   {
@@ -1317,7 +1317,7 @@
     "references": [
       "No hazard list names this class. Found by the search for missing classes."
     ],
-    "gap": "The NAVCEN page returned 403. Crowd maps of jamming were not opened.",
+    "gap": "No live source. Round 24: the NAVCEN page of the GPS problem reports returned 403 again. gpsjam has no API and no download. A share of low NACp values from adsb.lol is not studied yet.",
     "round": 1
   },
   {
@@ -1451,7 +1451,7 @@
       "CISA sectors: Energy",
       "FEMA Lifelines: Energy > Power Grid"
     ],
-    "gap": "The AEMO market notices are later, because its terms page refused the read. ERCOT notices come by email, text and app, not a feed.",
+    "gap": "One source: ercot-txans. Round 24: the RSS address of the Flex Alerts of CAISO returned 404, and the HTML of its page of notices has no feed link.",
     "round": 1
   },
   {
@@ -1465,7 +1465,7 @@
     "references": [
       "No reference list names this class. Found by the search for missing classes."
     ],
-    "gap": "The AEMO market notices are later, because its terms page refused the read. No other source was found.",
+    "gap": "One source: eskom-loadshedding-status, for South Africa. The facts of EskomSePush are not read, and the terms of the AEMO notices are not read.",
     "round": 1
   },
   {
@@ -1616,7 +1616,7 @@
       "CISA sectors: Communications",
       "FEMA Lifelines: Communications"
     ],
-    "gap": "Both pages refused the fetch tool (403 and blocked). Facts are not confirmed.",
+    "gap": "No live source. Round 24: the FCC gives a DIRS report only while DIRS is active, as a PDF. No access route of Downdetector is confirmed.",
     "round": 1
   },
   {
@@ -2744,7 +2744,7 @@
       "CAP 1.2: Rescue",
       "FEMA Lifelines: Food, Hydration, Shelter > Shelter"
     ],
-    "gap": "The FEMA open shelters map service timed out. Not confirmed.",
+    "gap": "One source: fema-open-shelters, for the US. Round 24 read it again, and it answered. No second source of open shelters is known.",
     "round": 1
   },
   {
@@ -2894,7 +2894,7 @@
       "UNDRR-ISC HIPs 2025: CH0602 Substandard and Falsified Medical Products",
       "FEMA Lifelines: Health and Medical > Medical Supply Chain"
     ],
-    "gap": "WHO medical product alerts were not opened in round 1.",
+    "gap": null,
     "round": 1
   },
   {
@@ -2925,7 +2925,7 @@
     "references": [
       "CISA sectors: Healthcare and Public Health"
     ],
-    "gap": "Round 1 found 1 adopted or planned source with no risk: canada-recalls. openfda-enforcement is later: see the reason of each.",
+    "gap": null,
     "round": 1
   },
   {
@@ -2955,7 +2955,7 @@
     "references": [
       "No hazard list names this class. Found by the search for missing classes."
     ],
-    "gap": "One source. FBI IC3 public service announcements were not opened.",
+    "gap": null,
     "round": 1
   },
   {
@@ -3175,7 +3175,7 @@
       "CISA sectors: Transportation Systems > Maritime",
       "FEMA Lifelines: Transportation > Maritime"
     ],
-    "gap": "NGA MSI returned 503 and UKMTO returned 403. Facts not confirmed.",
+    "gap": "No live source. Round 24: the NGA MSI API returned 503 again. MARAD sends its maritime advisories by email only, with no feed.",
     "round": 1
   },
   {
@@ -3240,7 +3240,7 @@
       "Crisis24 country risk ratings",
       "International SOS"
     ],
-    "gap": "The State Department page returned 403.",
+    "gap": null,
     "round": 1
   },
   {
@@ -3272,7 +3272,7 @@
       "EM-DAT: Technological > Transport > Air",
       "UNDRR-ISC HIPs 2025: TL04 transport accidents"
     ],
-    "gap": "NTSB rendered only a title and ASN returned 403.",
+    "gap": "No live source. Round 24: the NTSB API returned 502, and CAROL gives its files only from a search page. ASN returned 403 in round 1.",
     "round": 1
   },
   {
