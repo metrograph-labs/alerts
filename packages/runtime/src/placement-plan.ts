@@ -4,7 +4,7 @@
  * machine. It also reads the incident history of the status page of each provider. It reads no other source and opens
  * no account.
  *
- * `node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--site-log <site=file,site=file>] [--base <file>] [--joint <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>] [--azure-sizes <n>]`
+ * `node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--assume-country <p>] [--site-log <site=file,site=file>] [--base <file>] [--joint <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>] [--azure-sizes <n>]`
  *
  * - `--min-memory-mib` is the least memory of a host of a copy, in MiB.
  * - The three `--assume-*` values are assumed chance inputs, from 0 to 1, for each provider, region and host. The script
@@ -17,7 +17,14 @@
  * - `--fixed` names the live copies, with commas between them. A name `provider/region` is a copy at a provider. A
  *   name with no slash is a copy at a site, for example a home computer. Each is a fixed slot with no cost. The front
  *   then gives the gain of each next copy beside them. The names go only to the private front file.
+ * - A name of `--fixed` can end with `@` and the code of its country (ISO 3166-1 alpha-2), for example `home@NL`. A
+ *   copy at a provider with no code gets the country of the offers of its region.
  * - `--assume-site` is the assumed chance input of each site of a fixed copy. A fixed copy at a site needs it.
+ * - `--assume-country` is the assumed chance input of each country. With it, each copy with a known country needs the
+ *   shared fragment of its country. Thus two copies in one country share its grid, its network and its law. A copy
+ *   with no known country has no such fragment. The output counts these copies. Without it, no copy has a country
+ *   fragment.
+ * - The country input is always assumed. Thus with it, the front of measured inputs has no row.
  * - `--site-log` names a copy of the runtime log of the live copy at each site, as `site=file` with commas between
  *   them. The gaps of its fetch events give a measured chance of the site (`measureSite` of `placement-chances.ts`).
  *   This input replaces `--assume-site` for that site. The calls of the channels in these logs also measure each chance
@@ -92,7 +99,7 @@ import {
 const print = createPrinter({ out: process.stdout, err: process.stderr });
 
 const USAGE =
-  "The command is: node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--site-log <site=file,site=file>] [--base <file>] [--joint <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>] [--azure-sizes <n>]";
+  "The command is: node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--assume-country <p>] [--site-log <site=file,site=file>] [--base <file>] [--joint <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>] [--azure-sizes <n>]";
 
 /** The User-Agent of each request. It names no person and no project. */
 const USER_AGENT = "alerts-placement";
@@ -128,7 +135,7 @@ function command(args: readonly string[]): Command | string {
     if (name === undefined || !name.startsWith("--") || value === undefined || value.startsWith("--")) return `The argument ${String(name)} has no value.`;
     values.set(name.slice(2), value);
   }
-  const known = new Set(["min-memory-mib", "assume-provider", "assume-region", "assume-host", "assume-site", "fixed", "site-log", "base", "joint", "copies", "spend", "terms", "window-days", "azure-sizes"]);
+  const known = new Set(["min-memory-mib", "assume-provider", "assume-region", "assume-host", "assume-site", "assume-country", "fixed", "site-log", "base", "joint", "copies", "spend", "terms", "window-days", "azure-sizes"]);
   const other = [...values.keys()].find((name) => !known.has(name));
   if (other !== undefined) return `The option --${other} is not known.`;
   const memory = Number(values.get("min-memory-mib"));
@@ -152,15 +159,22 @@ function command(args: readonly string[]): Command | string {
   if (typeof region === "string") return region;
   if (typeof host === "string") return host;
   const fixed: FixedCopy[] = [];
-  for (const name of (values.get("fixed") ?? "").split(",").filter((each) => each !== "")) {
+  for (const item of (values.get("fixed") ?? "").split(",").filter((each) => each !== "")) {
+    const at = item.lastIndexOf("@");
+    const name = at < 0 ? item : item.slice(0, at);
+    const country = at < 0 ? undefined : item.slice(at + 1);
+    if (country !== undefined && !/^[A-Z]{2}$/u.test(country)) return `The country of the fixed copy ${item} is not two capital letters.`;
+    const placed = country === undefined ? {} : { country };
     const parts = name.split("/");
-    if (parts.length === 1) fixed.push({ kind: "site", site: name });
-    else if (parts.length === 2 && parts[0] !== "" && parts[1] !== "") fixed.push({ kind: "cloud", provider: parts[0]!, region: parts[1]! });
-    else return `The fixed copy ${name} is not provider/region or a site.`;
+    if (parts.length === 1 && name !== "") fixed.push({ kind: "site", site: name, ...placed });
+    else if (parts.length === 2 && parts[0] !== "" && parts[1] !== "") fixed.push({ kind: "cloud", provider: parts[0]!, region: parts[1]!, ...placed });
+    else return `The fixed copy ${item} is not provider/region or a site.`;
   }
   const needsSite = fixed.some((copy) => copy.kind === "site");
   const site = values.has("assume-site") || needsSite ? assumed("site") : undefined;
   if (typeof site === "string") return site;
+  const country = values.has("assume-country") ? assumed("country") : undefined;
+  if (typeof country === "string") return country;
   const siteLogs: { site: string; path: string }[] = [];
   for (const item of (values.get("site-log") ?? "").split(",").filter((each) => each !== "")) {
     const cut = item.indexOf("=");
@@ -170,7 +184,7 @@ function command(args: readonly string[]): Command | string {
   const terms = (values.get("terms") ?? "on-demand").split(",");
   const bad = terms.find((term) => !TERM_KINDS.some((kind) => kind === term));
   if (bad !== undefined) return `The price term ${bad} is not on-demand, spot or committed.`;
-  const chances: PlacementChances = { provider, region, host, ...(site === undefined ? {} : { site }) };
+  const chances: PlacementChances = { provider, region, host, ...(site === undefined ? {} : { site }), ...(country === undefined ? {} : { country }) };
   return { minMemoryMiB: memory, chances, copies, fixed, base: values.get("base"), joint: values.get("joint"), siteLogs, spend: values.get("spend"), terms: terms as PriceTerm["kind"][], windowDays, azureSizes };
 }
 
@@ -349,6 +363,8 @@ if (typeof parsed === "string") {
     const measuredShared = shared.filter((shared) => measuredIds.has(shared.id)).length;
     print.line(`The layer has ${countOf(shared.length, "shared fragment")}: ${String(measuredShared)} with a measured input, ${String(shared.length - measuredShared)} with an assumed input.`);
     print.line(`The host input is ${chances.host.kind} for each row.`);
+    if (chances.country === undefined) print.line("No copy has a country fragment: the command has no --assume-country.");
+    else print.line(`${countOf(build.unplaced.length, "copy or candidate", "copies or candidates")} with no known country ${build.unplaced.length === 1 ? "has" : "have"} no country fragment.`);
     const full = frontOf(build, chances, today, "The full front");
     const onlyMeasured = measuredBuild(build, chances);
     const measured = onlyMeasured === undefined ? null : frontOf(onlyMeasured, chances, today, "The front of measured inputs");
@@ -372,6 +388,7 @@ if (typeof parsed === "string") {
       gaps,
       offers: build.offers,
       skipped: build.skipped,
+      unplaced: build.unplaced,
       host: chances.host.kind,
       ...full,
       measured,

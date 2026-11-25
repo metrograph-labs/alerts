@@ -797,11 +797,11 @@ importers:
         specifier: ^0.5.4
         version: 0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)))
       '@mark1russell7/market':
-        specifier: ^0.3.2
-        version: 0.3.2
+        specifier: ^0.11.1
+        version: 0.11.1
       '@mark1russell7/market-sources':
-        specifier: ^0.5.5
-        version: 0.5.5(@opentelemetry/api@1.10.0)(ws@8.23.0)
+        specifier: ^0.5.7
+        version: 0.5.7(@opentelemetry/api@1.10.0)(ws@8.23.0)
       '@mark1russell7/optional':
         specifier: ^1.5.0
         version: 1.5.0
@@ -2692,10 +2692,6 @@ packages:
     resolution: {integrity: sha512-Lc2gRjjsgGoj9Wp+o3lvBBU2bDI8b5+nCMSFwWziNU4+RKahkWNtLybhQ+oE6cUm4t61dUOq9BJNeGOkE6wOaQ==}
     engines: {node: '>=22.12'}
 
-  '@mark1russell7/guidebook@0.1.1':
-    resolution: {integrity: sha512-DTENTIjb1CiMoONeBqmvbWO9MeFxGAF8bPjfSFg7AMf8dcdTiIMAKtFcr4aPMf8DS/bml+3UzwtmPQqbDVSRpQ==}
-    engines: {node: '>=22.12'}
-
   '@mark1russell7/guidebook@0.5.2':
     resolution: {integrity: sha512-s/jo9l4FWYX8JlFoQv9bMyipisrtUaYRLNmp5zzAXUy/lwtVskO9TwCX/qhpypx99Rhveo0+APzebHVo4onE/w==}
     engines: {node: '>=22.12'}
@@ -2719,16 +2715,12 @@ packages:
     resolution: {integrity: sha512-1ERbIJoHmYNBWg4Wdv1Nxseec/FuKO+YU8yHJ87U4NpbVNBK6ffngMufjTVTZ0NmpwgcSJkv3TdpPHawVWHiiQ==}
     engines: {node: '>=22.12'}
 
-  '@mark1russell7/market-sources@0.5.5':
-    resolution: {integrity: sha512-sZr2dOhwKG0duT0tAqRZUAdoNb6CayK5fKr1SVmN4YMwPPSPf4DCG1VBPPtLf7/Vkvit7wA2Y3LJHM5uEsMJPA==}
+  '@mark1russell7/market-sources@0.5.7':
+    resolution: {integrity: sha512-Wi/UEwTCwgmphVp4z+psMtZ1eaiuKvIz1aZTFzEuj39JAcIig2aAtLu5FZR9OfWcWeG5EcfBw3UTcNiQf0qcsQ==}
     engines: {node: '>=22'}
 
-  '@mark1russell7/market@0.11.0':
-    resolution: {integrity: sha512-GxsYt6ubXkKto3eYWTJXoX8X9CxKiggc5OswGofGWZTCb6Zh0AO/fCXn5rhGNb4wqGAxyUEpJEZtdphPwIsmyg==}
-    engines: {node: '>=22'}
-
-  '@mark1russell7/market@0.3.2':
-    resolution: {integrity: sha512-XzVaSib3lVtzWlFdXuDy6VQTfGdO89IhNFylY6yW/BdoNwxb31uFec0to+WyFJM3w+tXyu0kCKfUno3m6N6Eww==}
+  '@mark1russell7/market@0.11.1':
+    resolution: {integrity: sha512-BEXQZAtcAwe92xcj1lW/YxfAxFbGN0nxhI21OOlR7ya7BqpvId02+jGS19a8gwm5oWDBAKprpcJgv7GCnjLqgA==}
     engines: {node: '>=22'}
 
   '@mark1russell7/optional@1.5.0':
@@ -5297,8 +5289,6 @@ snapshots:
       '@mark1russell7/optional': 1.5.0
       '@mark1russell7/predicates': 0.1.5
 
-  '@mark1russell7/guidebook@0.1.1': {}
-
   '@mark1russell7/guidebook@0.5.2':
     dependencies:
       '@mark1russell7/text': 0.0.18
@@ -5322,9 +5312,9 @@ snapshots:
     transitivePeerDependencies:
       - zod
 
-  '@mark1russell7/market-sources@0.5.5(@opentelemetry/api@1.10.0)(ws@8.23.0)':
+  '@mark1russell7/market-sources@0.5.7(@opentelemetry/api@1.10.0)(ws@8.23.0)':
     dependencies:
-      '@mark1russell7/market': 0.11.0
+      '@mark1russell7/market': 0.11.1
       '@mark1russell7/quantity': 0.4.8(zod@4.6.7)
       '@mark1russell7/text': 0.0.16
       polite-crawler: 0.7.12(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
@@ -5342,21 +5332,11 @@ snapshots:
       - playwright-core
       - ws
 
-  '@mark1russell7/market@0.11.0':
+  '@mark1russell7/market@0.11.1':
     dependencies:
       '@mark1russell7/guidebook': 0.5.2
       '@mark1russell7/optional': 1.5.0
       '@mark1russell7/quantity': 0.4.8(zod@4.6.7)
-      '@mark1russell7/strategy-search': 0.1.2
-      '@mark1russell7/strategy-space': 0.1.1
-      '@mark1russell7/vex': 0.19.1(zod@4.6.7)
-      '@mark1russell7/vex-domains': 0.19.1(zod@4.6.7)
-      zod: 4.6.7
-
-  '@mark1russell7/market@0.3.2':
-    dependencies:
-      '@mark1russell7/guidebook': 0.1.1
-      '@mark1russell7/quantity': 0.4.4(zod@4.6.7)
       '@mark1russell7/strategy-search': 0.1.2
       '@mark1russell7/strategy-space': 0.1.1
       '@mark1russell7/vex': 0.19.1(zod@4.6.7)

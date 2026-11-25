@@ -34,6 +34,7 @@ export * from "./opt-in.ts";
 export * from "./health.ts";
 export * from "./coverage.ts";
 export * from "./lateness.ts";
+export * from "./feed-lag.ts";
 export * from "./copy-measure.ts";
 export * from "./link.ts";
 export * from "./basemap.ts";

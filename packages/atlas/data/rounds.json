@@ -1879,5 +1879,90 @@
       "members": 1757,
       "cause": "Round 37 adds 7 planned sources and 2 later sources, and moves 1 later source to plan. Three classes get a second source, so the gaps go from 67 to 64. No layer of the cover changes."
     }
+  },
+  {
+    "round": 38,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent, during a memory hold.",
+    "method": "The round took the classes with a gap and ranked them by their value to a person at home. It looked for official sources with no account and no limit on commercial use (AL-195). One fetch went to each URL, with the user agent alerts-atlas-research/1.0. It read the robots.txt and the terms of each candidate.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The FAA Prohibitions, Restrictions and Notices: https://www.faa.gov/air_traffic/publications/us_restrictions",
+      "The PRESTO alerts of the SIDC: https://www.sidc.be/products/presto/",
+      "The data policy of the Royal Observatory of Belgium: https://www.astro.oma.be/en/information/data-policy/",
+      "The RSS feed of the NCSC of the United Kingdom: https://www.ncsc.gov.uk/api/1/services/v1/all-rss-feed.xml",
+      "The RSS feed of the advisories of CERT-Bund: https://wid.cert-bund.de/content/public/securityAdvisory/rss"
+    ],
+    "queries": [],
+    "notes": [
+      "faa-flight-prohibitions is new. With easa-czib, transport.air.conflict-zone has 2 sources from 2 origins.",
+      "The PRESTO alerts of the SIDC tell of flares, proton events and storms. The data policy of the observatory permits private, educational or scientific use only, so the alerts stay later as sidc-product-archive.",
+      "The site of the Korean Space Weather Center failed its TLS check. The round did not go around the error.",
+      "The NCSC and CERT-Bund feeds give advisories on weak software, not reports of attacks on a utility. So cyber.infrastructure-attack keeps its gap.",
+      "The FAA page names staff mailboxes. The round kept no address."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 63,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 34,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 38 adds 1 planned source. transport.air.conflict-zone gets a second origin, so the gaps go from 64 to 63. No layer of the cover changes."
+    }
+  },
+  {
+    "round": 39,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took the classes with no live source and looked for official sources with no account and no limit on commercial use (AL-195). One fetch went to each URL, with the user agent alerts-atlas-research/1.0. It read the robots.txt and the terms of each candidate.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The search API of GOV.UK: https://www.gov.uk/api/search.json",
+      "The FAA Preliminary Accident and Incident Notices: https://www.faa.gov/data_research/accident_incident/preliminary_data",
+      "The RSS page of the TSB of Canada: https://www.tsb-bst.gc.ca/eng/medias-media/rss/index.html",
+      "The NGA MSI API: https://msi.nga.mil/api/publications/broadcast-warn",
+      "The MSCI advisories of MARAD: https://www.maritime.dot.gov/msci-advisories"
+    ],
+    "queries": [],
+    "notes": [
+      "aaib-deployments-govuk is new. It is the first live source of transport.air.accident, so the class has 1 source from 1 origin.",
+      "The RAIB, AAIB and MAIB reports on GOV.UK come months after the event. The AAIB deployment news comes on the same day. The RAIB notices come weeks after the event.",
+      "TSB Canada and MARAD returned 403, and the NGA MSI API gave a block page. The round did not go around a block.",
+      "The FAA notices are a dashboard. The page tells of a CSV file, but the round found no link to it."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 63,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 34,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 39 adds 1 planned source and 4 later sources. transport.air.accident gets its first live source, but a gap closes only at 2 origins, so the gaps stay at 63. No layer of the cover changes."
+    }
   }
 ]

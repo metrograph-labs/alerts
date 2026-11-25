@@ -56,7 +56,7 @@ import { DATE_FORMAT as EIA_DATE_FORMAT, EIA_930_DESCRIPTOR, HOUR_MS, periodEnd,
 import { memoryQuotaStore, quotaGate, type Exchange, type Transport } from "polite-crawler/api";
 import { DEFAULT_POLICY } from "polite-crawler/politeness";
 import { afterEach, describe, expect, it } from "vitest";
-import { ACCOUNT_SOURCES, BOM_SWS_KEY, readsGdelt, CHECKS_KEY, EIA_KEY, CLOUDFLARE_RADAR_KEY, checksKeys, DAEMON_CHECK, daemonCheck, DELIVERY_TIMES, INSTANCE_CHANNELS, INSTANCE_CHECK, INSTANCE_EXPECTATIONS, instanceExpectations, INSTANCE_FETCH_LIMIT, INSTANCE_SOURCES, INSTANCE_TIMES, instanceCheck, instanceProblems, instanceServices, shownNode, shownServices, LOUD_PING_URL_KEY, LOUD_STEADY, nwwsKeys, nwwsSetup, openInstance, PING_URL_KEY, pingKeyOf, pingTargets, RANK_DELAY, RANK_FLOOR, SOURCE_POLICY, sourcePace, twilioSetup, USER_AGENT_NAME, instanceSenders, copySounderProblems, sounderOptions, WEBHOOK_SECRET_KEY, WEBHOOK_USER_AGENT, webhookSetup, type Instance, type InstanceOptions } from "./instance.ts";
+import { ACCOUNT_SOURCES, BOM_SWS_KEY, readsGdelt, CHECKS_KEY, EIA_KEY, CLOUDFLARE_RADAR_KEY, checksKeys, DAEMON_CHECK, daemonCheck, DELIVERY_TIMES, INSTANCE_CHANNELS, INSTANCE_CHECK, INSTANCE_EXPECTATIONS, instanceExpectations, INSTANCE_FETCH_LIMIT, INSTANCE_SOURCES, INSTANCE_TIMES, instanceCheck, instanceContextKey, instanceProblems, instanceServices, shownNode, shownServices, LOUD_PING_URL_KEY, LOUD_STEADY, nwwsKeys, nwwsSetup, openInstance, PING_URL_KEY, pingKeyOf, pingTargets, RANK_DELAY, RANK_FLOOR, SOURCE_POLICY, sourcePace, twilioSetup, USER_AGENT_NAME, instanceSenders, copySounderProblems, sounderOptions, WEBHOOK_SECRET_KEY, WEBHOOK_USER_AGENT, webhookSetup, type Instance, type InstanceOptions } from "./instance.ts";
 import { heartbeatGap } from "./heartbeat.ts";
 import { NO_PARTS } from "./config.ts";
 import { configFilesOf } from "./config-sync.ts";
@@ -2390,5 +2390,28 @@ describe("the messages of the operator (AL-92)", () => {
     expect(told().map((call) => call.fields["url"])).toEqual([`${PHONE}/a/alerts/`]);
     const loopback = /127\.|localhost|\[::|0\.0\.0\.0/u;
     expect(server.calls.filter((call) => loopback.test(`${call.fields["url"] ?? ""} ${call.fields["message"] ?? ""}`))).toEqual([]);
+  });
+});
+
+describe("the context key of an instance (AL-169)", () => {
+  // This function gives the context key of the mode key, and the key of the runtime of an instance with the same options.
+  const keys = (secret: SecretLookup) => {
+    const { instance, clock, net } = open(secret);
+    const parsed = parseConfig(JSON.stringify(CONFIG), INSTANCE_CHANNELS, secret);
+    if (parsed.tag === "err") throw new Error(parsed.error.join("\n"));
+    const wall: WallClock = { time: "wall", now: () => clock.now(), after: (ms, run) => clock.after(ms, run) };
+    return { mode: instanceContextKey({ config: parsed.value, secret, transport: net.transport }, clock, wall), runtime: instance.runtime.contextKey() };
+  };
+
+  it("is the key of the fold of the runtime of the instance, with no log", () => {
+    const { mode, runtime } = keys(store(SECRETS));
+    expect(mode).toBe(runtime);
+  });
+
+  it("changes when a key of secrets.env adds a source", () => {
+    const without = keys(store(SECRETS));
+    const withKey = keys(store({ ...SECRETS, [EIA_KEY]: "a".repeat(40) }));
+    expect(withKey.mode).toBe(withKey.runtime);
+    expect(withKey.mode).not.toBe(without.mode);
   });
 });

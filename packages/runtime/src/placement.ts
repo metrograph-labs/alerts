@@ -8,6 +8,8 @@
  *   front tells the gain of each next copy beside the live copies, and the gain of no new copy.
  * - Each candidate is an offer: a provider, a region and a plan, with its cost of a month.
  * - Each provider and each region is a shared fragment. Thus two copies on one provider share one cause of failure.
+ * - With a country input, each country is also a shared fragment. Thus two copies in one country share its grid, its
+ *   network and its law.
  * - Nobody picks a provider or a price. Each offer that meets the needs is a candidate.
  * - A base stack gives the needs that all copies share, for example the push services and the feeds. These needs limit
  *   the gain of each new copy, thus the front tells the true gain.
@@ -85,6 +87,11 @@ export interface PlacementChances {
   readonly host: ChanceInput;
   /** The chance that a site of a fixed copy works: its power and its internet. A fixed copy on a site needs it. */
   readonly site?: ChanceInput | undefined;
+  /**
+   * The chance that a country does not stop a copy: its grid, its network and its law. Without it, a copy has no country
+   * fragment. With it, each copy with a known country needs the fragment of its country.
+   */
+  readonly country?: ChanceInput | undefined;
   /** The inputs of single providers or regions. */
   readonly overrides?: readonly ChanceOverride[] | undefined;
   /** The joint measure of the live copies (AL-147). With it, each copy needs the common cause of the live copies. */
@@ -166,11 +173,12 @@ export interface CopyNeeds {
 
 /**
  * A live copy. It is a fixed slot with one candidate. A copy at a provider uses the provider and region fragments
- * of an offer. A copy at a site, for example a home computer, uses the one fragment of its site.
+ * of an offer. A copy at a site, for example a home computer, uses the one fragment of its site. The country is a code
+ * of ISO 3166-1 alpha-2. A copy at a provider with no country gets the country of the offers of its region.
  */
 export type FixedCopy =
-  | { readonly kind: "cloud"; readonly provider: string; readonly region: string }
-  | { readonly kind: "site"; readonly site: string };
+  | { readonly kind: "cloud"; readonly provider: string; readonly region: string; readonly country?: string | undefined }
+  | { readonly kind: "site"; readonly site: string; readonly country?: string | undefined };
 
 /** The kinds of read of a status page: the documented list of incidents (`api`) or the JSON of the public history page (`history`). */
 export const STATUS_READS: readonly ["api", "history"] = ["api", "history"];
@@ -304,6 +312,11 @@ export interface PlacementBuild {
   readonly skipped: Readonly<Record<SkipReason, number>>;
   /** The ids of the fixed slots: the live copies. */
   readonly fixed: readonly string[];
+  /**
+   * The keys of the candidates and the fixed copies with no country, sorted. With no country input, the list is empty.
+   * Such a copy has no country fragment, thus the front counts it as independent of each country.
+   */
+  readonly unplaced: readonly string[];
 }
 
 /** This function gives the id of the slot of the copy `index`, from 0: `copy-1`, `copy-2` and so on. */
@@ -329,6 +342,11 @@ export function fixedKey(copy: FixedCopy): string {
 /** This function gives the id of the shared fragment of a provider. */
 export function providerFragment(provider: string): string {
   return `provider:${provider}`;
+}
+
+/** This function gives the id of the shared fragment of a country: `country:` and the code of ISO 3166-1 alpha-2. */
+export function countryFragment(country: string): string {
+  return `country:${country}`;
 }
 
 /** This function gives the id of the shared fragment of a region of a provider. */
@@ -413,8 +431,14 @@ function sourceOf(input: ChanceInput): string {
 interface OfferPick {
   readonly provider: string;
   readonly region: string;
+  readonly country: string | undefined;
   readonly offer: string;
   readonly cost: number;
+}
+
+// The country fragment of a copy: none without a country input or without a known country.
+function countryUses(chances: PlacementChances, country: string | undefined): readonly string[] {
+  return chances.country === undefined || country === undefined ? [] : [countryFragment(country)];
 }
 
 function riskOf(part: string, input: ChanceInput): RiskLayer {
@@ -424,7 +448,7 @@ function riskOf(part: string, input: ChanceInput): RiskLayer {
 function candidateOf(slot: string, pick: OfferPick, chances: PlacementChances, currency: string): Candidate {
   const provider = providerFragment(pick.provider);
   const region = regionFragment(pick.provider, pick.region);
-  const uses = [provider, region, ...(chances.joint === undefined ? [] : [COMMON_FRAGMENT])];
+  const uses = [provider, region, ...countryUses(chances, pick.country), ...(chances.joint === undefined ? [] : [COMMON_FRAGMENT])];
   const spend: SpendLayer = { schema: "spend/1", currency, kinds: [], proofDays: 30, services: [{ part: slot, billing: "fixed", price: pick.cost }] };
   return {
     key: `${pick.provider}/${pick.region}`,
@@ -439,8 +463,9 @@ function sharedOf(id: string, kind: string, input: ChanceInput): Shared {
   return { id, stack: { schema: "stack/1", parts: [{ id, kind }], layers: { "risk/1": riskOf(id, input) } } };
 }
 
-function fixedUses(copy: FixedCopy): readonly string[] {
-  return copy.kind === "cloud" ? [providerFragment(copy.provider), regionFragment(copy.provider, copy.region)] : [siteFragment(copy.site)];
+function fixedUses(copy: FixedCopy, chances: PlacementChances): readonly string[] {
+  const own = copy.kind === "cloud" ? [providerFragment(copy.provider), regionFragment(copy.provider, copy.region)] : [siteFragment(copy.site)];
+  return [...own, ...countryUses(chances, copy.country)];
 }
 
 /**
@@ -451,12 +476,12 @@ function fixedHost(copy: FixedCopy, index: number, chances: PlacementChances, fi
   const measure = chances.joint?.works[index];
   const own = fit?.own[index];
   if (measure === undefined || own === undefined) return chances.host;
-  const fragments = fixedUses(copy).reduce((product, fragment) => product * fragmentInput(chances, fragment).works, 1);
+  const fragments = fixedUses(copy, chances).reduce((product, fragment) => product * fragmentInput(chances, fragment).works, 1);
   return { works: fragments > 0 ? Math.min(1, own / fragments) : 1, kind: measure.kind, source: `the own part of ${measure.source}` };
 }
 
-function fixedCandidate(slot: string, copy: FixedCopy, host: ChanceInput, common: boolean, currency: string): Candidate {
-  const uses = [...fixedUses(copy), ...(common ? [COMMON_FRAGMENT] : [])];
+function fixedCandidate(slot: string, copy: FixedCopy, chances: PlacementChances, host: ChanceInput, common: boolean, currency: string): Candidate {
+  const uses = [...fixedUses(copy, chances), ...(common ? [COMMON_FRAGMENT] : [])];
   const spend: SpendLayer = { schema: "spend/1", currency, kinds: [], proofDays: 30, services: [{ part: slot, billing: "fixed", price: 0 }] };
   return {
     key: fixedKey(copy),
@@ -476,11 +501,12 @@ function fixedCandidate(slot: string, copy: FixedCopy, host: ChanceInput, common
  *   has the same chances. Thus a dearer offer is not on the front at any time, and the skip does not change the front.
  * - The layer has the limit of cost of the input, when it has one.
  * - Each fixed copy is a slot before the new slots. With a fixed copy, each new slot is optional.
+ * - With a country input, each candidate and each fixed copy with a known country needs the fragment of its country.
  *
  * @throws RangeError when the count of copies is not a whole number of 1 or more. It also throws when the least memory
  * or the limit of cost is less than 0, or when a chance input is not valid. It also throws when two fixed copies have
  * one key, or when a fixed copy at a site has no site input and no override. It also throws when a joint measure does not
- * have one input for each fixed copy.
+ * have one input for each fixed copy. It also throws when the country of a fixed copy is not two capital letters.
  */
 export function placementLayer(input: PlacementInput): PlacementBuild {
   const { needs, chances } = input;
@@ -491,8 +517,20 @@ export function placementLayer(input: PlacementInput): PlacementBuild {
   checkChance("region", chances.region);
   checkChance("host", chances.host);
   if (chances.site !== undefined) checkChance("site", chances.site);
+  if (chances.country !== undefined) checkChance("country", chances.country);
   for (const item of chances.overrides ?? []) checkChance(item.id, item);
-  const fixed = input.fixed ?? [];
+  // The country of each provider and region, from the first offer that tells it.
+  const countries = new Map<string, string>();
+  for (const { offer } of input.offers) {
+    const key = `${offer.location.provider}/${offer.location.region ?? "any"}`;
+    if (offer.location.country !== undefined && !countries.has(key)) countries.set(key, offer.location.country);
+  }
+  const fixed = (input.fixed ?? []).map((copy): FixedCopy => {
+    if (copy.country !== undefined && !/^[A-Z]{2}$/u.test(copy.country)) throw new RangeError(`The country of the fixed copy ${fixedKey(copy)} is not two capital letters.`);
+    if (copy.kind !== "cloud" || copy.country !== undefined) return copy;
+    const country = countries.get(fixedKey(copy));
+    return country === undefined ? copy : { ...copy, country };
+  });
   if (chances.joint !== undefined) {
     if (chances.joint.works.length !== fixed.length || fixed.length === 0) throw new RangeError("The joint measure does not have one input for each fixed copy.");
     chances.joint.works.forEach((item, index) => checkChance(`joint ${String(index + 1)}`, item));
@@ -534,7 +572,7 @@ export function placementLayer(input: PlacementInput): PlacementBuild {
     const region = offer.location.region ?? "any";
     const key = `${offer.location.provider}/${region}`;
     const found = best.get(key);
-    const pick: OfferPick = { provider: offer.location.provider, region, offer: offer.id, cost: cost.value };
+    const pick: OfferPick = { provider: offer.location.provider, region, country: countries.get(key), offer: offer.id, cost: cost.value };
     if (found === undefined) best.set(key, pick);
     else {
       skipped.dearer += 1;
@@ -561,16 +599,22 @@ export function placementLayer(input: PlacementInput): PlacementBuild {
       add(providerFragment(copy.provider), "provider");
       add(regionFragment(copy.provider, copy.region), "region");
     }
+    for (const fragment of countryUses(chances, copy.country)) add(fragment, "country");
   }
   for (const pick of picks) {
     add(providerFragment(pick.provider), "provider");
     add(regionFragment(pick.provider, pick.region), "region");
+    for (const fragment of countryUses(chances, pick.country)) add(fragment, "country");
   }
+  const unplaced =
+    chances.country === undefined
+      ? []
+      : [...fixed.filter((copy) => copy.country === undefined).map(fixedKey), ...picks.filter((pick) => pick.country === undefined).map((pick) => `${pick.provider}/${pick.region}`)].sort();
   const fit = jointFit(chances);
   if (fit !== undefined) add(COMMON_FRAGMENT, "common");
   const fixedSlots = fixed.map((copy, index) => ({
     id: fixedSlotId(index),
-    candidates: [fixedCandidate(fixedSlotId(index), copy, fixedHost(copy, index, chances, fit), fit !== undefined, needs.currency)],
+    candidates: [fixedCandidate(fixedSlotId(index), copy, chances, fixedHost(copy, index, chances, fit), fit !== undefined, needs.currency)],
   }));
   const newSlots = Array.from({ length: input.copies }, (_, index) => ({
     id: slotId(index),
@@ -589,7 +633,7 @@ export function placementLayer(input: PlacementInput): PlacementBuild {
     shared,
     ...(input.costLimit === undefined ? {} : { limits: { cost: input.costLimit, bound: input.costLimit } }),
   };
-  return { layer, base, offers: input.offers.length, skipped, fixed: fixedSlots.map((slot) => slot.id) };
+  return { layer, base, offers: input.offers.length, skipped, fixed: fixedSlots.map((slot) => slot.id), unplaced };
 }
 
 /** The base stack with no base input: the function `send` works when some slot works. */
@@ -751,10 +795,10 @@ export function frontLevels(front: readonly PlacementRow[]): readonly FrontLevel
 
 /**
  * This function gives the chance input of one shared fragment: the override of the fragment, or the input of its kind.
- * A fragment `provider:...` gets the provider input, and a fragment `site:...` gets the site input. Each other
- * fragment gets the region input.
+ * A fragment `provider:...` gets the provider input, a fragment `site:...` gets the site input, and a fragment
+ * `country:...` gets the country input. Each other fragment gets the region input.
  *
- * @throws RangeError when a site fragment has no override and the chances have no site input.
+ * @throws RangeError when a site fragment or a country fragment has no override and the chances have no input of its kind.
  */
 export function fragmentInput(chances: PlacementChances, fragment: string): ChanceInput {
   const override = (chances.overrides ?? []).find((item) => item.id === fragment);
@@ -767,6 +811,10 @@ export function fragmentInput(chances: PlacementChances, fragment: string): Chan
   if (fragment.startsWith("site:")) {
     if (chances.site === undefined) throw new RangeError(`The site fragment ${fragment} has no input.`);
     return chances.site;
+  }
+  if (fragment.startsWith("country:")) {
+    if (chances.country === undefined) throw new RangeError(`The country fragment ${fragment} has no input.`);
+    return chances.country;
   }
   return fragment.startsWith("provider:") ? chances.provider : chances.region;
 }
