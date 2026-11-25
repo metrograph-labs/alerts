@@ -20,7 +20,7 @@ The package needs Node.js 22 or later. It is an ES module.
 | Ids and merge | The id of each report and of each incident. The merge of duplicate reports is idempotent and does not change with the order. |
 | Assessment | The first assessment of an incident, its score, its audience and the record that tells why. |
 | Escalation | The chain of the steps of a route, the acknowledgement, the send limits, the digest and the drills. |
-| Sources | The health and the coverage of each source, the lateness across sources and the system reports. |
+| Sources | The health and the coverage of each source, the lag of each feed, the lateness across sources and the system reports. |
 | Kinds | The taxonomy of the kinds of an alert, with a lock file of the codes. |
 | Lifelines and needs | The 8 FEMA Community Lifelines, and the needs of a person each day with an official source for each amount. |
 | Indicators | The checks of the indicator readings and the read of each indicator series. |

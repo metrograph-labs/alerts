@@ -191,6 +191,10 @@ FIX_FUTURE_LIMIT_MS: build/index.d.ts#FIX_FUTURE_LIMIT_MS
 FLOAT_REACH: build/index.d.ts#FLOAT_REACH
 FOREIGN_TABLE: build/index.d.ts#FOREIGN_TABLE
 FUNCTION_SUBJECT: build/index.d.ts#FUNCTION_SUBJECT
+FEED_LAG_LEVEL: build/index.d.ts#FEED_LAG_LEVEL
+FEED_LAG_WINDOW: build/index.d.ts#FEED_LAG_WINDOW
+FeedLag: build/index.d.ts#FeedLag
+FeedLagOptions: build/index.d.ts#FeedLagOptions
 FetchFailure: build/index.d.ts#FetchFailure
 FetchOutcome: build/index.d.ts#FetchOutcome
 FetchRecord: build/index.d.ts#FetchRecord
@@ -691,6 +695,7 @@ expectationProblems: build/index.d.ts#expectationProblems
 expectedHarmSchema: build/index.d.ts#expectedHarmSchema
 expectedOf: build/index.d.ts#expectedOf
 failureDomains: build/index.d.ts#failureDomains
+feedLags: build/index.d.ts#feedLags
 fetchFailureSchema: build/index.d.ts#fetchFailureSchema
 fetchOutcomeSchema: build/index.d.ts#fetchOutcomeSchema
 fetchRecordSchema: build/index.d.ts#fetchRecordSchema
@@ -2284,6 +2289,31 @@ export declare const FOREIGN_TABLE: LevelTable;
 
 ### build/index.d.ts#FUNCTION_SUBJECT
 export declare const FUNCTION_SUBJECT = "alerts.function";
+
+### build/index.d.ts#FEED_LAG_LEVEL
+export declare const FEED_LAG_LEVEL = 0.95;
+
+### build/index.d.ts#FEED_LAG_WINDOW
+export declare const FEED_LAG_WINDOW: Duration;
+
+### build/index.d.ts#FeedLag
+export interface FeedLag {
+  readonly source: SourceId;
+  readonly count: number;
+  readonly ahead: number;
+  readonly median: Duration;
+  readonly medianLow?: Duration;
+  readonly medianHigh?: Duration;
+  readonly p90High?: Duration;
+  readonly newest: Instant;
+}
+
+### build/index.d.ts#FeedLagOptions
+export interface FeedLagOptions {
+  readonly at: Instant;
+  readonly window?: Duration;
+  readonly level?: number;
+}
 
 ### build/index.d.ts#FetchFailure
 export type FetchFailure = {
@@ -5009,6 +5039,9 @@ export declare function expectedOf(probability: Estimate, count: Estimate): Esti
 
 ### build/index.d.ts#failureDomains
 export declare function failureDomains(source: SourceDescriptor): readonly string[];
+
+### build/index.d.ts#feedLags
+export declare function feedLags(reports: readonly Report[], options: FeedLagOptions): FeedLag[];
 
 ### build/index.d.ts#fetchFailureSchema
 export declare const fetchFailureSchema: z.ZodType<FetchFailure, FetchFailure>;
