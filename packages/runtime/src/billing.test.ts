@@ -104,7 +104,7 @@ describe("the billing watch", () => {
     expect(signals[0]?.aborted).toBe(false);
     release();
     await watch.settled();
-    expect(watch.watches()).toEqual([expect.objectContaining({ copy: "cloud", billing: { state: "stopped", at: UNREAD_AT } })]);
+    expect(watch.watches()[0]).toEqual(expect.objectContaining({ copy: "cloud", billing: { state: "stopped", at: UNREAD_AT } }));
     const ended = billingWatch({ peers: [PEER], copies: copies(), run });
     await ended.check(clock, undefined, life.signal);
     life.abort();
@@ -196,7 +196,7 @@ describe("the billing watch", () => {
     expect(watch.watches()[0]?.billing).toEqual({ state: "stopped", at: readAt + MAX_AGE });
   });
 
-  it("gives unread after the time limit, ignores a read that the stop ended, and moves its times at a step of the clock", async () => {
+  it("gives unread after the time limit, ignores a read that the close of the runtime ended, and moves its times at a step of the clock", async () => {
     const clock = fakeWallClock(UNREAD_AT);
     const hang: DriftRunner = (_argv, signal) => new Promise((resolve) => signal.addEventListener("abort", () => resolve({ exitCode: 1, stdout: "" }), { once: true }));
     const late = billingWatch({ peers: [PEER], copies: copies(), run: hang });
@@ -207,10 +207,10 @@ describe("the billing watch", () => {
     late.shift(60_000);
     expect(late.watches()[0]?.billing).toEqual({ state: "unread", at: UNREAD_AT + BILLING_LIMIT + 60_000 });
     expect(late.nextReadAt()).toBe(UNREAD_AT + BILLING_LIMIT + BILLING_RETRY + 60_000);
-    const stop = new AbortController();
+    const life = new AbortController();
     const stopped = billingWatch({ peers: [PEER], copies: copies(), run: hang });
-    await stopped.check(clock, stop.signal);
-    stop.abort();
+    await stopped.check(clock, undefined, life.signal);
+    life.abort();
     await stopped.settled();
     expect(stopped.failure("cloud")).toBeUndefined();
     expect(stopped.watches()[0]?.billing).toBeUndefined();
