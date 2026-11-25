@@ -492,6 +492,132 @@ const incidentCache = new WeakMap<Report, { readonly group: readonly Report[]; r
 const liveAt = (report: Report, at: Instant, ended: ReadonlySet<ReportId>): boolean =>
   report.op !== "cancel" && !(report.expires !== undefined && report.expires <= at) && !ended.has(report.id);
 
+/** The inputs of `leavingReports`. */
+export interface LeavingInput {
+  /** The merge state of the group. */
+  readonly state: MergeState;
+  /** The ids of the reports of one group, as `incidents` gives them. */
+  readonly group: readonly ReportId[];
+  /** The ids of the candidates, in the order of the test. The result gives them in the order that they leave. */
+  readonly order: readonly ReportId[];
+  /** The time of the test. */
+  readonly at: Instant;
+  /** The ended reports at the time, from `endedReports`. */
+  readonly ended: ReadonlySet<ReportId>;
+  /** The link rule of the groups, the same rule that gave the group. */
+  readonly link?: LinkRule | undefined;
+}
+
+/**
+ * This function gives the candidates that can leave a group one by one, in the order of `order` (AL-177). A candidate
+ * leaves only when the reports that stay keep one group and the same values of the incident. The anchor can leave, then
+ * the incident gets the next anchor. The caller keeps each report that a reader names.
+ *
+ * - The candidate is not live, and it is not a head of the group. Thus the heads of the incident stay.
+ * - The candidate has no block of the link rule. Thus no link of rule 3 needs it.
+ * - The candidate shares one or more keys of rules 1 and 2 with the reports that stay. The reports that stay connect
+ *   these keys without the candidate. Thus the reports that stay are one group.
+ * - No reference of the candidate names a report that stays. No report that stays has its origin, a shared correlation
+ *   key and an earlier sent time. Thus the candidate states nothing about a report that stays.
+ * - No report that stays has an event of the candidate, a sent time at or after it and an unknown value. Thus each
+ *   known value of a report that stays does not change.
+ * - A report that stays has the origin of the candidate. Thus the corroboration of the incident stays.
+ *
+ * The test of each candidate reads the reports that stay after the earlier candidates leave. The function tests the
+ * candidates again until no candidate leaves. Thus a second call with the reports that stay gives no report.
+ */
+export function leavingReports({ state, group: ids, order, at, ended, link }: LeavingInput): ReportId[] {
+  const group = reportsOf(state, ids);
+  const byId = new Map(group.map((report) => [report.id, report]));
+  // A report that leaves states nothing about a report that stays. Thus the heads of the reports that stay are the heads of the group.
+  const { superseded, replaced } = statementsOf(group, eventsOf(group));
+  // The reports that stay, for each key of rules 1 and 2, for each own key and for each origin.
+  const members = new Map<string, Set<Report>>();
+  const owners = new Map<string, number>();
+  const origins = new Map<string, number>();
+  const count = (map: Map<string, number>, key: string, step: number): void => {
+    map.set(key, (map.get(key) ?? 0) + step);
+  };
+  for (const report of group) {
+    for (const key of shareKeys(report)) {
+      let set = members.get(key);
+      if (set === undefined) members.set(key, (set = new Set()));
+      set.add(report);
+    }
+    count(owners, shareKeys(report)[0]!, 1);
+    count(origins, report.origin, 1);
+  }
+  const leaving: ReportId[] = [];
+  const left = new Set<ReportId>();
+  for (let again = true; again; ) {
+    again = false;
+    for (const id of order) {
+      const report = byId.get(id);
+      if (report === undefined || left.has(id) || liveAt(report, at, ended)) continue;
+      if (!superseded.has(id) && !replaced.has(id)) continue;
+      if (link !== undefined && blockKeys(report, link).length > 0) continue;
+      if ((origins.get(report.origin) ?? 0) < 2) continue;
+      const keys = shareKeys(report);
+      const own = keys[0]!;
+      const shared = [...new Set(keys)].filter((key) => (members.get(key)?.size ?? 0) > 1);
+      if (!joinedWithout(shared, members, report)) continue;
+      // A reference names the own key of a report that stays: the candidate ends or states that report.
+      const references = keys.slice(1, 1 + report.references.length);
+      if (references.some((key) => (owners.get(key) ?? 0) - (key === own ? 1 : 0) > 0)) continue;
+      // The reports that stay of each event of the candidate: one origin and one correlation key.
+      const correlations = keys.slice(1 + report.references.length);
+      const events = correlations.flatMap((key) => [...(members.get(key) ?? [])].filter((other) => other !== report && other.origin === report.origin));
+      // The rule of the copies: a later report of an event states the codes of the earlier one.
+      if (events.some((other) => other.sent < report.sent)) continue;
+      // An unknown value of a later report of an event takes the value of the latest earlier report that is not a cancel.
+      const unknown = (other: Report): boolean => other.severity === "unknown" || other.urgency === "unknown" || other.certainty === "unknown";
+      if (report.op !== "cancel" && events.some((other) => other.sent >= report.sent && unknown(other))) continue;
+      leaving.push(id);
+      left.add(id);
+      again = true;
+      for (const key of new Set(keys)) members.get(key)?.delete(report);
+      count(owners, own, -1);
+      count(origins, report.origin, -1);
+    }
+  }
+  return leaving;
+}
+
+/** This function gives the reports of a state with the ids. A state in the one form gets a search of its sorted list for each id. */
+function reportsOf(state: MergeState, ids: readonly ReportId[]): Report[] {
+  if (normalStates.has(state)) {
+    return ids.flatMap((id) => {
+      const index = indexIn(state.reports, id, reportKey);
+      return index >= 0 ? [state.reports[index]!] : [];
+    });
+  }
+  const wanted = new Set(ids);
+  return state.reports.filter((report) => wanted.has(report.id));
+}
+
+/**
+ * This function gives true when the keys are one or more, and the reports of the keys other than one report connect
+ * the keys. Two keys connect when a report has both keys. The function uses a union of sets over the keys.
+ */
+function joinedWithout(keys: readonly string[], members: ReadonlyMap<string, ReadonlySet<Report>>, report: Report): boolean {
+  if (keys.length <= 1) return keys.length === 1;
+  const root = keys.map((_, index) => index);
+  const find = (index: number): number => {
+    while (root[index] !== index) index = root[index] = root[root[index]!]!;
+    return index;
+  };
+  const first = new Map<Report, number>();
+  keys.forEach((key, index) => {
+    for (const other of members.get(key) ?? []) {
+      if (other === report) continue;
+      const held = first.get(other);
+      if (held === undefined) first.set(other, index);
+      else root[find(held)] = find(index);
+    }
+  });
+  return keys.every((_, index) => find(index) === find(0));
+}
+
 /**
  * This function gives the incident of a group at a time. The incident reads the time only through the live reports.
  * Thus the same reports with the same live mask give the same incident, and the function gives it again.
@@ -512,6 +638,17 @@ function cachedIncident(group: readonly Report[], at: Instant, ended: ReadonlySe
  * the past value.
  */
 export function endedReports(state: MergeState, at: Instant): ReadonlySet<ReportId> {
+  const held = endedCache.get(state);
+  if (held !== undefined && held.at === at) return held.ended;
+  const ended = endedOf(state, at);
+  endedCache.set(state, { at, ended });
+  return ended;
+}
+
+// The ended reports of the last time of each state. A pass reads them for `incidents` and for the retirements.
+const endedCache = new WeakMap<MergeState, { readonly at: Instant; readonly ended: ReadonlySet<ReportId> }>();
+
+function endedOf(state: MergeState, at: Instant): ReadonlySet<ReportId> {
   const latest = new Map<ReportId, EndMark>();
   for (const mark of state.ends) {
     if (mark.at > at) continue;

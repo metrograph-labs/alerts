@@ -8,14 +8,16 @@
  * - A quiet incident retires at the quiet horizon. It is not live, and it has no part that a later reader needs.
  * - An incident that a person knows retires at the time `told`, the quiet horizon by default (AL-172). It is not live,
  *   and each of its alerts has its cancel. A tombstone keeps a late copy of each report out, thus no alert goes again.
+ * - An old report of a live incident leaves it when the incident keeps its values (AL-177, `lateRetirements` of the core).
+ *   A report that a reader of the runtime needs stays. Thus a long stream of updates of one event has a bound.
  */
 import {
+  allRetirements,
   DRILL_KIND,
   incidents,
   OBSERVE_WINDOW,
   QUIET_HORIZON,
   reportPasses,
-  retirements,
   RETENTION_HORIZON,
   SEND_LIMIT_MAX_WINDOW,
   THROTTLE_MAX_WINDOW,
@@ -28,6 +30,7 @@ import {
   type Report,
   type ReportId,
 } from "@mark1russell7/alerts";
+import { compareCodeUnits } from "@mark1russell7/text/order";
 import { envelope, frameTag, type RetiredEvent } from "./events.ts";
 import { observingSources } from "./observe.ts";
 import type { RuntimeState } from "./state.ts";
@@ -94,9 +97,31 @@ export function retention(options: RetentionOptions = {}): Required<RetentionOpt
  *   from this incident (`drillRunOf`). A retirement of the incident turns a passed run into a failed run, and the failure calls.
  */
 export function quietKeeps(state: RuntimeState, expectations: readonly Expectation[], at: Instant): (incident: Incident) => boolean {
+  const { recent } = neededReports(state, expectations, at);
+  return (incident) => incident.reports.some(recent);
+}
+
+/** The two tests of `neededReports`. */
+interface Needed {
+  /** The test of `quietKeeps`: an entry holds its report for `ENTRY_KEEP`. */
+  readonly recent: (id: ReportId) => boolean;
+  /** The test of `lateRetirements`: each entry holds its report. */
+  readonly always: (id: ReportId) => boolean;
+}
+
+/**
+ * This function tells which reports of a state a reader of the runtime needs at a time: the reports of the list of
+ * `quietKeeps`. An escalation start, a hold or a suppression holds its report for `ENTRY_KEEP` in the test `recent`, and
+ * at any age in the test `always`. An entry names the anchor of its incident at its time. One pass of the state gives both tests.
+ */
+function neededReports(state: RuntimeState, expectations: readonly Expectation[], at: Instant): Needed {
   const held = new Set<ReportId>();
-  const recent = at - ENTRY_KEEP;
-  for (const each of [...state.starts, ...state.holds, ...state.suppressions]) if (each.at >= recent) held.add(each.incident);
+  const entries = new Set<ReportId>();
+  const since = at - ENTRY_KEEP;
+  for (const each of [...state.starts, ...state.holds, ...state.suppressions]) {
+    entries.add(each.incident);
+    if (each.at >= since) held.add(each.incident);
+  }
   const observing = observingSources(state);
   const counted = at - OBSERVE_WINDOW;
   const cancelled = new Set(state.cancelled);
@@ -111,7 +136,7 @@ export function quietKeeps(state: RuntimeState, expectations: readonly Expectati
     if (report === undefined) return false;
     return (observing.has(report.source) && report.received >= counted) || expectations.some((expectation) => expectation.from === report.source && reportPasses(expectation.when, report));
   };
-  return (incident) => incident.reports.some(needed);
+  return { recent: needed, always: (id) => entries.has(id) || needed(id) };
 }
 
 const DRILL_RUN = `${DRILL_KIND}.run`;
@@ -126,7 +151,7 @@ function lastRun(state: RuntimeState, report: Report): boolean {
 /**
  * This function gives the event that retires each old incident and old orphan key of the state at a time. It gives
  * `undefined` when nothing retires. The incidents come from the merge state of each copy. `link` is the link rule of the
- * delivery step and the view, thus the retirement removes only whole incidents of the delivery step. `expectations` are
+ * delivery step and the view, thus the retirement keeps the groups of the delivery step. `expectations` are
  * the expectations of the view, for `quietKeeps`.
  *
  * - An orphan key is a cancelled key with no delivery in the merge. A new read of the log of another copy can bring back an old cancel.
@@ -142,7 +167,11 @@ export function retiredEvent(
   expectations: readonly Expectation[] = [],
 ): RetiredEvent | undefined {
   const found = incidents(state.merge, at, { link });
-  const reports = retirements(state.merge, found, at, horizon, { horizon: quiet, told, keeps: quietKeeps(state, expectations, at) });
+  const needed = neededReports(state, expectations, at);
+  const rule = { horizon: quiet, told, keeps: (incident: Incident) => incident.reports.some(needed.recent) };
+  // The reports of a live incident that leave it (AL-177). No delivery names them, thus they add no key.
+  const { whole, late } = allRetirements(state.merge, found, at, horizon, rule, { link, keeps: needed.always });
+  const reports = late.length === 0 ? whole : [...whole, ...late].sort(compareCodeUnits);
   const gone = new Set(reports);
   // A delivery key does not name its incident, thus the event names the cancelled keys of the deliveries of the incidents.
   const keys = new Set(state.merge.deliveries.filter((delivery) => gone.has(delivery.incident)).map((delivery) => delivery.key));
