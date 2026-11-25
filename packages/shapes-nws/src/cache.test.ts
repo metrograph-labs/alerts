@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import { memoryCache, openShapeCache, SHAPES_FILE, type ShapeCache } from "./cache.ts";
-import type { CachedList, CachedZone } from "./plan.ts";
+import type { CachedList, CachedZone, ZoneHead } from "./plan.ts";
 
 const T0 = Date.UTC(2026, 10, 15, 18, 0, 0);
 const LIST: CachedList = { state: "KS", kind: "county", fetched: T0, ids: ["KSC015", "KSC173"], condition: { etag: 'W/"1"', lastModified: "Thu, 16 Apr 2026 16:22:32 GMT", digest: "ab" } };
@@ -15,6 +15,10 @@ const RING = [
   [-97, 37],
 ] as const;
 const zone = (id: string, extra: Partial<CachedZone> = {}): CachedZone => ({ kind: "county", id, state: "KS", name: id, fetched: T0, shapes: [{ type: "polygon", rings: [RING] }], ...extra });
+const head = (id: string, extra: Partial<CachedZone> = {}): ZoneHead => {
+  const { shapes: _shapes, ...rest } = zone(id, extra);
+  return rest;
+};
 
 let folders: string[] = [];
 afterEach(() => {
@@ -33,11 +37,14 @@ function roundTrip(cache: ShapeCache): void {
   cache.putZone(zone("KSC015"));
   cache.putZone(zone("KSC173", { condition: { digest: "cd" } }));
   cache.putZone(zone("KSC173", { name: "Sedgwick", condition: { digest: "ef" } }));
-  expect(cache.load()).toEqual({ lists: [LIST], zones: [zone("KSC015"), zone("KSC173", { name: "Sedgwick", condition: { digest: "ef" } })] });
+  expect(cache.load()).toEqual({ lists: [LIST], zones: [head("KSC015"), head("KSC173", { name: "Sedgwick", condition: { digest: "ef" } })] });
+  expect(cache.outline({ kind: "county", id: "KSC173" })).toEqual(zone("KSC173").shapes);
+  expect(cache.outline({ kind: "forecast", id: "KSC173" })).toBeUndefined();
   cache.putList({ ...LIST, ids: ["KSC173"], fetched: T0 + 1 }, [{ kind: "county", id: "KSC015" }]);
   const after = cache.load();
   expect(after.lists).toEqual([{ ...LIST, ids: ["KSC173"], fetched: T0 + 1 }]);
   expect(after.zones.map((item) => item.id)).toEqual(["KSC173"]);
+  expect(cache.outline({ kind: "county", id: "KSC015" })).toBeUndefined();
 }
 
 describe("memoryCache", () => {
@@ -59,7 +66,7 @@ describe("openShapeCache", () => {
   });
 
   // A copy before AL-33 knows no kind `fire`. It skips each fire row of a newer copy this way, thus a rollback works.
-  it("skips a row that it cannot read or of a kind that it does not know, and the next refresh asks for it again", () => {
+  it("skips a row of a kind that it does not know, and gives no outline for shapes that do not parse", () => {
     const path = filePath();
     const cache = openShapeCache(path);
     cache.putZone(zone("KSC015"));
@@ -70,7 +77,10 @@ describe("openShapeCache", () => {
     db.prepare("INSERT INTO lists (state, kind, fetched, ids) VALUES ('KS', 'marine', 1, '[]')").run();
     db.close();
     const again = openShapeCache(path);
-    expect(again.load()).toEqual({ lists: [], zones: [zone("KSC173")] });
+    // The load reads no shapes (AL-115). The store drops the head at the first read of the outline.
+    expect(again.load()).toEqual({ lists: [], zones: [head("KSC015"), head("KSC173")] });
+    expect(again.outline({ kind: "county", id: "KSC015" })).toBeUndefined();
+    expect(again.outline({ kind: "county", id: "KSC173" })).toEqual(zone("KSC173").shapes);
     again.close();
   });
 
