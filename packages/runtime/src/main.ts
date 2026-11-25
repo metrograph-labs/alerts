@@ -65,7 +65,9 @@ import { COPY_TOKEN_KEY } from "./copy.ts";
 import { configFilesCall, EXCHANGE_TOKEN_LENGTH, exchangeCall, exchangeHost } from "./exchange-http.ts";
 import { createPositionIntake, FIXES_FILE, readFixes, writeFixes } from "./position-intake.ts";
 import { createTellIntake, tellHost, tellToken } from "./tell-intake.ts";
-import { heartbeat, heldOf, type PassSummary } from "./heartbeat.ts";
+import { heartbeat, heldOf } from "./heartbeat.ts";
+import type { Pass } from "./runtime.ts";
+import { COVERAGE_FILE, coverageFile } from "./coverage-file.ts";
 import { holdHome } from "./home-lock.ts";
 import { quotaNote } from "./quota.ts";
 import { replyNotes } from "./replies.ts";
@@ -201,6 +203,11 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
     write: (text) => writeFileAtomic(join(home, USE_FILE), text, { mode: 0o600 }),
     onError: (error) => out.error(`A write of ${USE_FILE} failed: ${error instanceof Error ? error.name : typeof error}.`),
   });
+  // The coverage report of each watched place and kind, with the health of each source (AL-196). It names the places, thus only the user of the folder reads it.
+  const coverageReport = coverageFile({
+    write: (text) => writeFileAtomic(join(home, COVERAGE_FILE), text, { mode: 0o600 }),
+    onError: (error) => out.error(`A write of ${COVERAGE_FILE} failed: ${error instanceof Error ? error.name : typeof error}.`),
+  });
   const pushoverQuota = quotaGate(PUSHOVER_QUOTA, { key: "pushover:app", store: quotas, now: () => wall.now() });
   const pushoverReserveNotices = quotaGate(PUSHOVER_RESERVE_NOTICES, { key: "pushover:reserve-notices", store: quotas, now: () => wall.now() });
 
@@ -276,11 +283,12 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
   let marked = false;
   // The watch of the event loop starts at the good start (AL-88). A start folds the log in one block, and the ready window of the supervisor measures it.
   let loopWatch: LoopWatch | undefined;
-  const onPass = (pass: PassSummary): void => {
+  const onPass = (pass: Pass): void => {
     for (const beat of beats) beat(pass);
     reload?.onPass();
     // The use reads of the cap of Twilio go into the private folder when they change (AL-91).
     if (instance.useReads !== undefined) uses.update(instance.useReads());
+    coverageReport.update(pass.view);
     if (marked || service.lifecycle?.state !== "running") return;
     marked = true;
     blockWatch?.phase("run after the good start");

@@ -29,11 +29,13 @@ import {
   recentRecovery,
   recentStep,
   startHealth,
+  coverageCandidates,
   storeEmptyAt,
   systemReports,
   threats,
   useUnreadAt,
   type Coverage,
+  type CoverageCandidates,
   type ChannelDownConfig,
   type ChannelQuota,
   type ChannelSnapshot,
@@ -106,12 +108,27 @@ export interface SystemView {
   readonly incidents: readonly Incident[];
   readonly lateness: readonly Lateness[];
   readonly coverage: readonly Coverage[];
+  /** The sources that cover each kind at each place, whatever their health, in the order of `coverage` (AL-196). */
+  readonly candidates: readonly CoverageCandidates[];
   /** The step of the system reports. Its reports are new when the state of the system changed. */
   readonly step: SystemStep;
   /** The next time when a timer of the health, of the lateness or of an incident ends. */
   readonly wakeAt?: Instant;
   /** The folds of the lateness at `at`. The next view continues them. They change only the cost of the next view. The lateness stays the same. */
   readonly folds: LatenessFolds;
+}
+
+// The candidates depend only on the sources, the places and the kinds. Thus a view keeps them while these lists stay the same.
+const CANDIDATES = new WeakMap<readonly WatchedPlace[], WeakMap<readonly SourceDescriptor[], { readonly kinds: readonly string[]; readonly list: readonly CoverageCandidates[] }>>();
+
+function candidatesOf(config: Pick<ViewConfig, "sources" | "places" | "kinds">): readonly CoverageCandidates[] {
+  const bySources = CANDIDATES.get(config.places) ?? new WeakMap();
+  CANDIDATES.set(config.places, bySources);
+  const known = bySources.get(config.sources);
+  if (known !== undefined && known.kinds === config.kinds) return known.list;
+  const list = coverageCandidates({ sources: config.sources, places: config.places, kinds: config.kinds, containing: containingCodes });
+  bySources.set(config.sources, { kinds: config.kinds, list });
+  return list;
 }
 
 // One rule for each policy of the limits. Thus the folds of one view continue in the next view, because their rule is the same function.
@@ -219,7 +236,7 @@ export function systemView(state: RuntimeState, config: ViewConfig, at: Instant,
   // The end of the clear time of each source that is up with an open line is a timer too (AL-75).
   const cleared = sourceClearAt(step.lines, { sources: config.sources, health, ...(config.sourceClear === undefined ? {} : { sourceClear: config.sourceClear }) }, at);
   const wakeAt = earliest([...steps.map((entry) => entry.wakeAt), ...late.map((entry) => entry.wakeAt), ...ends, ...unread, ...cleared, ...blocked, stepped === undefined ? undefined : stepped.at + CLOCK_STEP_WINDOW, recovered === undefined ? undefined : recovered.at + LOG_RECOVERY_WINDOW]);
-  return { at, health, incidents: found, lateness: late, coverage: covered, step, ...(wakeAt === undefined ? {} : { wakeAt }), folds: next };
+  return { at, health, incidents: found, lateness: late, coverage: covered, candidates: candidatesOf(config), step, ...(wakeAt === undefined ? {} : { wakeAt }), folds: next };
 }
 
 /** This function gives the event of the step of a view, or `undefined` when the step has no report. */

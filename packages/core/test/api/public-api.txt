@@ -102,6 +102,7 @@ CopyTime: build/index.d.ts#CopyTime
 CopyWatch: build/index.d.ts#CopyWatch
 CorrelationKey: build/index.d.ts#CorrelationKey
 Coverage: build/index.d.ts#Coverage
+CoverageCandidates: build/index.d.ts#CoverageCandidates
 CoverageInput: build/index.d.ts#CoverageInput
 CoverageNeed: build/index.d.ts#CoverageNeed
 CoveragePolicy: build/index.d.ts#CoveragePolicy
@@ -637,6 +638,7 @@ copyUnreadAt: build/index.d.ts#copyUnreadAt
 copyUnsteadyAt: build/index.d.ts#copyUnsteadyAt
 correlationKeySchema: build/index.d.ts#correlationKeySchema
 coverage: build/index.d.ts#coverage
+coverageCandidates: build/index.d.ts#coverageCandidates
 coverageSchema: build/index.d.ts#coverageSchema
 coverageShort: build/index.d.ts#coverageShort
 cursorSchema: build/index.d.ts#cursorSchema
@@ -1640,6 +1642,13 @@ export interface Coverage {
   readonly faults: readonly string[];
   readonly commonResources: readonly CellResource[];
   readonly required: number;
+}
+
+### build/index.d.ts#CoverageCandidates
+export interface CoverageCandidates {
+  readonly place: PlaceId;
+  readonly kind: string;
+  readonly sources: readonly SourceId[];
 }
 
 ### build/index.d.ts#CoverageInput
@@ -4841,6 +4850,9 @@ export declare const correlationKeySchema: z.ZodType<CorrelationKey, Correlation
 
 ### build/index.d.ts#coverage
 export declare function coverage(input: CoverageInput, policy?: CoveragePolicy): Coverage[];
+
+### build/index.d.ts#coverageCandidates
+export declare function coverageCandidates(input: Pick<CoverageInput, "sources" | "places" | "kinds" | "containing">): CoverageCandidates[];
 
 ### build/index.d.ts#coverageSchema
 export declare const coverageSchema: z.ZodType<Coverage, Coverage>;
