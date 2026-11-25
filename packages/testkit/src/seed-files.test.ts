@@ -2,8 +2,8 @@ import { readFile, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openTransitCache } from "@mark1russell7/alerts-runtime";
-import { openShapeCache, type ShapeRecords } from "@mark1russell7/alerts-shapes-nws";
-import type { Position } from "@mark1russell7/alerts";
+import { openShapeCache, type ShapeRecords, type ZoneHead } from "@mark1russell7/alerts-shapes-nws";
+import type { MapShape, Position } from "@mark1russell7/alerts";
 import { CATALOG_COLUMNS, catalogFeeds } from "@mark1russell7/alerts-source-gtfs-alerts";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { SEED_FORECAST_ZONES, seedShapes, seedTransit, TRANSIT_COLUMNS, type SeedShapesResult, type SeedTransitResult } from "./seed-files.ts";
@@ -20,6 +20,16 @@ function load(path: string): ShapeRecords {
   const cache = openShapeCache(path);
   try {
     return cache.load();
+  } finally {
+    cache.close();
+  }
+}
+
+/** This function reads the head and the shapes of each zone. The load of the cache reads no shapes (AL-115). */
+function loadOutlines(path: string): { readonly zone: ZoneHead; readonly shapes: readonly MapShape[] | undefined }[] {
+  const cache = openShapeCache(path);
+  try {
+    return cache.load().zones.map((zone) => ({ zone, shapes: cache.outline(zone) }));
   } finally {
     cache.close();
   }
@@ -47,10 +57,11 @@ describe("seedShapes", () => {
 
   it("has made-up states, and closed rings", () => {
     const records = load(shapes.path);
-    for (const zone of records.zones) {
+    for (const { zone, shapes: outline } of loadOutlines(shapes.path)) {
       expect(zone.state).toMatch(/^[YZ][A-Z]$/u);
       expect(zone.id.startsWith(zone.state)).toBe(true);
-      for (const shape of zone.shapes) {
+      expect(outline).toBeDefined();
+      for (const shape of outline ?? []) {
         if (shape.type !== "polygon") throw new Error("A seeded shape is a polygon.");
         const ring = shape.rings[0]!;
         expect(ring.length).toBeGreaterThanOrEqual(5);
