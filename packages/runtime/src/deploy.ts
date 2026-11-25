@@ -39,6 +39,7 @@ import { writeFileAtomic } from "@procedures/fs/files";
 import { runCommand, type CommandResult } from "@procedures/shell/command";
 import { nodeHostPorts } from "@mark1russell7/service/host";
 import { errorMessage } from "@mark1russell7/text";
+import { createPrinter } from "@mark1russell7/text/print";
 import { alertsHome, readText as readFileText } from "./config.ts";
 import { hostFolder } from "./host.ts";
 import { GOOD_FILE } from "./reload.ts";
@@ -79,6 +80,9 @@ import {
   type SwapTarget,
 } from "./slots.ts";
 import { codeReport, readRunningCode } from "./running.ts";
+
+// The output of this command for a person goes through one printer, which removes the shapes of tokens (no raw console).
+const print = createPrinter({ out: process.stdout, err: process.stderr });
 
 const USAGE = "The command is: node src/deploy.ts status | adopt | stage <commit> [--page] | swap <a|b> <commit> | relink [a|b] | fold";
 
@@ -139,7 +143,7 @@ async function supervisorParts(folder: string): Promise<Record<string, string | 
 /** This function prints the parts of the supervisor that change from the live slot to `slot`. */
 async function tellSupervisor(live: SlotName, slot: SlotName): Promise<void> {
   const changes = supervisorChanges(await supervisorParts(slots[live]), await supervisorParts(slots[slot]));
-  console.log(
+  print.line(
     changes.length === 0
       ? "The supervisor does not change."
       : `The supervisor changes: ${changes.join(", ")}. The supervisor takes the change only at a restart of the boot task.`,
@@ -147,14 +151,14 @@ async function tellSupervisor(live: SlotName, slot: SlotName): Promise<void> {
   // A supervisor older than AL-89 starts each runtime from the real path of its slot, thus from the old slot (AL-144).
   const own = await readText(join(slots[live], ...SUPERVISOR_FILES[0].split("/")));
   if (own !== undefined && !own.includes("entryRoot")) {
-    console.log(`The supervisor of slot ${live} is older than AL-89: it starts each runtime from slot ${live} until the restart of the boot task.`);
+    print.line(`The supervisor of slot ${live} is older than AL-89: it starts each runtime from slot ${live} until the restart of the boot task.`);
   }
 }
 
 /** This function prints the line about the fold version from slot `from` to slot `to`, when the version changes (AL-153). */
 async function tellFold(from: SlotName, to: SlotName): Promise<void> {
   const line = foldChange(foldVersionOf(await readText(join(slots[from], ...FOLD_FILE.split("/")))), foldVersionOf(await readText(join(slots[to], ...FOLD_FILE.split("/")))));
-  if (line !== undefined) console.log(line);
+  if (line !== undefined) print.line(line);
 }
 
 /**
@@ -170,9 +174,9 @@ async function foldLive(): Promise<void> {
   for (const set of sets) {
     const fold = foldStep(runtime, home, process.execPath, set);
     const result = await step(`fold ${set}`, fold.program, fold.args, runtime, fold.env);
-    console.log(result.stdout.trim().split("\n").slice(-2).join("\n"));
+    print.line(result.stdout.trim().split("\n").slice(-2).join("\n"));
   }
-  if (sets.length === 1) console.log(`The home folder has no ${GOOD_FILE}, thus the fold was only for the private files.`);
+  if (sets.length === 1) print.line(`The home folder has no ${GOOD_FILE}, thus the fold was only for the private files.`);
 }
 
 /** This function reads the live slot, or throws when the live path is not a link to a slot. */
@@ -184,18 +188,18 @@ async function liveSlot(): Promise<SlotName> {
 
 async function status(): Promise<void> {
   const live = await readLive(slots);
-  console.log(live.kind === "link" ? `The live path is a link to slot ${live.slot ?? "(no slot)"}.` : `The live path is ${live.kind === "folder" ? "a folder: start adopt" : "missing"}.`);
+  print.line(live.kind === "link" ? `The live path is a link to slot ${live.slot ?? "(no slot)"}.` : `The live path is ${live.kind === "folder" ? "a folder: start adopt" : "missing"}.`);
   const marks = await readMarks();
   for (const name of ["a", "b"] as const) {
     const head = await headOf(slots[name]);
     const mark = marks.marks[name];
     const stage = mark === undefined ? "no stage" : `staged ${mark.sha.slice(0, 7)} at ${mark.at}, checks ${mark.checks.join(" ")}${mark.sha === head ? "" : " (not the commit of the slot)"}`;
-    console.log(`slot ${name}: ${head === undefined ? "no checkout" : head.slice(0, 7)}, ${stage}`);
+    print.line(`slot ${name}: ${head === undefined ? "no checkout" : head.slice(0, 7)}, ${stage}`);
   }
   // The probes do not tell the code of the runtime. The record of its last start tells it (AL-167).
   const report = codeReport(live, await readRunningCode(hostFolder(home)));
-  if (report.kind === "other") console.error(report.line);
-  else console.log(report.line);
+  if (report.kind === "other") print.error(report.line);
+  else print.line(report.line);
 }
 
 async function stage(commit: string, page: boolean): Promise<void> {
@@ -206,7 +210,7 @@ async function stage(commit: string, page: boolean): Promise<void> {
   const scope = await scopeOf();
   const heavy = (name: string, program: string, args: readonly string[], cwd: string, env: Readonly<Record<string, string>> = {}): Promise<CommandResult> =>
     scope === undefined ? step(name, program, args, cwd, env) : step(name, "systemd-run", [...scope, program, ...args], cwd, env);
-  console.log(scope === undefined ? "The stage runs with no scope: only its priority is low." : `The heavy steps run in a scope: ${scope.slice(4).join(" ")}.`);
+  print.line(scope === undefined ? "The stage runs with no scope: only its priority is low." : `The heavy steps run in a scope: ${scope.slice(4).join(" ")}.`);
   const slot = otherSlot(live);
   const folder = slots[slot];
   const call = pnpmCall(process.env, process.execPath);
@@ -223,16 +227,16 @@ async function stage(commit: string, page: boolean): Promise<void> {
   await git(folder, "fetch", "--quiet", "origin");
   await git(folder, "checkout", "--quiet", "--detach", commit);
   const sha = (await headOf(folder)) ?? "";
-  console.log(`Slot ${slot} has the commit ${sha.slice(0, 7)}.`);
+  print.line(`Slot ${slot} has the commit ${sha.slice(0, 7)}.`);
   const env = { CI: "1", COREPACK_ENABLE_DOWNLOAD_PROMPT: "0" };
   await heavy("install", call.program, [...call.prefix, ...installArgs(page)], folder, env);
   if (page) await heavy("page", call.program, [...call.prefix, "--filter", "./packages/site", "build"], folder, env);
   const runtime = join(folder, "packages", "runtime");
   // The bundles of the outage Functions go to a file of the slot. A deploy of the runtime reads the file, thus it starts no esbuild (AL-112).
   const bundles = await heavy("bundles", process.execPath, [join(runtime, "src", "outage-bundles.ts")], runtime);
-  console.log(bundles.stdout.trim());
+  print.line(bundles.stdout.trim());
   const config = await heavy("config", process.execPath, [join(runtime, "src", "check.ts")], runtime);
-  console.log(config.stdout.trim());
+  print.line(config.stdout.trim());
   // The load needs no private file. An empty home keeps each write of a module away from the live home.
   const scratch = await mkdtemp(join(tmpdir(), "alerts-load-"));
   try {
@@ -242,10 +246,10 @@ async function stage(commit: string, page: boolean): Promise<void> {
     await rm(scratch, { recursive: true, force: true });
   }
   await writeMarks(withMark(await readMarks(), slot, { sha, at: new Date().toISOString(), checks: [...STAGE_CHECKS] }));
-  console.log(`Slot ${slot} is staged at ${sha.slice(0, 7)}: ${STAGE_CHECKS.join(", ")} passed.`);
+  print.line(`Slot ${slot} is staged at ${sha.slice(0, 7)}: ${STAGE_CHECKS.join(", ")} passed.`);
   await tellSupervisor(live, slot);
   await tellFold(live, slot);
-  console.log(`Start \`deploy.ts swap ${slot} ${sha.slice(0, 7)}\` to put it live.`);
+  print.line(`Start \`deploy.ts swap ${slot} ${sha.slice(0, 7)}\` to put it live.`);
 }
 
 /** This function gives the package links of a slot that resolve outside the slot (AL-144). */
@@ -268,7 +272,7 @@ async function relink(slot: SlotName): Promise<void> {
   await step("install", call.program, [...call.prefix, ...installArgs(false)], folder, { CI: "1", COREPACK_ENABLE_DOWNLOAD_PROMPT: "0" });
   const left = await foreignOf(slot);
   if (left.length > 0) throw new Error(`Slot ${slot} still has ${left.length} package links outside its folder after the install.`);
-  console.log(`Slot ${slot} is installed again at its path: each package link resolves in the slot.`);
+  print.line(`Slot ${slot} is installed again at its path: each package link resolves in the slot.`);
 }
 
 /** This function swaps the live link to `target`, after the compare of the target with the slots (AL-167). Call it with the deploy lock. */
@@ -284,10 +288,10 @@ async function swap(target: SwapTarget): Promise<void> {
   if (refusal !== undefined) throw new Error(refusal);
   if (from === undefined || slot === undefined) throw new Error("The live path is not a link to a slot.");
   await swapLink(slots.live, slots[slot]);
-  console.log(`The live path is a link to slot ${slot} (${(head ?? "").slice(0, 7)}) now. Slot ${from} stays for a rollback.`);
+  print.line(`The live path is a link to slot ${slot} (${(head ?? "").slice(0, 7)}) now. Slot ${from} stays for a rollback.`);
   await tellSupervisor(from, slot);
   await tellFold(from, slot);
-  console.log("The runtime takes the new code at its next start. `node src/install.ts restart` from the live path starts it now.");
+  print.line("The runtime takes the new code at its next start. `node src/install.ts restart` from the live path starts it now.");
 }
 
 const [command, ...rest] = process.argv.slice(2);
@@ -305,11 +309,11 @@ try {
     await locked(async () => relink((rest[0] as SlotName | undefined) ?? otherSlot(await liveSlot())));
   } else if (command === "fold" && rest.length === 0) await locked(foldLive);
   else {
-    console.error(USAGE);
+    print.error(USAGE);
     code = 2;
   }
 } catch (error) {
-  console.error(errorMessage(error));
+  print.error(errorMessage(error));
   code = 1;
 }
 process.exitCode = code;
@@ -317,10 +321,10 @@ process.exitCode = code;
 /** This function makes the checkout slot `a`, and relinks it when its package links name its old path. */
 async function adopt(): Promise<void> {
   await adoptLive(slots);
-  console.log("The checkout is slot a now, and the live path is a link to it.");
+  print.line("The checkout is slot a now, and the live path is a link to it.");
   const foreign = await foreignOf("a");
   if (foreign.length > 0) {
-    console.log(`Slot a has ${foreign.length} package links to its old path. The install of slot a starts again.`);
+    print.line(`Slot a has ${foreign.length} package links to its old path. The install of slot a starts again.`);
     await relink("a");
   }
 }

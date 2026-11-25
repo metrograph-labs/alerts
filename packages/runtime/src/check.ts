@@ -17,10 +17,14 @@
 import { resolve } from "node:path";
 import { PART_NAME } from "@mark1russell7/alerts";
 import { countOf } from "@mark1russell7/text";
+import { createPrinter } from "@mark1russell7/text/print";
 import { alertsHome, checkConfig, configPath, fileSource, type PartSource } from "./config.ts";
 import { readCopySettings } from "./copy.ts";
 import { readSignals, signalText } from "./host.ts";
 import { daemonCheck } from "./instance.ts";
+
+// The output of this command for a person goes through one printer, which removes the shapes of tokens (no raw console).
+const print = createPrinter({ out: process.stdout, err: process.stderr });
 
 const USAGE = "The command is: node src/check.ts [file], or node src/check.ts --part <name> <file>";
 
@@ -36,7 +40,7 @@ function command(args: readonly string[]): { readonly file: string | undefined; 
 const parsed = command(process.argv.slice(2));
 
 if (parsed === undefined) {
-  console.error(`${USAGE}. The name of a part has small letters, digits and hyphens, with a letter first.`);
+  print.error(`${USAGE}. The name of a part has small letters, digits and hyphens, with a letter first.`);
   process.exitCode = 2;
 } else {
   const path = parsed.file === undefined ? configPath(process.env, process.cwd()) : resolve(parsed.file);
@@ -47,10 +51,10 @@ if (parsed === undefined) {
   if (result.tag === "ok") {
     const { places, people, contacts, policies } = result.value.config;
     const counts = [countOf(places.length, "place"), countOf(people.length, "person", "people"), countOf(contacts.length, "contact"), countOf(policies.length, "policy", "policies")];
-    console.log(`The configuration is valid${part === undefined ? "" : ` with the new part ${part.name}`}: ${counts.join(", ")}.`);
+    print.line(`The configuration is valid${part === undefined ? "" : ` with the new part ${part.name}`}: ${counts.join(", ")}.`);
   } else {
-    console.error(`The configuration has ${countOf(result.error.length, "problem")}:\n- ${result.error.join("\n- ")}`);
+    print.error(`The configuration has ${countOf(result.error.length, "problem")}:\n- ${result.error.join("\n- ")}`);
     process.exitCode = 1;
   }
-  console.log(signalText(await readSignals(home)));
+  print.line(signalText(await readSignals(home)));
 }
