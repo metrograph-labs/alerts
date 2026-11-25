@@ -494,8 +494,10 @@ const liveAt = (report: Report, at: Instant, ended: ReadonlySet<ReportId>): bool
 
 /** The inputs of `leavingReports`. */
 export interface LeavingInput {
-  /** The reports of one group, as `incidents` gives them. */
-  readonly group: readonly Report[];
+  /** The merge state of the group. */
+  readonly state: MergeState;
+  /** The ids of the reports of one group, as `incidents` gives them. */
+  readonly group: readonly ReportId[];
   /** The ids of the candidates, in the order of the test. The result gives them in the order that they leave. */
   readonly order: readonly ReportId[];
   /** The time of the test. */
@@ -524,7 +526,8 @@ export interface LeavingInput {
  * The test of each candidate reads the reports that stay after the earlier candidates leave. The function tests the
  * candidates again until no candidate leaves. Thus a second call with the reports that stay gives no report.
  */
-export function leavingReports({ group, order, at, ended, link }: LeavingInput): ReportId[] {
+export function leavingReports({ state, group: ids, order, at, ended, link }: LeavingInput): ReportId[] {
+  const group = reportsOf(state, ids);
   const byId = new Map(group.map((report) => [report.id, report]));
   // A report that leaves states nothing about a report that stays. Thus the heads of the reports that stay are the heads of the group.
   const { superseded, replaced } = statementsOf(group, eventsOf(group));
@@ -580,6 +583,18 @@ export function leavingReports({ group, order, at, ended, link }: LeavingInput):
   return leaving;
 }
 
+/** This function gives the reports of a state with the ids. A state in the one form gets a search of its sorted list for each id. */
+function reportsOf(state: MergeState, ids: readonly ReportId[]): Report[] {
+  if (normalStates.has(state)) {
+    return ids.flatMap((id) => {
+      const index = indexIn(state.reports, id, reportKey);
+      return index >= 0 ? [state.reports[index]!] : [];
+    });
+  }
+  const wanted = new Set(ids);
+  return state.reports.filter((report) => wanted.has(report.id));
+}
+
 /**
  * This function gives true when the keys are one or more, and the reports of the keys other than one report connect
  * the keys. Two keys connect when a report has both keys. The function uses a union of sets over the keys.
@@ -623,6 +638,17 @@ function cachedIncident(group: readonly Report[], at: Instant, ended: ReadonlySe
  * the past value.
  */
 export function endedReports(state: MergeState, at: Instant): ReadonlySet<ReportId> {
+  const held = endedCache.get(state);
+  if (held !== undefined && held.at === at) return held.ended;
+  const ended = endedOf(state, at);
+  endedCache.set(state, { at, ended });
+  return ended;
+}
+
+// The ended reports of the last time of each state. A pass reads them for `incidents` and for the retirements.
+const endedCache = new WeakMap<MergeState, { readonly at: Instant; readonly ended: ReadonlySet<ReportId> }>();
+
+function endedOf(state: MergeState, at: Instant): ReadonlySet<ReportId> {
   const latest = new Map<ReportId, EndMark>();
   for (const mark of state.ends) {
     if (mark.at > at) continue;

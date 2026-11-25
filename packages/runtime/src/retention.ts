@@ -98,18 +98,31 @@ export function retention(options: RetentionOptions = {}): Required<RetentionOpt
  *   from this incident (`drillRunOf`). A retirement of the incident turns a passed run into a failed run, and the failure calls.
  */
 export function quietKeeps(state: RuntimeState, expectations: readonly Expectation[], at: Instant): (incident: Incident) => boolean {
-  const needed = neededReports(state, expectations, at, at - ENTRY_KEEP);
-  return (incident) => incident.reports.some(needed);
+  const { recent } = neededReports(state, expectations, at);
+  return (incident) => incident.reports.some(recent);
+}
+
+/** The two tests of `neededReports`. */
+interface Needed {
+  /** The test of `quietKeeps`: an entry holds its report for `ENTRY_KEEP`. */
+  readonly recent: (id: ReportId) => boolean;
+  /** The test of `lateRetirements`: each entry holds its report. */
+  readonly always: (id: ReportId) => boolean;
 }
 
 /**
  * This function tells which reports of a state a reader of the runtime needs at a time: the reports of the list of
- * `quietKeeps`. An escalation start, a hold or a suppression at or after `recent` holds its report. `lateRetirements`
- * gives `-Infinity`, thus each entry holds its report. An entry names the anchor of its incident at its time.
+ * `quietKeeps`. An escalation start, a hold or a suppression holds its report for `ENTRY_KEEP` in the test `recent`, and
+ * at any age in the test `always`. An entry names the anchor of its incident at its time. One pass of the state gives both tests.
  */
-function neededReports(state: RuntimeState, expectations: readonly Expectation[], at: Instant, recent: Instant): (id: ReportId) => boolean {
+function neededReports(state: RuntimeState, expectations: readonly Expectation[], at: Instant): Needed {
   const held = new Set<ReportId>();
-  for (const each of [...state.starts, ...state.holds, ...state.suppressions]) if (each.at >= recent) held.add(each.incident);
+  const entries = new Set<ReportId>();
+  const since = at - ENTRY_KEEP;
+  for (const each of [...state.starts, ...state.holds, ...state.suppressions]) {
+    entries.add(each.incident);
+    if (each.at >= since) held.add(each.incident);
+  }
   const observing = observingSources(state);
   const counted = at - OBSERVE_WINDOW;
   const cancelled = new Set(state.cancelled);
@@ -124,7 +137,7 @@ function neededReports(state: RuntimeState, expectations: readonly Expectation[]
     if (report === undefined) return false;
     return (observing.has(report.source) && report.received >= counted) || expectations.some((expectation) => expectation.from === report.source && reportPasses(expectation.when, report));
   };
-  return needed;
+  return { recent: needed, always: (id) => entries.has(id) || needed(id) };
 }
 
 const DRILL_RUN = `${DRILL_KIND}.run`;
@@ -155,10 +168,11 @@ export function retiredEvent(
   expectations: readonly Expectation[] = [],
 ): RetiredEvent | undefined {
   const found = incidents(state.merge, at, { link });
-  const rule = { horizon: quiet, told, keeps: quietKeeps(state, expectations, at) };
+  const needed = neededReports(state, expectations, at);
+  const rule = { horizon: quiet, told, keeps: (incident: Incident) => incident.reports.some(needed.recent) };
   const whole = retirements(state.merge, found, at, horizon, rule);
   // The reports of a live incident that leave it (AL-177). No delivery names them, thus they add no key.
-  const late = lateRetirements(state.merge, found, at, horizon, rule, { link, keeps: neededReports(state, expectations, at, -Infinity) });
+  const late = lateRetirements(state.merge, found, at, horizon, rule, { link, keeps: needed.always });
   const reports = late.length === 0 ? whole : [...whole, ...late].sort(compareCodeUnits);
   const gone = new Set(reports);
   // A delivery key does not name its incident, thus the event names the cancelled keys of the deliveries of the incidents.

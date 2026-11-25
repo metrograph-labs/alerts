@@ -2822,7 +2822,8 @@ export interface LatenessStep {
 
 ### build/index.d.ts#LeavingInput
 export interface LeavingInput {
-  readonly group: readonly Report[];
+  readonly state: MergeState;
+  readonly group: readonly ReportId[];
   readonly order: readonly ReportId[];
   readonly at: Instant;
   readonly ended: ReadonlySet<ReportId>;
@@ -5272,7 +5273,7 @@ export declare function latestIn<T extends {
 }>(items: readonly T[], at: Instant, window: Duration): T | undefined;
 
 ### build/index.d.ts#leavingReports
-export declare function leavingReports({ group, order, at, ended, link }: LeavingInput): ReportId[];
+export declare function leavingReports({ state, group: ids, order, at, ended, link }: LeavingInput): ReportId[];
 
 ### build/index.d.ts#levelRuleSchema
 export declare const levelRuleSchema: z.ZodType<LevelRule, LevelRule>;

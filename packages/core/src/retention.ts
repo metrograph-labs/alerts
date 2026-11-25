@@ -109,10 +109,9 @@ export function lateRetirements(
   quiet?: QuietRule,
   options: LateOptions = {},
 ): ReportId[] {
-  const { changed, told, limitOf } = limitsOf(state, at, horizon, quiet);
   const live = found.filter((incident) => incident.live && incident.reports.length > 1);
   if (live.length === 0) return [];
-  const byId = new Map(state.reports.map((report) => [report.id, report]));
+  const { changed, told, limitOf } = limitsOf(state, at, horizon, quiet);
   const ended = endedReports(state, at);
   const out: ReportId[] = [];
   for (const incident of live) {
@@ -123,14 +122,23 @@ export function lateRetirements(
     );
     if (candidates.length === 0) continue;
     const order = candidates.sort((a, b) => changed.get(a)! - changed.get(b)! || compareCodeUnits(a, b));
-    const group = incident.reports.flatMap((report) => {
-      const held = byId.get(report);
-      return held === undefined ? [] : [held];
-    });
-    out.push(...leavingReports({ group, order, at, ended, link: options.link }));
+    // An incident object of `incidents` stays the same while its reports and its live reports stay. The last change of a
+    // candidate is at or before the time, thus its life does not change. Then the same candidates give the same result.
+    const key = order.join(" ");
+    const held = lateCache.get(incident);
+    if (held !== undefined && held.key === key && held.link === options.link) {
+      out.push(...held.leaving);
+      continue;
+    }
+    const leaving = leavingReports({ state, group: incident.reports, order, at, ended, link: options.link });
+    lateCache.set(incident, { key, link: options.link, leaving });
+    out.push(...leaving);
   }
   return out.sort(compareCodeUnits);
 }
+
+// The last result of `leavingReports` for each incident object, with its candidates and its link rule.
+const lateCache = new WeakMap<Incident, { readonly key: string; readonly link: LinkRule | undefined; readonly leaving: readonly ReportId[] }>();
 
 /** The last change of each report, the reports that a person knows, and the limit of the last change of each incident. */
 interface Limits {
@@ -141,6 +149,17 @@ interface Limits {
 
 /** This function gives the limits of `retirements` and `lateRetirements` at a time. */
 function limitsOf(state: MergeState, at: Instant, horizon: Duration, quiet: QuietRule | undefined): Limits {
+  const held = limitsCache.get(state);
+  if (held !== undefined && held.at === at && held.horizon === horizon && held.quiet === quiet) return held.limits;
+  const limits = newLimits(state, at, horizon, quiet);
+  limitsCache.set(state, { at, horizon, quiet, limits });
+  return limits;
+}
+
+// The limits of the last pass of each state. `retirements` and `lateRetirements` of one pass read them one time.
+const limitsCache = new WeakMap<MergeState, { readonly at: Instant; readonly horizon: Duration; readonly quiet: QuietRule | undefined; readonly limits: Limits }>();
+
+function newLimits(state: MergeState, at: Instant, horizon: Duration, quiet: QuietRule | undefined): Limits {
   const changed = new Map<ReportId, Instant>();
   const touch = (report: ReportId, time: Instant): void => {
     const held = changed.get(report);
