@@ -1,8 +1,8 @@
 /**
- * This package holds four formats of the US warning system. The first is the Valid Time Event Code
+ * This package holds five formats of the US warning system. The first is the Valid Time Event Code
  * (P-VTEC) of the NWS. The second is the kinds of the NWS and SAME event codes in the taxonomy of the
  * alert system. The third is the UGC and SAME region codes and the state codes. The fourth is the
- * event codes of the WEA messages.
+ * event codes of the WEA messages. The fifth is the header of a SAME message of the weather radio.
  *
  * The package also holds the origin and the office ids of the NWS, and the rule of the keepalive of the NWS. The NWS API source, the CAP sources,
  * the IEM source and the weather radio source use these functions.
@@ -43,6 +43,16 @@ export {
 } from "./codes.ts";
 export { isKeepalive, KEEPALIVE_AWIPS_ID, KEEPALIVE_MAX_AGE_MS, keepaliveCheck } from "./keepalive.ts";
 export { NWS_API_SOURCE, NWS_ORIGIN, nwsEvent, US_COVERAGE, vtecOffice } from "./nws.ts";
+export {
+  parseSameHeader,
+  SAME_END,
+  SAME_MAX_LOCATIONS,
+  SAME_ORIGINATORS,
+  SAME_START,
+  sameIssuedAt,
+  type SameHeader,
+  voteSameHeader,
+} from "./same.ts";
 export { statesOf } from "./watch.ts";
 export { WEA_EVENT_CODES, WEA_PARAMETER } from "./wea.ts";
 export {
