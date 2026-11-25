@@ -391,12 +391,12 @@
     "access": "api",
     "auth": "account",
     "terms": {
-      "url": "https://acleddata.com/terms-and-conditions",
-      "automated": "unclear",
-      "redistribution": "unclear",
-      "note": "OAuth named for one guide. Terms page not opened."
+      "url": "https://acleddata.com/eula",
+      "automated": "limited",
+      "redistribution": "limited",
+      "note": "The EULA grants a royalty-free licence for non-commercial use, also internal use. Automated access goes only through the API, within its rate limits. The EULA forbids the scraping of the site. A published work must be transformative. The EULA also limits the use of the data with AI and machine learning systems."
     },
-    "cost": "unknown",
+    "cost": "free",
     "delay": "unknown",
     "history": "unknown",
     "rateLimit": "unknown",
@@ -410,13 +410,17 @@
     ],
     "subjectIds": null,
     "risks": [],
-    "decision": "later",
+    "decision": "plan",
     "adapter": null,
-    "reason": "Curated conflict and protest events; terms decide use. The decision is later because the cost is unknown.",
+    "reason": "Researchers code each event of political violence and each protest, with its place and its date. The API needs an account with OAuth. A read with no account gave 403. A personal receiver is a non-commercial use.",
     "evidence": [
-      "https://acleddata.com/acled-api-documentation"
+      "https://acleddata.com/acled-api-documentation",
+      "https://acleddata.com/terms-and-conditions",
+      "https://acleddata.com/eula",
+      "https://acleddata.com/api/acled/read?limit=1",
+      "https://acleddata.com/robots.txt"
     ],
-    "round": 1
+    "round": 35
   },
   {
     "id": "acn-csirt-italia-rss",
@@ -644,12 +648,12 @@
     "terms": {
       "url": "https://www.aemo.com.au/privacy-and-legal-notices/copyright-permissions",
       "automated": "unclear",
-      "redistribution": "unclear",
-      "note": "The copyright permissions page returned 403 to the fetch tool. The terms were not read."
+      "redistribution": "allowed",
+      "note": "The copyright permissions give anyone a general permission to use AEMO Material for any purpose, with an accurate attribution to AEMO. They tell nothing of automated reading. nemweb.com.au has no robots.txt: the address sends a redirect to a page of the AEMO site. The robots.txt of the AEMO site blocks its own pages of market notices, not NEMweb."
     },
     "cost": "free",
-    "delay": "The directory read at 00:25 UTC on 2026-11-22 had a notice from 04:06 AM on 22 November 2026 (market time).",
-    "history": "The current directory held 1,196 notice files.",
+    "delay": "Minutes: the directory read at 18:08 UTC on 2026-11-25 had notice 146659, created at 21:03 market time (11:03 UTC) on the same day.",
+    "history": "The current directory held 1,267 notice files on 2026-11-25.",
     "rateLimit": "unknown",
     "calibration": null,
     "coverage": "National Electricity Market of Australia (Queensland, New South Wales, Victoria, South Australia, Tasmania).",
@@ -661,14 +665,16 @@
     ],
     "subjectIds": null,
     "risks": [],
-    "decision": "later",
+    "decision": "plan",
     "adapter": null,
-    "reason": "Plain text notices of the market operator with a type field. A sample of 40 had contingency reclassifications for lightning, residue and price notices, but no reserve notice. The terms are unread.",
+    "reason": "The market operator gives each notice as a plain text file with a type field, with no key. A reserve notice of an actual LOR3 tells of load shedding in a region of the market. The terms permit each use with attribution.",
     "evidence": [
       "https://nemweb.com.au/Reports/Current/Market_Notice/",
-      "https://www.aemo.com.au/privacy-and-legal-notices/copyright-permissions"
+      "https://nemweb.com.au/Reports/Current/Market_Notice/NEMITWEB1_MKTNOTICE_20261125.R146659",
+      "https://www.aemo.com.au/privacy-and-legal-notices/copyright-permissions",
+      "https://www.aemo.com.au/robots.txt"
     ],
-    "round": 18
+    "round": 33
   },
   {
     "id": "afir-access-points",
@@ -16733,21 +16739,21 @@
   },
   {
     "id": "opm-status",
-    "name": "OPM operating status (Washington DC area)",
+    "name": "OPM operating status (Washington DC area, JSON)",
     "classes": [
       "civic.government-operating-status"
     ],
-    "url": "https://www.opm.gov/policy-data-oversight/snow-dismissal-procedures/current-status/",
-    "access": "page",
+    "url": "https://www.opm.gov/json/operatingstatus.json",
+    "access": "api",
     "auth": "none",
     "terms": {
       "url": null,
       "automated": "unclear",
       "redistribution": "unclear",
-      "note": "No API, feed or email named. The app sends no push notifications."
+      "note": "The robots.txt of www.opm.gov does not block the JSON path. The round found no terms of use for the JSON."
     },
     "cost": "free",
-    "delay": "unknown",
+    "delay": "Minutes: the read of 2026-11-25 gave the status Open for that date, with the time of the post.",
     "history": "unknown",
     "rateLimit": "unknown",
     "calibration": null,
@@ -16760,13 +16766,15 @@
     ],
     "subjectIds": null,
     "risks": [],
-    "decision": "later",
+    "decision": "plan",
     "adapter": null,
-    "reason": "Narrow coverage, page only.",
+    "reason": "The JSON gives the operating status of the federal offices of the DC area with its type and its date, with no key. The coverage is narrow.",
     "evidence": [
-      "https://www.opm.gov/policy-data-oversight/snow-dismissal-procedures/current-status/"
+      "https://www.opm.gov/policy-data-oversight/snow-dismissal-procedures/current-status/",
+      "https://www.opm.gov/json/operatingstatus.json",
+      "https://www.opm.gov/robots.txt"
     ],
-    "round": 1
+    "round": 35
   },
   {
     "id": "oracle-linux-oval",
@@ -17863,36 +17871,39 @@
     "dimensions": [
       "fuel-prices"
     ],
-    "url": "https://www.prix-carburants.gouv.fr/rubrique/opendata/",
+    "url": "https://donnees.roulez-eco.fr/opendata/instantane_ruptures",
     "access": "file",
     "auth": "none",
     "terms": {
       "url": "https://www.prix-carburants.gouv.fr/rubrique/opendata/",
       "automated": "unclear",
       "redistribution": "allowed",
-      "note": "Licence Ouverte."
+      "note": "The open data page gives the data under the Licence Ouverte (etalab-2.0) and names the download addresses. It tells nothing of automated reading. donnees.roulez-eco.fr has no robots.txt. The robots.txt of data.economie.gouv.fr blocks its API path, so an adapter reads the file of roulez-eco."
     },
     "cost": "free",
-    "delay": "about 10 minutes",
+    "delay": "Minutes: the file updates each 10 minutes. The file read at 18:31 UTC on 2026-11-25 had a temporary stock-out that started at 19:30 Paris time (18:30 UTC).",
     "history": "yes (yearly archives since 2007)",
     "rateLimit": "unknown",
     "calibration": null,
-    "coverage": "France, all stations",
+    "coverage": "France: 9,828 stations in the file read on 2026-11-25. The file had 23,066 stock-out records, and 2,646 of them were temporary. 742 temporary stock-outs started in November 2026.",
     "origins": [
       "prix-carburants"
     ],
     "path": [
-      "unknown"
+      "donnees.roulez-eco.fr"
     ],
     "subjectIds": null,
     "risks": [],
-    "decision": "later",
+    "decision": "plan",
     "adapter": null,
-    "reason": "Fuel prices and stock outages at each French station under the Licence Ouverte. Stock outages are a strong signal of a supply shock.",
+    "reason": "Each station gives its prices and each fuel that it does not have, with the start and the type of the stock-out. Many new temporary stock-outs in one area tell of a supply shock. The file needs no key.",
     "evidence": [
-      "https://www.prix-carburants.gouv.fr/rubrique/opendata/"
+      "https://www.prix-carburants.gouv.fr/rubrique/opendata/",
+      "https://donnees.roulez-eco.fr/opendata/instantane_ruptures",
+      "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?limit=1&where=carburants_indisponibles%20is%20not%20null",
+      "https://data.economie.gouv.fr/robots.txt"
     ],
-    "round": 10
+    "round": 34
   },
   {
     "id": "project-zero-0day-itw",
@@ -20385,38 +20396,43 @@
   },
   {
     "id": "state-dept-advisories",
-    "name": "US State Department travel advisories",
+    "name": "US State Department travel advisories (JSON API)",
     "classes": [
-      "security.travel-advisory"
+      "security.travel-advisory",
+      "security.kidnap"
     ],
-    "url": "https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories.html",
-    "access": "page",
+    "url": "https://cadataapi.state.gov/api/TravelAdvisories",
+    "access": "api",
     "auth": "none",
     "terms": {
       "url": null,
       "automated": "unclear",
       "redistribution": "unclear",
-      "note": "The page returned 403."
+      "note": "The copyright page of state.gov gave 403, so the round did not read it. Section 105 of title 17 of the US Code gives no copyright to a work of the US government. cadataapi.state.gov has no robots.txt."
     },
     "cost": "free",
-    "delay": "unknown",
-    "history": "unknown",
+    "delay": "Days: the read of 2026-11-25 gave 218 advisories, and the newest update was on 2026-11-23.",
+    "history": "The JSON gives the publication time and the last update of each advisory.",
     "rateLimit": "unknown",
     "calibration": null,
-    "coverage": "World.",
+    "coverage": "World: the level of each country from 1 to 4, with its risks. In the read of 2026-11-25, 36 advisories named kidnapping as a risk.",
     "origins": [
       "us-state-department"
     ],
     "path": [
-      "travel.state.gov"
+      "cadataapi.state.gov"
     ],
     "subjectIds": null,
     "risks": [],
-    "decision": "later",
+    "decision": "plan",
     "adapter": null,
-    "reason": "Official US levels; access not confirmed.",
-    "evidence": [],
-    "round": 1
+    "reason": "The JSON gives each travel advisory with its level, its risks and its update time, with no key. A new risk of kidnapping or a new level 4 is a signal.",
+    "evidence": [
+      "https://cadataapi.state.gov/api/TravelAdvisories",
+      "https://cadataapi.state.gov/robots.txt",
+      "https://www.state.gov/copyright-information"
+    ],
+    "round": 35
   },
   {
     "id": "statusgator",
@@ -24820,6 +24836,709 @@
       "https://www.sidc.be/spaceweatherservices/managed/services/archive/product/flaremail",
       "https://www.sidc.be/spaceweatherservices/managed/services/archive/product/presto/",
       "https://www.astro.oma.be/en/information/data-policy/"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 33,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "nsw-rfs-fire-bans",
+    "name": "NSW Rural Fire Service: the fire danger ratings and total fire bans of each fire weather district (XML feed)",
+    "classes": [
+      "fire.burn-ban"
+    ],
+    "url": "https://www.rfs.nsw.gov.au/feeds/fdrToban.xml",
+    "access": "feed",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.rfs.nsw.gov.au/news-and-media/stay-up-to-date/feeds",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The feeds page gives the material under CC BY 4.0, with a set attribution. The RFS supports the redistribution of its warnings by applications. The robots.txt does not block the feeds."
+    },
+    "delay": "Hours: the feed gives the ban of today and of tomorrow for each district. The bans come with the fire danger ratings of the Bureau of Meteorology.",
+    "history": "None: the feed gives only today and tomorrow.",
+    "coverage": "New South Wales: 21 fire weather districts with their councils. One read at 18:09 UTC on 2026-11-25 had no ban today.",
+    "origins": [
+      "nsw-rfs"
+    ],
+    "path": [
+      "www.rfs.nsw.gov.au"
+    ],
+    "reason": "A total fire ban is a ban on open fires in a district. The fire service of the state gives the ban of each district as open XML with no key.",
+    "evidence": [
+      "https://www.rfs.nsw.gov.au/news-and-media/stay-up-to-date/feeds",
+      "https://www.rfs.nsw.gov.au/feeds/fdrToban.xml",
+      "https://www.rfs.nsw.gov.au/robots.txt"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 33,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "bc-parks-advisories",
+    "name": "BC Parks API: the public advisories and the fire bans of the provincial parks of British Columbia (JSON)",
+    "classes": [
+      "safety.public-lands-closure",
+      "safety.wildlife",
+      "fire.burn-ban"
+    ],
+    "url": "https://bcparks.api.gov.bc.ca/api/public-advisories",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www2.gov.bc.ca/gov/content/data/policy-standards/data-policies/open-data/open-government-licence-bc",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The catalog record gives the data under the Open Government Licence - British Columbia: copy, publish, adapt and commercial use, with attribution. The API Terms of Use of the record gave 404, so automated reading is not read."
+    },
+    "delay": "Minutes to days: the newest advisory on 2026-11-25 had an advisory date of 2026-11-23.",
+    "history": "Each published advisory with its dates. On 2026-11-25 the API had 501 published advisories.",
+    "coverage": "British Columbia: the provincial parks, conservation areas and ecological reserves. The event types include park closure, trail closure, wildlife, campfires and wildfire. The endpoint fire-ban-prohibitions had 6 records.",
+    "origins": [
+      "bc-parks",
+      "bc-wildfire-service"
+    ],
+    "path": [
+      "bcparks.api.gov.bc.ca"
+    ],
+    "reason": "Each advisory has an event type, an access status, an urgency and the protected areas. Thus an adapter makes a report of each closure, wildlife danger and fire ban. The API needs no key.",
+    "evidence": [
+      "https://catalogue.data.gov.bc.ca/api/3/action/package_search?q=parks%20advisories",
+      "https://raw.githubusercontent.com/bcgov/bcparks.ca/main/infrastructure/kong/public-documentation.json",
+      "https://bcparks.api.gov.bc.ca/api/public-advisories?pagination%5BpageSize%5D=3&sort=advisoryDate%3Adesc",
+      "https://bcparks.api.gov.bc.ca/api/event-types?pagination%5BpageSize%5D=100",
+      "https://bcparks.api.gov.bc.ca/api/fire-ban-prohibitions?pagination%5BpageSize%5D=5",
+      "https://www2.gov.bc.ca/gov/content/data/policy-standards/data-policies/open-data/open-government-licence-bc"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 33,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "nsw-beachwatch",
+    "name": "Beachwatch NSW: the pollution forecast and the latest result of each swimming site (GeoJSON)",
+    "classes": [
+      "env.water.beach-advisory"
+    ],
+    "url": "https://api.beachwatch.nsw.gov.au/public/sites/geojson",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.nsw.gov.au/data/api/3/action/package_search?q=beachwatch&rows=5",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The record of Beachwatch on Data.NSW gives the licence CC BY. The API has no documentation page and no robots.txt. Nothing tells of automated reading."
+    },
+    "delay": "Hours: the forecast of a site comes each day, and one read on 2026-11-25 had a forecast time of 02:30 UTC on the same day.",
+    "history": "None: each site has its forecast now and its latest sample.",
+    "coverage": "New South Wales: 246 swimming sites on 2026-11-25. 135 had pollution unlikely, 24 possible and 1 likely. 86 had no forecast.",
+    "origins": [
+      "nsw-beachwatch"
+    ],
+    "path": [
+      "api.beachwatch.nsw.gov.au"
+    ],
+    "reason": "The state program of beach water quality gives a pollution forecast for each site as open GeoJSON with no key. A forecast of likely pollution tells people not to swim.",
+    "evidence": [
+      "https://api.beachwatch.nsw.gov.au/public/sites/geojson",
+      "https://data.nsw.gov.au/data/api/3/action/package_search?q=beachwatch&rows=5"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 33,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "hk-epd-beach-grading",
+    "name": "EPD of Hong Kong: the water quality grade of each beach (RSS feed)",
+    "classes": [
+      "env.water.beach-advisory"
+    ],
+    "url": "https://cd.epic.epd.gov.hk/beachpsi/en/beach2.rss",
+    "access": "feed",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.gov.hk/en/terms-and-conditions",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The terms of DATA.GOV.HK let each user download, distribute and reproduce the data, also for commercial use, with acknowledgement of the source. The feed itself has the line Copyright EPD All rights reserved. The terms tell nothing of automated reading."
+    },
+    "delay": "Days: the dataset tells of a post within 48 hours after a sample. The feed read on 2026-11-25 had a build time of 09:56 Hong Kong time on the same day.",
+    "history": "None: each beach has its latest grade. Files of each year hold the history.",
+    "coverage": "Hong Kong: the gazetted beaches. On 2026-11-25, out of season, the feed had 11 beaches: 7 with grade 1 and 4 with grade 2.",
+    "origins": [
+      "hk-epd"
+    ],
+    "path": [
+      "cd.epic.epd.gov.hk"
+    ],
+    "reason": "The environment department of Hong Kong gives a grade from 1 to 4 for each beach in a feed with no key. A grade of 3 or 4 tells of water that is not suitable for swimming.",
+    "evidence": [
+      "https://data.gov.hk/en-data/api/3/action/package_search?q=beach%20water%20quality&rows=8",
+      "https://cd.epic.epd.gov.hk/beachpsi/en/beach2.rss",
+      "https://data.gov.hk/en/terms-and-conditions"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 33,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "toronto-beach-water-quality",
+    "name": "City of Toronto: the E. coli samples of its beaches (CKAN datastore)",
+    "classes": [
+      "env.water.beach-advisory"
+    ],
+    "url": "https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/package_show?id=toronto-beaches-water-quality",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/package_show?id=toronto-beaches-water-quality",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The record of the dataset gives the Open Government Licence - Toronto. The round did not open the licence page or the robots.txt."
+    },
+    "delay": "Days: the newest sample on 2026-11-25 was from 2026-09-16, at the end of the season.",
+    "history": "102,534 samples on 2026-11-25.",
+    "coverage": "Toronto: the supervised public beaches, from June to September only.",
+    "origins": [
+      "toronto-public-health"
+    ],
+    "path": [
+      "ckan0.cf.opendata.inter.prod-toronto.ca"
+    ],
+    "reason": "The records give E. coli counts, not the advisory of Toronto Public Health. The data comes only in the summer season.",
+    "evidence": [
+      "https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/package_show?id=toronto-beaches-water-quality",
+      "https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/datastore_search?resource_id=8102bd4c-83cd-4354-9788-eecc0c7a09b4&limit=2&sort=collectionDate%20desc"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 33,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "ea-bathing-water-quality",
+    "name": "Environment Agency: the bathing water quality and the pollution risk forecasts of England (linked data API)",
+    "classes": [
+      "env.water.beach-advisory"
+    ],
+    "url": "https://environment.data.gov.uk/bwq/profiles/help-api.html",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "forbidden",
+      "redistribution": "unclear",
+      "note": "The robots.txt of environment.data.gov.uk blocks the paths /doc/ and /data/ for each agent. Its comment names the Bathing Water Quality API. The help page of the API gave 429."
+    },
+    "delay": "unknown",
+    "history": "unknown",
+    "coverage": "England: the designated bathing waters, with a daily pollution risk forecast in the season.",
+    "origins": [
+      "environment-agency-england"
+    ],
+    "path": [
+      "environment.data.gov.uk"
+    ],
+    "reason": "The robots.txt blocks the data paths of the API, and the help page gave 429. The round did not read the API.",
+    "evidence": [
+      "https://environment.data.gov.uk/robots.txt",
+      "https://environment.data.gov.uk/bwq/profiles/help-api.html"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 33,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "tfl-unified-api",
+    "name": "Transport for London: the status and the disruptions of each line (Unified API)",
+    "classes": [
+      "transport.transit.service-alert"
+    ],
+    "url": "https://api.tfl.gov.uk/Line/Mode/tube,overground,elizabeth-line,dlr/Status",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://tfl.gov.uk/corporate/terms-and-conditions/transport-data-service",
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The terms page of the transport data service gave 403, so the round read no terms. The API host has no robots.txt."
+    },
+    "delay": "Minutes: one read at 18:12 UTC on 2026-11-25 gave a status for each of 19 lines, with delays on 4 lines.",
+    "history": "None: each line has its status now.",
+    "coverage": "London: the Underground, the Overground, the Elizabeth line and the DLR.",
+    "origins": [
+      "tfl"
+    ],
+    "path": [
+      "api.tfl.gov.uk"
+    ],
+    "reason": "The API answered with no key, and TfL does not publish GTFS Realtime. But the terms page gave 403, so the terms are not read.",
+    "evidence": [
+      "https://api.tfl.gov.uk/Line/Mode/tube,overground,elizabeth-line,dlr/Status",
+      "https://tfl.gov.uk/corporate/terms-and-conditions/transport-data-service"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 34,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "nve-landslide-warnings",
+    "name": "NVE: the landslide warnings of Norway for each county and municipality (Jordskredvarsling API, JSON)",
+    "classes": [
+      "geo.landslide",
+      "geo.debris-flow"
+    ],
+    "url": "https://api01.nve.no/hydrology/forecast/landslide/v1.0.10/api/Warning/2",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://api.nve.no/doc/jordskredvarsling/",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The API page tells that the warning data is free for use. A user names the landslide warning service of Norway and varsom.no as the source. The page asks users to show all the data of a warning. api01.nve.no has no robots.txt."
+    },
+    "delay": "Hours: NVE gives a warning each day for today, tomorrow and the day after tomorrow. One read at 18:29 UTC on 2026-11-25 had no warning above level 1.",
+    "history": "The API gives the warnings of each date range from a start date to an end date.",
+    "coverage": "Norway: each county and municipality. The warnings tell of landslides, slush flows and debris flows, with an activity level from 1 to 4.",
+    "origins": [
+      "nve"
+    ],
+    "path": [
+      "api01.nve.no"
+    ],
+    "reason": "The water and energy directorate of Norway gives each landslide warning with its level and its municipalities as JSON with no key. The warnings include debris flows.",
+    "evidence": [
+      "https://api.nve.no/doc/jordskredvarsling/",
+      "https://api01.nve.no/hydrology/forecast/landslide/v1.0.10/api/Warning/2",
+      "https://api01.nve.no/robots.txt"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 34,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "hko-warning-summary",
+    "name": "Hong Kong Observatory: the summary of the weather warnings in force, with the landslip warning (open data API, JSON)",
+    "classes": [
+      "geo.landslide"
+    ],
+    "url": "https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=warnsum&lang=en",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.gov.hk/en/terms-and-conditions",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "DATA.GOV.HK lists this dataset of the Observatory. Its terms let each user download, distribute and reproduce the data, also for commercial use, with acknowledgement of the source. The terms tell nothing of automated reading. The robots.txt address sent a redirect, and the round did not follow it."
+    },
+    "delay": "Minutes: the dataset updates when a warning changes. One read at 18:28 UTC on 2026-11-25 gave an empty object, because no warning was in force.",
+    "history": "None: the summary gives the warnings in force now.",
+    "coverage": "Hong Kong. The summary also gives the tropical cyclone signals and the rainstorm, thunderstorm, fire danger, heat, cold, frost, monsoon, flooding and tsunami warnings.",
+    "origins": [
+      "hko"
+    ],
+    "path": [
+      "data.weather.gov.hk"
+    ],
+    "reason": "The Observatory issues the landslip warning when heavy rain makes many landslips likely. The summary gives the code of each warning in force with no key. The code WL is the landslip warning.",
+    "evidence": [
+      "https://data.gov.hk/en-data/api/3/action/package_search?q=weather%20warning%20summary&rows=5",
+      "https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=warnsum&lang=en",
+      "https://data.gov.hk/en/terms-and-conditions"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 34,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "losco-active-spills",
+    "name": "LOSCO: the active spill response records of Louisiana (ArcGIS feature layer)",
+    "classes": [
+      "env.spill"
+    ],
+    "url": "https://services9.arcgis.com/aWvO9aHtYLYMBTua/arcgis/rest/services/Active_LOSCO_Spill_Response_Records/FeatureServer/0",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The item on ArcGIS Online gives no licence and no terms of use. Its disclaimer tells that the data is for general information only."
+    },
+    "delay": "Days: the newest record on 2026-11-25 had an incident date of 2026-10-28.",
+    "history": "None: the layer holds only the spills with an active response.",
+    "coverage": "Louisiana and its waters: oil and other spills, with the product, the source, the estimated volume and the response status.",
+    "origins": [
+      "losco"
+    ],
+    "path": [
+      "services9.arcgis.com",
+      "provider:arcgis-online"
+    ],
+    "reason": "The layer gives the active spills of the oil spill office of Louisiana with no key. But the item gives no licence, so the terms of use are not known.",
+    "evidence": [
+      "https://www.arcgis.com/sharing/rest/search?q=spill%20incidents%20type%3A%22Feature%20Service%22&sortField=modified&sortOrder=desc&num=40&f=json",
+      "https://www.arcgis.com/home/item.html?id=e5125b7bbab644bba99960f197b8feb0"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 34,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "ecdc-wnv-animal-outbreaks",
+    "name": "ECDC: the outbreaks of West Nile virus among birds and equids in Europe (ArcGIS layer)",
+    "classes": [
+      "health.animal-disease"
+    ],
+    "url": "https://gis.ecdc.europa.eu/public/rest/services/WNV/WNF_Animal2/FeatureServer/2",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The layer gives no licence text, and the round did not read the terms of the ECDC."
+    },
+    "delay": "unknown",
+    "history": "unknown",
+    "coverage": "The EU and the EEA: the outbreaks among birds and equids in each region, in the season of West Nile virus.",
+    "origins": [
+      "ecdc"
+    ],
+    "path": [
+      "gis.ecdc.europa.eu"
+    ],
+    "reason": "The metadata of the layer answered, but each query of its records failed with error 400. The folder AvianInfluenza of the same server needs a token.",
+    "evidence": [
+      "https://gis.ecdc.europa.eu/public/rest/services?f=json",
+      "https://gis.ecdc.europa.eu/public/rest/services/WNV/WNF_Animal2/FeatureServer/2?f=json"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 34,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "nsw-health-drug-warnings",
+    "name": "NSW Health: the public drug warnings of New South Wales (web page)",
+    "classes": [
+      "health.drug-supply-threat"
+    ],
+    "url": "https://www.health.nsw.gov.au/aod/public-drug-alerts/Pages/default.aspx",
+    "access": "page",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The robots.txt blocks the paths of _layouts, and each RSS feed of the site has such a path. The RSS page of the site lists no feed of drug warnings."
+    },
+    "delay": "unknown",
+    "history": "The site gives a page of the warnings of each year.",
+    "coverage": "New South Wales: dangerous substances in the drug supply, for example nitazenes in heroin or in pills.",
+    "origins": [
+      "nsw-health"
+    ],
+    "path": [
+      "www.health.nsw.gov.au"
+    ],
+    "reason": "The warnings come only on a page with no feed, and no terms let automated reading of a page.",
+    "evidence": [
+      "https://www.health.nsw.gov.au/aod/public-drug-alerts/Pages/default.aspx",
+      "https://www.health.nsw.gov.au/Pages/rss.aspx",
+      "https://www.health.nsw.gov.au/robots.txt"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 35,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "fbi-wanted-api",
+    "name": "FBI: the posters of missing persons and kidnappings (Wanted API, JSON)",
+    "classes": [
+      "security.missing-person",
+      "security.kidnap"
+    ],
+    "url": "https://api.fbi.gov/wanted/v1/list?poster_classification=missing",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.justice.gov/legalpolicies",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The API page of the FBI links the legal policies of the Department of Justice. They tell that the information on its websites is in the public domain, unless a page tells otherwise. The robots.txt of www.fbi.gov blocks no path for each agent. api.fbi.gov has no robots.txt."
+    },
+    "delay": "Days: the FBI adds a poster when it opens a case. The first poster of the read of 2026-11-25 had a change on 2026-11-24.",
+    "history": "The list holds each active poster with its publication date.",
+    "coverage": "The United States and other countries: 142 posters of the class missing in the read of 2026-11-25. The subjects of a poster name the kidnapping and missing person cases.",
+    "origins": [
+      "fbi"
+    ],
+    "path": [
+      "api.fbi.gov"
+    ],
+    "reason": "The FBI gives each poster of a missing person or a kidnapping as JSON with no key. A new poster near a place is a signal. An adapter keeps the case, its dates and its place, not the personal details.",
+    "evidence": [
+      "https://www.fbi.gov/wanted/api",
+      "https://api.fbi.gov/wanted/v1/list?poster_classification=missing&pageSize=1",
+      "https://www.fbi.gov/robots.txt",
+      "https://www.justice.gov/legalpolicies"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 35,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "hkpf-missing-persons",
+    "name": "Hong Kong Police Force: the appeals for missing persons (XML)",
+    "classes": [
+      "security.missing-person"
+    ],
+    "url": "https://www.police.gov.hk/info/appeals_public/missing_persons/mp.php?lang=en",
+    "access": "feed",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.gov.hk/en/terms-and-conditions",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "DATA.GOV.HK lists this dataset of the police. Its terms let each user download, distribute and reproduce the data, also for commercial use, with acknowledgement of the source. The terms tell nothing of automated reading. www.police.gov.hk has no robots.txt."
+    },
+    "delay": "Hours to days: the police change the file when a case changes. The read of 2026-11-25 had 39 cases.",
+    "history": "None: the file holds the open appeals.",
+    "coverage": "Hong Kong: each open appeal for a missing person, with the dates and the police region of the case.",
+    "origins": [
+      "hkpf"
+    ],
+    "path": [
+      "www.police.gov.hk"
+    ],
+    "reason": "The police give each open appeal for a missing person in one XML file with no key. Each record names a person and has a photo, so an adapter keeps only the case number, the dates and the region.",
+    "evidence": [
+      "https://data.gov.hk/en-data/api/3/action/package_show?id=hk-hkpf-mp-missing-persons",
+      "https://www.police.gov.hk/info/appeals_public/missing_persons/mp.php?lang=en",
+      "https://data.gov.hk/en/terms-and-conditions"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 35,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "hk-wsd-water-suspensions",
+    "name": "Water Supplies Department of Hong Kong: the temporary water suspension notices (CSV)",
+    "classes": [
+      "infra.water.outage"
+    ],
+    "url": "https://www.esd.wsd.gov.hk/wsms_open_data/WSMS_OPEN_DATA(all).csv",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.gov.hk/en/terms-and-conditions",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "DATA.GOV.HK lists this dataset of the department. Its terms let each user download, distribute and reproduce the data, also for commercial use, with acknowledgement of the source. The terms tell nothing of automated reading. The robots.txt of www.esd.wsd.gov.hk blocks no path."
+    },
+    "delay": "Minutes to hours: the file gives the start and the status of each emergency suspension. The read of 2026-11-25 had 9 suspensions in progress.",
+    "history": "The file holds the recent and the planned notices. In the read of 2026-11-25, the start dates went from 2026-11-23 to 2026-12-03.",
+    "coverage": "Hong Kong, each district: 175 notices in the read of 2026-11-25. 138 were emergency suspensions and 37 were planned, of fresh water or of salt water for flushing.",
+    "origins": [
+      "hk-wsd"
+    ],
+    "path": [
+      "www.esd.wsd.gov.hk"
+    ],
+    "reason": "The department gives each emergency and planned water suspension with its district, its area, its cause and its status in one CSV file with no key.",
+    "evidence": [
+      "https://data.gov.hk/en-data/api/3/action/package_search?q=water%20supply%20suspension&rows=5",
+      "https://www.esd.wsd.gov.hk/wsms_open_data/WSMS_OPEN_DATA(all).csv",
+      "https://www.esd.wsd.gov.hk/robots.txt",
+      "https://data.gov.hk/en/terms-and-conditions"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 35,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "taiwan-water-outages",
+    "name": "Taiwan Water Corporation: the water outage cases (open data, JSON)",
+    "classes": [
+      "infra.water.outage"
+    ],
+    "url": "https://web.water.gov.tw/wateroffapi/openData/export/json",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.gov.tw/en/license",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The dataset is under the Open Government Data License, version 1.0. It grants a free, worldwide licence for each purpose with attribution, and it is compatible with CC BY 4.0. The licence tells nothing of automated reading. The robots.txt of web.water.gov.tw gave 502."
+    },
+    "delay": "unknown: one read on 2026-11-25 gave an empty list.",
+    "history": "unknown",
+    "coverage": "The service area of Taiwan Water Corporation: each outage or drop of pressure, with its area, its cause and its count of households.",
+    "origins": [
+      "taiwan-water"
+    ],
+    "path": [
+      "web.water.gov.tw"
+    ],
+    "reason": "The metadata names a daily JSON file of each outage case, with no key. The read gave an empty list, so the fields come from the metadata only.",
+    "evidence": [
+      "https://data.gov.tw/api/v2/rest/dataset/6050",
+      "https://web.water.gov.tw/wateroffapi/openData/export/json",
+      "https://data.gov.tw/en/license"
+    ]
+  },
+  {
+    "cost": "unknown",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 35,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "interpol-yellow-notices",
+    "name": "INTERPOL: the public yellow notices of missing persons (JSON API)",
+    "classes": [
+      "security.missing-person"
+    ],
+    "url": "https://ws-public.interpol.int/notices/v1/yellow",
+    "access": "api",
+    "auth": "unknown",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The API gave 403 to the round, so the round did not read the terms."
+    },
+    "delay": "unknown",
+    "history": "unknown",
+    "coverage": "World: the public yellow notices of the member countries.",
+    "origins": [
+      "interpol"
+    ],
+    "path": [
+      "ws-public.interpol.int"
+    ],
+    "reason": "The API gave 403 to the user agent of the round. The round did not try again.",
+    "evidence": [
+      "https://ws-public.interpol.int/notices/v1/yellow?resultPerPage=1"
+    ]
+  },
+  {
+    "cost": "unknown",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 35,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "politie-missing-persons",
+    "name": "Politie, the police of the Netherlands: the missing persons of the open data API",
+    "classes": [
+      "security.missing-person"
+    ],
+    "url": "https://api.politie.nl/v4/vermist",
+    "access": "api",
+    "auth": "unknown",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The API gave 403 to the round, so the round did not read the terms."
+    },
+    "delay": "unknown",
+    "history": "unknown",
+    "coverage": "The Netherlands: the missing persons that the police publish.",
+    "origins": [
+      "politie"
+    ],
+    "path": [
+      "api.politie.nl"
+    ],
+    "reason": "The API gave 403 to the user agent of the round. The round did not try again.",
+    "evidence": [
+      "https://api.politie.nl/v4/vermist?language=nl&maxnumberofitems=1"
     ]
   }
 ]

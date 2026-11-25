@@ -1742,10 +1742,12 @@ describe("the drill reports", () => {
       ["cancel", "system.drill.run", "drill/home/push-weekly"],
       ["alert", "system.drill.failed", "drill/home/push-weekly/failed"],
     ]);
-    expect(failed.reports[1]!.headline).toBe("The drill push-weekly failed: no acknowledgment came.");
+    expect(failed.reports[1]!.headline).toBe("The drill push-weekly failed: no acknowledgment came in 30 minutes.");
+    // A call says the description, thus the time is in words, not an ISO time (AL-188).
+    expect(failed.reports[1]!.description).toContain("The drill message went out at 17:00 UTC on 21 November 2026 on the channel ");
     const late = systemReports(failed.lines, snapshot(drills({ acked: START + 40 * MINUTE })), START + 40 * MINUTE);
     expect(codes(late.reports)).toEqual([["update", "system.drill.failed", "drill/home/push-weekly/failed"]]);
-    expect(late.reports[0]!.headline).toBe("The drill push-weekly failed: the acknowledgment came late.");
+    expect(late.reports[0]!.headline).toBe("The drill push-weekly failed: the acknowledgment came after 30 minutes.");
     // The next run ends the failed line, and its own verdict decides again.
     const next = systemReports(late.lines, snapshot(drills({ at: START + DRILL.every + DAY })), START + DRILL.every + DAY);
     expect(codes(next.reports)).toEqual([
