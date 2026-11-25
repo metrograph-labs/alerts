@@ -2676,5 +2676,41 @@
     "name": "NSW Health, the health department of New South Wales",
     "issues": null,
     "note": "The department publishes the public drug warnings of the state. The record of nsw-health-drug-warnings names this issuer."
+  },
+  {
+    "id": "fbi",
+    "name": "The FBI (the Federal Bureau of Investigation of the United States)",
+    "issues": null,
+    "note": "The FBI publishes the posters of wanted and missing persons. The record of fbi-wanted-api names this issuer."
+  },
+  {
+    "id": "hkpf",
+    "name": "The Hong Kong Police Force",
+    "issues": null,
+    "note": "The police publish the appeals for missing persons of Hong Kong. The record of hkpf-missing-persons names this issuer."
+  },
+  {
+    "id": "hk-wsd",
+    "name": "The Water Supplies Department of Hong Kong",
+    "issues": null,
+    "note": "The department publishes the water suspension notices of Hong Kong. The record of hk-wsd-water-suspensions names this issuer."
+  },
+  {
+    "id": "taiwan-water",
+    "name": "Taiwan Water Corporation",
+    "issues": null,
+    "note": "The water utility of most of Taiwan publishes its water outage cases. The record of taiwan-water-outages names this issuer."
+  },
+  {
+    "id": "interpol",
+    "name": "INTERPOL",
+    "issues": null,
+    "note": "INTERPOL publishes the public yellow notices of missing persons. The record of interpol-yellow-notices names this issuer."
+  },
+  {
+    "id": "politie",
+    "name": "Politie, the police of the Netherlands",
+    "issues": null,
+    "note": "The police of the Netherlands publish the missing persons in an open data API. The record of politie-missing-persons names this issuer."
   }
 ]

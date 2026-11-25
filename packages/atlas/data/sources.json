@@ -391,12 +391,12 @@
     "access": "api",
     "auth": "account",
     "terms": {
-      "url": "https://acleddata.com/terms-and-conditions",
-      "automated": "unclear",
-      "redistribution": "unclear",
-      "note": "OAuth named for one guide. Terms page not opened."
+      "url": "https://acleddata.com/eula",
+      "automated": "limited",
+      "redistribution": "limited",
+      "note": "The EULA grants a royalty-free licence for non-commercial use, also internal use. Automated access goes only through the API, within its rate limits. The EULA forbids the scraping of the site. A published work must be transformative. The EULA also limits the use of the data with AI and machine learning systems."
     },
-    "cost": "unknown",
+    "cost": "free",
     "delay": "unknown",
     "history": "unknown",
     "rateLimit": "unknown",
@@ -410,13 +410,17 @@
     ],
     "subjectIds": null,
     "risks": [],
-    "decision": "later",
+    "decision": "plan",
     "adapter": null,
-    "reason": "Curated conflict and protest events; terms decide use. The decision is later because the cost is unknown.",
+    "reason": "Researchers code each event of political violence and each protest, with its place and its date. The API needs an account with OAuth. A read with no account gave 403. A personal receiver is a non-commercial use.",
     "evidence": [
-      "https://acleddata.com/acled-api-documentation"
+      "https://acleddata.com/acled-api-documentation",
+      "https://acleddata.com/terms-and-conditions",
+      "https://acleddata.com/eula",
+      "https://acleddata.com/api/acled/read?limit=1",
+      "https://acleddata.com/robots.txt"
     ],
-    "round": 1
+    "round": 35
   },
   {
     "id": "acn-csirt-italia-rss",
@@ -16735,21 +16739,21 @@
   },
   {
     "id": "opm-status",
-    "name": "OPM operating status (Washington DC area)",
+    "name": "OPM operating status (Washington DC area, JSON)",
     "classes": [
       "civic.government-operating-status"
     ],
-    "url": "https://www.opm.gov/policy-data-oversight/snow-dismissal-procedures/current-status/",
-    "access": "page",
+    "url": "https://www.opm.gov/json/operatingstatus.json",
+    "access": "api",
     "auth": "none",
     "terms": {
       "url": null,
       "automated": "unclear",
       "redistribution": "unclear",
-      "note": "No API, feed or email named. The app sends no push notifications."
+      "note": "The robots.txt of www.opm.gov does not block the JSON path. The round found no terms of use for the JSON."
     },
     "cost": "free",
-    "delay": "unknown",
+    "delay": "Minutes: the read of 2026-11-25 gave the status Open for that date, with the time of the post.",
     "history": "unknown",
     "rateLimit": "unknown",
     "calibration": null,
@@ -16762,13 +16766,15 @@
     ],
     "subjectIds": null,
     "risks": [],
-    "decision": "later",
+    "decision": "plan",
     "adapter": null,
-    "reason": "Narrow coverage, page only.",
+    "reason": "The JSON gives the operating status of the federal offices of the DC area with its type and its date, with no key. The coverage is narrow.",
     "evidence": [
-      "https://www.opm.gov/policy-data-oversight/snow-dismissal-procedures/current-status/"
+      "https://www.opm.gov/policy-data-oversight/snow-dismissal-procedures/current-status/",
+      "https://www.opm.gov/json/operatingstatus.json",
+      "https://www.opm.gov/robots.txt"
     ],
-    "round": 1
+    "round": 35
   },
   {
     "id": "oracle-linux-oval",
@@ -20390,38 +20396,43 @@
   },
   {
     "id": "state-dept-advisories",
-    "name": "US State Department travel advisories",
+    "name": "US State Department travel advisories (JSON API)",
     "classes": [
-      "security.travel-advisory"
+      "security.travel-advisory",
+      "security.kidnap"
     ],
-    "url": "https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories.html",
-    "access": "page",
+    "url": "https://cadataapi.state.gov/api/TravelAdvisories",
+    "access": "api",
     "auth": "none",
     "terms": {
       "url": null,
       "automated": "unclear",
       "redistribution": "unclear",
-      "note": "The page returned 403."
+      "note": "The copyright page of state.gov gave 403, so the round did not read it. Section 105 of title 17 of the US Code gives no copyright to a work of the US government. cadataapi.state.gov has no robots.txt."
     },
     "cost": "free",
-    "delay": "unknown",
-    "history": "unknown",
+    "delay": "Days: the read of 2026-11-25 gave 218 advisories, and the newest update was on 2026-11-23.",
+    "history": "The JSON gives the publication time and the last update of each advisory.",
     "rateLimit": "unknown",
     "calibration": null,
-    "coverage": "World.",
+    "coverage": "World: the level of each country from 1 to 4, with its risks. In the read of 2026-11-25, 36 advisories named kidnapping as a risk.",
     "origins": [
       "us-state-department"
     ],
     "path": [
-      "travel.state.gov"
+      "cadataapi.state.gov"
     ],
     "subjectIds": null,
     "risks": [],
-    "decision": "later",
+    "decision": "plan",
     "adapter": null,
-    "reason": "Official US levels; access not confirmed.",
-    "evidence": [],
-    "round": 1
+    "reason": "The JSON gives each travel advisory with its level, its risks and its update time, with no key. A new risk of kidnapping or a new level 4 is a signal.",
+    "evidence": [
+      "https://cadataapi.state.gov/api/TravelAdvisories",
+      "https://cadataapi.state.gov/robots.txt",
+      "https://www.state.gov/copyright-information"
+    ],
+    "round": 35
   },
   {
     "id": "statusgator",
@@ -25295,6 +25306,239 @@
       "https://www.health.nsw.gov.au/aod/public-drug-alerts/Pages/default.aspx",
       "https://www.health.nsw.gov.au/Pages/rss.aspx",
       "https://www.health.nsw.gov.au/robots.txt"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 35,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "fbi-wanted-api",
+    "name": "FBI: the posters of missing persons and kidnappings (Wanted API, JSON)",
+    "classes": [
+      "security.missing-person",
+      "security.kidnap"
+    ],
+    "url": "https://api.fbi.gov/wanted/v1/list?poster_classification=missing",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.justice.gov/legalpolicies",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The API page of the FBI links the legal policies of the Department of Justice. They tell that the information on its websites is in the public domain, unless a page tells otherwise. The robots.txt of www.fbi.gov blocks no path for each agent. api.fbi.gov has no robots.txt."
+    },
+    "delay": "Days: the FBI adds a poster when it opens a case. The first poster of the read of 2026-11-25 had a change on 2026-11-24.",
+    "history": "The list holds each active poster with its publication date.",
+    "coverage": "The United States and other countries: 142 posters of the class missing in the read of 2026-11-25. The subjects of a poster name the kidnapping and missing person cases.",
+    "origins": [
+      "fbi"
+    ],
+    "path": [
+      "api.fbi.gov"
+    ],
+    "reason": "The FBI gives each poster of a missing person or a kidnapping as JSON with no key. A new poster near a place is a signal. An adapter keeps the case, its dates and its place, not the personal details.",
+    "evidence": [
+      "https://www.fbi.gov/wanted/api",
+      "https://api.fbi.gov/wanted/v1/list?poster_classification=missing&pageSize=1",
+      "https://www.fbi.gov/robots.txt",
+      "https://www.justice.gov/legalpolicies"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 35,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "hkpf-missing-persons",
+    "name": "Hong Kong Police Force: the appeals for missing persons (XML)",
+    "classes": [
+      "security.missing-person"
+    ],
+    "url": "https://www.police.gov.hk/info/appeals_public/missing_persons/mp.php?lang=en",
+    "access": "feed",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.gov.hk/en/terms-and-conditions",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "DATA.GOV.HK lists this dataset of the police. Its terms let each user download, distribute and reproduce the data, also for commercial use, with acknowledgement of the source. The terms tell nothing of automated reading. www.police.gov.hk has no robots.txt."
+    },
+    "delay": "Hours to days: the police change the file when a case changes. The read of 2026-11-25 had 39 cases.",
+    "history": "None: the file holds the open appeals.",
+    "coverage": "Hong Kong: each open appeal for a missing person, with the dates and the police region of the case.",
+    "origins": [
+      "hkpf"
+    ],
+    "path": [
+      "www.police.gov.hk"
+    ],
+    "reason": "The police give each open appeal for a missing person in one XML file with no key. Each record names a person and has a photo, so an adapter keeps only the case number, the dates and the region.",
+    "evidence": [
+      "https://data.gov.hk/en-data/api/3/action/package_show?id=hk-hkpf-mp-missing-persons",
+      "https://www.police.gov.hk/info/appeals_public/missing_persons/mp.php?lang=en",
+      "https://data.gov.hk/en/terms-and-conditions"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 35,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "hk-wsd-water-suspensions",
+    "name": "Water Supplies Department of Hong Kong: the temporary water suspension notices (CSV)",
+    "classes": [
+      "infra.water.outage"
+    ],
+    "url": "https://www.esd.wsd.gov.hk/wsms_open_data/WSMS_OPEN_DATA(all).csv",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.gov.hk/en/terms-and-conditions",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "DATA.GOV.HK lists this dataset of the department. Its terms let each user download, distribute and reproduce the data, also for commercial use, with acknowledgement of the source. The terms tell nothing of automated reading. The robots.txt of www.esd.wsd.gov.hk blocks no path."
+    },
+    "delay": "Minutes to hours: the file gives the start and the status of each emergency suspension. The read of 2026-11-25 had 9 suspensions in progress.",
+    "history": "The file holds the recent and the planned notices. In the read of 2026-11-25, the start dates went from 2026-11-23 to 2026-12-03.",
+    "coverage": "Hong Kong, each district: 175 notices in the read of 2026-11-25. 138 were emergency suspensions and 37 were planned, of fresh water or of salt water for flushing.",
+    "origins": [
+      "hk-wsd"
+    ],
+    "path": [
+      "www.esd.wsd.gov.hk"
+    ],
+    "reason": "The department gives each emergency and planned water suspension with its district, its area, its cause and its status in one CSV file with no key.",
+    "evidence": [
+      "https://data.gov.hk/en-data/api/3/action/package_search?q=water%20supply%20suspension&rows=5",
+      "https://www.esd.wsd.gov.hk/wsms_open_data/WSMS_OPEN_DATA(all).csv",
+      "https://www.esd.wsd.gov.hk/robots.txt",
+      "https://data.gov.hk/en/terms-and-conditions"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 35,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "taiwan-water-outages",
+    "name": "Taiwan Water Corporation: the water outage cases (open data, JSON)",
+    "classes": [
+      "infra.water.outage"
+    ],
+    "url": "https://web.water.gov.tw/wateroffapi/openData/export/json",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.gov.tw/en/license",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The dataset is under the Open Government Data License, version 1.0. It grants a free, worldwide licence for each purpose with attribution, and it is compatible with CC BY 4.0. The licence tells nothing of automated reading. The robots.txt of web.water.gov.tw gave 502."
+    },
+    "delay": "unknown: one read on 2026-11-25 gave an empty list.",
+    "history": "unknown",
+    "coverage": "The service area of Taiwan Water Corporation: each outage or drop of pressure, with its area, its cause and its count of households.",
+    "origins": [
+      "taiwan-water"
+    ],
+    "path": [
+      "web.water.gov.tw"
+    ],
+    "reason": "The metadata names a daily JSON file of each outage case, with no key. The read gave an empty list, so the fields come from the metadata only.",
+    "evidence": [
+      "https://data.gov.tw/api/v2/rest/dataset/6050",
+      "https://web.water.gov.tw/wateroffapi/openData/export/json",
+      "https://data.gov.tw/en/license"
+    ]
+  },
+  {
+    "cost": "unknown",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 35,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "interpol-yellow-notices",
+    "name": "INTERPOL: the public yellow notices of missing persons (JSON API)",
+    "classes": [
+      "security.missing-person"
+    ],
+    "url": "https://ws-public.interpol.int/notices/v1/yellow",
+    "access": "api",
+    "auth": "unknown",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The API gave 403 to the round, so the round did not read the terms."
+    },
+    "delay": "unknown",
+    "history": "unknown",
+    "coverage": "World: the public yellow notices of the member countries.",
+    "origins": [
+      "interpol"
+    ],
+    "path": [
+      "ws-public.interpol.int"
+    ],
+    "reason": "The API gave 403 to the user agent of the round. The round did not try again.",
+    "evidence": [
+      "https://ws-public.interpol.int/notices/v1/yellow?resultPerPage=1"
+    ]
+  },
+  {
+    "cost": "unknown",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 35,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "politie-missing-persons",
+    "name": "Politie, the police of the Netherlands: the missing persons of the open data API",
+    "classes": [
+      "security.missing-person"
+    ],
+    "url": "https://api.politie.nl/v4/vermist",
+    "access": "api",
+    "auth": "unknown",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The API gave 403 to the round, so the round did not read the terms."
+    },
+    "delay": "unknown",
+    "history": "unknown",
+    "coverage": "The Netherlands: the missing persons that the police publish.",
+    "origins": [
+      "politie"
+    ],
+    "path": [
+      "api.politie.nl"
+    ],
+    "reason": "The API gave 403 to the user agent of the round. The round did not try again.",
+    "evidence": [
+      "https://api.politie.nl/v4/vermist?language=nl&maxnumberofitems=1"
     ]
   }
 ]

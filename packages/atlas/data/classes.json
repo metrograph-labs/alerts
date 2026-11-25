@@ -243,7 +243,7 @@
       "CISA sectors: Government Services and Facilities",
       "FEMA Lifelines: Safety and Security > Government Service"
     ],
-    "gap": "OPM covers only the DC area and names no feed. State and city closures are separate.",
+    "gap": "One source: opm-status, for the DC area only. State and city closures are separate. Round 35: OPM gives its status as JSON, so opm-status moves to plan.",
     "round": 1
   },
   {
@@ -1647,7 +1647,7 @@
       "CISA sectors: Water and Wastewater Systems",
       "FEMA Lifelines: Water Systems > Potable Water"
     ],
-    "gap": "No national feed exists in the US. Notices are per utility. Round 2 checks state boil-water feeds.",
+    "gap": null,
     "round": 1
   },
   {
@@ -3035,7 +3035,7 @@
       "MAX Security: Military",
       "Liveuamap"
     ],
-    "gap": "Round 1 found 1 adopted or planned source with no risk: gdelt-events. acled-api is later, ucdp-api is later: see the reason of each.",
+    "gap": null,
     "round": 1
   },
   {
@@ -3082,7 +3082,7 @@
       "Riskline: unrest",
       "Crisis24"
     ],
-    "gap": "ACLED is weekly. GDELT is fast but noisy (machine-coded news).",
+    "gap": null,
     "round": 1
   },
   {
@@ -3143,7 +3143,7 @@
       "Crisis24",
       "Riskline"
     ],
-    "gap": "Only commercial risk products and travel advice text cover this.",
+    "gap": null,
     "round": 1
   },
   {
@@ -3189,7 +3189,7 @@
     "references": [
       "NWS/SAME: MEP Missing and Endangered Persons"
     ],
-    "gap": "Round 1 found 0 adopted or planned sources with no risk. ipaws-open has a risk, so the gate does not count it: see the risks of the record. Round 1 found no other source.",
+    "gap": null,
     "round": 1
   },
   {
