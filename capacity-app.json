@@ -44,7 +44,7 @@
       "id": "gdelt",
       "title": "The place shares its position with GDELT: 1, and each start and each 15 minutes read one event file of the real size",
       "kind": "level",
-      "unit": "1",
+      "unit": "{place}",
       "min": 0,
       "max": 1,
       "scale": "linear"
@@ -62,7 +62,7 @@
       "id": "chain",
       "title": "The configuration has the stack of an alert chain of 11 parts: 1, and each view gives the states of its goal",
       "kind": "level",
-      "unit": "1",
+      "unit": "{stack}",
       "min": 0,
       "max": 1,
       "scale": "linear"
