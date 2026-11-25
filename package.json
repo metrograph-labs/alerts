@@ -18,6 +18,9 @@
     "check:api": "api-report check",
     "check:conventions": "conventions check"
   },
+  "sitePages": {
+    "bareErrors": "fail"
+  },
   "conventions": {
     "rules": {
       "gate-trigger": {
