@@ -29,7 +29,8 @@ import { openRuntime, type CopyChecks, type RuntimeOptions } from "./runtime.ts"
 
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
-const DAY = 24 * 60 * MINUTE;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
 const PUSHOVER = "pushover" as ChannelId;
 const SMS = "sms" as ChannelId;
 const PERSON = "person-1" as PersonId;
@@ -211,6 +212,28 @@ describe("the drills in the passes of the runtime (AL-43)", () => {
     await again.runtime.pass();
     expect(drillEvents(log).length).toBe(1);
     expect(again.pushover.send).toEqual([]);
+    log.close();
+  });
+
+  it("keeps a passed run passed after the retirement of old incidents, and sends no failure (AL-187)", async () => {
+    // On a live copy, the retirement one day after the escalation start removed the acknowledgment of a passed run. Then
+    // the verdict gave no-ack, and the failure called the person.
+    const { clock, log, runtime, pushover, sms } = open({ status: () => ({ state: "acknowledged", at: T0 + 20 * SECOND }) });
+    await runtime.pass();
+    await clock.advance(30 * SECOND);
+    await runtime.pass();
+    await clock.advance(SECOND);
+    await runtime.pass();
+    expect(drillRunOf(runtime.state(), COPY, DRILL)?.acked).toBe(T0 + 20 * SECOND);
+    for (let hour = 0; hour < 48; hour += 1) {
+      await clock.advance(HOUR);
+      await runtime.pass();
+    }
+    expect(runtime.state().retiredAt).toBeGreaterThan(T0 + DAY);
+    expect(drillRunOf(runtime.state(), COPY, DRILL)?.acked).toBe(T0 + 20 * SECOND);
+    expect(drillLines(runtime.state().lines)).toEqual([]);
+    expect(sms.send).toEqual([]);
+    expect(pushover.send.length).toBe(1);
     log.close();
   });
 
