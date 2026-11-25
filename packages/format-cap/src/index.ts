@@ -16,6 +16,7 @@
 
 export { capCircle, capPolygon, capPosition } from "./geometry.ts";
 export { ATOM_NAMESPACE, readFeed, type FeedEntry, type FeedRead } from "./feed.ts";
+export { parseXml, xmlFault, type XmlParse } from "./well-formed.ts";
 export { CAP_MEDIA_TYPE, readCapIndex, type CapIndexEntry, type CapIndexRead } from "./feed-index.ts";
 export { chooseInfo, DEFAULT_LANGUAGES, type ChosenInfo } from "./info.ts";
 export { codedKind, meteoalarmTypeName, METEOALARM_KINDS, METEOALARM_TYPE, OET_KINDS, OET_VERSION, type CodedKind, type CodedKinds } from "./kinds.ts";
