@@ -287,7 +287,7 @@ describe("the drills in the passes of the runtime (AL-43)", () => {
     await clock.advance(DRILL.ackWithin - 5 * MINUTE);
     const end = await runtime.pass();
     expect(drillLines(end.view.step.lines)).toEqual([`drill/${COPY}/${DRILL.id}/failed`]);
-    expect(sms.send.map((message) => message.title)).toEqual(["The drill push-weekly failed: no acknowledgment came."]);
+    expect(sms.send.map((message) => message.title)).toEqual(["The drill push-weekly failed: no acknowledgment came in 30 minutes."]);
     expect(pushover.send.length).toBe(1);
     log.close();
   });
