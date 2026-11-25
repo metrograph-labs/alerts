@@ -10,6 +10,7 @@ import {
   markerText,
   parseGood,
   parseMarker,
+  PICKED_GOOD,
   privateFiles,
   readRestartRequest,
   readStartTexts,
@@ -128,6 +129,17 @@ describe("startConfig", () => {
     // No restart request exists at the first start.
     expect(files.request).toBe(join(home, RESTART_REQUEST_FILE));
     expect(started.request).toEqual(NONE);
+  });
+
+  it("tells when the last good set has the texts of the private files, and refuses a pick of a missing set (AL-169)", async () => {
+    await write(files.config, GOOD);
+    await expect(startConfig(files, CHECK_OF, PORTS, "good")).rejects.toBeInstanceOf(ConfigRefused);
+    const started = await startConfig(files, CHECK_OF, PORTS);
+    expect(started.same).toBe(false);
+    await started.ready();
+    const forGood = await startConfig(files, CHECK_OF, PORTS, "good");
+    expect(forGood.use).toBe("good");
+    expect(forGood.same).toBe(true);
   });
 
   it("writes the last good set and removes the marker when the start is ready, one time", async () => {
@@ -301,6 +313,23 @@ describe("startConfig", () => {
       const again = await startConfig(files, CHECK_OF, PORTS);
       expect(again.use).toBe("good");
       expect(again.fallback).toEqual([STOPPED_START]);
+    });
+
+    it("folds for the set that the mode fold picks, and the start marker does not choose it (AL-169)", async () => {
+      await startedOnce();
+      await stops(STOP_LIMIT);
+      const marker = await read(files.marker);
+      // The ports of the mode fold write nothing.
+      const still: StartPorts = { write: () => Promise.resolve(), remove: () => Promise.resolve() };
+      const forFiles = await startConfig(files, CHECK_OF, still, "files");
+      expect(forFiles.use).toBe("files");
+      expect(forFiles.copy.id).toBe("copy-b");
+      expect(forFiles.same).toBe(false);
+      const forGood = await startConfig(files, CHECK_OF, still, "good");
+      expect(forGood.use).toBe("good");
+      expect(forGood.fallback).toEqual([PICKED_GOOD]);
+      expect(forGood.copy).toEqual(ONLY_COPY);
+      expect(await read(files.marker)).toEqual(marker);
     });
 
     it("uses the private files again after a new restart request or a change of the files", async () => {

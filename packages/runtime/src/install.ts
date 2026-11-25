@@ -46,7 +46,7 @@ import { discoveryPid, hostFileText, hostFolder, hostReadyWindow, hostTask, PROB
 import { checksKeys, daemonCheck, INSTANCE_TIMES, LOUD_STEADY, USER_AGENT_NAME } from "./instance.ts";
 import { checkStart, GOOD_FILE, privateFiles, readStartTexts, requestRestart, restartUse, type RestartOutcome } from "./reload.ts";
 import { codeReport, readRunningCode } from "./running.ts";
-import { checkoutOf, liveRoot, readLive, slotsOf } from "./slots.ts";
+import { checkoutOf, liveRoot, readLive, slotsOfCheckout } from "./slots.ts";
 
 const ACTIONS = ["install", "remove", "status", "restart"] as const;
 const action = process.argv[2];
@@ -203,7 +203,7 @@ if (action === "install") {
   process.exitCode = reportRestart(outcome);
   // A ready runtime can run the other slot, when a swap crossed this restart (AL-167). Its record of its start tells it.
   if (outcome.kind === "restarted" && outcome.ready) {
-    const code = codeReport(await readLive(slotsOf(checkoutOf(root))), await readRunningCode(hostFolder(home)), outcome.to);
+    const code = codeReport(await readLive(await slotsOfCheckout(checkoutOf(root))), await readRunningCode(hostFolder(home)), outcome.to);
     if (code.kind === "other") {
       console.error(code.line);
       process.exitCode = 1;
