@@ -92,7 +92,7 @@ import { createIpawsSource, IPAWS_DESCRIPTOR, WEA_EXPECTATION } from "@mark1russ
 import { createShapeStore, type ShapeCache, type ShapeStore } from "@mark1russell7/alerts-shapes-nws";
 import { createNwsSource, NWS_DESCRIPTOR } from "@mark1russell7/alerts-source-nws-api";
 import { COPY_EXPECTATION, createNwwsSource, SOURCE_ID as NWWS_SOURCE, type NwwsAccount, type OpenSession } from "@mark1russell7/alerts-source-nwws";
-import { createGfzSource, GFZ_DESCRIPTOR } from "@mark1russell7/alerts-source-gfz";
+import { createGfzSource, createIndexSource, GFZ_DESCRIPTOR, HP30_DESCRIPTOR, HP30_INDEX, type GfzFetchOptions } from "@mark1russell7/alerts-source-gfz";
 import { createCatalogFetch, createGtfsSource, type GtfsFeed, type GtfsFetchOptions } from "@mark1russell7/alerts-source-gtfs-alerts";
 import { createEnergyChartsSource, ENERGY_CHARTS_DESCRIPTOR } from "@mark1russell7/alerts-source-energy-charts";
 import { createEia930Source, type Eia930FetchOptions } from "@mark1russell7/alerts-source-eia-930";
@@ -493,6 +493,7 @@ const PROVIDER_FEEDS = [
  * The two tsunami warning centers give the tsunami messages. The SWPC gives the space weather messages.
  *
  * GFZ gives the index Kp, a second origin of the geomagnetic storms. Merge rule 3 joins its storms to the storms of the SWPC.
+ * GFZ also gives the index Hp30 of each 30 minutes, as the source `gfz-hp30`. It shows a storm before the end of its interval of Kp.
  *
  * Energy-Charts gives the grid frequency of Continental Europe as indicator readings, and no event. The store of the
  * readings keeps them.
@@ -522,6 +523,7 @@ export const INSTANCE_SOURCES: readonly SourceDescriptor[] = [
   ...TSUNAMI.map((center) => tsunamiDescriptor(center)),
   SWPC_DESCRIPTOR,
   GFZ_DESCRIPTOR,
+  HP30_DESCRIPTOR,
   ENERGY_CHARTS_DESCRIPTOR,
   FAA_DESCRIPTOR,
   NDW_DESCRIPTOR,
@@ -1030,7 +1032,7 @@ export function readsGdelt(config: AlertConfig): boolean {
  * problem. A problem is a missing token, a key with a bad form, or a place that no regional source covers.
  * The message names ids, fields and the names of secrets, and no value.
  *
- * - The sources are the NWS API, IPAWS, the USGS, EMSC, the two tsunami warning centers, the SWPC, GFZ,
+ * - The sources are the NWS API, IPAWS, the USGS, EMSC, the two tsunami warning centers, the SWPC, GFZ (Kp and Hp30),
  *   Energy-Charts and CISA KEV. The stream of NWWS-OI is a source when the secrets have the keys of the account of the
  *   copy (`nwwsSetup`). The events of GDELT are a source when a place shares its position with it (`readsGdelt`). BoM is a source when the secrets have its key (`BOM_SWS_KEY`), and so is EIA-930 (`EIA_KEY`). The outages and the traffic
  *   anomalies of Cloudflare Radar are sources when the secrets have its token (`CLOUDFLARE_RADAR_KEY`). Each status page that one of the
@@ -1073,6 +1075,7 @@ export function openInstance(options: InstanceOptions): Instance {
     ...TSUNAMI.map((center) => tsunamiFactory(center)),
     createSwpcSource,
     createGfzSource,
+    (fetchOptions: GfzFetchOptions) => createIndexSource(HP30_INDEX, fetchOptions),
     ...(bomKey === "" ? [] : [bomFactory(bomKey)]),
     createEnergyChartsSource,
     createFaaSource,

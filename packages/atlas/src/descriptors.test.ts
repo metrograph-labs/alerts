@@ -14,7 +14,7 @@ import { NDW_DESCRIPTOR } from "@mark1russell7/alerts-source-ndw";
 import { RAIL_DESCRIPTOR } from "@mark1russell7/alerts-source-digitraffic-rail";
 import { FIREBASE_DESCRIPTOR, GCP_DESCRIPTOR } from "@mark1russell7/alerts-source-gcp";
 import { GDELT_DESCRIPTOR } from "@mark1russell7/alerts-source-gdelt";
-import { GFZ_DESCRIPTOR } from "@mark1russell7/alerts-source-gfz";
+import { GFZ_DESCRIPTOR, HP30_DESCRIPTOR } from "@mark1russell7/alerts-source-gfz";
 import { IEM_DESCRIPTOR } from "@mark1russell7/alerts-source-iem";
 import { IPAWS_DESCRIPTOR } from "@mark1russell7/alerts-source-ipaws";
 import { NWS_DESCRIPTOR } from "@mark1russell7/alerts-source-nws-api";
@@ -42,7 +42,7 @@ const DESCRIPTORS: Readonly<Record<string, readonly SourceDescriptor[]>> = {
   "@mark1russell7/alerts-source-digitraffic-rail": [RAIL_DESCRIPTOR],
   "@mark1russell7/alerts-source-gcp": [GCP_DESCRIPTOR, FIREBASE_DESCRIPTOR],
   "@mark1russell7/alerts-source-gdelt": [GDELT_DESCRIPTOR],
-  "@mark1russell7/alerts-source-gfz": [GFZ_DESCRIPTOR],
+  "@mark1russell7/alerts-source-gfz": [GFZ_DESCRIPTOR, HP30_DESCRIPTOR],
   "@mark1russell7/alerts-source-iem": [IEM_DESCRIPTOR],
   "@mark1russell7/alerts-source-ipaws": [IPAWS_DESCRIPTOR],
   "@mark1russell7/alerts-source-nws-api": [NWS_DESCRIPTOR],
