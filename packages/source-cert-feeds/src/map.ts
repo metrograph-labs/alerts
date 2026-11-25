@@ -3,7 +3,7 @@
  * recent entry. An entry gives one report of the kind that the rules of the provider give. The head gives no report.
  *
  * The CVE id of each flaw in the entry is a subject of the report and a correlation key. Thus a person who names the flaw
- * gets the report, and the report joins the incident of the same flaw from a second source, for example the KEV catalog.
+ * gets the report. The report also joins the incident of the same flaw from a second source, for example the KEV catalog.
  */
 
 import { categoryOf, kindLabel, reportId, type MapResult, type Observation, type Report, type Subject, type Urgency } from "@mark1russell7/alerts";
@@ -30,7 +30,7 @@ function isEntry(fields: Record<string, unknown>): fields is Record<string, unkn
 }
 
 /**
- * This function gives the urgency of a kind. A flaw that attackers use now needs a step soon: `expected`. Each other
+ * This function gives the urgency of a kind. A flaw that attackers use at this time needs a step soon: `expected`. Each other
  * entry tells of a step in the next days or weeks: `future`.
  */
 export function urgencyOf(kind: string): Urgency {

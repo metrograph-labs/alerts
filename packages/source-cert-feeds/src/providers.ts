@@ -17,7 +17,7 @@ export const ICS_KIND = "cyber.advisory.ics";
 /** The kind of an advisory on an active attacker group or campaign. */
 export const CAMPAIGN_KIND = "cyber.campaign";
 
-/** The kind of a flaw that attackers use now. */
+/** The kind of a flaw that attackers use at this time. */
 export const EXPLOITED_KIND = "cyber.vulnerability.exploited";
 
 /** The kind of a newly published flaw. */
@@ -195,7 +195,10 @@ export const CERT_PROVIDERS: readonly CertProvider[] = [
   },
 ];
 
-/** This function gives the kind of an entry from the rules of the provider, or `undefined` when no rule matches and the provider has no fallback. */
+/**
+ * This function gives the kind of an entry from the rules of the provider. It gives `undefined` when no rule matches and the
+ * provider has no fallback.
+ */
 export function kindOf(provider: CertProvider, entry: { readonly link?: string; readonly title?: string }): string | undefined {
   const matches = (pattern: RegExp | undefined, value: string | undefined): boolean => pattern === undefined || (value !== undefined && pattern.test(value));
   for (const rule of provider.rules) if (matches(rule.link, entry.link) && matches(rule.title, entry.title)) return rule.kind;

@@ -502,7 +502,7 @@ const PROVIDER_FEEDS = [
  * area. No work names their kinds: a person gets an advisory when the person names its CVE id or its kind.
  *
  * The CERT feeds (`source-cert-feeds`) give the alerts and reports of national CERTs, with no area. Only the work
- * `software` names one of their kinds: a flaw that attackers use now.
+ * `software` names one of their kinds: a flaw that attackers use at this time.
  *
  * The instance also reads the status pages that one of its persons can get (`pagesFor` of `source-statuspage`). They are
  * not in this list, because the persons choose them. The feeds of Google Cloud (`source-gcp`), AWS (`source-aws`)
