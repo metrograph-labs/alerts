@@ -1393,8 +1393,9 @@ export function openInstance(options: InstanceOptions): Instance {
       ...(delivery.assess === undefined ? {} : { policy: delivery.assess }),
       ...(options.priors === undefined ? {} : { priors: options.priors }),
       foreign: foreignIncidents(runtime.state().merge.reports, delivery.sources),
-      shape: shapes.lookup,
+      // The basemap comes first: the display lookup gives its simplified shapes (AL-176).
       basemap: shapes.basemap(),
+      shape: shapes.display,
       // The breadth of the indicator signals of the last pass. A runtime with no store of the readings has none.
       ...(latest?.breadth === undefined ? {} : { breadth: latest.breadth }),
       // The surprise of the signals of the last pass (AL-24). A fault of the history of the units gives none.
@@ -1434,7 +1435,7 @@ export function openInstance(options: InstanceOptions): Instance {
       places: placed.places,
       ...(delivery.assess === undefined ? {} : { policy: delivery.assess }),
       sources: delivery.sources,
-      shape: shapes.lookup,
+      shape: shapes.display,
       link,
     });
   // A round that imports an event or changes the stage of a copy starts a pass soon.
