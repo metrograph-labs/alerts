@@ -11,6 +11,8 @@
  *
  * The store of `@mark1russell7/sqlite` also checks that the log has the event of the mark at the position of the mark.
  */
+import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { DEFAULT_LINK_POLICY, healthSource, type Duration } from "@mark1russell7/alerts";
 import { isRecord } from "@mark1russell7/optional/read";
 import { canonicalHash } from "@mark1russell7/rigor-generators";
@@ -198,7 +200,7 @@ export const START_SNAPSHOT_EVERY: Duration = 30 * 60_000;
  */
 export const START_SNAPSHOT_FLOOR = 500;
 
-/** The name of the file of the snapshot of the start in the home folder, next to the log. */
+/** The name of the file of the snapshot of the start of an older runtime in the home folder, next to the log. The store reads it (AL-169). */
 export const START_SNAPSHOT_FILE = "snapshot.sqlite";
 
 /** The read of the log at the open of a runtime (AL-105). */
@@ -243,4 +245,142 @@ export function openStartSnapshot(path: string): OpenedStartSnapshot {
   } catch (error) {
     return { fault: error instanceof Error ? error.name : typeof error };
   }
+}
+
+/**
+ * The name of the folder of the snapshots of the start in the home folder (AL-169). The folder has one file for each key of
+ * a fold. Thus the snapshot of one set of private files stays when a start uses another set.
+ */
+export const START_SNAPSHOTS_FOLDER = "snapshots";
+
+/**
+ * The count of the keys that the folder of the snapshots keeps (AL-169). A deploy gives a new key, and the last good set has
+ * the key of the set before it. Thus three files keep the snapshot of each set that a start can use, and one more.
+ */
+export const START_SNAPSHOT_KEEP = 3;
+
+/** The options of `openStartSnapshots`. */
+export interface StartSnapshotsOptions {
+  /** This value is the count of the keys that the folder keeps: a whole number of 1 or more. The default is `START_SNAPSHOT_KEEP`. */
+  readonly keep?: number;
+  /** The store calls this function for each broken file that goes into quarantine. */
+  readonly onQuarantine?: (quarantined: Quarantined) => void;
+}
+
+/** This function gives the name of the file of the snapshots of a key in the folder of the snapshots. */
+export function snapshotFileName(key: FoldKey): string {
+  const text = /^[0-9a-f]{16,}$/u.test(key.key) ? key.key : canonicalHash({ key: key.key }, { form: "json" });
+  return `${text.slice(0, 16)}.sqlite`;
+}
+
+const SNAPSHOT_OPTIONS = { wal: true, synchronous: "NORMAL", busyTimeoutMs: 5000, makeFolder: true } as const;
+// The files of SQLite next to a database file.
+const SIDE_FILES = ["", "-wal", "-shm", "-journal"];
+
+/**
+ * This function opens the snapshots of the start in the home folder (AL-169). The store keeps the newest snapshot of each key
+ * in its own file of the folder `START_SNAPSHOTS_FOLDER`, and the newest `keep` files. The file of a key does not hold the
+ * version of the fold in its name. Thus the read of an old fold for an upgrade (AL-153) finds it.
+ *
+ * The file `START_SNAPSHOT_FILE` of an older runtime is one more file for the reads. The keep counts it, thus the store
+ * removes it after `keep` writes of other keys. A broken file goes into quarantine. The function does not throw.
+ */
+export function openStartSnapshots(home: string, options: StartSnapshotsOptions = {}): OpenedStartSnapshot {
+  const legacyPath = join(home, START_SNAPSHOT_FILE);
+  const legacy = existsSync(legacyPath) ? openStartSnapshot(legacyPath) : {};
+  if (legacy.quarantined !== undefined) options.onQuarantine?.(legacy.quarantined);
+  try {
+    const store = keyedSnapshots(join(home, START_SNAPSHOTS_FOLDER), legacy.store === undefined ? undefined : { path: legacyPath, store: legacy.store }, options);
+    return legacy.quarantined === undefined ? { store } : { store, quarantined: legacy.quarantined };
+  } catch (error) {
+    legacy.store?.close();
+    return { fault: error instanceof Error ? error.name : typeof error };
+  }
+}
+
+interface OpenFile {
+  readonly path: string;
+  readonly store: FoldSnapshotFile;
+}
+
+function keyedSnapshots(folder: string, legacy: OpenFile | undefined, options: StartSnapshotsOptions): FoldSnapshotFile {
+  const keep = options.keep ?? START_SNAPSHOT_KEEP;
+  if (!Number.isInteger(keep) || keep < 1) throw new RangeError("The store keeps 1 or more keys.");
+  mkdirSync(folder, { recursive: true });
+  const files = new Map<string, OpenFile>();
+  let old = legacy;
+  const fileOf = (key: FoldKey, make: boolean): FoldSnapshotFile | undefined => {
+    const path = join(folder, snapshotFileName(key));
+    const known = files.get(path);
+    if (known !== undefined) return known.store;
+    if (!make && !existsSync(path)) return undefined;
+    const { value: store, quarantined } = openOrQuarantine(path, (file) => openFoldSnapshot(file, SNAPSHOT_OPTIONS));
+    if (quarantined !== undefined) options.onQuarantine?.(quarantined);
+    files.set(path, { path, store });
+    return store;
+  };
+  const drop = (file: OpenFile): void => {
+    file.store.close();
+    for (const side of SIDE_FILES) rmSync(`${file.path}${side}`, { force: true });
+  };
+  // The newest `keep` files stay: the file of the last write, and the files with the newest changes.
+  const prune = (written: string): void => {
+    const candidates = readdirSync(folder)
+      .filter((name) => name.endsWith(".sqlite"))
+      .map((name) => join(folder, name));
+    if (old !== undefined) candidates.push(old.path);
+    const others = candidates.filter((path) => path !== written).sort((left, right) => changedAt(right) - changedAt(left));
+    for (const path of others.slice(keep - 1)) {
+      if (old?.path === path) {
+        drop(old);
+        old = undefined;
+        continue;
+      }
+      const open = files.get(path);
+      files.delete(path);
+      if (open !== undefined) drop(open);
+      else for (const side of SIDE_FILES) rmSync(`${path}${side}`, { force: true });
+    }
+  };
+  const closeAll = (): void => {
+    for (const file of files.values()) file.store.close();
+    files.clear();
+    old?.store.close();
+  };
+  return {
+    read(key, log, work) {
+      const own = fileOf(key, false)?.read(key, log, work);
+      return own !== undefined ? own : old?.store.read(key, log, work);
+    },
+    write(key, mark, rows) {
+      const count = (fileOf(key, true) as FoldSnapshotFile).write(key, mark, rows);
+      prune(join(folder, snapshotFileName(key)));
+      return count;
+    },
+    async writeInChunks(key, mark, rows, chunks) {
+      const count = await (fileOf(key, true) as FoldSnapshotFile).writeInChunks(key, mark, rows, chunks);
+      prune(join(folder, snapshotFileName(key)));
+      return count;
+    },
+    clear() {
+      for (const file of files.values()) drop(file);
+      files.clear();
+      for (const name of readdirSync(folder)) rmSync(join(folder, name), { force: true });
+      old?.store.clear();
+    },
+    close: closeAll,
+  };
+}
+
+// The time of the last change of a database file: its own time or the time of its WAL file, the newest of the two.
+function changedAt(path: string): number {
+  let newest = 0;
+  for (const side of ["", "-wal"]) {
+    try {
+      newest = Math.max(newest, statSync(`${path}${side}`).mtimeMs);
+    } catch {
+      // A missing file has no time.
+    }
+  }
+  return newest;
 }

@@ -30,6 +30,7 @@ import {
   stageScope,
   slotOfTarget,
   slotsOf,
+  slotsOfCheckout,
   STAGE_CHECKS,
   SUPERVISOR_FILES,
   supervisorChanges,
@@ -118,6 +119,22 @@ describe("the swap of the live link on the file system (AL-89)", () => {
     expect(await readLive(slots)).toMatchObject({ kind: "link", slot: "a" });
     // The swap leaves no temporary link.
     expect((await readdir(top)).sort()).toEqual(["live", "live-a", "live-b"]);
+  });
+
+  it("finds the live link of a checkout that is the real path of a slot (AL-169)", async () => {
+    const slots = slotsOf(join(top, "live"));
+    await mkdir(slots.a);
+    await mkdir(slots.b);
+    await swapLink(slots.live, slots.b);
+    // A unit in the live folder runs in the real path of slot b.
+    expect(await slotsOfCheckout(slots.b)).toEqual(slots);
+    expect(await slotsOfCheckout(slots.live)).toEqual(slots);
+    // Slot a is not the target of the link, thus it is a checkout of its own.
+    expect(await slotsOfCheckout(slots.a)).toEqual(slotsOf(slots.a));
+    // A folder with a name like a slot and no link next to it is a checkout of its own.
+    const other = join(top, "repo-b");
+    await mkdir(other);
+    expect(await slotsOfCheckout(other)).toEqual(slotsOf(other));
   });
 
   it("starts each process through the link in the slot that the link names at its start", async () => {
@@ -417,8 +434,8 @@ describe("the fold version of a slot (AL-153)", () => {
   it("folds with the live slot on the live home, with the profile of the supervised runtime", () => {
     const runtime = join("slot-b", "packages", "runtime");
     const home = join(tmpdir(), "alerts-home");
-    const step = foldStep(runtime, home, "/usr/bin/node");
-    expect(step.args).toEqual([join(runtime, "src", "main.ts"), "fold"]);
+    const step = foldStep(runtime, home, "/usr/bin/node", "good");
+    expect(step.args).toEqual([join(runtime, "src", "main.ts"), "fold", "good"]);
     expect(step.env).toEqual({ ALERTS_HOME: home, SERVICE_PROFILE: "daemon" });
   });
 });

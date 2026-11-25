@@ -41,6 +41,7 @@ import { nodeHostPorts } from "@mark1russell7/service/host";
 import { errorMessage } from "@mark1russell7/text";
 import { alertsHome, readText as readFileText } from "./config.ts";
 import { hostFolder } from "./host.ts";
+import { GOOD_FILE } from "./reload.ts";
 import {
   adoptLive,
   checkoutOf,
@@ -62,7 +63,7 @@ import {
   readPackageLinks,
   runStep,
   SERVICE_PACKAGE,
-  slotsOf,
+  slotsOfCheckout,
   STAGE_CHECKS,
   stageScope,
   SUPERVISOR_FILES,
@@ -82,7 +83,7 @@ import { codeReport, readRunningCode } from "./running.ts";
 const USAGE = "The command is: node src/deploy.ts status | adopt | stage <commit> [--page] | swap <a|b> <commit> | relink [a|b] | fold";
 
 const root = liveRoot(process.env, process.argv[1], join(fileURLToPath(new URL(".", import.meta.url)), ".."));
-const slots = slotsOf(checkoutOf(root));
+const slots = await slotsOfCheckout(checkoutOf(root));
 const home = alertsHome(process.env, process.cwd());
 const deployPath = join(hostFolder(home), DEPLOY_FILE);
 
@@ -157,15 +158,21 @@ async function tellFold(from: SlotName, to: SlotName): Promise<void> {
 }
 
 /**
- * This function folds the log with the code of the live slot, and writes the snapshot of the start (AL-153). The lock of
- * the home folder refuses the fold while a runtime runs.
+ * This function folds the log with the code of the live slot, and writes the snapshot of the start (AL-153). It folds for
+ * each set that the next start can use: the private files, and the last good set (AL-169). The start marker picks the set
+ * at the start, thus each set needs its snapshot. The lock of the home folder refuses the fold while a runtime runs.
  */
 async function foldLive(): Promise<void> {
   const live = await liveSlot();
   setPriority(constants.priority.PRIORITY_LOW);
-  const fold = foldStep(join(slots[live], "packages", "runtime"), home, process.execPath);
-  const result = await step("fold", fold.program, fold.args, join(slots[live], "packages", "runtime"), fold.env);
-  console.log(result.stdout.trim().split("\n").slice(-2).join("\n"));
+  const runtime = join(slots[live], "packages", "runtime");
+  const sets = (await readText(join(home, GOOD_FILE))) === undefined ? (["files"] as const) : (["files", "good"] as const);
+  for (const set of sets) {
+    const fold = foldStep(runtime, home, process.execPath, set);
+    const result = await step(`fold ${set}`, fold.program, fold.args, runtime, fold.env);
+    console.log(result.stdout.trim().split("\n").slice(-2).join("\n"));
+  }
+  if (sets.length === 1) console.log(`The home folder has no ${GOOD_FILE}, thus the fold was only for the private files.`);
 }
 
 /** This function reads the live slot, or throws when the live path is not a link to a slot. */
