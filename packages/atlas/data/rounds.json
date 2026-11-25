@@ -1279,5 +1279,53 @@
       "members": 1757,
       "cause": "Round 24 adds 5 planned sources and moves fema-open-shelters to plan. 4 classes get 2 or more sources, so the gaps go from 109 to 105. The cover and total counts include the adoptions on main after round 23."
     }
+  },
+  {
+    "round": 25,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent, after memory hold 26.",
+    "method": "The round read the life-safety classes with no source. It searched for a national or regional feed of each class, worldwide. One fetch went to each host, with a plain user agent, and a second fetch read the terms fields. A refusal stays a refusal: the round tried no other route.",
+    "lists": [
+      "The gaps of the atlas on main, with their reasons: packages/atlas/data/classes.json"
+    ],
+    "queries": [
+      "Environment Agency bathing water pollution risk forecast API environment.data.gov.uk",
+      "Sjöfartsverket navigational warnings open API JSON",
+      "NASA LHASA landslide nowcast near real-time data API download",
+      "Public Safety Power Shutoff ArcGIS feature service current events SCE PG&E open data",
+      "Danish Maritime Authority Niord navigational warnings REST download data terms of use",
+      "boil water notices open data API state JSON feed current advisories",
+      "harmful algal bloom advisories open data API current lake advisories JSON state",
+      "avian influenza confirmed cases data feed GOV.UK atom OR USDA APHIS HPAI detections CSV download"
+    ],
+    "notes": [
+      "Closed: env.water.drinking-advisory (alaska-dec-boil-water and nl-boil-water-advisories).",
+      "dma-niord-warnings is new. The class transport.sea.navigational-warning has 1 source with no risk.",
+      "ca-fhab-reports is new. The class env.water.harmful-algal-bloom has 1 source with no risk.",
+      "Refused or down: the bathing water API of the Environment Agency (429 on the first request), the OGC API of the Portuguese Hydrographic Institute (no answer) and the conditions page of the DMA (404).",
+      "The outage layer of the Cal OES search result has only unplanned outages, so it gives no PSPS. The GOV.UK Atom search did not apply its keywords.",
+      "The Global Landslide Nowcast of NASA needs an Earthdata account, so it waits for a decision of the owner on accounts."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 104,
+      "cover": {
+        "adopted": 55,
+        "paths": 55,
+        "origins": 5
+      },
+      "total": {
+        "adopted": 152,
+        "paths": 152,
+        "origins": 73
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 35,
+      "dimensions": 9,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 25 adds 4 planned sources. 1 class gets 2 sources, so the gaps go from 105 to 104."
+    }
   }
 ]

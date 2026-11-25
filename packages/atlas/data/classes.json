@@ -678,7 +678,7 @@
       "FEMA lifelines: Water Systems > Potable Water Infrastructure; Food, Hydration, Shelter > Hydration",
       "UNDRR-ISC HIPs 2025: TL0210 Water Supply Failure"
     ],
-    "gap": "No national feed. Only 13 US states publish advisories in an accessible form and only West Virginia was described with an API (Nicholas Institute analysis). Utilities post notices locally.",
+    "gap": null,
     "round": 1
   },
   {
@@ -694,7 +694,7 @@
     "references": [
       "UNDRR-ISC HIPs 2025: BI0603 Harmful Algal Blooms, CH0605 Marine Toxins"
     ],
-    "gap": "Round 1 found 0 adopted or planned sources with no risk. epa-cyan-api is later, noaa-hab-forecasts is later: see the reason of each.",
+    "gap": "One source: ca-fhab-reports, for California. epa-cyan-api and noaa-hab-forecasts are later: see the reason of each.",
     "round": 1
   },
   {
@@ -3397,7 +3397,7 @@
       "CAP 1.2: Transport",
       "FEMA Lifelines: Transportation > Maritime"
     ],
-    "gap": "The Digitraffic faults of aids to navigation have a risk: they are a partial fit. NGA MSI returned 503 in round 1.",
+    "gap": "One source: dma-niord-warnings, for Danish waters. The Digitraffic faults of aids to navigation are a partial fit. NGA MSI returned 503, and the Portuguese OGC API did not answer.",
     "round": 1
   },
   {

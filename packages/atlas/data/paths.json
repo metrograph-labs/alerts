@@ -2800,5 +2800,29 @@
     "name": "hacker-news.firebaseio.com",
     "kind": "host",
     "note": "The host of the API of hacker-news-api."
+  },
+  {
+    "id": "niord.dma.dk",
+    "name": "niord.dma.dk",
+    "kind": "host",
+    "note": "The host of the feed of dma-niord-warnings."
+  },
+  {
+    "id": "dec.alaska.gov",
+    "name": "dec.alaska.gov",
+    "kind": "host",
+    "note": "The host of the feed of alaska-dec-boil-water."
+  },
+  {
+    "id": "maps.gov.nl.ca",
+    "name": "maps.gov.nl.ca",
+    "kind": "host",
+    "note": "The host of the feed of nl-boil-water-advisories."
+  },
+  {
+    "id": "data.ca.gov",
+    "name": "data.ca.gov",
+    "kind": "host",
+    "note": "The host of the feed of ca-fhab-reports."
   }
 ]
