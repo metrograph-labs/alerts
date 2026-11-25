@@ -1,6 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { ChannelId } from "@mark1russell7/alerts";
 import { VM_PRODUCTS, type PastIncident } from "@mark1russell7/alerts-source-gcp";
 import { openDatabase } from "@mark1russell7/sqlite";
 import type { HistoryIncident, HistoryRead } from "@mark1russell7/alerts-source-statuspage";
@@ -281,12 +282,12 @@ describe("the measure of a shared channel from its calls (AL-147)", () => {
       db.exec("CREATE TABLE events (seq INTEGER PRIMARY KEY, id TEXT NOT NULL UNIQUE, at TEXT NOT NULL, type TEXT NOT NULL, body TEXT NOT NULL) STRICT");
       const add = db.prepare("INSERT INTO events (id, at, type, body) VALUES (?, ?, ?, ?)");
       const first = callsEvent("copy-a", [
-        { channel: "push", call: "probe", time: START },
-        { channel: "voice", call: "probe", time: START, kind: "network" },
-        { channel: "push", call: "send", time: START + 1000, kind: "timeout" },
+        { channel: "push" as ChannelId, call: "probe", time: START },
+        { channel: "voice" as ChannelId, call: "probe", time: START, kind: "network" },
+        { channel: "push" as ChannelId, call: "send", time: START + 1000, kind: "timeout" },
       ], START + 2000, START - 60_000);
       // A refusal is an answer of the service. With no passed fetch, a failed call has no working network.
-      const second = callsEvent("copy-a", [{ channel: "push", call: "probe", time: START + HOUR_MS, kind: "refused" }, { channel: "push", call: "probe", time: START + HOUR_MS + 1, kind: "server" }], START + HOUR_MS + 2);
+      const second = callsEvent("copy-a", [{ channel: "push" as ChannelId, call: "probe", time: START + HOUR_MS, kind: "refused" }, { channel: "push" as ChannelId, call: "probe", time: START + HOUR_MS + 1, kind: "server" }], START + HOUR_MS + 2);
       add.run(first.id, first.at, "calls", JSON.stringify(first));
       add.run("b", "2026-02-01T00:00:00.000Z", "delivery", "{}");
       add.run(second.id, second.at, "calls", JSON.stringify(second));
