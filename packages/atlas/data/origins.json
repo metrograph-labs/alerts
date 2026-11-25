@@ -2520,5 +2520,35 @@
     "name": "The California State Water Resources Control Board",
     "issues": null,
     "note": "Its FHAB data system holds the bloom reports of the state."
+  },
+  {
+    "id": "fsa-uk",
+    "name": "The Food Standards Agency (FSA) of the United Kingdom",
+    "issues": null,
+    "note": "The FSA gives the food recalls and the allergy alerts of England, Wales and Northern Ireland."
+  },
+  {
+    "id": "ukpn",
+    "name": "UK Power Networks",
+    "issues": null,
+    "note": "The distribution operator of the East, London and South East areas of England."
+  },
+  {
+    "id": "rivm",
+    "name": "The National Institute for Public Health and the Environment (RIVM) of the Netherlands",
+    "issues": null,
+    "note": "RIVM measures the virus in the wastewater of each treatment plant of the Netherlands."
+  },
+  {
+    "id": "phac",
+    "name": "The Public Health Agency of Canada (PHAC)",
+    "issues": null,
+    "note": "PHAC gives the Health Infobase data of Canada."
+  },
+  {
+    "id": "chicago-pd",
+    "name": "The Chicago Police Department",
+    "issues": null,
+    "note": "The city portal gives the crime records of the department."
   }
 ]
