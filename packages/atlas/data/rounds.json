@@ -1327,5 +1327,55 @@
       "members": 1757,
       "cause": "Round 25 adds 4 planned sources. 1 class gets 2 sources, so the gaps go from 105 to 104."
     }
+  },
+  {
+    "round": 26,
+    "date": "2026-11-25",
+    "by": "One session, with one research subagent.",
+    "method": "The round read 15 classes with no source, worldwide. One fetch went to each host, with a plain user agent. A second fetch read the licence fields of each candidate. A refusal stays a refusal: the round tried no other route.",
+    "lists": [
+      "The gaps of the atlas on main, with their reasons: packages/atlas/data/classes.json"
+    ],
+    "queries": [
+      "RIVM rioolwaterdata open data CSV",
+      "Health Infobase wastewater surveillance data download",
+      "Food Standards Agency food alerts API",
+      "UK Power Networks power cut open data API",
+      "Socrata crimes dataset daily updates open data",
+      "Australian Electoral Commission media feed",
+      "Canada Post service alerts feed",
+      "GeoNet API landslide"
+    ],
+    "notes": [
+      "Closed: infra.power.outage (odin-ornl and ukpn-national-energy-outage) and safety.recall.food (canada-recalls and fsa-uk-food-alerts).",
+      "rivm-wastewater-sars2 is new. The class health.wastewater-signal has 1 source with no risk.",
+      "chicago-crimes is new. The class security.crime has 1 source with no risk.",
+      "canada-wastewater-trend is later, because its file has no date.",
+      "The status page of Bitstamp gives JSON, but it is a crypto exchange. statuspage-crypto covers that class on the same path, so the round adds no row.",
+      "Refused or down: the media feed of the Australian Electoral Commission (no answer), the status pages of OKX and Bitfinex (no answer) and the recalls feed of FSANZ (HTML, not a feed).",
+      "No feed: the service updates of Canada Post are a page only, and one probe of the GeoNet API found no landslide data.",
+      "Not read in this round: civic.court-ruling, market.credit.rating, infra.timekeeping, transport.air.notam, infra.telecom.outage, civic.school-closure and health.animal-disease."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 102,
+      "cover": {
+        "adopted": 55,
+        "paths": 55,
+        "origins": 5
+      },
+      "total": {
+        "adopted": 152,
+        "paths": 152,
+        "origins": 73
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 35,
+      "dimensions": 9,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 26 adds 4 planned sources and 1 later source. 2 classes get 2 sources, so the gaps go from 104 to 102."
+    }
   }
 ]

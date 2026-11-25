@@ -1232,7 +1232,7 @@
     "references": [
       "None of the lists names it. Found by search for early health signals."
     ],
-    "gap": "Round 1 found 0 adopted or planned sources with no risk. cdc-nwss is later, wastewaterscan is later: see the reason of each.",
+    "gap": "One source: rivm-wastewater-sars2, for the Netherlands. Round 26: the trend file of Health Infobase (Canada) has no date, so it is later. cdc-nwss and wastewaterscan are later.",
     "round": 1
   },
   {
@@ -1484,7 +1484,7 @@
       "FEMA Lifelines: Energy > Power Grid",
       "EM-DAT: Technological > Miscellaneous"
     ],
-    "gap": "Round 3 plans ODIN (odin-ornl): a free public API of the active outages by county, from 159 utilities. No second live source is found. The map of each utility has the same origin, and PowerOutage.us returned 403. EAGLE-I gives only a historic release each year (eagle-i-history).",
+    "gap": null,
     "round": 1
   },
   {
@@ -2911,7 +2911,7 @@
       "CISA sectors: Food and Agriculture",
       "FEMA Lifelines: Food"
     ],
-    "gap": "Round 1 found 1 adopted or planned source with no risk: canada-recalls. fsis-recall-api is later, openfda-enforcement is later: see the reason of each.",
+    "gap": null,
     "round": 1
   },
   {
@@ -3098,7 +3098,7 @@
       "Crisis24: crime risk",
       "Riskline: crime"
     ],
-    "gap": "The police.uk API is later, because its terms are not clear. No other source was found.",
+    "gap": "One source: chicago-crimes, for one city. Round 26: the Los Angeles dataset stops in 2024-12, and the dataset of one more large city comes each quarter. The police.uk API is later.",
     "round": 1
   },
   {

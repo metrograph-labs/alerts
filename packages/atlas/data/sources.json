@@ -23954,5 +23954,195 @@
     "evidence": [
       "https://data.ca.gov/api/3/action/package_show?id=surface-water-freshwater-harmful-algal-blooms"
     ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 26,
+    "decision": "plan",
+    "id": "fsa-uk-food-alerts",
+    "name": "Food Standards Agency food alerts (UK, JSON API)",
+    "classes": [
+      "safety.recall",
+      "safety.recall.food"
+    ],
+    "url": "https://data.food.gov.uk/food-alerts/id?_sort=-created&_limit=100",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.food.gov.uk/food-alerts/ui/reference",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The metadata of each answer names the Open Government Licence v3.0."
+    },
+    "delay": "One read on 2026-11-25 gave 20 alerts. The newest was from the same day.",
+    "history": "The API holds the alerts since 2018.",
+    "rateLimit": "unknown",
+    "coverage": "The product recalls and the allergy alerts of the United Kingdom. Each alert has its type, its reason and its products. The API also gives CSV and RDF.",
+    "origins": [
+      "fsa-uk"
+    ],
+    "path": [
+      "data.food.gov.uk"
+    ],
+    "reason": "A national authority gives its food recalls as JSON under an open licence, with no key. Some recalls are for Salmonella, Listeria or other pathogens.",
+    "evidence": [
+      "https://data.food.gov.uk/food-alerts/id?_sort=-created&_limit=20",
+      "https://data.food.gov.uk/food-alerts/ui/reference"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 26,
+    "decision": "plan",
+    "id": "ukpn-national-energy-outage",
+    "name": "UK Power Networks power cuts (Opendatasoft API)",
+    "classes": [
+      "infra.power.outage"
+    ],
+    "url": "https://ukpowernetworks.opendatasoft.com/api/explore/v2.1/catalog/datasets/ukpn-national-energy-outage/records?limit=100",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://ukpowernetworks.opendatasoft.com/explore/dataset/ukpn-national-energy-outage/information/",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The metadata of the dataset gives the licence CC BY 4.0."
+    },
+    "delay": "One read on 2026-11-25 gave 117 records with an as_at_date of 13:31 UTC. The dataset changed at 13:36 UTC.",
+    "history": "unknown (the dataset holds the open and the recent power cuts)",
+    "rateLimit": "unknown",
+    "coverage": "The planned and unplanned power cuts of three licence areas of the United Kingdom: East, London and South East. Each record has a point, its postcode districts, a planned flag and an estimated time of restoration.",
+    "origins": [
+      "ukpn"
+    ],
+    "path": [
+      "ukpowernetworks.opendatasoft.com"
+    ],
+    "reason": "A distribution operator gives its live power cuts under an open licence, with no key. Other operators also publish on Opendatasoft, so one adapter can read more of them.",
+    "evidence": [
+      "https://ukpowernetworks.opendatasoft.com/api/explore/v2.1/catalog/datasets/ukpn-national-energy-outage/records?limit=5",
+      "https://ukpowernetworks.opendatasoft.com/api/explore/v2.1/catalog/datasets/ukpn-national-energy-outage"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 26,
+    "decision": "plan",
+    "id": "rivm-wastewater-sars2",
+    "name": "RIVM SARS-CoV-2 in wastewater (Netherlands, CSV)",
+    "classes": [
+      "health.wastewater-signal"
+    ],
+    "url": "https://data.rivm.nl/data/covid-19/COVID-19_rioolwaterdata.csv",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.rivm.nl/",
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The landing page shows no licence text. The round did not read the licence of the dataset."
+    },
+    "delay": "One read on 2026-11-25 had the report date 2026-11-18 and the newest measurement of 2026-11-12.",
+    "history": "The file holds the measurements since 2020-03-30.",
+    "rateLimit": "unknown",
+    "coverage": "The virus RNA flow for each 100,000 people at each treatment plant of the Netherlands. The file had 182,181 rows.",
+    "origins": [
+      "rivm"
+    ],
+    "path": [
+      "data.rivm.nl"
+    ],
+    "reason": "A national institute gives the wastewater signal of the whole country as one file, with no key. The signal comes each week.",
+    "evidence": [
+      "https://data.rivm.nl/data/covid-19/COVID-19_rioolwaterdata.csv"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 26,
+    "decision": "later",
+    "id": "canada-wastewater-trend",
+    "name": "Health Infobase wastewater trend (Canada, CSV)",
+    "classes": [
+      "health.wastewater-signal"
+    ],
+    "url": "https://health-infobase.canada.ca/src/data/covidLive/wastewater/covid19-wastewater-trend.csv",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://health-infobase.canada.ca/covid-19/wastewater/",
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The round did not read a licence page. Federal open data often uses the Open Government Licence - Canada."
+    },
+    "delay": "One read on 2026-11-25 gave 60 rows. The file has no date column, so the read cannot tell the age of the data.",
+    "history": "unknown",
+    "rateLimit": "unknown",
+    "coverage": "The latest level and trend of the virus in wastewater at 60 sites of the provinces of Canada.",
+    "origins": [
+      "phac"
+    ],
+    "path": [
+      "health-infobase.canada.ca"
+    ],
+    "reason": "Later: the file has no date, so an adapter cannot tell a fresh trend from an old trend. A second file of the same page possibly has the dates.",
+    "evidence": [
+      "https://health-infobase.canada.ca/covid-19/wastewater/",
+      "https://health-infobase.canada.ca/src/data/covidLive/wastewater/covid19-wastewater-trend.csv"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 26,
+    "decision": "plan",
+    "id": "chicago-crimes",
+    "name": "City of Chicago crimes (Socrata API)",
+    "classes": [
+      "security.crime"
+    ],
+    "url": "https://data.cityofchicago.org/resource/ijzp-q8t2.json?$order=date%20DESC&$limit=100",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.cityofchicago.org/api/views/ijzp-q8t2",
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The licence field of the dataset says See Terms of Use. The round did not read the terms of the city."
+    },
+    "delay": "One read on 2026-11-25 had the newest incident of 2026-11-17. The dataset changed on 2026-11-24, so the delay is approximately 7 days.",
+    "history": "The dataset holds the incidents since 2001.",
+    "rateLimit": "Socrata limits the requests with no app token.",
+    "coverage": "The reported crimes of Chicago, with the type, the block and a point for each incident. It changes each day.",
+    "origins": [
+      "chicago-pd"
+    ],
+    "path": [
+      "data.cityofchicago.org"
+    ],
+    "reason": "A city gives its crimes each day, with no key. Many cities use the same Socrata API, so one adapter can read more of them.",
+    "evidence": [
+      "https://data.cityofchicago.org/resource/ijzp-q8t2.json",
+      "https://data.cityofchicago.org/api/views/ijzp-q8t2.json"
+    ]
   }
 ]

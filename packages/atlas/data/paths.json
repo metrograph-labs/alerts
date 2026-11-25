@@ -2824,5 +2824,35 @@
     "name": "data.ca.gov",
     "kind": "host",
     "note": "The host of the feed of ca-fhab-reports."
+  },
+  {
+    "id": "data.food.gov.uk",
+    "name": "data.food.gov.uk",
+    "kind": "host",
+    "note": "The host of the feed of fsa-uk-food-alerts."
+  },
+  {
+    "id": "ukpowernetworks.opendatasoft.com",
+    "name": "ukpowernetworks.opendatasoft.com",
+    "kind": "host",
+    "note": "The host of the feed of ukpn-national-energy-outage."
+  },
+  {
+    "id": "data.rivm.nl",
+    "name": "data.rivm.nl",
+    "kind": "host",
+    "note": "The host of the feed of rivm-wastewater-sars2."
+  },
+  {
+    "id": "health-infobase.canada.ca",
+    "name": "health-infobase.canada.ca",
+    "kind": "host",
+    "note": "The host of the feed of canada-wastewater-trend."
+  },
+  {
+    "id": "data.cityofchicago.org",
+    "name": "data.cityofchicago.org",
+    "kind": "host",
+    "note": "The host of the feed of chicago-crimes."
   }
 ]
