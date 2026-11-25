@@ -27,7 +27,7 @@ import type { RuntimeLog } from "./log.ts";
 import { cutIncidents, modeEvents, modeStatus, observeStep, type ModeStatus, type ObserveParts } from "./observe.ts";
 import { READING_RETENTION, type ReadingStore } from "./readings.ts";
 import { SNAPSHOT_MISSES, snapshotStep } from "./snapshot.ts";
-import { FOLD_VERSION, readSnapshot, SNAPSHOT_UPGRADES, snapshotKey, snapshotRows, type StartRead, type StartSnapshot } from "./start-snapshot.ts";
+import { contextKey, FOLD_VERSION, readSnapshot, SNAPSHOT_UPGRADES, snapshotKey, snapshotRows, type StartRead, type StartSnapshot } from "./start-snapshot.ts";
 import { retention, type RetentionOptions } from "./retention.ts";
 import type { ReadWatch } from "./schedule.ts";
 import { seriesReads } from "./series-reads.ts";
@@ -307,6 +307,8 @@ export interface Runtime {
    * the write fails. Then the old snapshot stays. The close of the runtime waits for a write in progress.
    */
   writeStartSnapshot(chunks?: ChunkOptions): Promise<number>;
+  /** This function gives the context key of the fold of this runtime (AL-169). The key mode of the start gives the same key. */
+  contextKey(): string;
   /**
    * This function gives the count of the events of the log after the mark of the last snapshot that this runtime read or
    * wrote (AL-115). With no such snapshot, it gives the position of the last event of the log.
@@ -660,6 +662,7 @@ export function openRuntime(options: RuntimeOptions): Runtime {
     state: () => state,
     skipped,
     start,
+    contextKey: () => contextKey(config),
     async writeStartSnapshot(chunks) {
       const store = options.startSnapshot;
       if (store === undefined) throw new Error("The runtime has no store of the snapshot.");

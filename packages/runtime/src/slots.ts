@@ -491,6 +491,56 @@ export function foldStep(runtime: string, home: string, node: string, set: "file
 }
 
 /**
+ * This function gives the key step: `main.ts key` of a slot on the live home (AL-169). The step holds no lock and writes no
+ * file, thus it runs next to the live runtime. The profile is the profile of the supervised runtime, as in `foldStep`.
+ */
+export function keyStep(runtime: string, home: string, node: string): StageStep {
+  return { program: node, args: [join(runtime, "src", "main.ts"), "key"], env: { ALERTS_HOME: home, SERVICE_PROFILE: "daemon" } };
+}
+
+/** The context keys of the fold of the two sets of a start, from the mode key. The key of the good set is null with no good set. */
+export interface StartKeys {
+  readonly files: string;
+  readonly good: string | null;
+}
+
+/** This function reads the last line of the output of the mode key. An output of another form gives undefined. */
+export function startKeysOf(stdout: string): StartKeys | undefined {
+  const line = stdout.trim().split("
+").at(-1);
+  if (line === undefined) return undefined;
+  let value: unknown;
+  try {
+    value = JSON.parse(line);
+  } catch {
+    return undefined;
+  }
+  if (typeof value !== "object" || value === null) return undefined;
+  const { files, good } = value as Record<string, unknown>;
+  if (typeof files !== "string" || (good !== null && typeof good !== "string")) return undefined;
+  return { files, good };
+}
+
+/**
+ * This function gives the lines about the context keys of the fold from the live slot to the other slot (AL-169). A changed
+ * key makes the next start fold the whole log. On a small host, that fold takes longer than the ready window. No change
+ * gives no line. With no keys of the live slot, the line tells that the stage cannot compare.
+ */
+export function keyChange(live: StartKeys | undefined, next: StartKeys | undefined): string[] {
+  if (next === undefined) return ["The new code gave no key of the fold. Look at the output of `main.ts key` of the slot."];
+  if (live === undefined) return ["The live code gave no key of the fold, thus the stage cannot tell if the next start folds the whole log."];
+  const changed = [
+    ...(live.files === next.files ? [] : ["the private files"]),
+    ...(next.good === null || live.good === next.good ? [] : ["the last good set"]),
+  ];
+  if (changed.length === 0) return [];
+  return [
+    `The snapshot key changes for ${changed.join(" and ")}: a source, an expectation, the link policy, the retention or the fold version changes.`,
+    "The next start folds the whole log. On a small host, stop the runtime, swap, start `deploy.ts fold`, and then start the runtime.",
+  ];
+}
+
+/**
  * This function runs one program of a stage to its end. The variables of `env` go over the environment of this process.
  * A failure throws with the end of the output.
  */

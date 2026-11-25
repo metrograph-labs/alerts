@@ -11,6 +11,9 @@ import {
   entryRoot,
   FOLD_FILE,
   foldChange,
+  keyChange,
+  keyStep,
+  startKeysOf,
   foldStep,
   foldVersionOf,
   foreignLinks,
@@ -437,5 +440,39 @@ describe("the fold version of a slot (AL-153)", () => {
     const step = foldStep(runtime, home, "/usr/bin/node", "good");
     expect(step.args).toEqual([join(runtime, "src", "main.ts"), "fold", "good"]);
     expect(step.env).toEqual({ ALERTS_HOME: home, SERVICE_PROFILE: "daemon" });
+  });
+});
+
+describe("the key step of a stage (AL-169)", () => {
+  it("runs the mode key of the slot on the live home with the profile daemon", () => {
+    const step = keyStep(join("slot", "packages", "runtime"), "home", "node");
+    expect(step).toEqual({ program: "node", args: [join("slot", "packages", "runtime", "src", "main.ts"), "key"], env: { ALERTS_HOME: "home", SERVICE_PROFILE: "daemon" } });
+  });
+
+  it("reads the last line of the output, and refuses another form", () => {
+    expect(startKeysOf('a line
+{"files":"3:a","good":null}
+')).toEqual({ files: "3:a", good: null });
+    expect(startKeysOf('{"files":"3:a","good":"3:b"}')).toEqual({ files: "3:a", good: "3:b" });
+    expect(startKeysOf("")).toBeUndefined();
+    expect(startKeysOf("not json")).toBeUndefined();
+    expect(startKeysOf('{"files":3,"good":null}')).toBeUndefined();
+    expect(startKeysOf('{"files":"3:a","good":1}')).toBeUndefined();
+    expect(startKeysOf("null")).toBeUndefined();
+  });
+
+  it("tells a change of the key of each set, and no line for the same keys", () => {
+    const keys = { files: "3:a", good: "3:b" };
+    expect(keyChange(keys, keys)).toEqual([]);
+    expect(keyChange(keys, { files: "3:c", good: "3:b" })[0]).toContain("for the private files:");
+    expect(keyChange(keys, { files: "3:a", good: "3:c" })[0]).toContain("for the last good set:");
+    expect(keyChange(keys, { files: "3:c", good: "3:d" })[0]).toContain("the private files and the last good set");
+    expect(keyChange(keys, { files: "3:c", good: "3:d" })[1]).toContain("deploy.ts fold");
+    expect(keyChange({ files: "3:a", good: null }, { files: "3:a", good: null })).toEqual([]);
+  });
+
+  it("tells when a slot gave no keys", () => {
+    expect(keyChange(undefined, { files: "3:a", good: null })[0]).toContain("cannot tell");
+    expect(keyChange({ files: "3:a", good: null }, undefined)[0]).toContain("gave no key");
   });
 });

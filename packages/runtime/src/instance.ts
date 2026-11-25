@@ -138,7 +138,7 @@ import { outageDeploy, outageDeployWorker, outageSetup, type OutageDeployWorker 
 import { exchangeLoop, exchangeWorker, type EntriesSource, type ExchangeCall, type ExchangeRound, type ExchangeWorker } from "./peers.ts";
 import { channelQuota } from "./quota.ts";
 import { keptPass, openRuntime, type CopyChecks, type KeptPass, type Pass, type Runtime, type RuntimeOptions } from "./runtime.ts";
-import { START_SNAPSHOT_EVERY, START_SNAPSHOT_FLOOR } from "./start-snapshot.ts";
+import { contextKey, START_SNAPSHOT_EVERY, START_SNAPSHOT_FLOOR } from "./start-snapshot.ts";
 import { addZoneCodes, codesAtFix, keepShapes, placeCodesKey, refreshUntil, shapeSources, type InstanceShapes, type ShapeOutcome, type ZoneCodeCounts } from "./shapes.ts";
 import { chooseFeeds, feedsKey, keepTransit, type InstanceTransit, type TransitCache, type TransitOutcome } from "./transit.ts";
 import { fixReads, type PositionIntake } from "./position-intake.ts";
@@ -1027,30 +1027,14 @@ export function readsGdelt(config: AlertConfig): boolean {
   return sourcePlaces(config, GDELT_DESCRIPTOR.id).some((place) => place.at !== undefined);
 }
 
+/** The options of the build of the sources of an instance (AL-169). The key mode of the start builds the same sources. */
+export type SourceBuildOptions = Pick<InstanceOptions, "config" | "secret" | "transport" | "transit" | "transitLimit" | "copy" | "nwwsOpen" | "tell">;
+
 /**
- * This function makes the instance. It throws when the configuration or the secret store has a
- * problem. A problem is a missing token, a key with a bad form, or a place that no regional source covers.
- * The message names ids, fields and the names of secrets, and no value.
- *
- * - The sources are the NWS API, IPAWS, the USGS, EMSC, the two tsunami warning centers, the SWPC, GFZ (Kp and Hp30),
- *   Energy-Charts and CISA KEV. The stream of NWWS-OI is a source when the secrets have the keys of the account of the
- *   copy (`nwwsSetup`). The events of GDELT are a source when a place shares its position with it (`readsGdelt`). BoM is a source when the secrets have its key (`BOM_SWS_KEY`), and so is EIA-930 (`EIA_KEY`). The outages and the traffic
- *   anomalies of Cloudflare Radar are sources when the secrets have its token (`CLOUDFLARE_RADAR_KEY`). Each status page that one of the
- *   persons can get is a source (`pagesFor`). The feed of Google Cloud, AWS or Azure is a source when one of the persons
- *   can get its reports (`watchReads`). The stack of the alert chain reads the pages and the feeds of its subjects too (`chainWatch`). Each transit feed of the copy of the catalog whose box meets a place is a source.
- * - Each source gets the codes of the places. It gets the position of a place only when the place shares it with that
- *   source. The USGS, EMSC, the centers, the SWPC, GFZ, BoM, Energy-Charts, EIA-930, CISA KEV, GDELT, Radar, Google Cloud, AWS, Azure
- *   and the status pages ask for no place. GDELT keeps only the events near the places on the machine of the instance. The transit feeds also ask for no place.
- * - The channels are Pushover, and the Twilio call channel when the secrets have its keys. Each time of the delivery comes
- *   from a fact of the channels.
- * - A spend entry of a channel gives its cap and the watch of the balance of its account.
- * - The times of the loop come from the limits of the runtime.
- * - The copy does not read a source of the field `leaveSources` of its settings (AL-160).
+ * This function builds the sources of an instance, and the parts of the build that the instance uses again (AL-169). The
+ * function `reports` gives the merge reports to the source of the messages of the operator. The build sends no request.
  */
-export function openInstance(options: InstanceOptions): Instance {
-  const { clock } = options;
-  // A change of the wall clock of CLOCK_STEP_ABOVE or less is a drift. A larger change is a step of the clock.
-  const wall = frameClock(options.wall, clock, { driftLimit: CLOCK_STEP_ABOVE });
+export function instanceSources(options: SourceBuildOptions, clock: Clock, wall: WallClock, reports: () => readonly Report[]) {
   // A report of a status page has no area. Thus the instance reads only the pages that one of its persons can get.
   // The stack of the alert chain reads the pages and the feeds of its subjects too (AL-90).
   const chainConfig = options.config.config.chain;
@@ -1104,7 +1088,7 @@ export function openInstance(options: InstanceOptions): Instance {
       ? createNwwsSource({ account: account.value, clock: wall, ...(options.nwwsOpen === undefined ? {} : { open: options.nwwsOpen }) })
       : undefined;
   // The source of the messages of the operator reads the merge state of the runtime at each fetch. The first fetch is after the start.
-  const intake = options.tell === undefined ? undefined : tellSource(options.tell, () => runtime.state().merge.reports, () => wall.now());
+  const intake = options.tell === undefined ? undefined : tellSource(options.tell, reports, () => wall.now());
   // A copy does not read a source that it leaves to the other copies (AL-160). The exchange gives it their reports. The
   // pace keeps a place for each made source, thus a left source only gives one more free place.
   const leftSources = new Set<string>(copy.leaveSources ?? []);
@@ -1113,6 +1097,45 @@ export function openInstance(options: InstanceOptions): Instance {
   );
 
   const descriptors = sources.map((source) => source.describe());
+  return { watches, pages, feeds, transitCopy, chosen, pace, agent, copy, account, stream, sources, descriptors };
+}
+
+/**
+ * This function gives the context key of the fold of an instance with these options (AL-169). It builds the sources and the
+ * fold fields of the view as `openInstance` does, with no log and no store. A gate test pins it to the key of the runtime.
+ */
+export function instanceContextKey(options: SourceBuildOptions, clock: Clock, wall: WallClock): string {
+  const { descriptors } = instanceSources(options, clock, wall, () => []);
+  const { config } = options.config;
+  // The runtime adds the descriptors and the retention to the view (`openRuntime`). The instance gives no retention.
+  return contextKey({ sources: descriptors, retention: {}, expectations: instanceExpectations(config.expectations, descriptors), ...(config.link === undefined ? {} : { link: config.link }) });
+}
+
+/**
+ * This function makes the instance. It throws when the configuration or the secret store has a
+ * problem. A problem is a missing token, a key with a bad form, or a place that no regional source covers.
+ * The message names ids, fields and the names of secrets, and no value.
+ *
+ * - The sources are the NWS API, IPAWS, the USGS, EMSC, the two tsunami warning centers, the SWPC, GFZ (Kp and Hp30),
+ *   Energy-Charts and CISA KEV. The stream of NWWS-OI is a source when the secrets have the keys of the account of the
+ *   copy (`nwwsSetup`). The events of GDELT are a source when a place shares its position with it (`readsGdelt`). BoM is a source when the secrets have its key (`BOM_SWS_KEY`), and so is EIA-930 (`EIA_KEY`). The outages and the traffic
+ *   anomalies of Cloudflare Radar are sources when the secrets have its token (`CLOUDFLARE_RADAR_KEY`). Each status page that one of the
+ *   persons can get is a source (`pagesFor`). The feed of Google Cloud, AWS or Azure is a source when one of the persons
+ *   can get its reports (`watchReads`). The stack of the alert chain reads the pages and the feeds of its subjects too (`chainWatch`). Each transit feed of the copy of the catalog whose box meets a place is a source.
+ * - Each source gets the codes of the places. It gets the position of a place only when the place shares it with that
+ *   source. The USGS, EMSC, the centers, the SWPC, GFZ, BoM, Energy-Charts, EIA-930, CISA KEV, GDELT, Radar, Google Cloud, AWS, Azure
+ *   and the status pages ask for no place. GDELT keeps only the events near the places on the machine of the instance. The transit feeds also ask for no place.
+ * - The channels are Pushover, and the Twilio call channel when the secrets have its keys. Each time of the delivery comes
+ *   from a fact of the channels.
+ * - A spend entry of a channel gives its cap and the watch of the balance of its account.
+ * - The times of the loop come from the limits of the runtime.
+ * - The copy does not read a source of the field `leaveSources` of its settings (AL-160).
+ */
+export function openInstance(options: InstanceOptions): Instance {
+  const { clock } = options;
+  // A change of the wall clock of CLOCK_STEP_ABOVE or less is a drift. A larger change is a step of the clock.
+  const wall = frameClock(options.wall, clock, { driftLimit: CLOCK_STEP_ABOVE });
+  const { watches, pages, feeds, transitCopy, chosen, pace, agent, copy, account, stream, sources, descriptors } = instanceSources(options, clock, wall, () => runtime.state().merge.reports);
   const kinds = [...new Set(descriptors.flatMap((descriptor) => descriptor.kinds))];
 
   const { config, recipients } = options.config;
