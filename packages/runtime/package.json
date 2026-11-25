@@ -60,7 +60,7 @@
     "@mark1russell7/stack-risk": "^0.2.5",
     "@mark1russell7/stack-spend": "^0.1.12",
     "@mark1russell7/system-stack": "^0.1.8",
-    "@mark1russell7/text": "^0.0.18",
+    "@mark1russell7/text": "^0.0.19",
     "@opentelemetry/api": "^1.10.0",
     "@procedures/client": "^0.68.0",
     "@procedures/fs": "^0.68.0",

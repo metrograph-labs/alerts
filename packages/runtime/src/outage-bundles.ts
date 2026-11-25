@@ -9,7 +9,11 @@
  */
 import { bundleFileText, checkBundleFile, makeBundleFile, OUTAGE_BUNDLE_FILE } from "@mark1russell7/alerts-channel-twilio";
 import { countOf, errorMessage } from "@mark1russell7/text";
+import { createPrinter } from "@mark1russell7/text/print";
 import { fileBundleStore } from "./outage.ts";
+
+// The output of this command for a person goes through one printer, which removes the shapes of tokens (no raw console).
+const print = createPrinter({ out: process.stdout, err: process.stderr });
 
 let code = 0;
 try {
@@ -18,9 +22,9 @@ try {
   await store.write(bundleFileText(file));
   const check = await checkBundleFile(await store.read());
   if (!check.ok) throw new Error(check.reason);
-  console.log(`The file of the outage bundles has ${countOf(file.bundles.length, "bundle")} and ${countOf(Object.keys(file.inputs).length, "input file")}.`);
+  print.line(`The file of the outage bundles has ${countOf(file.bundles.length, "bundle")} and ${countOf(Object.keys(file.inputs).length, "input file")}.`);
 } catch (error) {
-  console.error(`The outage bundles failed: ${errorMessage(error)}`);
+  print.error(`The outage bundles failed: ${errorMessage(error)}`);
   code = 1;
 }
 process.exitCode = code;
