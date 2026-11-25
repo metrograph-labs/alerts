@@ -31,8 +31,12 @@ export interface ReadScheduleOptions<R> {
 
 /** A watch that reads on a schedule. The runtime starts `check` in each pass, and moves its times at a step of the wall clock. */
 export interface ReadWatch {
-  /** This method reads when the read is due, and gives no result. It starts one read for two checks at the same time. It does not throw. */
-  check(clock: WallClock, stop?: AbortSignal): Promise<void>;
+  /**
+   * This method reads when the read is due, and gives no result. It starts one read for two checks at the same time. It does
+   * not throw. The signal `stop` ends at the end of the pass. A watch that reads after its check ends uses `life`, and
+   * `life` ends at the close of the runtime (AL-139).
+   */
+  check(clock: WallClock, stop?: AbortSignal, life?: AbortSignal): Promise<void>;
   /** This method gives the time of the next read, or `undefined` before the first check. */
   nextReadAt(): Instant | undefined;
   /** This method moves the times of the watch by a step of the wall clock. */

@@ -643,12 +643,17 @@ export function openRuntime(options: RuntimeOptions): Runtime {
 
   // The close of the sources, one time. A source that throws in its close does not stop the close of the other sources.
   let closed: Promise<void> | undefined;
+  // The life of the runtime: the reads in the background use it, not the signal of a pass (AL-139). The scope of a pass
+  // closes at the end of the pass, and its signal then cuts each read in the background.
+  const life = new AbortController();
   // The mark of the last snapshot that this runtime read or wrote, and the write of the snapshot in progress (AL-115).
   let snapshotMark: FoldMark | undefined = resumed.mark;
   let snapshotWrite: Promise<number> | undefined;
   // The close waits for a write of the snapshot in progress. Thus the entry closes the store of the snapshot after the write.
-  const close = (): Promise<void> =>
-    (closed ??= Promise.allSettled([...options.sources.map((source) => Promise.resolve().then(() => source.close?.())), snapshotWrite]).then(() => undefined));
+  const close = (): Promise<void> => {
+    if (!life.signal.aborted) life.abort(new Error("The runtime is closed."));
+    return (closed ??= Promise.allSettled([...options.sources.map((source) => Promise.resolve().then(() => source.close?.())), snapshotWrite]).then(() => undefined));
+  };
 
   return {
     config,
@@ -695,7 +700,7 @@ export function openRuntime(options: RuntimeOptions): Runtime {
         return nextFetch(state, descriptor) <= start ? [{ source, descriptor }] : [];
       });
       // A watch reads only when it is due, and its check does not throw. It runs next to the fetches.
-      const checks = Promise.all(scheduled.map((watch) => watch.check(clock, stop)));
+      const checks = Promise.all(scheduled.map((watch) => watch.check(clock, stop, life.signal)));
       // The probes of the down channels run next to the fetches. A probe does not throw, and it ends at the call limit.
       const probes = channels?.probe(start, lastFetchSuccess(state.health));
       // Each fetch ends before the pass ends, also when one of them fails. Thus no fetch of a pass runs on in the next pass.

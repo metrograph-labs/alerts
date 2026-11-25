@@ -8,7 +8,7 @@ import { openFoldSnapshot, type FoldSnapshot } from "@mark1russell7/sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import { balanceWatch, type BalanceReading } from "./balance.ts";
 import { limitWatch, type UseReading } from "./use.ts";
-import { DRIFT_LIMIT, driftWatch } from "./drift.ts";
+import { DRIFT_LIMIT, driftWatch, type DriftRunner } from "./drift.ts";
 import { envelope, EVENT_TYPES, FOLD_TYPES, type RuntimeEvent } from "./events.ts";
 import { openRuntimeLog, type RuntimeLog } from "./log.ts";
 import type { ReadingStore } from "./readings.ts";
@@ -743,6 +743,37 @@ describe("one pass of the runtime", () => {
     await watch.settled();
     expect(driftReports(await runtime.pass())).toEqual([["cancel", "system.drift.changed", "Drift of a copy host: the condition ended."]]);
     expect(runs).toBe(2);
+    log.close();
+  });
+
+  // The service gives each pass the signal of its round, and the round scope closes at the end of the pass (AL-139).
+  it("keeps a drift check in the background after the signal of its pass ends, and ends it at the close", async () => {
+    let release: () => void = () => undefined;
+    const signals: AbortSignal[] = [];
+    const run: DriftRunner = (_argv, signal) =>
+      new Promise((resolve) => {
+        signals.push(signal);
+        release = () => resolve({ exitCode: 0, stdout: "check: step.one: the file differs
+" });
+        signal.addEventListener("abort", () => resolve({ exitCode: 1, stdout: "" }), { once: true });
+      });
+    const watch = driftWatch({ commands: [{ name: "host-a", kind: "setup", argv: ["check-host"] }], run, every: 60_000 });
+    const { clock, runtime, log } = open([], { drift: watch });
+    const round = new AbortController();
+    await runtime.pass(round.signal);
+    round.abort(new Error("The scope of the round is closed."));
+    expect(signals[0]?.aborted).toBe(false);
+    release();
+    await watch.settled();
+    expect(watch.health()).toEqual([{ what: "drift of host-a", at: T0, failed: false, next: T0 + 60_000 }]);
+    // At the close of the runtime, a command in flight ends, and its read is not a failure.
+    await clock.advance(60_000);
+    await runtime.pass(new AbortController().signal);
+    expect(signals).toHaveLength(2);
+    await runtime.close();
+    expect(signals[1]?.aborted).toBe(true);
+    await watch.settled();
+    expect(watch.failure("host-a")).toBeUndefined();
     log.close();
   });
 
