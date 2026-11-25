@@ -277,6 +277,7 @@ function blockReport(alert: CapAlert, message: Message, block: Block | undefined
  * - A message with no identifier or no valid sent time gives no report and a fatal problem.
  * - A message with a scope other than `Public` gives no report and a note. The note does not change the health of the source.
  * - A message with no info block gives one report with no kind and no area, and a lossy problem.
+ * - A cancel with references and no info block gives one report and no problem. CAP 1.2 permits it, and it loses no value.
  * - A value of the message that a report does not hold is a lossy problem.
  */
 export function capReports(alert: CapAlert, observation: Observation, options: CapReportOptions, problems: ProblemSink): Report[] {
@@ -312,7 +313,9 @@ export function capReports(alert: CapAlert, observation: Observation, options: C
   };
   const chosen = chooseInfo(alert.infos, options.languages);
   if (chosen === undefined) {
-    problems.add("info", "the message has no info block: the report has no kind and no area");
+    // A cancel needs only its references: CAP 1.2 permits it with no info block, and IPAWS sends it so (AL-181). The
+    // report ends the referenced incidents, so the map loses no value.
+    if (alert.infos.length > 0 || message.op !== "cancel" || message.references.length === 0) problems.add("info", "the message has no info block: the report has no kind and no area");
     return [blockReport(alert, message, undefined, undefined, observation, options, problems)];
   }
   const language = chosen.info.language.toLowerCase();

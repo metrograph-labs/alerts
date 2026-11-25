@@ -152,6 +152,28 @@ describe("the reports of one CAP message", () => {
     expect(problems.list).toEqual([{ path: "info", message: "the message has no info block: the report has no kind and no area", fatal: false, lossy: true }]);
   });
 
+  it("gives no problem for a cancel with references and no info block, and a lossy problem for a cancel with no references", () => {
+    const head = `<msgType>Cancel</msgType><references>alerts@example.org,TEST-3,${SENT}</references>`;
+    const { reports, problems } = mapText(messageText("TEST-C0", [], "2026-11-15T12:30:00-00:00", head));
+    expect(reports).toHaveLength(1);
+    expect(reports[0]).toMatchObject({ key: "TEST-C0", op: "cancel", references: ["TEST-3"], areas: [] });
+    expect(problems.list).toEqual([]);
+    const bare = mapText(messageText("TEST-C1", [], SENT, "<msgType>Cancel</msgType>")).problems;
+    expect(bare.list.map((problem) => [problem.path, problem.lossy])).toEqual([["info", true]]);
+  });
+
+  it("ends the referenced incident in the merge for a cancel with no info block, as a cancel with info does", () => {
+    const { reports } = mapText(messageText("TEST-3", THREE));
+    const at = SENT_MS + 3_600_000;
+    expect(incidents(normalize({ reports }), at).map((incident) => incident.live)).toEqual([true]);
+    const cancel = mapText(
+      messageText("TEST-C2", [], "2026-11-15T12:30:00-00:00", `<msgType>Cancel</msgType><references>alerts@example.org,TEST-3,${SENT}</references>`),
+    ).reports;
+    const ended = incidents(normalize({ reports: [...reports, ...cancel] }), at);
+    expect(ended).toHaveLength(1);
+    expect(ended[0]?.live).toBe(false);
+  });
+
   it("gives no report for an acknowledgment, and a fatal problem for a message with no identifier", () => {
     expect(mapText(messageText("TEST-A", THREE, SENT, "<msgType>Ack</msgType>")).reports).toEqual([]);
     const { reports, problems } = mapText(messageText("", THREE));
