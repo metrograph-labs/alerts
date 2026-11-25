@@ -404,6 +404,35 @@ describe("keepShapes", () => {
     await keeper.close();
   });
 
+  // The gate of the size of the map (AL-176). Synthetic zones with dense outlines, as the outlines of the NWS API, from Guam
+  // to Maine. The full outlines are 300 zones of 1,441 positions each.
+  it("gives a basemap of dense zones on the two sides of the antimeridian at less than 1/20 of the full outlines (AL-176)", async () => {
+    const zones = new Map<string, MapRegion>();
+    for (let at = 0; at < 300; at += 1) {
+      const lon = at < 5 ? 144 + at : -170 + (at - 5) * 0.35;
+      const lat = 30 + (at % 15);
+      const ring: [number, number][] = [];
+      for (let step = 0; step <= 1440; step += 1) {
+        const angle = (step / 1440) * 2 * Math.PI;
+        ring.push([lon + 0.15 * Math.cos(angle), lat + 0.1 * Math.sin(angle)]);
+      }
+      ring[1440] = ring[0]!;
+      const id = `KSZ${String(at).padStart(3, "0")}`;
+      zones.set(id, { code: { system: "ugc", code: id }, name: `Zone ${String(at)}`, shapes: [{ type: "polygon", rings: [ring] }] });
+    }
+    const fake = fakeStore([]);
+    const store: ShapeStore = { ...fake.store, lookup: (code) => zones.get(code.code)?.shapes, region: (code) => zones.get(code.code) };
+    const keeper = keepShapes({ store, places: [TEXAS] });
+    keeper.afterPass([incident("a", [...zones.keys()].map((code) => ({ system: "ugc", code })))], undefined);
+    const map = keeper.basemap();
+    expect(map).toHaveLength(300);
+    const full = JSON.stringify([...zones.values()]).length;
+    expect(JSON.stringify(map).length).toBeLessThan(full / 20);
+    // Each incident on the map draws the simplified zone.
+    for (const region of map) expect(keeper.display(region.code)).toBe(region.shapes);
+    await keeper.close();
+  });
+
   it("gives the full outlines and reports the error one time when the simplification throws", async () => {
     // The ring is not closed, thus geo refuses it.
     const open: MapRegion = { code: { system: "ugc", code: "KSC079" }, name: "Harvey", shapes: [{ type: "polygon", rings: [[[-98, 37], [-97, 37], [-97, 38], [-98, 38]]] }] };
