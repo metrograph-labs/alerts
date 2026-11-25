@@ -13,3 +13,12 @@
 - Each answer ends with `]}` and a line break. The answers had `Content-Type: application/json` and no `ETag` and no `Last-Modified`.
 - The answers give the license in the field `meta.license`: `CC BY 4.0`. The credit that GFZ asks for is "GFZ German Research Centre for Geosciences".
 - The values are measures of the magnetic field of the Earth. They contain no personal data.
+
+## The fixtures of the index Hp30
+
+- `hp30-20261125T1422Z.json` holds the real bytes of the answer to `https://kp.gfz.de/app/json/?start=2026-11-22T14:00:00Z&end=2026-11-25T14:29:59Z&index=Hp30`. The site sent it at 2026-11-25 14:22 UTC.
+- The answer has 144 values of Hp30, from 2026-11-22 14:00 UTC to 2026-11-25 13:30 UTC. The largest value is 3.333, so no value is G1 or more.
+- The answer had no value for the current interval of 14:00 UTC. Thus the value of an interval of Hp30 can come after the end of the interval.
+- `hp30-20240510-20240512.json` holds the real bytes of the answer to `https://kp.gfz.de/app/json/?start=2024-05-10T00:00:00Z&end=2024-05-12T23:59:59Z&index=Hp30`. The site sent it on 2026-11-25.
+- These are the 144 intervals of the G5 storm of 10 to 12 May 2024. The largest value is 11.333 (11+), at 2024-05-10 22:30 UTC. 19 values are above 9.
+- An answer of Hp30 has the columns `datetime` and `Hp30` and the field `meta`, with the license `CC BY 4.0`. It has no column `status`.

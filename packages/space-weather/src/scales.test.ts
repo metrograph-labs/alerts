@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { knownKind } from "@mark1russell7/alerts";
 
-import { GEOMAGNETIC_STORM_KIND, geomagneticLevel, KP_MAX, kpText, RADIO_BLACKOUT_KIND, SEVERITY_BY_LEVEL, SOLAR_RADIATION_STORM_KIND, SPACE_WEATHER_KIND } from "./index.ts";
+import { GEOMAGNETIC_STORM_KIND, geomagneticLevel, KP_MAX, kpText, RADIO_BLACKOUT_KIND, SEVERITY_BY_LEVEL, SOLAR_RADIATION_STORM_KIND, SPACE_WEATHER_KIND, thirdsText } from "./index.ts";
 
 // Each value of Kp in thirds, as GFZ writes it, with its text and its level of the scale G from the NOAA table.
 const TABLE: readonly (readonly [number, string, number])[] = [
@@ -37,6 +37,14 @@ describe("the scale G from the index Kp", () => {
   it("puts 9- in G4, as the table says", () => {
     expect(geomagneticLevel(26 / 3)).toBe(4);
     expect(geomagneticLevel(27 / 3)).toBe(5);
+  });
+
+  it("gives the text of each third with no upper limit for the indices Hp30 and Hp60", () => {
+    for (const [kp, text] of TABLE) expect(thirdsText(kp), String(kp)).toBe(text);
+    expect(thirdsText(9.333)).toBe("9+");
+    expect(thirdsText(11.333)).toBe("11+");
+    expect(thirdsText(11.667)).toBe("12-");
+    for (const value of [-0.333, Number.NaN, Number.POSITIVE_INFINITY]) expect(thirdsText(value), String(value)).toBeUndefined();
   });
 
   it("gives no level for a value out of range", () => {
