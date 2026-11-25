@@ -675,7 +675,7 @@
     "id": "faa",
     "name": "US Federal Aviation Administration",
     "issues": null,
-    "note": "The records of faa-nas-status, faa-notam-api name this issuer."
+    "note": "The records of faa-nas-status, faa-notam-api, faa-flight-prohibitions name this issuer."
   },
   {
     "id": "fbi-ic3",

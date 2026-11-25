@@ -3142,5 +3142,11 @@
     "name": "elections.democracyclub.org.uk",
     "kind": "host",
     "note": "The host of the elections API of Democracy Club, the API of democracy-club-elections."
+  },
+  {
+    "id": "www.faa.gov",
+    "name": "www.faa.gov",
+    "kind": "host",
+    "note": "The host of the main site of the FAA, the page of faa-flight-prohibitions."
   }
 ]

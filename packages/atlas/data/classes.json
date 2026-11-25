@@ -991,7 +991,7 @@
       "EM-DAT: Space weather > Energetic particles",
       "UNDRR-ISC HIPs 2025: ET0104 Solar Energetic Particles"
     ],
-    "gap": "Round 6 adopts swpc-products-json, the only source with no risk. Its only origin is the NWS. swpc-email is later: see its reason. Round 32: the NICT site shows the proton flux of GOES, and it permits private use only.",
+    "gap": "Round 6 adopts swpc-products-json, the only source with no risk. Its only origin is the NWS. swpc-email is later: see its reason. Round 32: the NICT site shows the proton flux of GOES, and it permits private use only. Round 38: the site of the Korean Space Weather Center failed its TLS check, and the round did not go around the error.",
     "round": 1
   },
   {
@@ -3286,7 +3286,7 @@
     "references": [
       "MAX Security: Aviation"
     ],
-    "gap": "One source. FAA flight prohibitions were not opened.",
+    "gap": null,
     "round": 1
   },
   {

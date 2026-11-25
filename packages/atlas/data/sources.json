@@ -26218,5 +26218,43 @@
       "https://elections.democracyclub.org.uk/api/elections/?current=1",
       "https://elections.democracyclub.org.uk/robots.txt"
     ]
+  },
+  {
+    "id": "faa-flight-prohibitions",
+    "name": "FAA Prohibitions, Restrictions and Notices for flights outside the US",
+    "classes": [
+      "transport.air.conflict-zone"
+    ],
+    "url": "https://www.faa.gov/air_traffic/publications/us_restrictions",
+    "access": "page",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The FAA made the page and its PDF files, so they are a work of the US government. The robots.txt of www.faa.gov does not block the path. The page offers email updates through GovDelivery."
+    },
+    "cost": "free",
+    "delay": "As the FAA issues each SFAR or international security NOTAM.",
+    "history": "Only the rules in force. Each rule has its PDF file.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "The read of 2026-11-25 listed 22 countries and areas, each with its SFAR, its KICZ NOTAMs or both, in 44 PDF files.",
+    "origins": [
+      "faa"
+    ],
+    "path": [
+      "www.faa.gov"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "The FAA tells US operators where a flight is prohibited or restricted. Its origin is not EASA, so the class gets a second independent source. The page is HTML, so an adapter reads its list and the date of each PDF file.",
+    "evidence": [
+      "https://www.faa.gov/air_traffic/publications/us_restrictions",
+      "https://www.faa.gov/robots.txt"
+    ],
+    "round": 38
   }
 ]
