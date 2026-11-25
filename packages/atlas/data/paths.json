@@ -2289,7 +2289,7 @@
     "id": "www.gov.uk",
     "name": "www.gov.uk",
     "kind": "host",
-    "note": "The host of the feed of fcdo-travel-advice-api."
+    "note": "The host of GOV.UK: the feed of fcdo-travel-advice-api and the search API of the AAIB and RAIB sources."
   },
   {
     "id": "www.hkcert.org",
@@ -2907,7 +2907,7 @@
     "id": "services.arcgis.com",
     "name": "services.arcgis.com",
     "kind": "host",
-    "note": "A host of ArcGIS Online of Esri. The host of the feed of redcross-open-shelters."
+    "note": "A host of ArcGIS Online of Esri. The host of the feeds of redcross-open-shelters and caloes-power-outages."
   },
   {
     "id": "services1.arcgis.com",
@@ -3094,5 +3094,71 @@
     "name": "wvde.state.wv.us",
     "kind": "host",
     "note": "The host of the site of the West Virginia Department of Education, the page of wvde-closings."
+  },
+  {
+    "id": "neo-bolide.ndc.nasa.gov",
+    "name": "neo-bolide.ndc.nasa.gov",
+    "kind": "host",
+    "note": "The host of the bolide site of NASA, the API of nasa-glm-bolides."
+  },
+  {
+    "id": "data.sf.gov",
+    "name": "data.sf.gov",
+    "kind": "host",
+    "note": "The host of the open data portal of San Francisco, the API of sfmta-street-closures. data.sfgov.org sends its requests to this host."
+  },
+  {
+    "id": "slack-status.com",
+    "name": "slack-status.com",
+    "kind": "host",
+    "note": "The host of the status site of Slack, the API of slack-status-api."
+  },
+  {
+    "id": "www.google.com",
+    "name": "www.google.com",
+    "kind": "host",
+    "note": "The host of the Google Workspace Status Dashboard, the file of google-workspace-status."
+  },
+  {
+    "id": "www.cer-rec.gc.ca",
+    "name": "www.cer-rec.gc.ca",
+    "kind": "host",
+    "note": "The host of the site of the CER, the file of cer-pipeline-incidents."
+  },
+  {
+    "id": "ca.dep.state.fl.us",
+    "name": "ca.dep.state.fl.us",
+    "kind": "host",
+    "note": "The host of the ArcGIS services of the FDEP, the layer of fgs-subsidence-reports."
+  },
+  {
+    "id": "www.recaap.org",
+    "name": "www.recaap.org",
+    "kind": "host",
+    "note": "The host of the site of ReCAAP ISC, the files of recaap-incidents."
+  },
+  {
+    "id": "elections.democracyclub.org.uk",
+    "name": "elections.democracyclub.org.uk",
+    "kind": "host",
+    "note": "The host of the elections API of Democracy Club, the API of democracy-club-elections."
+  },
+  {
+    "id": "www.faa.gov",
+    "name": "www.faa.gov",
+    "kind": "host",
+    "note": "The host of the main site of the FAA, the page of faa-flight-prohibitions."
+  },
+  {
+    "id": "www.tsb-bst.gc.ca",
+    "name": "www.tsb-bst.gc.ca",
+    "kind": "host",
+    "note": "The host of the site of the TSB of Canada, the feeds of tsb-canada-news."
+  },
+  {
+    "id": "www.maritime.dot.gov",
+    "name": "www.maritime.dot.gov",
+    "kind": "host",
+    "note": "The host of the site of MARAD, the page of marad-msci-advisories."
   }
 ]

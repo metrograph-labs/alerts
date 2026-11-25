@@ -675,7 +675,7 @@
     "id": "faa",
     "name": "US Federal Aviation Administration",
     "issues": null,
-    "note": "The records of faa-nas-status, faa-notam-api name this issuer."
+    "note": "The records of faa-nas-status, faa-notam-api, faa-flight-prohibitions, faa-preliminary-accident-notices name this issuer."
   },
   {
     "id": "fbi-ic3",
@@ -849,7 +849,7 @@
     "id": "google",
     "name": "Google",
     "issues": null,
-    "note": "The records of android-security-bulletins, chrome-releases-feed, firebase-status, gcp-status-json, go-vulndb, google-pollen-api, google-trends, pixel-update-bulletins, project-zero-0day-itw name this issuer."
+    "note": "The records of android-security-bulletins, chrome-releases-feed, firebase-status, gcp-status-json, google-workspace-status, go-vulndb, google-pollen-api, google-trends, pixel-update-bulletins, project-zero-0day-itw name this issuer."
   },
   {
     "id": "greynoise",
@@ -2748,5 +2748,77 @@
     "name": "The West Virginia Department of Education",
     "issues": null,
     "note": "The department publishes the school closings of West Virginia. The record of wvde-closings names this issuer."
+  },
+  {
+    "id": "nasa-ames-atap",
+    "name": "The Asteroid Threat Assessment Project of the NASA Ames Research Center",
+    "issues": null,
+    "note": "The team finds bolides in the data of the Geostationary Lightning Mappers. The record of nasa-glm-bolides names this issuer."
+  },
+  {
+    "id": "sfmta",
+    "name": "The San Francisco Municipal Transportation Agency (SFMTA)",
+    "issues": null,
+    "note": "The SFMTA permits the temporary street closures of San Francisco. The record of sfmta-street-closures names this issuer."
+  },
+  {
+    "id": "slack",
+    "name": "Slack",
+    "issues": null,
+    "note": "Slack publishes the status of its own service. The record of slack-status-api names this issuer."
+  },
+  {
+    "id": "cer",
+    "name": "The Canada Energy Regulator (CER)",
+    "issues": null,
+    "note": "The CER regulates the pipelines that cross a border of a province or of Canada. The record of cer-pipeline-incidents names this issuer."
+  },
+  {
+    "id": "florida-geological-survey",
+    "name": "The Florida Geological Survey of the Florida Department of Environmental Protection",
+    "issues": null,
+    "note": "The survey collects the reports of subsidence in Florida. The record of fgs-subsidence-reports names this issuer."
+  },
+  {
+    "id": "cal-oes",
+    "name": "The California Governor's Office of Emergency Services (Cal OES)",
+    "issues": null,
+    "note": "Cal OES collects the active outages from the outage maps of the utilities. The record of caloes-power-outages names this issuer."
+  },
+  {
+    "id": "recaap-isc",
+    "name": "The ReCAAP Information Sharing Centre (ReCAAP ISC)",
+    "issues": null,
+    "note": "The centre records the incidents of piracy and armed robbery against ships in Asia. The record of recaap-incidents names this issuer."
+  },
+  {
+    "id": "democracy-club",
+    "name": "Democracy Club",
+    "issues": null,
+    "note": "Democracy Club collects the elections of the United Kingdom. The record of democracy-club-elections names this issuer."
+  },
+  {
+    "id": "uk-aaib",
+    "name": "The Air Accidents Investigation Branch of the United Kingdom (AAIB)",
+    "issues": null,
+    "note": "The records of aaib-deployments-govuk name this issuer."
+  },
+  {
+    "id": "uk-raib",
+    "name": "The Rail Accident Investigation Branch of the United Kingdom (RAIB)",
+    "issues": null,
+    "note": "The records of raib-notices-govuk name this issuer."
+  },
+  {
+    "id": "ca-tsb",
+    "name": "The Transportation Safety Board of Canada (TSB)",
+    "issues": null,
+    "note": "The records of tsb-canada-news name this issuer."
+  },
+  {
+    "id": "us-marad",
+    "name": "The Maritime Administration of the US Department of Transportation (MARAD)",
+    "issues": null,
+    "note": "The records of marad-msci-advisories name this issuer."
   }
 ]

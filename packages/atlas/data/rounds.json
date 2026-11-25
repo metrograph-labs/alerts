@@ -1819,5 +1819,150 @@
       "members": 1757,
       "cause": "Round 36 adds 4 planned sources and 4 later sources. Five classes get a second source, so the gaps go from 72 to 67. No layer of the cover changes."
     }
+  },
+  {
+    "round": 37,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took the classes with a gap and ranked them by their value to a person at home. Life safety came first, then health, property and travel. It looked for official open data in general formats: JSON APIs, CSV files and ArcGIS layers. It read the terms and the robots.txt of each candidate. One fetch went to each URL, with the user agent alerts-atlas-research/1.0. A source that needs an account, a key or a token, or whose terms forbid commercial use, did not close a gap (AL-195).",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The documentation of the Fireball API of JPL: https://ssd-api.jpl.nasa.gov/doc/fireball.html",
+      "The bolide site of NASA: https://neo-bolide.ndc.nasa.gov/",
+      "The metadata of the temporary street closures of San Francisco: https://data.sfgov.org/api/views/8x25-yybr.json",
+      "The Slack Status API: https://docs.slack.dev/reference/slack-status-api",
+      "The pipeline incident data of the CER: https://open.canada.ca/data/en/dataset/7dffedc4-23fa-440c-a36d-adf5a6cc09f1",
+      "The subsidence incident reports of Florida: https://ca.dep.state.fl.us/arcgis/rest/services/OpenData/FGS_SUBSIDENCE/MapServer/0",
+      "The power outages layer of Cal OES: https://services.arcgis.com/BLN4oKB0N1YSgvY8/arcgis/rest/services/Power_Outages_(View)/FeatureServer",
+      "The site of ReCAAP ISC: https://www.recaap.org/",
+      "The elections API of Democracy Club: https://elections.democracyclub.org.uk/api/"
+    ],
+    "queries": [
+      "Florida Subsidence Incident Reports open data ArcGIS FeatureServer Florida Geological Survey",
+      "sinkhole reports open data API recent incidents state geological survey download (Pennsylvania OR Missouri OR Kentucky OR Texas) sinkhole report database",
+      "open.canada.ca pipeline incidents data Canada Energy Regulator Open Government Licence",
+      "TSB Transportation Safety Board pipeline occurrence data download csv open data monthly",
+      "Alberta Energy Regulator compliance dashboard incidents data download pipeline incident open data licence",
+      "Public Safety Power Shutoff open data GIS layer current PSPS events ArcGIS FeatureServer utility",
+      "data.sfgov.org Temporary Street Closures special events dataset API",
+      "NATO Shipping Centre maritime security alerts piracy RSS feed shipping.nato.int",
+      "IRS RSS feeds news releases \"tax relief\" disaster feed URL irs.gov rss"
+    ],
+    "notes": [
+      "jpl-fireball-api moves to plan, and nasa-glm-bolides is new. Thus geo.fireball has 2 sources from 2 origins. Both tell of a fireball after the fact, because a fireball ends in seconds.",
+      "sfmta-street-closures is new. With ticketmaster-discovery-api, civic.planned-event has 2 sources from 2 origins. The street closures need no key.",
+      "slack-status-api and google-workspace-status are new. With statuspage-public-api, infra.saas.outage has 3 sources. Neither new source goes through Statuspage.",
+      "cer-pipeline-incidents, fgs-subsidence-reports and democracy-club-elections are new. Each gives the first source of its class, so each of these gaps stays.",
+      "caloes-power-outages is later. Its read had no PSPS cause, it states no licence, and it copies the outage maps of the utilities.",
+      "recaap-incidents is later, because it gives PDF lists only. The NGA ASAM API gave 503, and the MDAT-GoG site had an expired certificate. The round did not go around these errors.",
+      "The PHMSA pages gave 403 again. The CFTC and FINRA gave no feed of investor alerts, and the robots.txt of the CFTC limits the use of its content.",
+      "Three records name persons: the GLM events, the street closures and the subsidence reports. The round read only the counts and the field names of these records."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 64,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 34,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 37 adds 7 planned sources and 2 later sources, and moves 1 later source to plan. Three classes get a second source, so the gaps go from 67 to 64. No layer of the cover changes."
+    }
+  },
+  {
+    "round": 38,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent, during a memory hold.",
+    "method": "The round took the classes with a gap and ranked them by their value to a person at home. It looked for official sources with no account and no limit on commercial use (AL-195). One fetch went to each URL, with the user agent alerts-atlas-research/1.0. It read the robots.txt and the terms of each candidate.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The FAA Prohibitions, Restrictions and Notices: https://www.faa.gov/air_traffic/publications/us_restrictions",
+      "The PRESTO alerts of the SIDC: https://www.sidc.be/products/presto/",
+      "The data policy of the Royal Observatory of Belgium: https://www.astro.oma.be/en/information/data-policy/",
+      "The RSS feed of the NCSC of the United Kingdom: https://www.ncsc.gov.uk/api/1/services/v1/all-rss-feed.xml",
+      "The RSS feed of the advisories of CERT-Bund: https://wid.cert-bund.de/content/public/securityAdvisory/rss"
+    ],
+    "queries": [],
+    "notes": [
+      "faa-flight-prohibitions is new. With easa-czib, transport.air.conflict-zone has 2 sources from 2 origins.",
+      "The PRESTO alerts of the SIDC tell of flares, proton events and storms. The data policy of the observatory permits private, educational or scientific use only, so the alerts stay later as sidc-product-archive.",
+      "The site of the Korean Space Weather Center failed its TLS check. The round did not go around the error.",
+      "The NCSC and CERT-Bund feeds give advisories on weak software, not reports of attacks on a utility. So cyber.infrastructure-attack keeps its gap.",
+      "The FAA page names staff mailboxes. The round kept no address."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 63,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 34,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 38 adds 1 planned source. transport.air.conflict-zone gets a second origin, so the gaps go from 64 to 63. No layer of the cover changes."
+    }
+  },
+  {
+    "round": 39,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took the classes with no live source and looked for official sources with no account and no limit on commercial use (AL-195). One fetch went to each URL, with the user agent alerts-atlas-research/1.0. It read the robots.txt and the terms of each candidate.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The search API of GOV.UK: https://www.gov.uk/api/search.json",
+      "The FAA Preliminary Accident and Incident Notices: https://www.faa.gov/data_research/accident_incident/preliminary_data",
+      "The RSS page of the TSB of Canada: https://www.tsb-bst.gc.ca/eng/medias-media/rss/index.html",
+      "The NGA MSI API: https://msi.nga.mil/api/publications/broadcast-warn",
+      "The MSCI advisories of MARAD: https://www.maritime.dot.gov/msci-advisories"
+    ],
+    "queries": [],
+    "notes": [
+      "aaib-deployments-govuk is new. It is the first live source of transport.air.accident, so the class has 1 source from 1 origin.",
+      "The RAIB, AAIB and MAIB reports on GOV.UK come months after the event. The AAIB deployment news comes on the same day. The RAIB notices come weeks after the event.",
+      "TSB Canada and MARAD returned 403, and the NGA MSI API gave a block page. The round did not go around a block.",
+      "The FAA notices are a dashboard. The page tells of a CSV file, but the round found no link to it."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 63,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 34,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 39 adds 1 planned source and 4 later sources. transport.air.accident gets its first live source, but a gap closes only at 2 origins, so the gaps stay at 63. No layer of the cover changes."
+    }
   }
 ]

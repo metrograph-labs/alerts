@@ -68,9 +68,22 @@ export interface SnapshotLog {
 
 /** This function gives the key of the snapshots of a fold context on a log. */
 export function snapshotKey(context: FoldContext, log: SnapshotLog): FoldKey {
-  const parts = {
-    first: log.first,
-    recoveries: log.recoveries,
+  // The canonical hash does not read the order of the fields. Thus the key has the same value as before `contextParts` (AL-169).
+  return { version: FOLD_VERSION, key: canonicalHash({ first: log.first, recoveries: log.recoveries, ...contextParts(context) }, { form: "json" }) };
+}
+
+/**
+ * This function gives the part of the key of a fold context with no part of the log (AL-169). Two builds with the same
+ * context key give the same snapshot key on each log. Thus a stage compares the context keys of the two slots, and it tells
+ * when the next start folds the whole log.
+ */
+export function contextKey(context: FoldContext): string {
+  return `${String(FOLD_VERSION)}:${canonicalHash(contextParts(context), { form: "json" })}`;
+}
+
+// The parts of the key that the fold context gives.
+function contextParts(context: FoldContext): Record<string, unknown> {
+  return {
     // Only the fields that the fold reads (AL-156). Thus a change of the kinds or of the text of a source keeps the snapshot.
     sources: context.sources.map(healthSource),
     health: context.health ?? null,
@@ -79,7 +92,6 @@ export function snapshotKey(context: FoldContext, log: SnapshotLog): FoldKey {
     link: context.link ?? DEFAULT_LINK_POLICY,
     expectations: context.expectations ?? [],
   };
-  return { version: FOLD_VERSION, key: canonicalHash(parts, { form: "json" }) };
 }
 
 // The paths of the objects that the rows split into their fields. The fields of each other object go into one row each.

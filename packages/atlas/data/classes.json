@@ -212,7 +212,7 @@
     "references": [
       "No hazard list names this class. Found by the search for missing classes."
     ],
-    "gap": "Not researched in round 1.",
+    "gap": "One source: democracy-club-elections, for the United Kingdom. Round 37: the feed path of ElectionGuide gave 404.",
     "round": 1
   },
   {
@@ -288,7 +288,7 @@
       "PredictHQ (not opened)",
       "UNDRR-ISC HIPs 2025: SO0302 Stampede (lead indicator)"
     ],
-    "gap": "One source, ticketed events only.",
+    "gap": null,
     "round": 1
   },
   {
@@ -880,7 +880,7 @@
       "EM-DAT: Impact > Airburst",
       "UNDRR-ISC HIPs 2025: ET0201 Airburst"
     ],
-    "gap": "Only the JPL Fireball API was confirmed. It lists events after the fact. Public fireball report networks were not opened in round 1. Round 29: the API documentation page of the American Meteor Society gave 410.",
+    "gap": null,
     "round": 1
   },
   {
@@ -991,7 +991,7 @@
       "EM-DAT: Space weather > Energetic particles",
       "UNDRR-ISC HIPs 2025: ET0104 Solar Energetic Particles"
     ],
-    "gap": "Round 6 adopts swpc-products-json, the only source with no risk. Its only origin is the NWS. swpc-email is later: see its reason. Round 32: the NICT site shows the proton flux of GOES, and it permits private use only.",
+    "gap": "Round 6 adopts swpc-products-json, the only source with no risk. Its only origin is the NWS. swpc-email is later: see its reason. Round 32: the NICT site shows the proton flux of GOES, and it permits private use only. Round 38: the site of the Korean Space Weather Center failed its TLS check, and the round did not go around the error.",
     "round": 1
   },
   {
@@ -1006,7 +1006,7 @@
       "EM-DAT: Sudden Subsidence (dry and wet)",
       "UNDRR-ISC HIPs 2025: GH0308 Sinkhole, GH0309 Subsidence and Uplift"
     ],
-    "gap": "No real-time feed found. Reports come from local roads, utilities and news. The road-closure feeds (WZDx, 511) carry the effect on roads.",
+    "gap": "One source: fgs-subsidence-reports, for Florida. Round 37: the research found static inventories only for other states. The road-closure feeds (WZDx, 511) carry the effect on roads.",
     "round": 1
   },
   {
@@ -1302,7 +1302,7 @@
       "FEMA Lifelines: Energy > Fuel",
       "EM-DAT: Technological > Industrial > Explosion"
     ],
-    "gap": "No live source. Round 24: the PHMSA page of the incident files opens. The files come each month, so they are a record, not an alert.",
+    "gap": "One source: cer-pipeline-incidents, for the pipelines that the CER regulates in Canada. Round 37: the PHMSA pages gave 403, so phmsa-incidents stays later.",
     "round": 1
   },
   {
@@ -1516,7 +1516,7 @@
       "FEMA Lifelines: Energy > Power Grid",
       "No hazard list names this class."
     ],
-    "gap": "The CPUC page lists utilities and past events only. Live notices are on each utility site, not opened in round 1.",
+    "gap": "The CPUC page lists utilities and past events only. Round 37: caloes-power-outages is later. Its read had no PSPS cause, and it states no licence.",
     "round": 1
   },
   {
@@ -1534,7 +1534,7 @@
       "IsDown",
       "Downdetector"
     ],
-    "gap": "Round 1 found 1 adopted or planned source with no risk: statuspage-public-api. statusgator is later, downdetector is later: see the reason of each.",
+    "gap": null,
     "round": 1
   },
   {
@@ -3175,7 +3175,7 @@
       "CISA sectors: Transportation Systems > Maritime",
       "FEMA Lifelines: Transportation > Maritime"
     ],
-    "gap": "No live source. Rounds 24 and 31: the NGA MSI API returned 503 again. MARAD sends its maritime advisories by email only, with no feed.",
+    "gap": "No live source. Rounds 24, 31 and 37: the NGA MSI API returned 503. Round 37: the MDAT-GoG site had an expired certificate, and recaap-incidents is later. Round 39: the NGA MSI API gave a block page, and the MARAD advisories page returned 403.",
     "round": 1
   },
   {
@@ -3272,7 +3272,7 @@
       "EM-DAT: Technological > Transport > Air",
       "UNDRR-ISC HIPs 2025: TL04 transport accidents"
     ],
-    "gap": "No live source. Round 24: the NTSB API returned 502, and CAROL gives its files only from a search page. ASN returned 403 in round 1.",
+    "gap": "One live source, aaib-deployments-govuk, for the United Kingdom only. Round 24: the NTSB API returned 502. Round 39: TSB Canada returned 403, and the FAA preliminary notices are only a dashboard.",
     "round": 1
   },
   {
@@ -3286,7 +3286,7 @@
     "references": [
       "MAX Security: Aviation"
     ],
-    "gap": "One source. FAA flight prohibitions were not opened.",
+    "gap": null,
     "round": 1
   },
   {
@@ -3351,7 +3351,7 @@
       "FEMA Lifelines: Transportation > Railway",
       "UNDRR-ISC HIPs 2025: TL04 transport accidents"
     ],
-    "gap": "Both are records after the fact, not live alerts.",
+    "gap": "Both are records after the fact, not live alerts. Round 39: the RAIB notices come 19 to 36 days after the event, and TSB Canada returned 403.",
     "round": 1
   },
   {
