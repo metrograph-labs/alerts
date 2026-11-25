@@ -383,12 +383,11 @@ export function azureSizesFor(table: Readonly<Record<string, readonly [vcpu: num
 }
 
 /**
- * This function tells if an offer is a Windows machine: its spec `productName` has the word `Windows`. The Azure price
- * API gives a Windows row and a Linux row for each size, and a copy runs on Linux.
+ * This function tells if an offer is a Windows machine: its spec `os` is `windows` (AL-199). The Azure price API gives a
+ * Windows row and a Linux row for each size, and a copy runs on Linux. The source of the offer sets the spec.
  */
 export function windowsOffer(observation: MeteredObservation): boolean {
-  const product = observation.offer.specs.find((item) => item.name === "productName")?.value;
-  return product !== undefined && /\bWindows\b/u.test(product);
+  return observation.offer.specs.some((item) => item.name === "os" && item.value === "windows");
 }
 
 /**

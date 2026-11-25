@@ -136,7 +136,7 @@ describe("the offers of a placement", () => {
 function sized(product: string, size: string, hourly: number, meters: readonly string[] = [size]): MeteredObservation {
   const base = offer({ provider: "provider-c", region: "region-c", plan: size, hourly, memory: "1 GiB" });
   return {
-    offer: { ...base.offer, specs: [...base.offer.specs, { name: "productName", value: product }] },
+    offer: { ...base.offer, specs: [...base.offer.specs, { name: "productName", value: product }, { name: "os", value: /\bWindows\b/u.test(product) ? "windows" : "linux" }] },
     reading: { ...base.reading, meters: meters.map((name) => ({ name, tiers: [{ from: { value: 0, unit: "h" }, unitPrice: { value: hourly, unit: canonicalUnit("USD/h") } }] })) },
   };
 }
@@ -161,10 +161,13 @@ describe("the offers of virtual machines (AL-146)", () => {
     expect(build.layer.slots[0]?.candidates.map((candidate) => candidate.key)).toEqual(["provider-c/region-c"]);
   });
 
-  it("tells a Windows offer by its product name", () => {
+  it("tells a Windows offer by its spec os (AL-199)", () => {
     expect(windowsOffer(sized("Machines Series X Windows", "X1", 0.03))).toBe(true);
     expect(windowsOffer(sized("Machines Series X", "X1", 0.02))).toBe(false);
     expect(windowsOffer(offer({ provider: "provider-a", region: "europe-west1", plan: "p1", hourly: 0.01 }))).toBe(false);
+    // The product name alone does not tell it: the source of the offer sets the spec.
+    const named = sized("Machines Series X Windows", "X1", 0.03);
+    expect(windowsOffer({ ...named, offer: { ...named.offer, specs: named.offer.specs.filter((item) => item.name !== "os") } })).toBe(false);
   });
 
   it("gives the smallest sizes with enough memory, by vCPUs, then memory, then name", () => {
