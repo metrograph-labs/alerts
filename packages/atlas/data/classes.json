@@ -976,7 +976,7 @@
       "EM-DAT: Space weather > Radio disturbance",
       "UNDRR-ISC HIPs 2025: ET0103 Solar Flare, ET0102 Ionospheric Disturbance"
     ],
-    "gap": "Round 6 adopts swpc-products-json, the only source with no risk. Its only origin is the NWS. swpc-email and sidc-product-archive are later: see the reason of each. Round 32: the NICT site permits private use only.",
+    "gap": "Round 6 adopts swpc-products-json, the only source with no risk. Its only origin is the NWS. swpc-email and sidc-product-archive are later: see the reason of each. Round 32: the NICT site permits private use only. Round 40: the API of BoM gives only magnetic and aurora products, and no radio product.",
     "round": 1
   },
   {
@@ -1080,7 +1080,7 @@
       "CISA sectors: Food and Agriculture",
       "FEMA lifelines: Food, Hydration, Shelter > Agriculture"
     ],
-    "gap": "One source: defra-avian-influenza-zones, for England. aphis-hpai is later, woah-wahis is later: see the reason of each. Round 32: the APHIS page of flocks gave 403, and the CFIA gives its flocks only on a page. Round 34: ecdc-wnv-animal-outbreaks is later, because each query of its layer failed.",
+    "gap": "One source: defra-avian-influenza-zones, for England. aphis-hpai is later, woah-wahis is later: see the reason of each. Round 32: the APHIS page of flocks gave 403, and the CFIA gives its flocks only on a page. Round 34: ecdc-wnv-animal-outbreaks is later, because each query of its layer failed. Round 40: the open data catalog of Canada has no dataset of the infected flocks of the CFIA.",
     "round": 1
   },
   {
@@ -1185,7 +1185,7 @@
       "UNDRR-ISC HIPs 2025: BI0104 Foodborne Diseases, BI0210 E. coli, BI0218 Listeriosis",
       "CISA sectors: Food and Agriculture"
     ],
-    "gap": "Round 1 found 0 adopted or planned sources with no risk. fda-core-investigations is later, fsis-recall-api is later: see the reason of each. Round 34: the feed of public health updates of the PHAC gave no answer in 120 seconds.",
+    "gap": "Round 1 found 0 adopted or planned sources with no risk. fda-core-investigations is later, fsis-recall-api is later: see the reason of each. Round 34: the feed of public health updates of the PHAC gave no answer in 120 seconds. Round 40: the CDC page of investigations returned 403, and the CDC content API has no feed of them. The news API of Canada has no food notices.",
     "round": 1
   },
   {

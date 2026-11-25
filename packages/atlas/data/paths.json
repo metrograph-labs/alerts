@@ -3160,5 +3160,11 @@
     "name": "www.maritime.dot.gov",
     "kind": "host",
     "note": "The host of the site of MARAD, the page of marad-msci-advisories."
+  },
+  {
+    "id": "api.io.canada.ca",
+    "name": "api.io.canada.ca",
+    "kind": "host",
+    "note": "The host of the news API of the Government of Canada, the releases of gc-news-phac."
   }
 ]
