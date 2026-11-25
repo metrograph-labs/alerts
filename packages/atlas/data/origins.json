@@ -2556,5 +2556,11 @@
     "name": "The Animal and Plant Health Agency (APHA) of the United Kingdom",
     "issues": null,
     "note": "APHA confirms the cases of notifiable animal diseases for the Department for Environment, Food and Rural Affairs."
+  },
+  {
+    "id": "un-security-council",
+    "name": "The Security Council of the United Nations",
+    "issues": null,
+    "note": "The committees of the Security Council keep the Consolidated List of their sanctions."
   }
 ]

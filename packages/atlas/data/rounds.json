@@ -1416,5 +1416,42 @@
       "members": 1757,
       "cause": "Round 27 adds 1 planned source and moves 1 source from later to plan. 2 classes get their first source, so the gaps stay at 102."
     }
+  },
+  {
+    "round": 28,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took classes with one source and looked for a second source with a different origin. One fetch went to each URL, with a plain user agent.",
+    "lists": [
+      "The classes with one source, from the gaps of the atlas on main: packages/atlas/data/classes.json"
+    ],
+    "queries": [],
+    "notes": [
+      "uk-sanctions-list and un-sc-consolidated-list are new. With the OFAC list, civic.sanctions has 3 sources from 3 origins.",
+      "ripestat-data-api is new. With Cloudflare Radar, infra.internet.bgp has 2 sources from 2 origins.",
+      "freddie-mac-pmms stays later: its terms forbid automated reading. So market.rates.mortgage keeps one source.",
+      "The documentation page of RIPEstat gave 404. The terms come from the RIPE NCC terms of service, as for ripe-ris-live."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 100,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 35,
+      "dimensions": 9,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 28 adds 3 planned sources. civic.sanctions and infra.internet.bgp get a second origin, so the gaps go from 102 to 100."
+    }
   }
 ]
