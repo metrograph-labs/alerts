@@ -230,6 +230,9 @@ importers:
       '@mark1russell7/alerts-source-bom-sws':
         specifier: workspace:*
         version: link:../source-bom-sws
+      '@mark1russell7/alerts-source-cert-feeds':
+        specifier: workspace:*
+        version: link:../source-cert-feeds
       '@mark1russell7/alerts-source-cisa-kev':
         specifier: workspace:*
         version: link:../source-cisa-kev
@@ -712,6 +715,9 @@ importers:
       '@mark1russell7/alerts-source-bom-sws':
         specifier: workspace:*
         version: link:../source-bom-sws
+      '@mark1russell7/alerts-source-cert-feeds':
+        specifier: workspace:*
+        version: link:../source-cert-feeds
       '@mark1russell7/alerts-source-cisa-kev':
         specifier: workspace:*
         version: link:../source-cisa-kev
@@ -1129,6 +1135,43 @@ importers:
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.0.3
+        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+
+  packages/source-cert-feeds:
+    dependencies:
+      '@mark1russell7/alerts':
+        specifier: workspace:*
+        version: link:../core
+      '@mark1russell7/alerts-fetch':
+        specifier: workspace:*
+        version: link:../fetch
+      '@mark1russell7/alerts-format-cap':
+        specifier: workspace:*
+        version: link:../format-cap
+      '@mark1russell7/optional':
+        specifier: ^1.5.0
+        version: 1.5.0
+      '@mark1russell7/text':
+        specifier: ^0.0.18
+        version: 0.0.18
+      polite-crawler:
+        specifier: ^0.7.12
+        version: 0.7.12(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
+    devDependencies:
+      '@mark1russell7/cue':
+        specifier: ^2.0.0
+        version: 2.1.4
+      '@types/node':
+        specifier: ^26.6.5
+        version: 26.6.6
+      '@vitest/coverage-v8':
+        specifier: ^5.0.3
+        version: 5.1.1(vitest@5.1.1)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2

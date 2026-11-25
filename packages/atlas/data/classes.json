@@ -440,7 +440,7 @@
       "CISA sectors: Water and Wastewater Systems",
       "CISA sectors: Energy"
     ],
-    "gap": "The CISA advisories are the only live source. The current items of the CERT-UA, CCCS and NCSC UK feeds had no attack on the control systems of a utility. EuRepoC is later.",
+    "gap": "The CISA joint advisories are the only live source, and few of them tell of an attack on a utility. The current items of the CERT-UA, CCCS and NCSC UK feeds had no such attack. EuRepoC is later.",
     "round": 19
   },
   {

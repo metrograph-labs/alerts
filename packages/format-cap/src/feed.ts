@@ -1,5 +1,5 @@
 /**
- * The reader of a feed: an RSS 2.0 or Atom 1.0 document. The reader of the index of a CAP feed uses it, and each source
+ * The reader of a feed: an RSS 2.0, RSS 1.0 (RDF) or Atom 1.0 document. The reader of the index of a CAP feed uses it, and each source
  * that reads a feed of texts uses it too. The reader refuses a DOCTYPE and a text that is not well formed.
  */
 import { Problems, type MapProblem } from "@mark1russell7/alerts";
@@ -8,18 +8,21 @@ import { ENTITY_ACTION, EntityDecoder } from "@nodable/entities";
 import { XMLParser } from "fast-xml-parser";
 import { parseXml, xmlFault } from "./well-formed.ts";
 
+/** The namespace of RSS 1.0. */
+export const RSS1_NAMESPACE = "http://purl.org/rss/1.0/";
+
 /** The namespace of Atom 1.0. */
 export const ATOM_NAMESPACE = "http://www.w3.org/2005/Atom";
 
 /** One entry of a feed: an RSS item or an Atom entry. Each field is a trimmed text. An absent or empty field is absent. */
 export interface FeedEntry {
-  /** The `guid` of an RSS item or the `id` of an Atom entry. */
+  /** The `guid` of an RSS item (else its `rdf:about` in RSS 1.0), or the `id` of an Atom entry. */
   readonly id?: string;
   /** The `title` of the entry. */
   readonly title?: string;
   /** The `link` text of an RSS item, or the `href` of the `alternate` link of an Atom entry. */
   readonly link?: string;
-  /** The time of the entry, as the feed gives it: `pubDate` of RSS, or `updated` (else `published`) of Atom. */
+  /** The time of the entry, as the feed gives it: `pubDate` (else `dc:date`) of RSS, or `updated` (else `published`) of Atom. */
   readonly updated?: string;
   /** The `description` of an RSS item, or the `summary` (else `content`) of an Atom entry. */
   readonly summary?: string;
@@ -74,7 +77,8 @@ export function attributeOf(value: unknown, name: string): string | undefined {
 
 /**
  * This function opens a feed. It refuses a DOCTYPE and a text that is not well formed. It finds the channel of RSS or
- * the Atom feed. A version that is not RSS 2.0, or a namespace that is not Atom 1.0, gives a note.
+ * the Atom feed. A version that is not RSS 2.0, or a namespace that is not Atom 1.0, gives a note. An RSS 1.0 document
+ * (an `rdf:RDF` root) gives the format `rss`, with a note: its items are next to its channel, not in it.
  */
 export function openFeed(xml: string): OpenFeed {
   if (xml.includes("<!DOCTYPE")) return { ok: false, reason: "the text has a DOCTYPE: a feed has no DTD", malformed: false };
@@ -93,6 +97,14 @@ export function openFeed(xml: string): OpenFeed {
     if (version !== "2.0") problems.add("rss", `the version of RSS is ${version ?? "absent"}, not 2.0`, "note");
     return { ok: true, format: "rss", head: channel, nodes: listOf(channel["item"]), problems };
   }
+  if (document["rdf:RDF"] !== undefined) {
+    const rdf = document["rdf:RDF"];
+    const channel = isRecord(rdf) ? rdf["channel"] : undefined;
+    if (!isRecord(rdf) || !isRecord(channel)) return { ok: false, reason: "the rdf:RDF element has no channel", malformed: false };
+    const namespace = attributeOf(rdf, "xmlns");
+    problems.add("rdf:RDF", namespace === RSS1_NAMESPACE ? "the feed is RSS 1.0" : `the feed is RDF with the namespace ${namespace ?? "absent"}, not the namespace of RSS 1.0`, "note");
+    return { ok: true, format: "rss", head: channel, nodes: listOf(rdf["item"]), problems };
+  }
   if (document["feed"] !== undefined) {
     const feed = document["feed"];
     // An empty feed element is an Atom feed with no entry.
@@ -102,7 +114,7 @@ export function openFeed(xml: string): OpenFeed {
     return { ok: true, format: "atom", head, nodes: listOf(head["entry"]), problems };
   }
   const root = Object.keys(document).find((name) => !name.startsWith("?"));
-  return { ok: false, reason: `the root element is ${root ?? "absent"}, not rss or an Atom feed`, malformed: false };
+  return { ok: false, reason: `the root element is ${root ?? "absent"}, not rss, rdf:RDF or an Atom feed`, malformed: false };
 }
 
 /**
@@ -121,7 +133,13 @@ export function atomLink(entry: XmlObject, preferred?: string): string | undefin
 function entryOf(format: "rss" | "atom", node: XmlObject): FeedEntry {
   const fields: Record<string, string | undefined> =
     format === "rss"
-      ? { id: textOf(node["guid"]), title: textOf(node["title"]), link: listOf(node["link"]).map(textOf).find((link) => link !== undefined), updated: textOf(node["pubDate"]), summary: textOf(node["description"]) }
+      ? {
+          id: textOf(node["guid"]) ?? attributeOf(node, "rdf:about"),
+          title: textOf(node["title"]),
+          link: listOf(node["link"]).map(textOf).find((link) => link !== undefined),
+          updated: textOf(node["pubDate"]) ?? textOf(node["dc:date"]),
+          summary: textOf(node["description"]),
+        }
       : { id: textOf(node["id"]), title: textOf(node["title"]), link: atomLink(node), updated: textOf(node["updated"]) ?? textOf(node["published"]), summary: textOf(node["summary"]) ?? textOf(node["content"]) };
   const categories = listOf(node["category"])
     .map((category) => (format === "rss" ? textOf(category) : attributeOf(category, "term")))

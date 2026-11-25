@@ -3680,7 +3680,7 @@
     "cost": "free",
     "delay": "unknown",
     "history": "The feed held 40 items.",
-    "rateLimit": "unknown",
+    "rateLimit": "No published limit. robots.txt disallows only the PDF, archive, script and font folders. The adapter reads the feed each hour.",
     "calibration": null,
     "coverage": "ANSSI threat and incident reports (CERTFR-yyyy-CTI ids), mostly in French, some in English.",
     "origins": [
@@ -3693,9 +3693,9 @@
       "topic"
     ],
     "risks": [],
-    "decision": "plan",
-    "adapter": null,
-    "reason": "Campaign reports of the French agency. Other feeds (/alerte/feed/, /avis/feed/, /ioc/feed/, /feed/scada/) exist, and the JSON API covers alertes and avis.",
+    "decision": "adopt",
+    "adapter": "@mark1russell7/alerts-source-cert-feeds",
+    "reason": "Campaign reports of the French agency. Each item gives one report of a campaign. The other feeds (/alerte/feed/, /avis/feed/, /ioc/feed/, /feed/scada/) are later rows of the same adapter.",
     "evidence": [
       "https://cert.cyber.gouv.fr/cti/feed/",
       "https://cert.cyber.gouv.fr/flux-rss/"
@@ -3890,7 +3890,7 @@
       "cyber.vulnerability.published",
       "cyber.campaign"
     ],
-    "url": "https://www.cert.se/feed.rss",
+    "url": "https://www.cert.se/feed/rss.xml",
     "access": "feed",
     "auth": "none",
     "terms": {
@@ -3901,8 +3901,8 @@
     },
     "cost": "free",
     "delay": "unknown",
-    "history": "The feed held 10 items.",
-    "rateLimit": "unknown",
+    "history": "The feed held 10 items from 2026-11-09 to 2026-11-24, with a weekly letter.",
+    "rateLimit": "No published limit. The adapter reads the feed each hour with an ETag.",
     "calibration": null,
     "coverage": "CERT-SE news on critical flaws and threats for Sweden, in Swedish. Few items name CVE ids.",
     "origins": [
@@ -3915,9 +3915,9 @@
       "topic"
     ],
     "risks": [],
-    "decision": "plan",
-    "adapter": null,
-    "reason": "Low volume national alerts on critical flaws. CERT-SE moved to the NCSC at FRA on 1 July 2026.",
+    "decision": "adopt",
+    "adapter": "@mark1russell7/alerts-source-cert-feeds",
+    "reason": "Low volume national alerts on critical flaws and campaigns, in Swedish. A weekly letter gives no report. CERT-SE moved to the NCSC at FRA on 1 July 2026.",
     "evidence": [
       "https://www.cert.se/feed.rss",
       "https://www.cert.se/om-cert-se"
@@ -3945,8 +3945,8 @@
     },
     "cost": "free",
     "delay": "unknown",
-    "history": "The feed held 9 items from February to September 2026.",
-    "rateLimit": "unknown",
+    "history": "The gaps between items were up to 55 days in 2026. The newest item had the date 2026-09-30.",
+    "rateLimit": "No published limit. The adapter reads the feed each hour.",
     "calibration": null,
     "coverage": "CERT-UA reports on campaigns of tracked groups (UAC ids, APT28, Sandworm), in Ukrainian.",
     "origins": [
@@ -3959,8 +3959,8 @@
       "topic"
     ],
     "risks": [],
-    "decision": "plan",
-    "adapter": null,
+    "decision": "adopt",
+    "adapter": "@mark1russell7/alerts-source-cert-feeds",
     "reason": "Primary campaign reports from a CERT under active attack, with group ids. Low volume.",
     "evidence": [
       "https://cert.gov.ua/api/articles/rss",
@@ -4427,8 +4427,8 @@
     },
     "cost": "free",
     "delay": "unknown",
-    "history": "unknown",
-    "rateLimit": "unknown",
+    "history": "The feed held 30 items from 2026-11-10 to 2026-11-24: 22 ICS advisories and 8 alerts.",
+    "rateLimit": "No published limit. robots.txt allows each agent but one. The adapter reads the feed each 30 minutes with an ETag.",
     "calibration": null,
     "coverage": "Alerts, cybersecurity advisories, malware analysis reports, ICS and ICS medical advisories.",
     "origins": [
@@ -4438,11 +4438,14 @@
       "www.cisa.gov",
       "cdn:akamai"
     ],
-    "subjectIds": null,
+    "subjectIds": [
+      "topic",
+      "cve"
+    ],
     "risks": [],
-    "decision": "plan",
-    "adapter": null,
-    "reason": "The primary US government channel for cyber advisories, as RSS.",
+    "decision": "adopt",
+    "adapter": "@mark1russell7/alerts-source-cert-feeds",
+    "reason": "The US government channel for cyber advisories. The link and the title of each item give its kind, and the text gives its CVE ids.",
     "evidence": [
       "https://www.cisa.gov/about/contact-us/subscribe-updates-cisa",
       "https://www.cisa.gov/news-events/cybersecurity-advisories"
@@ -12169,7 +12172,7 @@
     "cost": "free",
     "delay": "unknown",
     "history": "The feed held 6 items.",
-    "rateLimit": "unknown",
+    "rateLimit": "No published limit. The adapter reads the feed each hour.",
     "calibration": null,
     "coverage": "JPCERT/CC security alerts in English for major vendor updates, RSS 1.0.",
     "origins": [
@@ -12183,9 +12186,9 @@
       "topic"
     ],
     "risks": [],
-    "decision": "plan",
-    "adapter": null,
-    "reason": "Low volume alerts from the Japanese national CERT, in English. JPCERT/CC is a CNA root.",
+    "decision": "adopt",
+    "adapter": "@mark1russell7/alerts-source-cert-feeds",
+    "reason": "Low volume alerts from the Japanese national CERT, in English. JPCERT/CC is a CNA root. The feed reader of the system reads RSS 1.0 since this adapter.",
     "evidence": [
       "https://www.jpcert.or.jp/english/rss/jpcert-en.rdf"
     ],
@@ -14181,11 +14184,13 @@
   },
   {
     "id": "ncsc-uk-rss",
-    "name": "NCSC UK RSS feeds (threat reports, news)",
+    "name": "NCSC UK news feed (RSS)",
     "classes": [
-      "cyber.campaign"
+      "cyber.campaign",
+      "cyber.vulnerability.exploited",
+      "cyber.vulnerability.published"
     ],
-    "url": "https://www.ncsc.gov.uk/information/rss-feeds",
+    "url": "https://www.ncsc.gov.uk/api/1/services/v1/news-rss-feed.xml",
     "access": "feed",
     "auth": "none",
     "terms": {
@@ -14196,10 +14201,10 @@
     },
     "cost": "free",
     "delay": "unknown",
-    "history": "The all-items feed held 20 items over approximately 12 weeks.",
-    "rateLimit": "unknown",
+    "history": "The news feed held 20 items from 2026-04-22 to 2026-11-11. The all-items feed is mostly blog posts.",
+    "rateLimit": "No published limit. The adapter reads the news feed each hour.",
     "calibration": null,
-    "coverage": "NCSC UK threat reports, news, blog posts and guidance. Feeds: report-rss-feed.xml, news-rss-feed.xml and all-rss-feed.xml.",
+    "coverage": "NCSC UK news: threat alerts, joint advisories and exploited flaws. The adapter reads news-rss-feed.xml. An item that no rule matches gives no report.",
     "origins": [
       "ncsc-uk"
     ],
@@ -14208,17 +14213,19 @@
       "cdn:cloudflare"
     ],
     "subjectIds": [
-      "topic"
+      "topic",
+      "cve"
     ],
     "risks": [],
-    "decision": "plan",
-    "adapter": null,
-    "reason": "The report and news feeds carry UK government threat alerts and joint advisories. OGL v3.0.",
+    "decision": "adopt",
+    "adapter": "@mark1russell7/alerts-source-cert-feeds",
+    "reason": "The news feed carries UK government threat alerts and joint advisories. The title of each item gives its kind. OGL v3.0.",
     "evidence": [
       "https://www.ncsc.gov.uk/information/rss-feeds",
       "https://www.ncsc.gov.uk/api/1/services/v1/all-rss-feed.xml",
       "https://www.ncsc.gov.uk/section/about-this-website/terms-and-conditions",
-      "https://www.ncsc.gov.uk/section/keep-up-to-date/rss-feeds"
+      "https://www.ncsc.gov.uk/section/keep-up-to-date/rss-feeds",
+      "https://www.ncsc.gov.uk/api/1/services/v1/news-rss-feed.xml"
     ],
     "round": 15
   },
