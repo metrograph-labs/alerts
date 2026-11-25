@@ -20,6 +20,7 @@ import { join } from "node:path";
 import { PerformanceObserver, type PerformanceEntry } from "node:perf_hooks";
 import { longestPartWork, openMeasuredRuntime, START_SNAPSHOT_FILE, type MeasuredRuntime } from "@mark1russell7/alerts-runtime";
 import { wallClock } from "@mark1russell7/algebra/clock";
+import { EVENT_LOOP_RESOLUTION_MS, watchEventLoop, type LoopBlock } from "@mark1russell7/lag/node";
 import { seedHome } from "../src/seed-home.ts";
 
 const [folder, sizeText = "192", passesText = "4"] = process.argv.slice(2);
@@ -31,32 +32,26 @@ const size = Number(sizeText);
 const passes = Number(passesText);
 if (!(size > 0) || !Number.isInteger(passes) || passes < 2) throw new RangeError("Give a size above 0 MB and 2 or more passes.");
 
-// The timer of the recorder ticks at this period. A gap above `LONG_MS` between two ticks is one block of the loop.
-const TICK_MS = 10;
+// The timer of the watch ticks at this period. A gap above `LONG_MS` between two ticks is one block of the loop.
+const TICK_MS = EVENT_LOOP_RESOLUTION_MS;
 const LONG_MS = 100;
+// The watch keeps this count of blocks in one span. The record gives the count of the blocks past it.
+const MAX_BLOCKS = 100_000;
 const round = (value: number): number => Math.round(value * 10) / 10;
 
 /** One block of the event loop (the gap between two ticks of the timer, from the tick before), or one pause of the collector. */
 interface Block {
   readonly start: number;
   readonly ms: number;
+  /** The CPU time of the thread in the block. A pause of the collector has no CPU time. */
+  readonly cpuMs?: number | undefined;
+  /** The pause time of the collector in the block. */
+  readonly gcMs?: number | undefined;
 }
 
-// Node gives a histogram of the delay of the loop (`monitorEventLoopDelay`), but not the time of each block. The phases
-// need the time of each block, thus the recorder keeps each long gap of its own timer.
-function recordBlocks(): { readonly found: readonly Block[]; stop(): void } {
-  const found: Block[] = [];
-  let last = performance.now();
-  let timer: NodeJS.Timeout;
-  const tick = (): void => {
-    const now = performance.now();
-    if (now - last > LONG_MS) found.push({ start: last, ms: now - last });
-    last = now;
-    timer = setTimeout(tick, TICK_MS);
-  };
-  timer = setTimeout(tick, TICK_MS);
-  return { found, stop: () => clearTimeout(timer) };
-}
+// The watch of the lag package (AL-117) gives each block with its time, its CPU time and its pauses of the collector. Its
+// clock is `performance`, as the clock of the phases and of the `gc` entries.
+const blockOf = (block: LoopBlock): Block => ({ start: block.startedAt, ms: block.durationMs, cpuMs: block.cpuMs, gcMs: block.gcMs });
 
 interface Phase {
   readonly name: string;
@@ -71,7 +66,7 @@ async function phase(name: string, phases: Phase[], work: () => Promise<unknown>
   await work();
   const used = process.cpuUsage(cpu);
   const end = performance.now();
-  // A pass can end with no turn of the timers, because its promises settle as microtasks. The wait gives the recorder one
+  // A pass can end with no turn of the timers, because its promises settle as microtasks. The wait gives the watch one
   // tick, thus it keeps a block at the end of the phase.
   await new Promise((resolve) => setTimeout(resolve, 2 * TICK_MS));
   phases.push({ name, start, end, cpuMs: (used.user + used.system) / 1000 });
@@ -104,7 +99,9 @@ const seeded = await seedHome(dir, { log: size * 1_000_000, seed: "al105" });
 let work: { readonly workMs: number; readonly cpuMs: number; readonly gcMs: number; readonly wallMs: number; readonly waitMs: number } | undefined;
 for (const kind of ["full", "snapshot"] as const) {
   const phases: Phase[] = [];
-  const recorder = recordBlocks();
+  const watch = watchEventLoop({ limitMs: LONG_MS, maxBlocks: MAX_BLOCKS });
+  let found: readonly Block[] = [];
+  let lostBlocks = 0;
   const pauses: PerformanceEntry[] = [];
   const collector = new PerformanceObserver((list) => pauses.push(...list.getEntries()));
   collector.observe({ entryTypes: ["gc"] });
@@ -116,7 +113,10 @@ for (const kind of ["full", "snapshot"] as const) {
     });
     for (let at = 2; at <= passes; at += 1) await phase(`pass-${String(at)}`, phases, () => measured!.pass());
   } finally {
-    recorder.stop();
+    const span = watch.span();
+    watch.stop();
+    found = span.blocks.map(blockOf);
+    lostBlocks = span.blockCount - span.blocks.length;
     pauses.push(...collector.takeRecords());
     collector.disconnect();
     await measured?.close();
@@ -135,9 +135,10 @@ for (const kind of ["full", "snapshot"] as const) {
     days: Number(((seeded.end - seeded.start) / 86_400_000).toFixed(2)),
     tickMs: TICK_MS,
     longMs: LONG_MS,
+    lostBlocks,
     openedMs: round(measured!.opened - phases[0]!.start),
     phases: phases.map((each) => {
-      const own = recorder.found.filter((block) => phaseOf(block, phases) === each);
+      const own = found.filter((block) => phaseOf(block, phases) === each);
       const outside = own.filter((block) => !inWrite(block));
       const collected = gc.filter((pause) => phaseOf(pause, phases) === each);
       return {
@@ -154,7 +155,7 @@ for (const kind of ["full", "snapshot"] as const) {
         top: [...own]
           .sort((a, b) => b.ms - a.ms)
           .slice(0, 5)
-          .map((block) => ({ atMs: round(block.start - each.start), ms: round(block.ms), write: inWrite(block) })),
+          .map((block) => ({ atMs: round(block.start - each.start), ms: round(block.ms), ...(block.cpuMs === undefined ? {} : { cpuMs: round(block.cpuMs) }), ...(block.gcMs === undefined ? {} : { gcMs: round(block.gcMs) }), write: inWrite(block) })),
       };
     }),
     writes: writes.map((write, index) => ({
