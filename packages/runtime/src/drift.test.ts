@@ -180,8 +180,7 @@ describe("the drift watch", () => {
     let release: () => void = () => undefined;
     const run: DriftRunner = (_argv, aborted) =>
       new Promise((resolve) => {
-        release = () => resolve({ exitCode: 0, stdout: "ok: step.one
-" });
+        release = () => resolve({ exitCode: 0, stdout: "ok: step.one\n" });
         aborted.addEventListener("abort", () => resolve({ exitCode: 1, stdout: "" }), { once: true });
       });
     const watch = driftWatch({ commands: [SETUP], run });

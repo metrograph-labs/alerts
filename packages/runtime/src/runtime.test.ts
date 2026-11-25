@@ -753,8 +753,7 @@ describe("one pass of the runtime", () => {
     const run: DriftRunner = (_argv, signal) =>
       new Promise((resolve) => {
         signals.push(signal);
-        release = () => resolve({ exitCode: 0, stdout: "check: step.one: the file differs
-" });
+        release = () => resolve({ exitCode: 0, stdout: "check: step.one: the file differs\n" });
         signal.addEventListener("abort", () => resolve({ exitCode: 1, stdout: "" }), { once: true });
       });
     const watch = driftWatch({ commands: [{ name: "host-a", kind: "setup", argv: ["check-host"] }], run, every: 60_000 });
