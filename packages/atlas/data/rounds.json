@@ -1490,5 +1490,42 @@
       "members": 1757,
       "cause": "Round 29 adds 3 planned sources. env.pollen, health.wastewater-signal and security.crime get a second origin, so the gaps go from 100 to 97."
     }
+  },
+  {
+    "round": 30,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round read again the later sources of classes with one source, and looked for a second origin. One fetch went to each URL, with a plain user agent.",
+    "lists": [
+      "The classes with one source, from the gaps of the atlas on main: packages/atlas/data/classes.json"
+    ],
+    "queries": [],
+    "notes": [
+      "federal-register-api moves to plan: its API answered with no key. The pages of the site still redirect to a bot check.",
+      "With federal-register-api, civic.regulation and civic.emergency-declaration each have 2 origins.",
+      "ifrc-go-appeals moves to plan: its API answered, and its terms stay unread. rescue.disaster-assistance has 2 origins.",
+      "The ReliefWeb API gave 403 to an appname that ReliefWeb did not approve. It stays later. The data portal of NESO named no margin notice."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 94,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 34,
+      "dimensions": 9,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 30 moves 2 later sources to plan. Three classes get a second origin, so the gaps go from 97 to 94."
+    }
   }
 ]

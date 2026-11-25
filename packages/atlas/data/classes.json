@@ -227,7 +227,7 @@
       "FEMA OpenFEMA",
       "CISA sectors: Government Services and Facilities"
     ],
-    "gap": "The Federal Register API page redirected to a bot check. OpenFEMA did not name its declarations dataset on the page opened.",
+    "gap": null,
     "round": 1
   },
   {
@@ -316,7 +316,7 @@
     "references": [
       "No hazard list names this class."
     ],
-    "gap": "legislation.gov.uk gives Atom feeds of new law. The Federal Register API is later, because a bot check stopped its read.",
+    "gap": null,
     "round": 1
   },
   {
@@ -2714,7 +2714,7 @@
       "CAP 1.2: Rescue",
       "FEMA Lifelines: Food, Hydration, Shelter"
     ],
-    "gap": "The IFRC GO appeals are later, because its terms page gave no text. OpenFEMA is the only live source.",
+    "gap": null,
     "round": 1
   },
   {
