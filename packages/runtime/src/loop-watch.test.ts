@@ -6,7 +6,7 @@ const T0 = Date.UTC(2026, 3, 1, 18, 0, 0);
 
 // A watch with scripted spans, a monotonic clock, a wall clock and a timer that the test fires.
 function fake() {
-  let blocks: { startedAt: number; durationMs: number }[] = [];
+  let blocks: { startedAt: number; durationMs: number; cpuMs?: number; majorFaults?: number; gcMs?: number }[] = [];
   let mono = 1_000;
   let wall = T0;
   let stops = 0;
@@ -40,7 +40,7 @@ function fake() {
     every: () => every,
     stops: () => stops,
     cancels: () => cancels,
-    span: (next: { startedAt: number; durationMs: number }[]) => {
+    span: (next: { startedAt: number; durationMs: number; cpuMs?: number; majorFaults?: number; gcMs?: number }[]) => {
       blocks = next;
     },
     advance: (ms: number) => {
@@ -119,5 +119,21 @@ describe("the watch of the event loop (AL-88)", () => {
     expect(blockEvent(block, "run-1")).toEqual({ id: `loop:run-1:${String(T0)}:12345`, at: new Date(T0).toISOString(), type: "loop", time: T0, size: 12_345 });
     expect(blockLine(block)).toBe("The event loop of the runtime was blocked for 12 s from 2026-04-01T18:00:00.000Z.");
     expect(blockLine({ at: T0, size: 1_450 })).toBe("The event loop of the runtime was blocked for 1.5 s from 2026-04-01T18:00:00.000Z.");
+  });
+
+  it("keeps the processor time, the page reads and the pauses of each block in the block, its event and its line (AL-180)", () => {
+    const watch = fake();
+    watch.advance(20_000);
+    watch.span([{ startedAt: 2_000, durationMs: 9_800.4, cpuMs: 410.6, majorFaults: 211, gcMs: 12.2 }]);
+    const [block] = watch.loop.read();
+    expect(block).toEqual({ at: T0 + 1_000, size: 9_800, cpu: 411, faults: 211, gc: 12 });
+    if (block === undefined) return;
+    expect(blockEvent(block, "run-1")).toMatchObject({ type: "loop", size: 9_800, cpu: 411, faults: 211, gc: 12 });
+    expect(blockLine(block)).toBe(
+      "The event loop of the runtime was blocked for 9.8 s from 2026-04-01T18:00:01.000Z. The block had 0.4 s of processor time, 211 page reads from the disk and 0.0 s of pauses of the garbage collector. Thus the block was mostly a wait, for example for swap or the disk.",
+    );
+    // A watch with no measures of the cause gives the old records.
+    watch.span([{ startedAt: 30_000, durationMs: 1_500 }]);
+    expect(watch.loop.read()).toEqual([{ at: T0 + 29_000, size: 1_500 }]);
   });
 });

@@ -20,6 +20,7 @@ import { join } from "node:path";
 import { PUSHOVER_QUOTA, PUSHOVER_RESERVE_NOTICES, type PushoverChannelOptions } from "@mark1russell7/alerts-channel-pushover";
 import { openShapeCache, SHAPES_FILE } from "@mark1russell7/alerts-shapes-nws";
 import { realClock, wallClock, type WallClock } from "@mark1russell7/algebra/clock";
+import type { GcPause } from "@mark1russell7/lag/node";
 import { nodeHostPorts } from "@mark1russell7/service/host";
 import type { ChunkOptions, FoldKey, FoldMark, FoldRow, FoldSnapshot, MarkLog } from "@mark1russell7/sqlite";
 import type { Meter } from "@opentelemetry/api";
@@ -188,12 +189,6 @@ export interface WritePart {
   readonly ms: number;
   /** The CPU time of the thread of the event loop in the part, in milliseconds. */
   readonly cpuMs: number;
-}
-
-/** A pause of the garbage collector: a `gc` entry of `PerformanceObserver`, on the clock of `performance.now()`. */
-export interface GcPause {
-  readonly startTime: number;
-  readonly duration: number;
 }
 
 /**
