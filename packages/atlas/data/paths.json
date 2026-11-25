@@ -2938,5 +2938,41 @@
     "name": "www.sidc.be",
     "kind": "host",
     "note": "The host of the product archive of the SIDC, the feed of sidc-product-archive."
+  },
+  {
+    "id": "www.rfs.nsw.gov.au",
+    "name": "www.rfs.nsw.gov.au",
+    "kind": "host",
+    "note": "The host of the feed of nsw-rfs-fire-bans."
+  },
+  {
+    "id": "bcparks.api.gov.bc.ca",
+    "name": "bcparks.api.gov.bc.ca",
+    "kind": "host",
+    "note": "The host of the BC Parks API, the feed of bc-parks-advisories."
+  },
+  {
+    "id": "api.beachwatch.nsw.gov.au",
+    "name": "api.beachwatch.nsw.gov.au",
+    "kind": "host",
+    "note": "The host of the feed of nsw-beachwatch."
+  },
+  {
+    "id": "cd.epic.epd.gov.hk",
+    "name": "cd.epic.epd.gov.hk",
+    "kind": "host",
+    "note": "The host of the feed of hk-epd-beach-grading."
+  },
+  {
+    "id": "ckan0.cf.opendata.inter.prod-toronto.ca",
+    "name": "ckan0.cf.opendata.inter.prod-toronto.ca",
+    "kind": "host",
+    "note": "The host of the CKAN API of the open data portal of Toronto, the feed of toronto-beach-water-quality."
+  },
+  {
+    "id": "api.tfl.gov.uk",
+    "name": "api.tfl.gov.uk",
+    "kind": "host",
+    "note": "The host of the Unified API of TfL, the feed of tfl-unified-api."
   }
 ]
