@@ -14225,12 +14225,54 @@
   {
     "id": "ndw-open-data",
     "name": "NDW open data (Netherlands)",
+    "classes": [],
+    "dimensions": [
+      "road-events"
+    ],
+    "url": "https://opendata.ndw.nu/",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://docs.ndw.nu/algemeen/data-gebruiksvoorwaarden/",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The open data of NDW is under CC0 1.0, unless a dataset states other terms. NDW asks no credit. The data come as is, with no guarantee."
+    },
+    "cost": "free",
+    "delay": "The file actueel_beeld.xml.gz of one read at 03:07 UTC on 2026-11-18 held records of 03:06 UTC.",
+    "history": "yes (the archive Dexter)",
+    "rateLimit": "No published limit. The adapter asks once each 5 minutes, with a conditional GET.",
+    "calibration": null,
+    "coverage": "The roads of the Netherlands: closures, roadworks, broken-down vehicles, speed limits and diversions. One read gave 1209 situation records.",
+    "origins": [
+      "ndw"
+    ],
+    "path": [
+      "opendata.ndw.nu"
+    ],
+    "subjectIds": [
+      "iso3166"
+    ],
+    "risks": [],
+    "decision": "adopt",
+    "adapter": "@mark1russell7/alerts-source-ndw",
+    "reason": "Open road situations for the Netherlands under CC0, with no key, in DATEX II version 3. The adapter counts the valid records of each group (accidents, congestion, obstructions, closures, works, conditions) for the country. A report for each record near a watched place is AL-178. The traffic speeds of NDW are not read.",
+    "evidence": [
+      "https://opendata.ndw.nu/",
+      "https://docs.ndw.nu/en/",
+      "https://docs.ndw.nu/algemeen/data-gebruiksvoorwaarden/",
+      "https://opendata.ndw.nu/actueel_beeld.xml.gz"
+    ],
+    "round": 12
+  },
+  {
+    "id": "ndw-incidents-speeds",
+    "name": "NDW road incidents near a place and traffic speeds (Netherlands)",
     "classes": [
       "transport.road.incident"
     ],
     "dimensions": [
-      "road-traffic",
-      "road-events"
+      "road-traffic"
     ],
     "url": "https://opendata.ndw.nu/",
     "access": "file",
@@ -14246,7 +14288,7 @@
     "history": "yes (the archive Dexter)",
     "rateLimit": "unknown",
     "calibration": null,
-    "coverage": "The roads of the Netherlands: closures, roadworks, broken-down vehicles, speed limits and diversions. One read gave 1209 situation records.",
+    "coverage": "The situation records of the roads of the Netherlands, each at a point or a line, and the speeds and flows of the measurement sites of NDW.",
     "origins": [
       "ndw"
     ],
@@ -14257,12 +14299,11 @@
     "risks": [],
     "decision": "plan",
     "adapter": null,
-    "reason": "Open road situations for the Netherlands under CC0, with no key. The current file uses DATEX II version 3, so the end of the version 2.3 files in 2027 does not stop it.",
+    "reason": "The parts of NDW that the adapter of ndw-open-data does not read yet. A report for each situation record near a watched place is AL-178: the same file and the same reader of DATEX II version 3. The traffic speeds are a separate file of NDW.",
     "evidence": [
       "https://opendata.ndw.nu/",
       "https://docs.ndw.nu/en/",
-      "https://docs.ndw.nu/algemeen/data-gebruiksvoorwaarden/",
-      "https://opendata.ndw.nu/actueel_beeld.xml.gz"
+      "https://docs.ndw.nu/algemeen/data-gebruiksvoorwaarden/"
     ],
     "round": 12
   },

@@ -97,6 +97,7 @@ import { createCatalogFetch, createGtfsSource, type GtfsFeed, type GtfsFetchOpti
 import { createEnergyChartsSource, ENERGY_CHARTS_DESCRIPTOR } from "@mark1russell7/alerts-source-energy-charts";
 import { createEia930Source, type Eia930FetchOptions } from "@mark1russell7/alerts-source-eia-930";
 import { createFaaSource, FAA_DESCRIPTOR } from "@mark1russell7/alerts-source-faa";
+import { createNdwSource, NDW_DESCRIPTOR } from "@mark1russell7/alerts-source-ndw";
 import { createKevSource, KEV_DESCRIPTOR } from "@mark1russell7/alerts-source-cisa-kev";
 import { CERT_PROVIDERS, certDescriptor, createCertSource, type CertFetchOptions } from "@mark1russell7/alerts-source-cert-feeds";
 import { createCsafSource, CSAF_PROVIDERS, csafDescriptor, type CsafFetchOptions } from "@mark1russell7/alerts-source-csaf";
@@ -522,6 +523,7 @@ export const INSTANCE_SOURCES: readonly SourceDescriptor[] = [
   GFZ_DESCRIPTOR,
   ENERGY_CHARTS_DESCRIPTOR,
   FAA_DESCRIPTOR,
+  NDW_DESCRIPTOR,
   KEV_DESCRIPTOR,
   ...CSAF_PROVIDERS.map((provider) => csafDescriptor(provider)),
   ...CERT_PROVIDERS.map((provider) => certDescriptor(provider)),
@@ -1072,6 +1074,7 @@ export function openInstance(options: InstanceOptions): Instance {
     ...(bomKey === "" ? [] : [bomFactory(bomKey)]),
     createEnergyChartsSource,
     createFaaSource,
+    createNdwSource,
     ...(eiaKey === "" ? [] : [eiaFactory(eiaKey)]),
     createKevSource,
     ...CSAF_PROVIDERS.map((provider) => (fetchOptions: CsafFetchOptions) => createCsafSource(provider, fetchOptions)),
