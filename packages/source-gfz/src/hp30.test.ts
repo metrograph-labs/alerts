@@ -56,7 +56,7 @@ describe("the indices of GFZ", () => {
     expect(intervalStartOf(KP_INDEX, "2024-05-10T22:30:00Z")).toBeUndefined();
     expect(valueOf(HP30_INDEX, 11.333)).toBe(11.333);
     expect([valueOf(HP30_INDEX, -0.333), valueOf(HP30_INDEX, Number.NaN), valueOf(HP30_INDEX, "5")]).toEqual([undefined, undefined, undefined]);
-    expect([levelOf(4.667), levelOf(5), levelOf(9), levelOf(11.333)]).toEqual([0, 1, 5, 5]);
+    expect([levelOf(4.333), levelOf(4.667), levelOf(9), levelOf(11.333)]).toEqual([0, 1, 5, 5]);
   });
 });
 
@@ -120,7 +120,7 @@ describe("the map of Hp30", () => {
 
   it("gives no status problem for Hp30, and a fatal problem for a value of Kp above 9", () => {
     const at = Date.parse("2024-05-10T22:30:00Z");
-    expect(mapIndexObservation(HP30_INDEX, observationOf(entryBodyOf(HP30_INDEX, { datetime: intervalText(at), Hp30: 4.667 }), at)).problems).toEqual([]);
+    expect(mapIndexObservation(HP30_INDEX, observationOf(entryBodyOf(HP30_INDEX, { datetime: intervalText(at), Hp30: 4.333 }), at))).toEqual({ reports: [], problems: [] });
     const kp = mapObservation(observationOf(entryBody({ datetime: "2024-05-10T21:00:00Z", Kp: 9.333, status: "def" }), at));
     expect(kp.reports).toEqual([]);
     expect(kp.problems).toMatchObject([{ path: "Kp", fatal: true }]);

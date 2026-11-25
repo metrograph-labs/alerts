@@ -60,7 +60,7 @@ export function kpText(kp: number): string | undefined {
 
 /**
  * This function gives the text of a value with its third, as `kpText` does, but with no upper limit. The indices Hp30
- * and Hp60 of GFZ have no upper limit: `11.333` is 11+. A value that is not a number of 0 or more gives `undefined`.
+ * and Hp60 of GFZ have no upper limit: `11.333` is 11+. A value below 0, or a value that is not a finite number, gives `undefined`.
  */
 export function thirdsText(value: number): string | undefined {
   if (!Number.isFinite(value) || value < 0) return undefined;

@@ -80,7 +80,7 @@ export interface Entry {
   readonly [column: string]: unknown;
 }
 
-/** This function tells if an entry of Kp has the structure of the series: the start of an interval, a value of Kp and a known status. */
+/** This function tells if an entry of Kp has the structure of the series. It needs a start, a value of Kp and a known status. */
 export function isGfzEntry(entry: Entry): boolean {
   return isIndexEntry(KP_INDEX, entry);
 }

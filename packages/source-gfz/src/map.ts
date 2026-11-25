@@ -148,7 +148,7 @@ export function kpOf(value: unknown): number | undefined {
   return valueOf(KP_INDEX, value);
 }
 
-/** This function gives the value of an index of a field: a number of 0 or more, and 9 or less for a closed index. */
+/** This function gives the value of an index of a field. The value is 0 or more, and 9 or less for a closed index. */
 export function valueOf(index: GfzIndex, value: unknown): number | undefined {
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return undefined;
   return index.open || value <= KP_MAX ? value : undefined;
