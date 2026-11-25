@@ -324,6 +324,7 @@ NEEDS: build/index.d.ts#NEEDS
 NEED_ALERT_LEVELS: build/index.d.ts#NEED_ALERT_LEVELS
 NEED_LEVELS: build/index.d.ts#NEED_LEVELS
 NO_HISTORIES: build/index.d.ts#NO_HISTORIES
+NO_HOLDS: build/index.d.ts#NO_HOLDS
 NO_LABELS: build/index.d.ts#NO_LABELS
 NO_SYSTEM_LINES: build/index.d.ts#NO_SYSTEM_LINES
 NamedPart: build/index.d.ts#NamedPart
@@ -378,6 +379,7 @@ PersonInterests: build/index.d.ts#PersonInterests
 PersonWatch: build/index.d.ts#PersonWatch
 PlaceBreadth: build/index.d.ts#PlaceBreadth
 PlaceConfig: build/index.d.ts#PlaceConfig
+PlaceHolds: build/index.d.ts#PlaceHolds
 PlaceId: build/index.d.ts#PlaceId
 PlaceMatch: build/index.d.ts#PlaceMatch
 PlaceSurprise: build/index.d.ts#PlaceSurprise
@@ -701,6 +703,7 @@ healthPayloadSchema: build/index.d.ts#healthPayloadSchema
 healthSource: build/index.d.ts#healthSource
 healthStateSchema: build/index.d.ts#healthStateSchema
 heldPersons: build/index.d.ts#heldPersons
+heldPlaces: build/index.d.ts#heldPlaces
 heldText: build/index.d.ts#heldText
 higherLevel: build/index.d.ts#higherLevel
 historyChangeAt: build/index.d.ts#historyChangeAt
@@ -713,6 +716,7 @@ historyRegionSchema: build/index.d.ts#historyRegionSchema
 historyTimes: build/index.d.ts#historyTimes
 historyView: build/index.d.ts#historyView
 holdKey: build/index.d.ts#holdKey
+holdPlaces: build/index.d.ts#holdPlaces
 inAudience: build/index.d.ts#inAudience
 inQuietWindow: build/index.d.ts#inQuietWindow
 incidentLineSchema: build/index.d.ts#incidentLineSchema
@@ -3164,6 +3168,9 @@ export declare const NEED_LEVELS: readonly ["life", "health", "comfort"];
 ### build/index.d.ts#NO_HISTORIES
 export declare const NO_HISTORIES: Histories;
 
+### build/index.d.ts#NO_HOLDS
+export declare const NO_HOLDS: PlaceHolds;
+
 ### build/index.d.ts#NO_LABELS
 export declare const NO_LABELS: WhyLabels;
 
@@ -3496,6 +3503,9 @@ export interface PlaceConfig {
   readonly moving?: MovingRule;
 }
 
+### build/index.d.ts#PlaceHolds
+export type PlaceHolds = ReadonlyMap<ReportId, readonly WatchedPlace[]>;
+
 ### build/index.d.ts#PlaceId
 export type PlaceId = Id<"PlaceId">;
 
@@ -3812,6 +3822,7 @@ export interface RouteInput {
   readonly incidents: readonly Incident[];
   readonly recipients: readonly Recipient[];
   readonly places: readonly WatchedPlace[];
+  readonly holds?: PlaceHolds | undefined;
   readonly assess?: AssessPolicy | undefined;
   readonly sources?: ReadonlySet<string> | undefined;
   readonly starts: readonly EscalationStart[];
@@ -5029,6 +5040,9 @@ export declare const healthStateSchema: z.ZodType<HealthState, HealthState>;
 ### build/index.d.ts#heldPersons
 export declare function heldPersons(holds: readonly EscalationHold[], reports: readonly Pick<Report, "id" | "addresses" | "headline">[], window: Duration, at: Instant): HeldPerson[];
 
+### build/index.d.ts#heldPlaces
+export declare function heldPlaces(incident: Pick<Incident, "anchor" | "reports" | "areas">, places: readonly WatchedPlace[], holds: PlaceHolds): readonly WatchedPlace[];
+
 ### build/index.d.ts#heldText
 export declare function heldText(entry: Pick<HeldPerson, "alerts">): string;
 
@@ -5064,6 +5078,9 @@ export declare function historyView(kept: Histories, at: Instant, places: readon
 
 ### build/index.d.ts#holdKey
 export declare function holdKey(hold: Pick<EscalationHold, "incident" | "level" | "person" | "episode">): string;
+
+### build/index.d.ts#holdPlaces
+export declare function holdPlaces(holds: PlaceHolds, incidents: readonly Incident[], places: readonly WatchedPlace[], moving: (place: PlaceId) => boolean): PlaceHolds;
 
 ### build/index.d.ts#inAudience
 export declare function inAudience(item: Audience, person: PersonId): boolean;

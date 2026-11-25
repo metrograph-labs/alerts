@@ -35,6 +35,7 @@ import {
 } from "./contracts.ts";
 import { dailyTimeProblems, digestTimeOf, escalate, escalationProblems, quietWindowProblems, rankDelayOf, rankFloors, type EscalationPlan, type EscalationSend, type RankDelays } from "./escalation.ts";
 import { messageKey } from "./ids.ts";
+import { heldPlaces, type PlaceHolds } from "./place-holds.ts";
 import type { Suppression } from "./throttle.ts";
 import { unknownKinds } from "./taxonomy.ts";
 import { assessmentWhy } from "./why.ts";
@@ -177,6 +178,11 @@ export interface RouteInput {
   readonly incidents: readonly Incident[];
   readonly recipients: readonly Recipient[];
   readonly places: readonly WatchedPlace[];
+  /**
+   * The holds of the moving places (`holdPlaces`, AL-40). Each incident reads its places with its holds (`heldPlaces`). Without
+   * them, each incident reads `places`.
+   */
+  readonly holds?: PlaceHolds | undefined;
   /** The policy of the assessment. The default is `DEFAULT_ASSESS_POLICY`. */
   readonly assess?: AssessPolicy | undefined;
   /**
@@ -300,6 +306,7 @@ function byReport<T extends { readonly incident: ReportId }>(items: readonly T[]
  *   comes only from the deliveries of another copy. Its route sends nothing and writes no start (`Route.imported`).
  *   The level still holds the top, thus a lower own level starts nothing. A later own assessment at that level sends.
  * - A kind with no class in an incident of only the sources of other copies (`RouteInput.sources`) gets `FOREIGN_TABLE`.
+ * - A hold of a moving place (`RouteInput.holds`) keeps its match after the fix leaves the area. Thus a flap at the edge starts no new episode.
  */
 export function route(input: RouteInput): Route[] {
   const { state, now } = input;
@@ -324,6 +331,8 @@ export function route(input: RouteInput): Route[] {
     const acks = acksOf(reports);
     const ends = endsOf(reports);
     const end = endOf(incident, now);
+    // The places of the incident: a moving place with a hold keeps its match after its fix leaves the area (AL-40).
+    const places = input.holds === undefined ? input.places : heldPlaces(incident, input.places, input.holds);
     // The parts of each person, one time for each incident. Thus each person reads only its own parts (AL-136).
     const endsBy = Map.groupBy(ends, (item) => item.person);
     const startsBy = Map.groupBy(starts, (item) => item.person);
@@ -345,7 +354,7 @@ export function route(input: RouteInput): Route[] {
       // The first time of an episode: its earliest start or delivery, or `now`.
       const firstOf = (episode: number): Instant =>
         Math.min(now, ...[...myStarts, ...myDeliveries].filter((item) => episodeOf(item.at) === episode).map((item) => item.at).filter(Number.isFinite));
-      const assessment = incident.live ? assess(incident, recipient.watch, input.places, policy, now, foreign) : undefined;
+      const assessment = incident.live ? assess(incident, recipient.watch, places, policy, now, foreign) : undefined;
       // A mute with the effect `absent` keeps the incident from the person. With `silent`, the level stays and the mode changes.
       const muted = assessment?.muted;
       const assessed: AssessedLevel | undefined = assessment === undefined ? undefined : reachedAssessment(assessment).level;
