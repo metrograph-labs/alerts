@@ -6,7 +6,7 @@
  * The feed is global. The fetch asks with no filter, so a request names no place of the watch.
  *
  * A felt event can have a ShakeMap product. Then the fetch also reads the detail of the event and the grid of its
- * intensity, and it adds the region of each band of the shaking to the body (`shakemap.ts`).
+ * intensity. It adds the region of each band of the shaking to the body (`shakemap.ts`).
  */
 
 import { observationId, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch } from "@mark1russell7/alerts";
