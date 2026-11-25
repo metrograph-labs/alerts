@@ -6,7 +6,7 @@ import { fakeWallClock, wallClock } from "@mark1russell7/algebra/clock";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HomeHeld } from "./home-lock.ts";
 import { openRuntimeLog } from "./log.ts";
-import { fakeBase, fakeUrl, MEASURE_NOW_HEADER, openMeasuredRuntime, type MeasuredRuntime, type SnapshotWriteTime } from "./measured-start.ts";
+import { fakeBase, fakeUrl, longestPartWork, MEASURE_NOW_HEADER, openMeasuredRuntime, type MeasuredRuntime, type SnapshotWriteTime } from "./measured-start.ts";
 import { START_SNAPSHOT_EVERY, START_SNAPSHOT_FLOOR } from "./start-snapshot.ts";
 
 const MINUTE = 60_000;
@@ -106,6 +106,10 @@ describe("openMeasuredRuntime", { timeout: 30_000 }, () => {
     expect(write!.longestCpuMs).toBeGreaterThanOrEqual(0);
     expect(write!.longestWaitMs).toBeGreaterThanOrEqual(0);
     expect(write!.longestWaitMs).toBeLessThanOrEqual(write!.longestMs);
+    // The record has each part of the write, in order (AL-174).
+    expect(write!.parts).toHaveLength(write!.chunks);
+    expect(Math.max(...write!.parts.map((part) => part.ms))).toBeCloseTo(write!.longestMs, 6);
+    expect(Math.max(...write!.parts.map((part) => part.cpuMs))).toBeCloseTo(write!.longestCpuMs, 6);
     // The mark of the write is the last event of the log at the cut.
     expect(timed.instance.runtime.eventsAfterSnapshot()).toBeLessThan(before);
     // A pass in the same period of the snapshot does not write again.
@@ -206,5 +210,26 @@ describe("openMeasuredRuntime", { timeout: 30_000 }, () => {
     writeFileSync(join(home, "config.json"), JSON.stringify(config()));
     const measured = await open();
     expect(measured.first.fetched.length).toBeGreaterThan(0);
+  });
+});
+
+describe("the work of the parts of a snapshot write (AL-174)", () => {
+  it("takes the pauses of the garbage collector out of the CPU time of each part, with the part of a pause inside the part", () => {
+    const parts = [
+      { at: 0, ms: 60, cpuMs: 55 },
+      { at: 100, ms: 20, cpuMs: 14 },
+      { at: 200, ms: 30, cpuMs: 4 },
+    ];
+    // One pause of 45 ms inside the first part, one across the start of the second part, and one outside each part.
+    const pauses = [
+      { startTime: 10, duration: 45 },
+      { startTime: 95, duration: 10 },
+      { startTime: 150, duration: 30 },
+    ];
+    expect(longestPartWork(parts, pauses)).toEqual({ workMs: 10, gcMs: 45 });
+    expect(longestPartWork(parts, [])).toEqual({ workMs: 55, gcMs: 0 });
+    // A pause longer than the CPU time of its part gives no work below 0.
+    expect(longestPartWork([{ at: 0, ms: 10, cpuMs: 2 }], [{ startTime: 0, duration: 9 }])).toEqual({ workMs: 0, gcMs: 9 });
+    expect(longestPartWork([], pauses)).toEqual({ workMs: 0, gcMs: 0 });
   });
 });
