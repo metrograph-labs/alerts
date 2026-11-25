@@ -660,7 +660,7 @@
     "references": [
       "None of the lists names it directly. HIPs 2025: TL0503 Wastewater"
     ],
-    "gap": "Only EPA BEACON was confirmed, with no stated update speed. States and counties post daily status on their own pages.",
+    "gap": null,
     "round": 1
   },
   {
@@ -711,7 +711,7 @@
       "FEMA lifelines: Water Systems > Wastewater Management",
       "UNDRR-ISC HIPs 2025: TL0503 Wastewater, TL0214 Drain and Sewer Flooding"
     ],
-    "gap": "The storm overflow hub of Water UK gives the overflows of England. No second source was found. Round 31: the documentation page of Scottish Water gave 403.",
+    "gap": "The storm overflow hub of Water UK gives the overflows of England. No second source was found. Round 31: the documentation page of Scottish Water gave 403. Round 33: the layer of Scottish Water on ArcGIS Online gives only the totals of each year.",
     "round": 1
   },
   {
@@ -726,7 +726,7 @@
     "references": [
       "None of the lists names it. Found by search for local fire orders."
     ],
-    "gap": "No national feed. Counties, states and land agencies post orders on pages. NPS alerts carry fire restrictions for parks only.",
+    "gap": null,
     "round": 1
   },
   {
@@ -1465,7 +1465,7 @@
     "references": [
       "No reference list names this class. Found by the search for missing classes."
     ],
-    "gap": "One source: eskom-loadshedding-status, for South Africa. The facts of EskomSePush are not read, and the terms of the AEMO notices are not read.",
+    "gap": null,
     "round": 1
   },
   {
@@ -2846,7 +2846,7 @@
     "references": [
       "No hazard list names this class. Found by the search for missing classes."
     ],
-    "gap": "One source: nps-alerts-api. Round 32: usfs-recreation-status is later, because its open status has no time and no cause.",
+    "gap": null,
     "round": 1
   },
   {
@@ -2984,7 +2984,7 @@
     "references": [
       "UNDRR-ISC HIPs 2025: BI0604 Human-Wildlife Conflict"
     ],
-    "gap": "Only NPS alerts of this kind were seen.",
+    "gap": null,
     "round": 1
   },
   {
@@ -3427,7 +3427,7 @@
     "references": [
       "FEMA Lifelines: Transportation > Mass Transit"
     ],
-    "gap": "One source gives these alerts: the GTFS Realtime feeds of the agencies (gtfs-rt-alerts). The catalog of the Mobility Database finds the feeds and gives no alert.",
+    "gap": "One source gives these alerts: the GTFS Realtime feeds of the agencies (gtfs-rt-alerts). The catalog of the Mobility Database finds the feeds and gives no alert. Round 33: tfl-unified-api is later, because its terms page gave 403.",
     "round": 1
   }
 ]

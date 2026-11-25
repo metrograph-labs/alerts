@@ -1609,5 +1609,51 @@
       "members": 1757,
       "cause": "Round 32 adds 4 planned sources and 2 later sources. Four classes get a second source, so the gaps go from 90 to 86. No layer of the cover changes."
     }
+  },
+  {
+    "round": 33,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took the classes with a gap and ranked them by their value to a person at home. It tried infra.power.load-shedding first. It searched open data catalogs and ArcGIS Online, and read the terms and the robots.txt of each candidate. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The data catalog of British Columbia, for park advisories: https://catalogue.data.gov.bc.ca/api/3/action/package_search?q=parks%20advisories",
+      "Data.NSW, for Beachwatch: https://data.nsw.gov.au/data/api/3/action/package_search?q=beachwatch",
+      "DATA.GOV.HK, for beach water quality: https://data.gov.hk/en-data/api/3/action/package_search?q=beach%20water%20quality",
+      "The search API of ArcGIS Online, for beach advisories, park closures and sewer overflows: https://www.arcgis.com/sharing/rest/search"
+    ],
+    "queries": [],
+    "notes": [
+      "aemo-market-notices moves from later to plan. The copyright permissions of AEMO permit each use with attribution. With eskom-loadshedding-status, infra.power.load-shedding has 2 sources from 2 origins.",
+      "nsw-rfs-fire-bans and bc-parks-advisories are new. With nps-alerts-api, fire.burn-ban has 3 sources.",
+      "bc-parks-advisories gives closures and wildlife advisories. With nps-alerts-api, safety.public-lands-closure and safety.wildlife each have 2 sources from 2 origins.",
+      "nsw-beachwatch and hk-epd-beach-grading are new. env.water.beach-advisory has 2 sources from 2 origins.",
+      "toronto-beach-water-quality is later, because it gives E. coli counts and no advisory. ea-bathing-water-quality is later, because the robots.txt blocks its data paths.",
+      "tfl-unified-api is later, because its terms page gave 403.",
+      "The layer of Scottish Water on ArcGIS Online gives only the totals of each year, so it is not a second source of overflows.",
+      "The API of the Department of Conservation of New Zealand needs a key from a portal with no static page. The round did not register.",
+      "The open data portal of Queensland gave no dataset of park alerts."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 81,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 35,
+      "dimensions": 9,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 33 adds 4 planned sources and 3 later sources, and moves 1 later source to plan. Five classes get a second source, so the gaps go from 86 to 81. No layer of the cover changes."
+    }
   }
 ]
