@@ -28,8 +28,9 @@ const mercatorY = (lat: number): number => Math.log(Math.tan(Math.PI / 4 + (lat 
  *   safe side.
  * - In the Mercator projection, one unit covers the least ground at the latitude farthest from the equator. The function
  *   measures the unit at that latitude. Thus a removed position moves the line by half a unit or less at each latitude.
- * - The function gives `undefined` for regions with no polygon, and for longitudes with a span of more than 180 degrees. Such
- *   regions cross the antimeridian, and their longitudes are not in one range.
+ * - The fit uses the span of the longitudes as they are, from -180 to 180. The page fits with the Mercator projection and no
+ *   rotation. Thus regions on the two sides of the antimeridian fill its full width, for example in Alaska and Guam (AL-176).
+ * - The function gives `undefined` for regions with no polygon.
  */
 export function basemapToleranceKm(regions: readonly MapRegion[]): number | undefined {
   let west = Infinity;
@@ -47,7 +48,7 @@ export function basemapToleranceKm(regions: readonly MapRegion[]): number | unde
       }
     }
   }
-  if (west > east || east - west > 180) return undefined;
+  if (west > east) return undefined;
   const width = ((east - west) * Math.PI) / 180;
   const height = mercatorY(north) - mercatorY(south);
   const scales = [width > 0 ? (MAP_VIEW.width - 2 * MAP_VIEW.pad) / width : Infinity, height > 0 ? (MAP_VIEW.height - 2 * MAP_VIEW.pad) / height : Infinity];

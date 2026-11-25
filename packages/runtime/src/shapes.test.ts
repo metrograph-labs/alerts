@@ -46,7 +46,9 @@ function fakeStore(known: readonly string[], states: Readonly<Record<string, rea
   // An id `fire:<code>` is a fire zone, with the system ugc-fire (AL-33).
   const region = (id: string): MapRegion => {
     const code: RegionCode = id.startsWith("fire:") ? { system: "ugc-fire", code: id.slice(5) } : { system: "ugc", code: id };
-    const held = regions.get(id) ?? { code, name: `Zone ${id}`, shapes: [{ type: "polygon", rings: [RING] }] };
+    // A region of a state list keeps its record, thus a lookup gives the shapes of the basemap of the state.
+    const listed = Object.values(states).flat().find((item) => item.code.system === code.system && item.code.code === code.code);
+    const held = regions.get(id) ?? listed ?? { code, name: `Zone ${id}`, shapes: [{ type: "polygon", rings: [RING] }] };
     regions.set(id, held);
     return held;
   };
@@ -354,6 +356,51 @@ describe("keepShapes", () => {
     expect(third[0]).not.toBe(first[0]);
     expect(third[0]).toEqual(first[0]);
     expect(outcomes).toEqual([]);
+    await keeper.close();
+  });
+
+  it("gives the simplified shapes of the basemap to the incidents, and the full shapes of a region that is not on it (AL-176)", async () => {
+    // A public county of Kansas. Its south edge has a position that is 1 m from the line, thus the simplification removes it.
+    const harvey: MapRegion = { code: { system: "ugc", code: "KSC079" }, name: "Harvey", shapes: [{ type: "polygon", rings: [[[-98, 37], [-97.5, 37.00001], [-97, 37], [-97, 38], [-98, 38], [-98, 37]]] }] };
+    const fake = fakeStore(["KSC079", "KSZ083", "KSC173", "TXC167"], { KS: [harvey] });
+    const keeper = keepShapes({ store: fake.store, places: [KANSAS] });
+    const harveyCode: RegionCode = { system: "ugc", code: "KSC079" };
+    // Before the first basemap, the display gives the full shapes.
+    expect(keeper.display(harveyCode)).toBe(harvey.shapes);
+    const first = keeper.basemap();
+    const shapesOf = (map: readonly MapRegion[], code: string) => map.find((region) => region.code.code === code)!.shapes;
+    expect(keeper.display(harveyCode)).toBe(shapesOf(first, "KSC079"));
+    expect(keeper.display(harveyCode)).not.toBe(harvey.shapes);
+    // A SAME code gives the simplified shapes of its county.
+    expect(keeper.display({ system: "same", code: "020173" })).toBe(shapesOf(first, "KSC173"));
+    // A region that is not on the basemap gives the shapes of the store.
+    expect(keeper.display({ system: "ugc", code: "TXC167" })).toBe(keeper.lookup({ system: "ugc", code: "TXC167" }));
+    expect(keeper.display({ system: "ugc", code: "TXC029" })).toBeUndefined();
+    keeper.afterPass([incident("a", [{ system: "ugc", code: "TXC167" }])], undefined);
+    const second = keeper.basemap();
+    expect(keeper.display({ system: "ugc", code: "TXC167" })).toBe(shapesOf(second, "TXC167"));
+    // A new region of an incident simplifies only that region: the copy of each other region stays.
+    expect(second.find((region) => region.code.code === "KSC173")).toBe(first.find((region) => region.code.code === "KSC173"));
+    await keeper.close();
+  });
+
+  it("simplifies the regions of an incident on the two sides of the antimeridian (AL-176)", async () => {
+    // Public zones of Alaska and Guam, with a position 1 m from the line on each south edge.
+    const ring = (west: number): [number, number][] => [[west, 51], [west + 0.5, 51.00001], [west + 1, 51], [west + 1, 52], [west, 52], [west, 51]];
+    const fake = fakeStore([]);
+    const zones: Record<string, MapRegion> = {
+      AKZ191: { code: { system: "ugc", code: "AKZ191" }, name: "Aleutians", shapes: [{ type: "polygon", rings: [ring(-179)] }] },
+      GUZ001: { code: { system: "ugc", code: "GUZ001" }, name: "Guam", shapes: [{ type: "polygon", rings: [ring(144)] }] },
+    };
+    const store: ShapeStore = { ...fake.store, lookup: (code) => zones[code.code]?.shapes, region: (code) => zones[code.code] };
+    const keeper = keepShapes({ store, places: [TEXAS] });
+    keeper.afterPass([incident("a", [{ system: "ugc", code: "AKZ191" }, { system: "ugc", code: "GUZ001" }])], undefined);
+    const map = keeper.basemap();
+    expect(map.map((region) => region.code.code)).toEqual(["AKZ191", "GUZ001"]);
+    for (const region of map) {
+      const shape = region.shapes[0]!;
+      expect(shape.type === "polygon" ? shape.rings[0] : []).toHaveLength(5);
+    }
     await keeper.close();
   });
 
