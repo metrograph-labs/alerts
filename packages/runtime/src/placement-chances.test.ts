@@ -22,14 +22,19 @@ import {
   isDown,
   locationPlace,
   measureBase,
+  measureBaseCalls,
+  measureChannel,
   measurePart,
   measureProvider,
   measureSite,
+  readChannelCalls,
   readFetchTimes,
   readPageHistory,
   withMeasures,
+  type CallRead,
   type HistorySource,
 } from "./placement-chances.ts";
+import { callsEvent } from "./events.ts";
 import { siteFragment, type PartChance, type PlacementBase, type PlacementChances, type StatusRef } from "./placement.ts";
 
 // Each incident is made up: neutral names, made-up places and times. No text of a real page.
@@ -217,6 +222,82 @@ describe("the measured chance of a site from its log", () => {
       add.run("c", "2026-01-01T00:02:00.000Z", "fetch");
       db.close();
       expect(readFetchTimes(path)).toEqual([at("2026-01-01T00:00:00.000Z"), at("2026-01-01T00:02:00.000Z")]);
+    } finally {
+      rmSync(folder, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("the measure of a shared channel from its calls (AL-147)", () => {
+  const START = at("2026-02-01T00:00:00.000Z");
+  const CHANCE: PartChance = { part: "push-a", works: 0.99, kind: "assumed", source: "an assumed input", channel: "push" };
+  // One answered call in each of 48 hours, from two copies.
+  const answered: CallRead[] = Array.from({ length: 48 }, (_, hour) => ({ time: START + hour * HOUR_MS + 60_000, answered: true, network: true }));
+
+  it("counts an hour as down only when a call failed with a working network and no call had an answer", () => {
+    const calls: CallRead[] = [
+      ...answered.filter((_, hour) => hour !== 3 && hour !== 7),
+      // Hour 3: the service did not answer, and the network of the copy worked. A down hour.
+      { time: START + 3 * HOUR_MS + 60_000, answered: false, network: true },
+      // Hour 7: one copy failed, and the other copy got an answer. The path of one copy failed, not the service.
+      { time: START + 7 * HOUR_MS + 60_000, answered: false, network: true },
+      { time: START + 7 * HOUR_MS + 120_000, answered: true, network: true },
+      // Hour 48: the call failed while the network of its copy did not work. It is no trial.
+      { time: START + 48 * HOUR_MS + 60_000, answered: false, network: false },
+    ];
+    const measured = measureChannel(CHANCE, calls, NOW);
+    expect(measured.ok).toBe(true);
+    if (!measured.ok) return;
+    expect(measured.measure.down.hours).toBe(48);
+    expect(measured.measure.down.downHours).toBe(1);
+    expect(measured.measure.input.id).toBe("push-a");
+    expect(measured.chance.kind).toBe("measured");
+    expect(measured.chance.works).toBeCloseTo(1 - measured.measure.down.interval.high, 12);
+    expect(measured.chance.source).toContain("1 of 48 hours with calls down");
+    expect(measured.measure.window).toEqual({ from: START, to: START + 48 * HOUR_MS });
+  });
+
+  it("keeps the input with fewer than 24 hours of calls, or with no channel", () => {
+    expect(measureChannel(CHANCE, answered.slice(0, 23), NOW).ok).toBe(false);
+    expect(measureChannel({ ...CHANCE, channel: undefined }, answered, NOW).ok).toBe(false);
+  });
+
+  it("measures each chance of a base that names a channel, and keeps the others", () => {
+    const base: PlacementBase = { stack: { format: "system-stack/1", parts: [] } as unknown as PlacementBase["stack"], part: "send", chances: [CHANCE, { part: "feed-a", works: 0.9, kind: "assumed", source: "an assumed input" }] };
+    const measured = measureBaseCalls(base, (channel) => (channel === "push" ? answered : []), NOW);
+    expect(measured.base.chances?.map((chance) => chance.kind)).toEqual(["measured", "assumed"]);
+    expect(measured.measures.map((measure) => measure.input.id)).toEqual(["push-a"]);
+    expect(measured.lines).toHaveLength(1);
+    const short = measureBaseCalls(base, () => [], NOW);
+    expect(short.base.chances?.[0]).toEqual(CHANCE);
+    expect(short.lines[0]).toContain("keeps its assumed input");
+  });
+
+  it("reads the calls of one channel from the calls events of a log file", () => {
+    const folder = mkdtempSync(join(tmpdir(), "alerts-call-log-"));
+    try {
+      const path = join(folder, "runtime.sqlite");
+      const db = openDatabase(path);
+      db.exec("CREATE TABLE events (seq INTEGER PRIMARY KEY, id TEXT NOT NULL UNIQUE, at TEXT NOT NULL, type TEXT NOT NULL, body TEXT NOT NULL) STRICT");
+      const add = db.prepare("INSERT INTO events (id, at, type, body) VALUES (?, ?, ?, ?)");
+      const first = callsEvent("copy-a", [
+        { channel: "push", call: "probe", time: START },
+        { channel: "voice", call: "probe", time: START, kind: "network" },
+        { channel: "push", call: "send", time: START + 1000, kind: "timeout" },
+      ], START + 2000, START - 60_000);
+      // A refusal is an answer of the service. With no passed fetch, a failed call has no working network.
+      const second = callsEvent("copy-a", [{ channel: "push", call: "probe", time: START + HOUR_MS, kind: "refused" }, { channel: "push", call: "probe", time: START + HOUR_MS + 1, kind: "server" }], START + HOUR_MS + 2);
+      add.run(first.id, first.at, "calls", JSON.stringify(first));
+      add.run("b", "2026-02-01T00:00:00.000Z", "delivery", "{}");
+      add.run(second.id, second.at, "calls", JSON.stringify(second));
+      add.run("c", "2026-02-01T02:00:00.000Z", "calls", "[");
+      db.close();
+      expect(readChannelCalls(path, "push")).toEqual([
+        { time: START, answered: true, network: true },
+        { time: START + 1000, answered: false, network: true },
+        { time: START + HOUR_MS, answered: true, network: false },
+        { time: START + HOUR_MS + 1, answered: false, network: false },
+      ]);
     } finally {
       rmSync(folder, { recursive: true, force: true });
     }

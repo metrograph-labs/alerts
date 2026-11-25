@@ -48,9 +48,10 @@ import {
   type HistoryIncident,
   type HistoryRead,
 } from "@mark1russell7/alerts-source-statuspage";
+import { isRecord } from "@mark1russell7/optional/read";
 import { wilson, Z95 } from "@mark1russell7/rigor-statistics";
 import { openDatabase } from "@mark1russell7/sqlite";
-import { errorMessage } from "@mark1russell7/text";
+import { countOf, errorMessage } from "@mark1russell7/text";
 import { send, statusLine, type Pace, type Transport } from "polite-crawler/api";
 import { providerFragment, regionFragment, siteFragment, type ChanceOverride, type PartChance, type PlacementBase, type PlacementChances, type StatusRef } from "./placement.ts";
 
@@ -206,6 +207,110 @@ export function readFetchTimes(path: string): readonly number[] {
   } finally {
     db.close();
   }
+}
+
+/** The kinds of a failed call after which the service of a channel can be down: no answer came, or its server failed. */
+export const DOWN_CALL_KINDS: readonly string[] = ["network", "timeout", "server"];
+
+/** One call of a channel from the log of a live copy (AL-147). */
+export interface CallRead {
+  /** The time at which the call ended. */
+  readonly time: number;
+  /** True when the service answered: the call passed, or the service refused it. A refusal tells that the service works. */
+  readonly answered: boolean;
+  /** True when the copy had a passed fetch less than `FETCH_GAP_MS` from the call. Then the network of the copy worked. */
+  readonly network: boolean;
+}
+
+/** This function reads the calls of one channel from the body of one `calls` event. A body that does not parse gives no call. */
+function callReads(body: string, channel: string, limit: number): CallRead[] {
+  let value: unknown;
+  try {
+    value = JSON.parse(body);
+  } catch {
+    return [];
+  }
+  if (!isRecord(value) || !Array.isArray(value["calls"])) return [];
+  const network = value["network"];
+  return (value["calls"] as readonly unknown[]).flatMap((call) => {
+    if (!isRecord(call) || call["channel"] !== channel) return [];
+    const time = call["time"];
+    if (typeof time !== "number" || !Number.isFinite(time)) return [];
+    const kind = call["kind"];
+    const answered = typeof kind !== "string" || !DOWN_CALL_KINDS.includes(kind);
+    return [{ time, answered, network: typeof network === "number" && Math.abs(time - network) <= limit }];
+  });
+}
+
+/** This function reads the calls of one channel from a runtime log file, in their order. It opens the file to read only. */
+export function readChannelCalls(path: string, channel: string, limit: number = FETCH_GAP_MS): readonly CallRead[] {
+  const db = openDatabase(path, { readOnly: true });
+  try {
+    return db
+      .prepare("SELECT body FROM events WHERE type = 'calls' ORDER BY seq")
+      .all()
+      .flatMap((row) => callReads(String(row["body"]), channel, limit));
+  } finally {
+    db.close();
+  }
+}
+
+/**
+ * This function gives the measured chance of a channel that all copies share, from its calls in the logs of the live
+ * copies (AL-147). Each hour with a counted call is one trial. A call counts when the service answered, or when it
+ * failed with a kind of `DOWN_CALL_KINDS` while the network of its copy worked. An hour is down when it has a counted
+ * failure and no answered call of any copy. Thus a fault of the path of one copy is not a down time of the service.
+ */
+export function measureChannel(chance: PartChance, calls: readonly CallRead[], now: number): PartMeasure {
+  const channel = chance.channel;
+  if (channel === undefined) return { ok: false, reason: "The chance names no channel." };
+  const hours = new Map<number, { answered: boolean; failed: boolean }>();
+  for (const call of calls) {
+    if (!call.answered && !call.network) continue;
+    const hour = Math.floor(call.time / HOUR_MS);
+    const entry = hours.get(hour) ?? { answered: false, failed: false };
+    if (call.answered) entry.answered = true;
+    else entry.failed = true;
+    hours.set(hour, entry);
+  }
+  const trials = hours.size;
+  if (trials < MIN_LOG_HOURS) return { ok: false, reason: `The logs have ${countOf(trials, "hour")} with calls of the channel ${channel}, less than ${String(MIN_LOG_HOURS)}.` };
+  const downHours = [...hours.values()].filter((entry) => entry.failed && !entry.answered).length;
+  const keys = [...hours.keys()];
+  const window: TimeWindow = { from: Math.min(...keys) * HOUR_MS, to: Math.min(now, (Math.max(...keys) + 1) * HOUR_MS) };
+  const down: DownShare = { hours: trials, downHours, share: downHours / trials, interval: wilson(downHours, trials, Z95) };
+  const low = 1 - down.interval.high;
+  const source =
+    `the calls of the channel ${channel} in the logs of the live copies from ${dayOf(window.from)} to ${dayOf(window.to)}: ` +
+    `${String(downHours)} of ${String(trials)} hours with calls down (a call failed by network, time-out or server error, and no call had an answer), ` +
+    `works ${(1 - down.share).toFixed(6)}, 95% Wilson interval ${low.toFixed(6)} to ${(1 - down.interval.low).toFixed(6)}, the input is the low end`;
+  return { ok: true, chance: { ...chance, works: low, kind: "measured", source }, measure: { input: { id: chance.part, works: low, kind: "measured", source }, down, window } };
+}
+
+/**
+ * This function measures each chance of a base that names a channel, from the calls of that channel (AL-147). `calls`
+ * gives the calls of a channel from all logs. A chance with a short record keeps its input.
+ */
+export function measureBaseCalls(base: PlacementBase, calls: (channel: string) => readonly CallRead[], now: number): BaseMeasure {
+  const chances: PartChance[] = [];
+  const lines: string[] = [];
+  const measures: ChanceMeasure[] = [];
+  for (const chance of base.chances ?? []) {
+    if (chance.channel === undefined) {
+      chances.push(chance);
+      continue;
+    }
+    const measured = measureChannel(chance, calls(chance.channel), now);
+    if (measured.ok) {
+      chances.push(measured.chance);
+      measures.push(measured.measure);
+      lines.push(`The base input ${chance.part} is measured: ${measured.chance.source}.`);
+    } else {
+      chances.push(chance);
+      lines.push(`The base input ${chance.part} keeps its ${chance.kind} input: ${measured.reason}`);
+    }
+  }
+  return { base: { ...base, chances }, lines, measures };
 }
 
 /** This function tells if an incident is a down time: its impact is in `DOWN_IMPACTS`, and it is not a scheduled maintenance. */

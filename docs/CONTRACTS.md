@@ -967,6 +967,7 @@ The other events stay in their copy, because each copy has its own sources, heal
 
 - the events `started`, `observation`, `system`, `escalation`, `clock`, `recovered` and `drill`
 - the events of the tries of a send: `attempt`, `settled` and `refused`
+- the event `calls`: the calls of the channels in one pass, for the measure of a shared channel (AL-147)
 
 The rules of an import:
 
@@ -1211,6 +1212,12 @@ The log keeps each copy on a channel that repeats, and its end. Thus a restart d
 - A stop of a copy whose send did not end does not end the copy. The channel can accept that copy later, and then its stop goes again.
 
 A write of the `attempt` event that fails throws, and the send does not go.
+
+The log also keeps the calls of the channels of each pass in a `calls` event (AL-147). The fold changes nothing for it:
+
+- Each call has its channel, its kind (`send`, `status`, `cancel`, `copy` or `probe`), its end time and the kind of its failure.
+- The event has the time of the last passed fetch of the copy. It shows that the network of the copy worked.
+- The placement plan reads these calls from the logs of the live copies. They measure the chance of a push or call service with no status page.
 
 The log also keeps each refused send. A refused send is a refusal, a bad key, a full quota or a quota in its reserve, in the time limit of the send:
 

@@ -17,7 +17,7 @@ import { channelWatch, lastFetchSuccess } from "./channel-watch.ts";
 import { createDispatcher, type DeliveryOptions, type DeliveryStep } from "./delivery.ts";
 import { drillStarts, drillStep, type CopyDrill } from "./drills.ts";
 import { entryIndex } from "./entries.ts";
-import { envelope, EVENT_TYPES, FOLD_TYPES, unknownEvents, type RuntimeEvent } from "./events.ts";
+import { callsEvent, envelope, EVENT_TYPES, FOLD_TYPES, unknownEvents, type RuntimeEvent } from "./events.ts";
 import { blockEvent } from "./loop-watch.ts";
 import { importPage, sharePage, type ExchangePage, type ReceivedPage } from "./exchange.ts";
 import { fetchStep } from "./fetch.ts";
@@ -762,6 +762,9 @@ export function openRuntime(options: RuntimeOptions): Runtime {
       const heldChanged = held !== undefined && delivery !== undefined && personsOf(heldOf(clock.now())) !== personsOf(held);
       // A run that starts to open a line, or an accepted send on a down channel, changes a line in the view of the next pass.
       const down = delivery !== undefined && channels !== undefined && channels.step(delivery, clock.now(), downChannels(state.lines, self), lastFetchSuccess(state.health));
+      // The calls of the probes and of the step go into the log (AL-147). The placement measures each shared channel from them.
+      const calls = channels?.calls() ?? [];
+      if (calls.length > 0) conflicts.push(...append([callsEvent(self, calls, clock.now(), lastFetchSuccess(state.health))]));
       // The conditions of the observe mode go into the view of the next pass. A new condition brings that pass at once. A new
       // reason with the same facts does not, because the system reports keep no reason as a fact.
       const since = new Map(Object.entries(state.modes).flatMap(([source, track]) => (track.since === undefined ? [] : [[source as SourceId, track.since] as const])));

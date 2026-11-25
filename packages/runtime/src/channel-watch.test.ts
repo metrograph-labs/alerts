@@ -126,6 +126,22 @@ describe("the watch of the channels", () => {
     expect(watch.wakeAt()).toBe(T0 + 2 * MINUTE + 10 * SECOND);
   });
 
+  it("gives each call of the probes and of the steps one time, for the log (AL-147)", async () => {
+    const clock = fakeWallClock(T0);
+    const watch = channelWatch({ copy: "copy-a", channels: [procedures(PUSH, async () => ({ ok: true, at: clock.now() })), procedures(TEXT)], policy: DEFAULT_CHANNEL_DOWN, clock, callLimit: 10 * SECOND });
+    expect(watch.calls()).toEqual([]);
+    await watch.probe(T0);
+    await clock.advance(MINUTE);
+    await watch.probe(clock.now());
+    watch.step({ ...EMPTY, failures: [failed(TEXT, "server")], sent: [sent(PUSH, T0 + 2 * MINUTE)] }, T0 + 2 * MINUTE, []);
+    expect(watch.calls()).toEqual([
+      { channel: PUSH, call: "probe", time: T0 + MINUTE },
+      { channel: TEXT, call: "send", kind: "server", time: T0 + 2 * MINUTE },
+      { channel: PUSH, call: "send", time: T0 + 2 * MINUTE },
+    ]);
+    expect(watch.calls()).toEqual([]);
+  });
+
   it("gives the time of the last passed fetch of any source", () => {
     const track = (source: string, passed?: number) => ({ source: source as SourceId, ...(passed === undefined ? {} : { passed: { at: passed, took: 1 } }) }) as unknown as HealthTrack;
     expect(lastFetchSuccess({})).toBeUndefined();
