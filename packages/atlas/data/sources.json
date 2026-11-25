@@ -8650,11 +8650,11 @@
     "terms": {
       "url": null,
       "automated": "unclear",
-      "redistribution": "unclear",
-      "note": "The page redirected to a bot check (unblock.federalregister.gov)."
+      "redistribution": "allowed",
+      "note": "Round 30: the API answered with no key. The pages of the site still redirect to a bot check, so the round did not read the terms. The documents are works of the US government."
     },
     "cost": "free",
-    "delay": "unknown",
+    "delay": "One read on 2026-11-25 gave documents of the same day. The Federal Register publishes each working day.",
     "history": "unknown",
     "rateLimit": "unknown",
     "calibration": null,
@@ -8667,11 +8667,14 @@
     ],
     "subjectIds": null,
     "risks": [],
-    "decision": "later",
+    "decision": "plan",
     "adapter": null,
-    "reason": "Primary record; access from automation to be checked.",
-    "evidence": [],
-    "round": 1
+    "reason": "The official journal of the US government, as a JSON API with no key. It gives the rules of the agencies and the declarations of the President.",
+    "evidence": [
+      "https://www.federalregister.gov/api/v1/documents.json?per_page=2&order=newest",
+      "https://www.federalregister.gov/api/v1/documents.json?conditions[type][]=PRESDOCU&conditions[term]=emergency"
+    ],
+    "round": 30
   },
   {
     "id": "fedora-bodhi-security",
@@ -11138,10 +11141,10 @@
       "url": "https://go.ifrc.org/terms",
       "automated": "unclear",
       "redistribution": "unclear",
-      "note": "The terms page is a script page and gave no text to the fetch tool."
+      "note": "The terms page is a script page and gave no text to the fetch tool. Round 30 did not read the terms. The API answers with no key."
     },
     "cost": "free",
-    "delay": "The newest appeal read on 2026-11-22 started 2026-11-18 and was created the same day.",
+    "delay": "One read at about 14:55 UTC on 2026-11-25 gave an appeal changed at 14:30 UTC on the same day.",
     "history": "4,258 appeals in the API, with type, status, disaster type, beneficiaries and amounts.",
     "rateLimit": "unknown",
     "calibration": null,
@@ -11156,14 +11159,14 @@
       "iso3166"
     ],
     "risks": [],
-    "decision": "later",
+    "decision": "plan",
     "adapter": null,
-    "reason": "A public JSON API of new international disaster relief operations with no key. The terms are unread.",
+    "reason": "A public JSON API of the international relief operations of the IFRC, with no key. Its origin is apart from FEMA. The terms are not known, so the adapter keeps a slow pace.",
     "evidence": [
-      "https://goadmin.ifrc.org/api/v2/appeal/?limit=2&ordering=-start_date",
+      "https://goadmin.ifrc.org/api/v2/appeal/?limit=1&ordering=-modified_at",
       "https://go.ifrc.org/terms"
     ],
-    "round": 18
+    "round": 30
   },
   {
     "id": "ihr",
