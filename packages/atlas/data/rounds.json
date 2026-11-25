@@ -1655,5 +1655,59 @@
       "members": 1757,
       "cause": "Round 33 adds 4 planned sources and 3 later sources, and moves 1 later source to plan. Five classes get a second source, so the gaps go from 86 to 81. No layer of the cover changes."
     }
+  },
+  {
+    "round": 34,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took the classes with a gap and ranked them by their value to a person at home. It tried geo.landslide first. It searched open data catalogs, ArcGIS Online and the web, and read the terms and the robots.txt of each candidate. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The API documentation of NVE, for the landslide warnings: https://api.nve.no/doc/jordskredvarsling/",
+      "DATA.GOV.HK, for the weather warnings of Hong Kong: https://data.gov.hk/en-data/api/3/action/package_search?q=weather%20warning%20summary&rows=5",
+      "The open data page of the French fuel prices: https://www.prix-carburants.gouv.fr/rubrique/opendata/",
+      "The search API of ArcGIS Online, for spill layers: https://www.arcgis.com/sharing/rest/search",
+      "The map services of the ECDC, for animal disease layers: https://gis.ecdc.europa.eu/public/rest/services?f=json",
+      "The RSS page of NSW Health, for drug warnings: https://www.health.nsw.gov.au/Pages/rss.aspx",
+      "Open Government Canada, for avian influenza: https://open.canada.ca/data/api/3/action/package_search?q=avian%20influenza%20infected%20premises&rows=8"
+    ],
+    "queries": [
+      "prix carburants flux instantané v2 rupture carburant API",
+      "Public Health Agency of Canada public health notices outbreak RSS Atom feed",
+      "public drug warnings RSS feed health department nitazene alert feed",
+      "avian influenza outbreaks open data API GeoJSON official veterinary authority"
+    ],
+    "notes": [
+      "nve-landslide-warnings and hko-warning-summary are new. geo.landslide has 2 sources from 2 origins.",
+      "nve-landslide-warnings also gives the debris flows of Norway. With iem-vtec, geo.debris-flow has 2 sources from 2 origins.",
+      "prix-carburants-fr moves from later to plan. Its file gives each fuel stock-out at each station under the Licence Ouverte. With eia-api, infra.fuel.shortage and market.price.fuel each have 2 sources.",
+      "The robots.txt of data.economie.gouv.fr blocks its API path, so the record names the file of roulez-eco.",
+      "losco-active-spills is later, because its layer gives no licence.",
+      "ecdc-wnv-animal-outbreaks is later, because each query of its layer failed. The avian influenza folder of the same server needs a token.",
+      "nsw-health-drug-warnings is later, because the warnings come only on a page. The robots.txt blocks the RSS paths of the site.",
+      "The feed of public health updates of the PHAC gave no answer in 120 seconds. The round stopped the fetch and did not try again.",
+      "Open Government Canada gave no dataset of infected premises of avian influenza."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 77,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 34,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 34 adds 2 planned sources and 3 later sources, and moves 1 later source to plan. Four classes get a second source, so the gaps go from 81 to 77. The dimension fuel-prices gets a second live source. No layer of the cover changes."
+    }
   }
 ]

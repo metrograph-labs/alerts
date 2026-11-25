@@ -2652,5 +2652,29 @@
     "name": "Transport for London (TfL)",
     "issues": null,
     "note": "The transport authority of London publishes the status of its lines. The record of tfl-unified-api names this issuer."
+  },
+  {
+    "id": "nve",
+    "name": "NVE (the Norwegian Water Resources and Energy Directorate)",
+    "issues": null,
+    "note": "NVE gives the landslide warnings of Norway. The record of nve-landslide-warnings names this issuer."
+  },
+  {
+    "id": "hko",
+    "name": "The Hong Kong Observatory",
+    "issues": null,
+    "note": "The weather service of Hong Kong issues the weather warnings and the landslip warning. The record of hko-warning-summary names this issuer."
+  },
+  {
+    "id": "losco",
+    "name": "LOSCO (the Louisiana Oil Spill Coordinator's Office)",
+    "issues": null,
+    "note": "The office keeps the spill response records of Louisiana. The record of losco-active-spills names this issuer."
+  },
+  {
+    "id": "nsw-health",
+    "name": "NSW Health, the health department of New South Wales",
+    "issues": null,
+    "note": "The department publishes the public drug warnings of the state. The record of nsw-health-drug-warnings names this issuer."
   }
 ]

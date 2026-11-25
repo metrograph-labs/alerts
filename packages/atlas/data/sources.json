@@ -17865,36 +17865,39 @@
     "dimensions": [
       "fuel-prices"
     ],
-    "url": "https://www.prix-carburants.gouv.fr/rubrique/opendata/",
+    "url": "https://donnees.roulez-eco.fr/opendata/instantane_ruptures",
     "access": "file",
     "auth": "none",
     "terms": {
       "url": "https://www.prix-carburants.gouv.fr/rubrique/opendata/",
       "automated": "unclear",
       "redistribution": "allowed",
-      "note": "Licence Ouverte."
+      "note": "The open data page gives the data under the Licence Ouverte (etalab-2.0) and names the download addresses. It tells nothing of automated reading. donnees.roulez-eco.fr has no robots.txt. The robots.txt of data.economie.gouv.fr blocks its API path, so an adapter reads the file of roulez-eco."
     },
     "cost": "free",
-    "delay": "about 10 minutes",
+    "delay": "Minutes: the file updates each 10 minutes. The file read at 18:31 UTC on 2026-11-25 had a temporary stock-out that started at 19:30 Paris time (18:30 UTC).",
     "history": "yes (yearly archives since 2007)",
     "rateLimit": "unknown",
     "calibration": null,
-    "coverage": "France, all stations",
+    "coverage": "France: 9,828 stations in the file read on 2026-11-25. The file had 23,066 stock-out records, and 2,646 of them were temporary. 742 temporary stock-outs started in November 2026.",
     "origins": [
       "prix-carburants"
     ],
     "path": [
-      "unknown"
+      "donnees.roulez-eco.fr"
     ],
     "subjectIds": null,
     "risks": [],
-    "decision": "later",
+    "decision": "plan",
     "adapter": null,
-    "reason": "Fuel prices and stock outages at each French station under the Licence Ouverte. Stock outages are a strong signal of a supply shock.",
+    "reason": "Each station gives its prices and each fuel that it does not have, with the start and the type of the stock-out. Many new temporary stock-outs in one area tell of a supply shock. The file needs no key.",
     "evidence": [
-      "https://www.prix-carburants.gouv.fr/rubrique/opendata/"
+      "https://www.prix-carburants.gouv.fr/rubrique/opendata/",
+      "https://donnees.roulez-eco.fr/opendata/instantane_ruptures",
+      "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?limit=1&where=carburants_indisponibles%20is%20not%20null",
+      "https://data.economie.gouv.fr/robots.txt"
     ],
-    "round": 10
+    "round": 34
   },
   {
     "id": "project-zero-0day-itw",
@@ -25097,6 +25100,201 @@
     "evidence": [
       "https://api.tfl.gov.uk/Line/Mode/tube,overground,elizabeth-line,dlr/Status",
       "https://tfl.gov.uk/corporate/terms-and-conditions/transport-data-service"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 34,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "nve-landslide-warnings",
+    "name": "NVE: the landslide warnings of Norway for each county and municipality (Jordskredvarsling API, JSON)",
+    "classes": [
+      "geo.landslide",
+      "geo.debris-flow"
+    ],
+    "url": "https://api01.nve.no/hydrology/forecast/landslide/v1.0.10/api/Warning/2",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://api.nve.no/doc/jordskredvarsling/",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The API page tells that the warning data is free for use. A user names the landslide warning service of Norway and varsom.no as the source. The page asks users to show all the data of a warning. api01.nve.no has no robots.txt."
+    },
+    "delay": "Hours: NVE gives a warning each day for today, tomorrow and the day after tomorrow. One read at 18:29 UTC on 2026-11-25 had no warning above level 1.",
+    "history": "The API gives the warnings of each date range from a start date to an end date.",
+    "coverage": "Norway: each county and municipality. The warnings tell of landslides, slush flows and debris flows, with an activity level from 1 to 4.",
+    "origins": [
+      "nve"
+    ],
+    "path": [
+      "api01.nve.no"
+    ],
+    "reason": "The water and energy directorate of Norway gives each landslide warning with its level and its municipalities as JSON with no key. The warnings include debris flows.",
+    "evidence": [
+      "https://api.nve.no/doc/jordskredvarsling/",
+      "https://api01.nve.no/hydrology/forecast/landslide/v1.0.10/api/Warning/2",
+      "https://api01.nve.no/robots.txt"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 34,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "hko-warning-summary",
+    "name": "Hong Kong Observatory: the summary of the weather warnings in force, with the landslip warning (open data API, JSON)",
+    "classes": [
+      "geo.landslide"
+    ],
+    "url": "https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=warnsum&lang=en",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.gov.hk/en/terms-and-conditions",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "DATA.GOV.HK lists this dataset of the Observatory. Its terms let each user download, distribute and reproduce the data, also for commercial use, with acknowledgement of the source. The terms tell nothing of automated reading. The robots.txt address sent a redirect, and the round did not follow it."
+    },
+    "delay": "Minutes: the dataset updates when a warning changes. One read at 18:28 UTC on 2026-11-25 gave an empty object, because no warning was in force.",
+    "history": "None: the summary gives the warnings in force now.",
+    "coverage": "Hong Kong. The summary also gives the tropical cyclone signals and the rainstorm, thunderstorm, fire danger, heat, cold, frost, monsoon, flooding and tsunami warnings.",
+    "origins": [
+      "hko"
+    ],
+    "path": [
+      "data.weather.gov.hk"
+    ],
+    "reason": "The Observatory issues the landslip warning when heavy rain makes many landslips likely. The summary gives the code of each warning in force with no key. The code WL is the landslip warning.",
+    "evidence": [
+      "https://data.gov.hk/en-data/api/3/action/package_search?q=weather%20warning%20summary&rows=5",
+      "https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=warnsum&lang=en",
+      "https://data.gov.hk/en/terms-and-conditions"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 34,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "losco-active-spills",
+    "name": "LOSCO: the active spill response records of Louisiana (ArcGIS feature layer)",
+    "classes": [
+      "env.spill"
+    ],
+    "url": "https://services9.arcgis.com/aWvO9aHtYLYMBTua/arcgis/rest/services/Active_LOSCO_Spill_Response_Records/FeatureServer/0",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The item on ArcGIS Online gives no licence and no terms of use. Its disclaimer tells that the data is for general information only."
+    },
+    "delay": "Days: the newest record on 2026-11-25 had an incident date of 2026-10-28.",
+    "history": "None: the layer holds only the spills with an active response.",
+    "coverage": "Louisiana and its waters: oil and other spills, with the product, the source, the estimated volume and the response status.",
+    "origins": [
+      "losco"
+    ],
+    "path": [
+      "services9.arcgis.com",
+      "provider:arcgis-online"
+    ],
+    "reason": "The layer gives the active spills of the oil spill office of Louisiana with no key. But the item gives no licence, so the terms of use are not known.",
+    "evidence": [
+      "https://www.arcgis.com/sharing/rest/search?q=spill%20incidents%20type%3A%22Feature%20Service%22&sortField=modified&sortOrder=desc&num=40&f=json",
+      "https://www.arcgis.com/home/item.html?id=e5125b7bbab644bba99960f197b8feb0"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 34,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "ecdc-wnv-animal-outbreaks",
+    "name": "ECDC: the outbreaks of West Nile virus among birds and equids in Europe (ArcGIS layer)",
+    "classes": [
+      "health.animal-disease"
+    ],
+    "url": "https://gis.ecdc.europa.eu/public/rest/services/WNV/WNF_Animal2/FeatureServer/2",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The layer gives no licence text, and the round did not read the terms of the ECDC."
+    },
+    "delay": "unknown",
+    "history": "unknown",
+    "coverage": "The EU and the EEA: the outbreaks among birds and equids in each region, in the season of West Nile virus.",
+    "origins": [
+      "ecdc"
+    ],
+    "path": [
+      "gis.ecdc.europa.eu"
+    ],
+    "reason": "The metadata of the layer answered, but each query of its records failed with error 400. The folder AvianInfluenza of the same server needs a token.",
+    "evidence": [
+      "https://gis.ecdc.europa.eu/public/rest/services?f=json",
+      "https://gis.ecdc.europa.eu/public/rest/services/WNV/WNF_Animal2/FeatureServer/2?f=json"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 34,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "nsw-health-drug-warnings",
+    "name": "NSW Health: the public drug warnings of New South Wales (web page)",
+    "classes": [
+      "health.drug-supply-threat"
+    ],
+    "url": "https://www.health.nsw.gov.au/aod/public-drug-alerts/Pages/default.aspx",
+    "access": "page",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The robots.txt blocks the paths of _layouts, and each RSS feed of the site has such a path. The RSS page of the site lists no feed of drug warnings."
+    },
+    "delay": "unknown",
+    "history": "The site gives a page of the warnings of each year.",
+    "coverage": "New South Wales: dangerous substances in the drug supply, for example nitazenes in heroin or in pills.",
+    "origins": [
+      "nsw-health"
+    ],
+    "path": [
+      "www.health.nsw.gov.au"
+    ],
+    "reason": "The warnings come only on a page with no feed, and no terms let automated reading of a page.",
+    "evidence": [
+      "https://www.health.nsw.gov.au/aod/public-drug-alerts/Pages/default.aspx",
+      "https://www.health.nsw.gov.au/Pages/rss.aspx",
+      "https://www.health.nsw.gov.au/robots.txt"
     ]
   }
 ]

@@ -2974,5 +2974,41 @@
     "name": "api.tfl.gov.uk",
     "kind": "host",
     "note": "The host of the Unified API of TfL, the feed of tfl-unified-api."
+  },
+  {
+    "id": "api01.nve.no",
+    "name": "api01.nve.no",
+    "kind": "host",
+    "note": "The host of the landslide warning API of NVE, the feed of nve-landslide-warnings."
+  },
+  {
+    "id": "data.weather.gov.hk",
+    "name": "data.weather.gov.hk",
+    "kind": "host",
+    "note": "The host of the open data API of the Hong Kong Observatory, the feed of hko-warning-summary."
+  },
+  {
+    "id": "donnees.roulez-eco.fr",
+    "name": "donnees.roulez-eco.fr",
+    "kind": "host",
+    "note": "The host of the files of the French fuel prices, the feed of prix-carburants-fr."
+  },
+  {
+    "id": "services9.arcgis.com",
+    "name": "services9.arcgis.com",
+    "kind": "host",
+    "note": "A host of the feature layers of ArcGIS Online, the feed of losco-active-spills."
+  },
+  {
+    "id": "gis.ecdc.europa.eu",
+    "name": "gis.ecdc.europa.eu",
+    "kind": "host",
+    "note": "The host of the map services of the ECDC, the feed of ecdc-wnv-animal-outbreaks."
+  },
+  {
+    "id": "www.health.nsw.gov.au",
+    "name": "www.health.nsw.gov.au",
+    "kind": "host",
+    "note": "The host of the site of NSW Health, the page of nsw-health-drug-warnings."
   }
 ]
