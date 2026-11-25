@@ -5,6 +5,7 @@ import { channelRuns, runOpens, type ChannelDownPolicy, type ChannelId, type Cha
 import { backoffDelay, type Backoff } from "@mark1russell7/service/backoff";
 import { errorMessage } from "@mark1russell7/text";
 import type { DeliveryStep } from "./delivery.ts";
+import type { ChannelCall } from "./events.ts";
 import { limited } from "./limit.ts";
 
 /** The backoff of the probes after failed probes: 1 minute after the first failure, then 2, 4 and up to 30 minutes. */
@@ -46,6 +47,8 @@ export interface ChannelWatch {
   step(delivery: DeliveryStep, at: Instant, down: readonly ChannelId[], lastSuccess?: Instant): boolean;
   /** The time of the next probe. */
   wakeAt(): Instant | undefined;
+  /** This function gives each call of the probes and of the steps since its last use, and empties the list (AL-147). */
+  calls(): ChannelCall[];
 }
 
 /** This function gives the time of the last passed fetch of any source of this copy. It shows that the network of the copy works. */
@@ -71,6 +74,8 @@ export function channelWatch(options: ChannelWatchOptions): ChannelWatch {
   // The next probe of each channel with a probe, and the count of its failed probes in a row. After a good call, the next
   // probe waits `idle`. After k failed probes, it waits `backoffDelay(backoff, k)`.
   const probes = new Map<ChannelId, { readonly failed: number; readonly next: Instant }>();
+  // The calls since the last read of `calls`. The runtime writes them into the log after each pass.
+  let calls: ChannelCall[] = [];
 
   const noteGood = (channel: ChannelId, at: Instant): void => {
     const last = good.get(channel);
@@ -116,6 +121,7 @@ export function channelWatch(options: ChannelWatchOptions): ChannelWatch {
       let passed = false;
       for (const { channel, entry, outcome } of outcomes) {
         const end = clock.now();
+        calls.push({ channel, call: "probe", time: end, ...(outcome.ok ? {} : { kind: outcome.kind }) });
         if (outcome.ok) {
           noteGood(channel, outcome.at);
           runs = channelRuns(runs, { at: end, failures: [], good: [channel] });
@@ -134,6 +140,7 @@ export function channelWatch(options: ChannelWatchOptions): ChannelWatch {
       const opening = new Set(runs.filter((run) => runOpens(run, policy)).map((run) => run.channel));
       const failures = delivery.failures.map((failure) => ({ channel: failure.channel, call: failure.call, kind: failure.kind }));
       runs = channelRuns(runs, { at, failures, good: accepted, ...(lastSuccess === undefined ? {} : { lastSuccess }) });
+      calls.push(...failures.map((failure) => ({ ...failure, time: at })), ...delivery.sent.map((sent) => ({ channel: sent.channel, call: "send" as const, time: sent.at })));
       for (const sent of delivery.sent) noteGood(sent.channel, sent.at);
       for (const channel of accepted) rest(channel, at);
       const open = new Set<string>(down);
@@ -146,6 +153,12 @@ export function channelWatch(options: ChannelWatchOptions): ChannelWatch {
       let next: Instant | undefined;
       for (const entry of probes.values()) if (next === undefined || entry.next < next) next = entry.next;
       return next;
+    },
+
+    calls: () => {
+      const read = calls;
+      calls = [];
+      return read;
     },
   };
 }

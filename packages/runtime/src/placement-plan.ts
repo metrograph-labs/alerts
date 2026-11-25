@@ -19,7 +19,8 @@
  * - `--assume-site` is the assumed chance input of each site of a fixed copy. A fixed copy at a site needs it.
  * - `--site-log` names a copy of the runtime log of the live copy at each site, as `site=file` with commas between
  *   them. The gaps of its fetch events give a measured chance of the site (`measureSite` of `placement-chances.ts`).
- *   This input replaces `--assume-site` for that site.
+ *   This input replaces `--assume-site` for that site. The calls of the channels in these logs also measure each chance
+ *   of the base that names a channel (`measureBaseCalls` of `placement-chances.ts`).
  * - `--base` names a private JSON file with the function and the needs that all copies share (`readBase` of
  *   `placement.ts`). These needs limit the gain of each copy. The output names each of their inputs that is assumed or
  *   missing. A chance of the base can name the status page of its part (`status`). The script then measures the input
@@ -50,11 +51,14 @@ import {
   HISTORY_SOURCES,
   MEASURE_USER_AGENT,
   measureBase,
+  measureBaseCalls,
   measureProvider,
   measureSite,
+  readChannelCalls,
   readFetchTimes,
   readPageHistory,
   withMeasures,
+  type CallRead,
   type ChanceMeasure,
 } from "./placement-chances.ts";
 import {
@@ -187,6 +191,15 @@ function measureRecord(measure: ChanceMeasure) {
   return { id: measure.input.id, works: measure.input.works, window: { from: new Date(measure.window.from).toISOString(), to: new Date(measure.window.to).toISOString() }, down: measure.down };
 }
 
+// The calls of one channel in one site log. A log with no good read gives no call, and its site line tells the fault.
+function callsOrNone(path: string, channel: string): readonly CallRead[] {
+  try {
+    return readChannelCalls(path, channel);
+  } catch {
+    return [];
+  }
+}
+
 // The configuration as JSON, or undefined when the file is missing or is not JSON. Only its spend entries count.
 async function readConfig(path: string): Promise<unknown> {
   try {
@@ -263,10 +276,12 @@ if (typeof parsed === "string") {
   console.log(`The status page histories gave ${countOf(measures.length, "measured input")}. The other fragments and the hosts use the assumed inputs.`);
   // Each chance of the base that names a status page gets a measured input, with the same pace as the providers.
   const baseMeasure = baseRead === undefined ? undefined : await measureBase(baseRead, { scheduler, now: () => Date.now() }, measureTransport, readAt, parsed.windowDays);
-  const base: PlacementBase | undefined = baseMeasure?.base;
+  // Each chance of the base that names a channel gets a measured input from the calls in the site logs (AL-147).
+  const callMeasure = baseMeasure === undefined ? undefined : measureBaseCalls(baseMeasure.base, (channel) => parsed.siteLogs.flatMap((log) => callsOrNone(log.path, channel)), readAt);
+  const base: PlacementBase | undefined = callMeasure?.base;
   if (base === undefined) console.log("No base is named. The front leaves out the needs that all copies share.");
   else {
-    for (const line of baseMeasure?.lines ?? []) console.log(line);
+    for (const line of [...(baseMeasure?.lines ?? []), ...(callMeasure?.lines ?? [])]) console.log(line);
     const open = baseAssumed(base);
     console.log(`The base has ${countOf(base.stack.parts.length, "part")} and ${countOf((base.chances ?? []).length, "chance input")}.`);
     console.log(`Shared needs with an assumed input: ${open.assumed.length === 0 ? "none" : open.assumed.join(", ")}.`);

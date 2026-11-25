@@ -441,6 +441,15 @@ describe("the needs that all copies share", () => {
     expect(read("status.service-a.test")).toContain("The status of the chance of push-api");
   });
 
+  it("reads the channel id of a chance, and gives a problem for a channel that is not a text (AL-147)", () => {
+    const chance = { part: "push-api", works: 0.999, kind: "assumed", source: "a test input" };
+    const read = (channel: unknown) => readBase({ ...base, chances: [{ ...chance, channel }] });
+    const named = read("push");
+    expect(typeof named !== "string" && named.chances?.[0]?.channel).toBe("push");
+    expect(read(7)).toBe("The channel of the chance of push-api is not a text.");
+    expect(read("")).toBe("The channel of the chance of push-api is not a text.");
+  });
+
   it("refuses an unknown part, two inputs of one part, and an id of a slot in the stack", () => {
     expect(() => placementLayer(input(offers, { base: { ...base, part: "other" } }))).toThrow(RangeError);
     expect(() => placementLayer(input(offers, { base: { ...base, copies: ["copy-z"] } }))).toThrow(RangeError);

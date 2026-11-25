@@ -137,6 +137,26 @@ export interface RefusedEvent extends Envelope<"refused"> {
   readonly copy?: string;
 }
 
+/** One call of a channel and its end (AL-147). A `probe` is the call that tests a channel with no message. */
+export interface ChannelCall {
+  readonly channel: ChannelId;
+  readonly call: "send" | "status" | "cancel" | "copy" | "probe";
+  /** The time at which the call ended. */
+  readonly time: Instant;
+  /** The kind of the failure, a `ChannelFailureKind`. A call with no kind passed. */
+  readonly kind?: string;
+}
+
+/**
+ * The calls of the channels in one pass (AL-147). The fold changes nothing for this event. The placement measures the
+ * chance of a shared channel from these calls, thus a channel with no status page gets a measured input too.
+ */
+export interface CallsEvent extends Envelope<"calls"> {
+  readonly calls: readonly ChannelCall[];
+  /** The time of the last passed fetch of the copy before the calls. It shows that the network of the copy worked. */
+  readonly network?: Instant;
+}
+
 /** One acknowledgment of a person. */
 export interface AcknowledgmentEvent extends Envelope<"acknowledgment"> {
   readonly acknowledgment: Acknowledgment;
@@ -331,6 +351,7 @@ export type RuntimeEvent =
   | AttemptEvent
   | SettledEvent
   | RefusedEvent
+  | CallsEvent
   | ClockEvent
   | RecoveredEvent
   | ImportEvent
@@ -358,6 +379,7 @@ export const EVENT_TYPES: readonly RuntimeEvent["type"][] = [
   "attempt",
   "settled",
   "refused",
+  "calls",
   "clock",
   "recovered",
   "import",
@@ -394,6 +416,11 @@ export function frameTag(steps: number): string {
 /** This function gives the fields of the envelope of an event at a time. */
 export function envelope<T extends RuntimeEvent["type"]>(type: T, id: string, time: Instant): Envelope<T> {
   return { id, at: new Date(time).toISOString(), type, time };
+}
+
+/** This function makes the event of the calls of one pass of a copy (AL-147). The id holds the copy and the time. */
+export function callsEvent(copy: string, calls: readonly ChannelCall[], time: Instant, network?: Instant): CallsEvent {
+  return { ...envelope("calls", `calls:${copy}:${String(time)}`, time), calls, ...(network === undefined ? {} : { network }) };
 }
 
 /**
