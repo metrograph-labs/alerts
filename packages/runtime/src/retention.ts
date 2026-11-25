@@ -104,9 +104,11 @@ export function quietKeeps(state: RuntimeState, expectations: readonly Expectati
   const reports = new Map(state.merge.reports.map((report) => [report.id, report]));
   const run = `${DRILL_KIND}.run`;
   // The report is a run of the last start of its drill: the filter of `drillRunOf`, with no copy and no config.
+  // The kind comes first: the fold reads this for each report of each kept incident, and few reports are drill runs.
   const lastRun = (report: Report): boolean => {
+    if (report.kind.code !== run || report.onset === undefined) return false;
     const start = state.drills[report.parameters["drill"]?.[0] ?? ""];
-    return report.kind.code === run && start !== undefined && report.onset !== undefined && report.onset >= start;
+    return start !== undefined && report.onset >= start;
   };
   const needed = (id: ReportId): boolean => {
     if (held.has(id)) return true;
