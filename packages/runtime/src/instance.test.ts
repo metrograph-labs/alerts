@@ -37,6 +37,7 @@ import { PUSHOVER_QUOTA, PUSHOVER_RESERVE_NOTICES, PUSHOVER_TIMEOUT_MS, type Pus
 import { memoryCache, type ShapeCache } from "@mark1russell7/alerts-shapes-nws";
 import { CANARY_PATH, createNwsSource } from "@mark1russell7/alerts-source-nws-api";
 import { fakeSessions, NWWS_DESCRIPTOR } from "@mark1russell7/alerts-source-nwws";
+import { OSV_PROVIDERS } from "@mark1russell7/alerts-source-osv";
 import { SWPC_KINDS } from "@mark1russell7/alerts-source-swpc";
 import { CATALOG_URL, sourceIdOf, type CatalogCopy } from "@mark1russell7/alerts-source-gtfs-alerts";
 import { KEV_KINDS } from "@mark1russell7/alerts-source-cisa-kev";
@@ -69,6 +70,7 @@ import { nextFetch } from "./view.ts";
 import { createTellIntake, TELL_DESCRIPTOR } from "./tell-intake.ts";
 import type { TellEvent } from "./tell-message.ts";
 import { openRuntimeLog, type RuntimeLog } from "./log.ts";
+import { modeEvents } from "./observe.ts";
 import { openReadingStore, READINGS_FILE } from "./readings.ts";
 
 // The Flood Warning was sent at 14:54 UTC on 2026-11-14, and it expires at 06:00 UTC on 2026-11-15.
@@ -228,6 +230,26 @@ function certAnswer(): string {
 function csafAnswer(url: URL): string {
   const updated = new Date(T0 - 8 * 86_400_000).toISOString();
   return JSON.stringify({ feed: { id: "feed", entry: [{ id: "a-1", updated, link: [{ rel: "self", href: `${url.origin}/csaf/a-1.json` }] }] } });
+}
+
+/** The host of the data exports of OSV.dev. */
+const OSV_BUCKET = new URL((OSV_PROVIDERS[0]!.feed as { readonly base: string }).base).hostname;
+
+/**
+ * The answer of the data exports of OSV.dev to a read of a change list: one MAL line of 25 hours before `T0`. A first
+ * fetch reads only the changes of the last day, thus the fetch reads no record. The canary passes: its limit is 2 days.
+ */
+function osvListAnswer(): string {
+  return `${new Date(T0 - 25 * 3_600_000).toISOString()},MAL-2026-1
+`;
+}
+
+/**
+ * The answer of the GitHub API to a read of the newest commit of the repository of malicious packages: one commit of 1
+ * hour before `T0`. A first fetch reads no record. The answer has no name of a person.
+ */
+function osvCommitsAnswer(): string {
+  return JSON.stringify([{ sha: "a".repeat(40), commit: { committer: { date: new Date(T0 - 3_600_000).toISOString() } } }]);
 }
 
 /**
@@ -420,6 +442,8 @@ function network(delay = 0) {
     if (url.hostname === "rata.digitraffic.fi") return { status: 200, statusText: "OK", headers: { "content-type": "application/json" }, body: railAnswer() };
     if (url.hostname === "opendata.ndw.nu") return { status: 200, statusText: "OK", headers: { "content-type": "application/x-gzip" }, body: "", bytes: ndwAnswer() };
     if (url.hostname === "nasstatus.faa.gov") return { status: 200, statusText: "OK", headers: { "content-type": "application/xml" }, body: faaAnswer() };
+    if (url.hostname === OSV_BUCKET) return { status: 200, statusText: "OK", headers: { "content-type": "text/csv" }, body: osvListAnswer() };
+    if (url.hostname === "api.github.com") return { status: 200, statusText: "OK", headers: { "content-type": "application/json" }, body: osvCommitsAnswer() };
     if (CSAF_HOSTS.has(url.hostname)) return { status: 200, statusText: "OK", headers: { "content-type": "application/json" }, body: csafAnswer(url) };
     if (url.hostname === "api.eia.gov") return { status: 200, statusText: "OK", headers: { "content-type": "application/json" }, body: eiaAnswer(url) };
     if (url.hostname === "www.tsunami.gov") {
@@ -564,7 +588,7 @@ describe("openInstance", () => {
   it("sends a recorded NWS warning for a watched county to the person on Pushover", async () => {
     const { instance, clock, net, server } = await open();
     const pass = await finish(clock, instance.runtime.pass());
-    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "gfz-hp30", "energy-charts", "faa-nas-status", "ndw", "digitraffic-rail", "cisa-kev", "csaf-cisa-ics", "csaf-siemens", "csaf-abb", "cisa-advisories-rss", "cert-se-rss", "cert-fr-cti-rss", "ncsc-uk-rss", "cert-ua-rss", "jpcert-rss-en"]);
+    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "gfz-hp30", "energy-charts", "faa-nas-status", "ndw", "digitraffic-rail", "cisa-kev", "csaf-cisa-ics", "csaf-siemens", "csaf-abb", "cisa-advisories-rss", "cert-se-rss", "cert-fr-cti-rss", "ncsc-uk-rss", "cert-ua-rss", "jpcert-rss-en", "osv-export-malicious", "ossf-malicious-packages"]);
     // A fetch that ran out of time names its cause here, before the checks of the send.
     expect(pass.view?.health.map((health) => [health.source, health.state])).toEqual([
       ["nws-api", "healthy"],
@@ -590,6 +614,8 @@ describe("openInstance", () => {
       ["ncsc-uk-rss", "healthy"],
       ["cert-ua-rss", "healthy"],
       ["jpcert-rss-en", "healthy"],
+      ["osv-export-malicious", "healthy"],
+      ["ossf-malicious-packages", "healthy"],
     ]);
     expect(server.calls).toHaveLength(1);
     const [call] = server.calls;
@@ -682,7 +708,7 @@ describe("openInstance", () => {
     const outside = { ...CONFIG.places[0]!, at: [LONGITUDE, 28.46] as const };
     const { instance, clock, server } = open(store(SECRETS), { ...CONFIG, places: [outside] });
     const pass = await finish(clock, instance.runtime.pass());
-    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "gfz-hp30", "energy-charts", "faa-nas-status", "ndw", "digitraffic-rail", "cisa-kev", "csaf-cisa-ics", "csaf-siemens", "csaf-abb", "cisa-advisories-rss", "cert-se-rss", "cert-fr-cti-rss", "ncsc-uk-rss", "cert-ua-rss", "jpcert-rss-en"]);
+    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "gfz-hp30", "energy-charts", "faa-nas-status", "ndw", "digitraffic-rail", "cisa-kev", "csaf-cisa-ics", "csaf-siemens", "csaf-abb", "cisa-advisories-rss", "cert-se-rss", "cert-fr-cti-rss", "ncsc-uk-rss", "cert-ua-rss", "jpcert-rss-en", "osv-export-malicious", "ossf-malicious-packages"]);
     expect(server.calls).toHaveLength(0);
     // The USGS and EMSC give earthquake incidents too, the tsunami centers give expired statements, the SWPC gives
     // space weather, and the CERT feeds give advisories. The order of the incidents is the order of their anchors.
@@ -724,6 +750,8 @@ describe("openInstance", () => {
       ["ncsc-uk-rss", "healthy"],
       ["cert-ua-rss", "healthy"],
       ["jpcert-rss-en", "healthy"],
+      ["osv-export-malicious", "healthy"],
+      ["ossf-malicious-packages", "healthy"],
     ]);
     expect(server.calls.map((call) => call.fields["title"])).toEqual([expect.stringContaining("Flood Warning")]);
   });
@@ -755,6 +783,8 @@ describe("openInstance", () => {
       ["ncsc-uk-rss", "The fetch took longer than 5000 ms."],
       ["cert-ua-rss", "The fetch took longer than 5000 ms."],
       ["jpcert-rss-en", "The fetch took longer than 5000 ms."],
+      ["osv-export-malicious", "The fetch took longer than 5000 ms."],
+      ["ossf-malicious-packages", "The fetch took longer than 5000 ms."],
     ]);
   });
 
@@ -811,7 +841,7 @@ describe("openInstance", () => {
     const pass = await finish(clock, instance.runtime.pass());
     const pages = STATUS_PAGES.filter((page) => ["infra.saas.outage", "infra.cloud.outage", "infra.internet.dns-cdn"].includes(page.kind));
     expect(pages.length).toBeGreaterThan(20);
-    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "gfz-hp30", "energy-charts", "faa-nas-status", "ndw", "digitraffic-rail", "cisa-kev", "csaf-cisa-ics", "csaf-siemens", "csaf-abb", "cisa-advisories-rss", "cert-se-rss", "cert-fr-cti-rss", "ncsc-uk-rss", "cert-ua-rss", "jpcert-rss-en", "gcp-status", "firebase-status", "aws-health", "azure-status", ...pages.map((page) => page.id)]);
+    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "gfz-hp30", "energy-charts", "faa-nas-status", "ndw", "digitraffic-rail", "cisa-kev", "csaf-cisa-ics", "csaf-siemens", "csaf-abb", "cisa-advisories-rss", "cert-se-rss", "cert-fr-cti-rss", "ncsc-uk-rss", "cert-ua-rss", "jpcert-rss-en", "osv-export-malicious", "ossf-malicious-packages", "gcp-status", "firebase-status", "aws-health", "azure-status", ...pages.map((page) => page.id)]);
     for (const source of ["gcp-status", "firebase-status", "aws-health", "azure-status"]) expect(pass.view.health.find((health) => health.source === source)?.state, source).toBe("healthy");
     expect(pass.view.health.filter((health) => health.source.startsWith("statuspage-")).map((health) => [health.source, health.state])).toEqual(pages.map((page) => [page.id, "healthy"]));
     const asked = new Set(net.exchanges.map((exchange) => new URL(exchange.url)).filter((url) => STATUS_HOSTS.has(url.hostname)).map((url) => url.origin + url.pathname));
@@ -867,7 +897,7 @@ describe("openInstance", () => {
     const { instance, clock } = open(store(SECRETS), push);
     const pass = await finish(clock, instance.runtime.pass());
     // The layer delivery adds the API of Pushover, because the person has a contact on Pushover.
-    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "gfz-hp30", "energy-charts", "faa-nas-status", "ndw", "digitraffic-rail", "cisa-kev", "csaf-cisa-ics", "csaf-siemens", "csaf-abb", "cisa-advisories-rss", "cert-se-rss", "cert-fr-cti-rss", "ncsc-uk-rss", "cert-ua-rss", "jpcert-rss-en", "firebase-status", "statuspage-pushover"]);
+    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "gfz-hp30", "energy-charts", "faa-nas-status", "ndw", "digitraffic-rail", "cisa-kev", "csaf-cisa-ics", "csaf-siemens", "csaf-abb", "cisa-advisories-rss", "cert-se-rss", "cert-fr-cti-rss", "ncsc-uk-rss", "cert-ua-rss", "jpcert-rss-en", "osv-export-malicious", "ossf-malicious-packages", "firebase-status", "statuspage-pushover"]);
     const clouds = pass.view.incidents.filter((incident) => incident.kind.code === "infra.cloud.outage");
     // The merge gives the subjects of an incident in the order of their canonical text.
     expect(clouds.map((incident) => incident.about.map((subject) => subject.id))).toEqual([["fcm.googleapis.com", "firebase.google.com"]]);
@@ -877,7 +907,7 @@ describe("openInstance", () => {
     const delivery: AlertConfig = { ...CONFIG, people: CONFIG.people.map((entry) => ({ ...entry, defaults: {} })) };
     const { instance, clock, net } = open(store(SECRETS), delivery);
     const pass = await finish(clock, instance.runtime.pass());
-    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "gfz-hp30", "energy-charts", "faa-nas-status", "ndw", "digitraffic-rail", "cisa-kev", "csaf-cisa-ics", "csaf-siemens", "csaf-abb", "cisa-advisories-rss", "cert-se-rss", "cert-fr-cti-rss", "ncsc-uk-rss", "cert-ua-rss", "jpcert-rss-en", "statuspage-pushover"]);
+    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "gfz-hp30", "energy-charts", "faa-nas-status", "ndw", "digitraffic-rail", "cisa-kev", "csaf-cisa-ics", "csaf-siemens", "csaf-abb", "cisa-advisories-rss", "cert-se-rss", "cert-fr-cti-rss", "ncsc-uk-rss", "cert-ua-rss", "jpcert-rss-en", "osv-export-malicious", "ossf-malicious-packages", "statuspage-pushover"]);
     expect(net.exchanges.map((exchange) => exchange.url).filter((url) => STATUS_HOSTS.has(new URL(url).hostname))).toEqual(["https://status.pushover.net/rss"]);
     expect(pass.view.health.find((health) => health.source === "statuspage-pushover")?.state).toBe("healthy");
     const outages = pass.view.incidents.filter((incident) => incident.kind.code === "infra.saas.outage");
@@ -902,7 +932,7 @@ describe("openInstance", () => {
     const key = "bom-test-key-5d1f";
     const { instance, clock, net } = open(store({ ...SECRETS, [BOM_SWS_KEY]: key }));
     const pass = await finish(clock, instance.runtime.pass());
-    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "gfz-hp30", "bom-sws", "energy-charts", "faa-nas-status", "ndw", "digitraffic-rail", "cisa-kev", "csaf-cisa-ics", "csaf-siemens", "csaf-abb", "cisa-advisories-rss", "cert-se-rss", "cert-fr-cti-rss", "ncsc-uk-rss", "cert-ua-rss", "jpcert-rss-en"]);
+    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "gfz-hp30", "bom-sws", "energy-charts", "faa-nas-status", "ndw", "digitraffic-rail", "cisa-kev", "csaf-cisa-ics", "csaf-siemens", "csaf-abb", "cisa-advisories-rss", "cert-se-rss", "cert-fr-cti-rss", "ncsc-uk-rss", "cert-ua-rss", "jpcert-rss-en", "osv-export-malicious", "ossf-malicious-packages"]);
     expect(instance.runtime.config.sources.map((source) => source.id)).toContain(BOM_SWS_DESCRIPTOR.id);
     expect(pass.view.health.find((health) => health.source === BOM_SWS_DESCRIPTOR.id)?.state).toBe("healthy");
     const bom = net.exchanges.filter((exchange) => new URL(exchange.url).hostname === "sws-data.sws.bom.gov.au");
@@ -925,7 +955,7 @@ describe("openInstance", () => {
     try {
       const { instance, clock, net } = open(store({ ...SECRETS, [EIA_KEY]: key }), CONFIG, 0, TEST_FETCH_LIMIT, { readings });
       const pass = await finish(clock, instance.runtime.pass());
-      expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "gfz-hp30", "energy-charts", "faa-nas-status", "ndw", "digitraffic-rail", EIA_930_DESCRIPTOR.id, "cisa-kev", "csaf-cisa-ics", "csaf-siemens", "csaf-abb", "cisa-advisories-rss", "cert-se-rss", "cert-fr-cti-rss", "ncsc-uk-rss", "cert-ua-rss", "jpcert-rss-en"]);
+      expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "gfz-hp30", "energy-charts", "faa-nas-status", "ndw", "digitraffic-rail", EIA_930_DESCRIPTOR.id, "cisa-kev", "csaf-cisa-ics", "csaf-siemens", "csaf-abb", "cisa-advisories-rss", "cert-se-rss", "cert-fr-cti-rss", "ncsc-uk-rss", "cert-ua-rss", "jpcert-rss-en", "osv-export-malicious", "ossf-malicious-packages"]);
       expect(pass.view.health.find((health) => health.source === EIA_930_DESCRIPTOR.id)?.state).toBe("healthy");
       // The first fetch reads the past hours and one day of history.
       const eia = net.exchanges.filter((exchange) => new URL(exchange.url).hostname === "api.eia.gov");
@@ -951,7 +981,7 @@ describe("openInstance", () => {
     const token = "radar-test-token-7c2e";
     const { instance, clock, net } = open(store({ ...SECRETS, [CLOUDFLARE_RADAR_KEY]: token }));
     const pass = await finish(clock, instance.runtime.pass());
-    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "gfz-hp30", "energy-charts", "faa-nas-status", "ndw", "digitraffic-rail", "cisa-kev", "csaf-cisa-ics", "csaf-siemens", "csaf-abb", "cisa-advisories-rss", "cert-se-rss", "cert-fr-cti-rss", "ncsc-uk-rss", "cert-ua-rss", "jpcert-rss-en", RADAR_OUTAGES.id, RADAR_ANOMALIES.id]);
+    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "gfz-hp30", "energy-charts", "faa-nas-status", "ndw", "digitraffic-rail", "cisa-kev", "csaf-cisa-ics", "csaf-siemens", "csaf-abb", "cisa-advisories-rss", "cert-se-rss", "cert-fr-cti-rss", "ncsc-uk-rss", "cert-ua-rss", "jpcert-rss-en", "osv-export-malicious", "ossf-malicious-packages", RADAR_OUTAGES.id, RADAR_ANOMALIES.id]);
     for (const descriptor of [RADAR_OUTAGES, RADAR_ANOMALIES]) expect(pass.view.health.find((health) => health.source === descriptor.id)?.state, descriptor.id).toBe("healthy");
     const radar = net.exchanges.filter((exchange) => new URL(exchange.url).hostname === "api.cloudflare.com");
     expect(radar.map((exchange) => new URL(exchange.url).pathname)).toEqual(["/client/v4/radar/annotations/outages", "/client/v4/radar/traffic_anomalies"]);
@@ -1003,7 +1033,7 @@ describe("openInstance", () => {
     // The refresh starts after the pass, and it starts no request that can end after the next fetch of a source.
     const next = Math.min(...instance.runtime.config.sources.map((source) => nextFetch(instance.runtime.state(), source)));
     expect(clock.now()).toBeLessThanOrEqual(next);
-    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "gfz-hp30", "energy-charts", "faa-nas-status", "ndw", "digitraffic-rail", "cisa-kev", "csaf-cisa-ics", "csaf-siemens", "csaf-abb", "cisa-advisories-rss", "cert-se-rss", "cert-fr-cti-rss", "ncsc-uk-rss", "cert-ua-rss", "jpcert-rss-en"]);
+    expect(pass.fetched).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "gfz-hp30", "energy-charts", "faa-nas-status", "ndw", "digitraffic-rail", "cisa-kev", "csaf-cisa-ics", "csaf-siemens", "csaf-abb", "cisa-advisories-rss", "cert-se-rss", "cert-fr-cti-rss", "ncsc-uk-rss", "cert-ua-rss", "jpcert-rss-en", "osv-export-malicious", "ossf-malicious-packages"]);
     expect(outcomes).toHaveLength(1);
     expect(outcomes[0]?.ok).toBe(true);
     await instance.shapes.close();
@@ -1263,7 +1293,7 @@ describe("openInstance", () => {
   it("gives the loop the times of the sources and of the channel", async () => {
     const { instance } = await open();
     const intervals = instance.runtime.config.sources.map((source) => source.interval);
-    expect(instance.runtime.config.sources.map((source) => source.id)).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "gfz-hp30", "energy-charts", "faa-nas-status", "ndw", "digitraffic-rail", "cisa-kev", "csaf-cisa-ics", "csaf-siemens", "csaf-abb", "cisa-advisories-rss", "cert-se-rss", "cert-fr-cti-rss", "ncsc-uk-rss", "cert-ua-rss", "jpcert-rss-en"].map((id) => id as SourceId));
+    expect(instance.runtime.config.sources.map((source) => source.id)).toEqual(["nws-api", "ipaws", "usgs", "emsc", "tsunami-ntwc", "tsunami-ptwc", "swpc", "gfz", "gfz-hp30", "energy-charts", "faa-nas-status", "ndw", "digitraffic-rail", "cisa-kev", "csaf-cisa-ics", "csaf-siemens", "csaf-abb", "cisa-advisories-rss", "cert-se-rss", "cert-fr-cti-rss", "ncsc-uk-rss", "cert-ua-rss", "jpcert-rss-en", "osv-export-malicious", "ossf-malicious-packages"].map((id) => id as SourceId));
     // The limit of a fetch is its interval, up to the shortest interval. Thus the 10 minutes of GFZ do not make the pass long.
     expect(instance.runtime.config.sources.map(INSTANCE_FETCH_LIMIT)).toEqual(intervals.map(() => 60_000));
     expect(instance.loop.times).toEqual({
@@ -2051,9 +2081,16 @@ describe("the check of the instance", () => {
     }
   });
 
+  it("starts the OSV sources in the observe mode, in an instance that knows the earlier sources (AL-79)", () => {
+    const earlier = INSTANCE_SOURCES.filter((descriptor) => !OSV_PROVIDERS.some((provider) => provider.id === descriptor.id));
+    const modes = Object.fromEntries(earlier.map((descriptor) => [descriptor.id, { live: T0 }]));
+    const events = modeEvents({ modes }, INSTANCE_SOURCES, T0 + 1);
+    expect(events.map((event) => [event.id, event.mode, event.reason])).toEqual(OSV_PROVIDERS.map((provider) => [`mode:${provider.id}:observe`, "observe", "new source"]));
+  });
+
   it("does not count a global source as the cover of a place", () => {
     const global = INSTANCE_SOURCES.filter((descriptor) => descriptor.coverage === "global");
-    expect(global.map((descriptor) => descriptor.id)).toEqual(["swpc", "gfz", "gfz-hp30", "cisa-kev", "csaf-cisa-ics", "csaf-siemens", "csaf-abb", "cisa-advisories-rss", "cert-se-rss", "cert-fr-cti-rss", "ncsc-uk-rss", "cert-ua-rss", "jpcert-rss-en"]);
+    expect(global.map((descriptor) => descriptor.id)).toEqual(["swpc", "gfz", "gfz-hp30", "cisa-kev", "csaf-cisa-ics", "csaf-siemens", "csaf-abb", "cisa-advisories-rss", "cert-se-rss", "cert-fr-cti-rss", "ncsc-uk-rss", "cert-ua-rss", "jpcert-rss-en", "osv-export-malicious", "ossf-malicious-packages"]);
     expect(instanceProblems(parse(CONFIG, store(SECRETS)), store(SECRETS), global, 0)).toEqual([expect.stringContaining("No regional source covers the place place-1.")]);
   });
 

@@ -19,6 +19,7 @@ import { IEM_DESCRIPTOR } from "@mark1russell7/alerts-source-iem";
 import { IPAWS_DESCRIPTOR } from "@mark1russell7/alerts-source-ipaws";
 import { NWS_DESCRIPTOR } from "@mark1russell7/alerts-source-nws-api";
 import { NWWS_DESCRIPTOR } from "@mark1russell7/alerts-source-nwws";
+import { OSV_PROVIDERS, osvDescriptor } from "@mark1russell7/alerts-source-osv";
 import { SWPC_DESCRIPTOR } from "@mark1russell7/alerts-source-swpc";
 import { descriptorOf, TSUNAMI_CENTERS } from "@mark1russell7/alerts-source-tsunami";
 import { USGS_DESCRIPTOR } from "@mark1russell7/alerts-source-usgs";
@@ -47,6 +48,7 @@ const DESCRIPTORS: Readonly<Record<string, readonly SourceDescriptor[]>> = {
   "@mark1russell7/alerts-source-ipaws": [IPAWS_DESCRIPTOR],
   "@mark1russell7/alerts-source-nws-api": [NWS_DESCRIPTOR],
   "@mark1russell7/alerts-source-nwws": [NWWS_DESCRIPTOR],
+  "@mark1russell7/alerts-source-osv": OSV_PROVIDERS.map((provider) => osvDescriptor(provider)),
   "@mark1russell7/alerts-source-swpc": [SWPC_DESCRIPTOR],
   "@mark1russell7/alerts-source-tsunami": [descriptorOf(TSUNAMI_CENTERS.ntwc), descriptorOf(TSUNAMI_CENTERS.ptwc)],
   "@mark1russell7/alerts-source-usgs": [USGS_DESCRIPTOR],
@@ -66,9 +68,14 @@ const originsOf = (source: (typeof adopted)[number]): readonly string[] => [...s
 /**
  * The descriptors of the adapter of an adopted source that share an origin with the source. One adapter can serve the
  * sources of different issuers, for example the providers of the CSAF adapter. Then each source has only its descriptors.
+ * One adapter can also serve two paths of one issuer, for example the two feeds of the OSV adapter. Then a source with
+ * the id of a descriptor has only that descriptor.
  */
-const descriptorsOf = (source: (typeof adopted)[number]): readonly SourceDescriptor[] =>
-  (DESCRIPTORS[source.adapter ?? ""] ?? []).filter((descriptor) => descriptor.origins.some((origin) => originsOf(source).includes(origin)));
+const descriptorsOf = (source: (typeof adopted)[number]): readonly SourceDescriptor[] => {
+  const all = DESCRIPTORS[source.adapter ?? ""] ?? [];
+  const own = all.filter((descriptor) => descriptor.id === source.id);
+  return own.length > 0 ? own : all.filter((descriptor) => descriptor.origins.some((origin) => originsOf(source).includes(origin)));
+};
 
 describe("the paths of the atlas and the descriptors of the adapters", () => {
   it("has the descriptors of each adopted adapter", () => {

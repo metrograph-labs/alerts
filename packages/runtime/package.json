@@ -40,6 +40,7 @@
     "@mark1russell7/alerts-source-ipaws": "workspace:*",
     "@mark1russell7/alerts-source-nws-api": "workspace:*",
     "@mark1russell7/alerts-source-nwws": "workspace:*",
+    "@mark1russell7/alerts-source-osv": "workspace:*",
     "@mark1russell7/alerts-source-statuspage": "workspace:*",
     "@mark1russell7/alerts-source-swpc": "workspace:*",
     "@mark1russell7/alerts-source-tsunami": "workspace:*",

@@ -92,6 +92,7 @@ import { createIpawsSource, IPAWS_DESCRIPTOR, WEA_EXPECTATION } from "@mark1russ
 import { createShapeStore, type ShapeCache, type ShapeStore } from "@mark1russell7/alerts-shapes-nws";
 import { createNwsSource, NWS_DESCRIPTOR } from "@mark1russell7/alerts-source-nws-api";
 import { COPY_EXPECTATION, createNwwsSource, SOURCE_ID as NWWS_SOURCE, type NwwsAccount, type OpenSession } from "@mark1russell7/alerts-source-nwws";
+import { createOsvSource, OSV_PROVIDERS, osvDescriptor, type OsvFetchOptions } from "@mark1russell7/alerts-source-osv";
 import { createGfzSource, createIndexSource, GFZ_DESCRIPTOR, HP30_DESCRIPTOR, HP30_INDEX, type GfzFetchOptions } from "@mark1russell7/alerts-source-gfz";
 import { createCatalogFetch, createGtfsSource, type GtfsFeed, type GtfsFetchOptions } from "@mark1russell7/alerts-source-gtfs-alerts";
 import { createEnergyChartsSource, ENERGY_CHARTS_DESCRIPTOR } from "@mark1russell7/alerts-source-energy-charts";
@@ -507,6 +508,9 @@ const PROVIDER_FEEDS = [
  * The CERT feeds (`source-cert-feeds`) give the alerts and reports of national CERTs, with no area. Only the work
  * `software` names one of their kinds: a flaw that attackers use at this time.
  *
+ * The OSV sources (`source-osv`) give the records of malicious packages, with no area. A person gets a record when the
+ * person names its package as a purl subject or names its kind. Each new source starts in the observe mode.
+ *
  * The instance also reads the status pages that one of its persons can get (`pagesFor` of `source-statuspage`). They are
  * not in this list, because the persons choose them. The feeds of Google Cloud (`source-gcp`), AWS (`source-aws`)
  * and Azure (`source-azure`) have the same rule.
@@ -531,6 +535,7 @@ export const INSTANCE_SOURCES: readonly SourceDescriptor[] = [
   KEV_DESCRIPTOR,
   ...CSAF_PROVIDERS.map((provider) => csafDescriptor(provider)),
   ...CERT_PROVIDERS.map((provider) => certDescriptor(provider)),
+  ...OSV_PROVIDERS.map((provider) => osvDescriptor(provider)),
 ];
 
 /**
@@ -1085,6 +1090,7 @@ export function openInstance(options: InstanceOptions): Instance {
     createKevSource,
     ...CSAF_PROVIDERS.map((provider) => (fetchOptions: CsafFetchOptions) => createCsafSource(provider, fetchOptions)),
     ...CERT_PROVIDERS.map((provider) => (fetchOptions: CertFetchOptions) => createCertSource(provider, fetchOptions)),
+    ...OSV_PROVIDERS.map((provider) => (fetchOptions: OsvFetchOptions) => createOsvSource(provider, fetchOptions)),
     ...(readsGdelt(options.config.config) ? [createGdeltSource] : []),
     ...(radarToken === "" ? [] : radarFactories(radarToken)),
     ...feeds.map((feed) => feed.create),
