@@ -1009,13 +1009,14 @@ describe("openInstance", () => {
     const { instance, clock, net } = await open();
     await finish(clock, instance.runtime.pass());
     const hosts = new Set(net.exchanges.map((exchange) => new URL(exchange.url).hostname));
-    expect(hosts).toEqual(new Set(["api.weather.gov", "apps.fema.gov", "earthquake.usgs.gov", "www.seismicportal.eu", "www.tsunami.gov", "services.swpc.noaa.gov", "kp.gfz.de", "api.energy-charts.info", "nasstatus.faa.gov", "opendata.ndw.nu", "rata.digitraffic.fi", "www.cisa.gov", "raw.githubusercontent.com", "cert-portal.siemens.com", "psirt.abb.com", "www.cert.se", "cert.cyber.gouv.fr", "www.ncsc.gov.uk", "cert.gov.ua", "www.jpcert.or.jp"]));
+    expect(hosts).toEqual(new Set(["api.weather.gov", "apps.fema.gov", "earthquake.usgs.gov", "www.seismicportal.eu", "www.tsunami.gov", "services.swpc.noaa.gov", "kp.gfz.de", "api.energy-charts.info", "nasstatus.faa.gov", "opendata.ndw.nu", "rata.digitraffic.fi", "www.cisa.gov", "raw.githubusercontent.com", "cert-portal.siemens.com", "psirt.abb.com", "www.cert.se", "cert.cyber.gouv.fr", "www.ncsc.gov.uk", "cert.gov.ua", "www.jpcert.or.jp", "osv-vulnerabilities.storage.googleapis.com", "api.github.com"]));
     for (const exchange of net.exchanges) {
       expect(exchange.headers["user-agent"]).toBe(USER_AGENT_NAME);
       const text = JSON.stringify(exchange);
       expect(text).not.toContain(String(LONGITUDE));
       expect(text).not.toContain(String(LATITUDE));
-      expect(text).not.toContain("github.com");
+      // The old default contact was a page on github.com. The OSV source reads the GitHub API, so only the headers are checked.
+      expect(JSON.stringify(exchange.headers)).not.toContain("github.com");
     }
   });
 
