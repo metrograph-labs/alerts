@@ -9,7 +9,9 @@ import {
   readBase,
   readJoint,
   assumedInputs,
+  azureSizesFor,
   choiceCount,
+  computeMeter,
   distinctRows,
   fixedSlotId,
   fragmentInput,
@@ -28,6 +30,7 @@ import {
   type PlacementBase,
   type PlacementChances,
   type PlacementInput,
+  windowsOffer,
 } from "./placement.ts";
 
 // Each provider, region, price and chance of this file is made up. The names are neutral.
@@ -124,6 +127,50 @@ describe("the offers of a placement", () => {
     expect(() => placementLayer(input([], { chances: bad }))).toThrow(RangeError);
     const blank = { ...CHANCES, region: { works: 0.9, kind: "assumed" as const, source: " " } };
     expect(() => placementLayer(input([], { chances: blank }))).toThrow(RangeError);
+  });
+});
+
+// An offer in the form of the Azure parser: its one meter of hours has the name of its size, and the specs name the product.
+function sized(product: string, size: string, hourly: number, meters: readonly string[] = [size]): MeteredObservation {
+  const base = offer({ provider: "provider-c", region: "region-c", plan: size, hourly, memory: "1 GiB" });
+  return {
+    offer: { ...base.offer, specs: [...base.offer.specs, { name: "productName", value: product }] },
+    reading: { ...base.reading, meters: meters.map((name) => ({ name, tiers: [{ from: { value: 0, unit: "h" }, unitPrice: { value: hourly, unit: canonicalUnit("USD/h") } }] })) },
+  };
+}
+
+describe("the offers of virtual machines (AL-146)", () => {
+  it("uses the one meter of hours of an offer with no compute meter", () => {
+    const machine = sized("Machines Series X", "X1", 0.02);
+    expect(computeMeter(machine)).toBe("X1");
+    expect(monthCost(machine)?.value).toBeCloseTo(14.6, 9);
+    expect(computeMeter(offer({ provider: "provider-a", region: "europe-west1", plan: "p1", hourly: 0.01 }))).toBe("compute");
+  });
+
+  it("gives no compute meter to an offer with two meters of hours", () => {
+    const two = sized("Machines Series X", "X1", 0.02, ["X1", "X1 extra"]);
+    expect(computeMeter(two)).toBeUndefined();
+    expect(monthCost(two)).toBeUndefined();
+  });
+
+  it("puts an offer with one meter of hours into the layer", () => {
+    const build = placementLayer(input([sized("Machines Series X", "X1", 0.02)]));
+    expect(build.skipped.meter).toBe(0);
+    expect(build.layer.slots[0]?.candidates.map((candidate) => candidate.key)).toEqual(["provider-c/region-c"]);
+  });
+
+  it("tells a Windows offer by its product name", () => {
+    expect(windowsOffer(sized("Machines Series X Windows", "X1", 0.03))).toBe(true);
+    expect(windowsOffer(sized("Machines Series X", "X1", 0.02))).toBe(false);
+    expect(windowsOffer(offer({ provider: "provider-a", region: "europe-west1", plan: "p1", hourly: 0.01 }))).toBe(false);
+  });
+
+  it("gives the smallest sizes with enough memory, by vCPUs, then memory, then name", () => {
+    const table = { Big: [4, 16], Small: [1, 1], Half: [1, 0.5], Wide: [2, 1], Tall: [1, 4], Also: [1, 4] } as const;
+    expect(azureSizesFor(table, 1024, 3)).toEqual(["Small", "Also", "Tall"]);
+    expect(azureSizesFor(table, 4096, 10)).toEqual(["Also", "Tall", "Big"]);
+    expect(azureSizesFor(table, 1024, 0)).toEqual([]);
+    expect(() => azureSizesFor(table, 1024, 1.5)).toThrow(RangeError);
   });
 });
 

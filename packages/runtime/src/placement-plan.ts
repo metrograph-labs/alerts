@@ -1,9 +1,10 @@
 /**
  * This file gives the front of the placement of the copies from the live offers (AL-53, `placement.ts`). It reads the
- * plan list of each provider record of `@mark1russell7/market-sources`, and the incident history of the status page of
- * each provider. It reads no other source and opens no account.
+ * plan list of each provider record of `@mark1russell7/market-sources` and the Azure prices of some sizes of virtual
+ * machine. It also reads the incident history of the status page of each provider. It reads no other source and opens
+ * no account.
  *
- * `node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--site-log <site=file,site=file>] [--base <file>] [--joint <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>]`
+ * `node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--site-log <site=file,site=file>] [--base <file>] [--joint <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>] [--azure-sizes <n>]`
  *
  * - `--min-memory-mib` is the least memory of a host of a copy, in MiB.
  * - The three `--assume-*` values are assumed chance inputs, from 0 to 1, for each provider, region and host. The script
@@ -31,6 +32,8 @@
  * - `--spend` names the spend entry of `config.json` that gives the limit of cost of a month (`monthlyUsd`). Without
  *   it, or without that entry, the front has no limit of cost.
  * - `--terms` gives the price terms that fit. The default is `on-demand`.
+ * - `--azure-sizes` is the count of Azure sizes to read (`azureSizesFor` of `placement.ts`). The default is
+ *   `AZURE_SIZES` (8). The value 0 reads no Azure price. The script keeps only the Linux offers.
  *
  * It prints the front, and writes it to the file `placement-front.json` in the private folder with the mode 0o600.
  * The environment gives `ALERTS_HOME`, as for `main.ts`. The exit code is 0 for a front, 1 for a failed read and 2
@@ -39,7 +42,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { MeteredObservation, PriceTerm } from "@mark1russell7/market";
-import { createPlanClient, PLAN_PROVIDERS } from "@mark1russell7/market-sources";
+import { AZURE_SOURCE, AZURE_VM_SIZE_TABLE, createAzureClient, createPlanClient, PLAN_PROVIDERS } from "@mark1russell7/market-sources";
 import { countOf, errorMessage } from "@mark1russell7/text";
 import { writeFileAtomic } from "@procedures/fs/files";
 import { fetchTransport } from "polite-crawler/api";
@@ -63,6 +66,7 @@ import {
 } from "./placement-chances.ts";
 import {
   assumedInputs,
+  azureSizesFor,
   distinctRows,
   FRONT_FILE,
   FRONT_FORMAT,
@@ -77,19 +81,23 @@ import {
   placementLayer,
   planCopies,
   spendLimitOf,
+  windowsOffer,
   type ChanceInput,
   type PlacementBuild,
   type PlacementChances,
 } from "./placement.ts";
 
 const USAGE =
-  "The command is: node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--site-log <site=file,site=file>] [--base <file>] [--joint <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>]";
+  "The command is: node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--site-log <site=file,site=file>] [--base <file>] [--joint <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>] [--azure-sizes <n>]";
 
 /** The User-Agent of each request. It names no person and no project. */
 const USER_AGENT = "alerts-placement";
 
 /** The count of choices of each level of the front that the output shows. The file has each choice. */
 const SHOWN = 3;
+
+/** The default count of Azure sizes that a placement reads. Each size is one read of 6 seconds or more. */
+const AZURE_SIZES = 8;
 
 const TERM_KINDS: readonly PriceTerm["kind"][] = ["on-demand", "spot", "committed"];
 
@@ -104,6 +112,7 @@ interface Command {
   readonly spend: string | undefined;
   readonly terms: readonly PriceTerm["kind"][];
   readonly windowDays: number;
+  readonly azureSizes: number;
 }
 
 // The command, or a problem of the command.
@@ -115,7 +124,7 @@ function command(args: readonly string[]): Command | string {
     if (name === undefined || !name.startsWith("--") || value === undefined || value.startsWith("--")) return `The argument ${String(name)} has no value.`;
     values.set(name.slice(2), value);
   }
-  const known = new Set(["min-memory-mib", "assume-provider", "assume-region", "assume-host", "assume-site", "fixed", "site-log", "base", "joint", "copies", "spend", "terms", "window-days"]);
+  const known = new Set(["min-memory-mib", "assume-provider", "assume-region", "assume-host", "assume-site", "fixed", "site-log", "base", "joint", "copies", "spend", "terms", "window-days", "azure-sizes"]);
   const other = [...values.keys()].find((name) => !known.has(name));
   if (other !== undefined) return `The option --${other} is not known.`;
   const memory = Number(values.get("min-memory-mib"));
@@ -124,6 +133,8 @@ function command(args: readonly string[]): Command | string {
   if (!Number.isInteger(copies) || copies < 1) return "The option --copies needs a whole number of 1 or more.";
   const windowDays = Number(values.get("window-days") ?? String(DEFAULT_WINDOW_DAYS));
   if (!Number.isInteger(windowDays) || windowDays < 1) return "The option --window-days needs a whole number of 1 or more.";
+  const azureSizes = Number(values.get("azure-sizes") ?? String(AZURE_SIZES));
+  if (!Number.isInteger(azureSizes) || azureSizes < 0) return "The option --azure-sizes needs a whole number of 0 or more.";
   const assumed = (name: string): ChanceInput | string => {
     const text = values.get(`assume-${name}`);
     const works = Number(text);
@@ -156,7 +167,7 @@ function command(args: readonly string[]): Command | string {
   const bad = terms.find((term) => !TERM_KINDS.some((kind) => kind === term));
   if (bad !== undefined) return `The price term ${bad} is not on-demand, spot or committed.`;
   const chances: PlacementChances = { provider, region, host, ...(site === undefined ? {} : { site }) };
-  return { minMemoryMiB: memory, chances, copies, fixed, base: values.get("base"), joint: values.get("joint"), siteLogs, spend: values.get("spend"), terms: terms as PriceTerm["kind"][], windowDays };
+  return { minMemoryMiB: memory, chances, copies, fixed, base: values.get("base"), joint: values.get("joint"), siteLogs, spend: values.get("spend"), terms: terms as PriceTerm["kind"][], windowDays, azureSizes };
 }
 
 // The front of a build: its search, its levels and the assumed fragments of each row. It prints each level.
@@ -233,7 +244,7 @@ if (typeof parsed === "string") {
   }
   if (parsed.spend === undefined) console.log("No spend entry is named. The front has no limit of cost.");
   else if (costLimit === undefined) console.log(`The configuration has no valid spend entry ${parsed.spend}. The front has no limit of cost.`);
-  const scheduler = new HostScheduler(realClock, PLAN_PROVIDERS.length);
+  const scheduler = new HostScheduler(realClock, PLAN_PROVIDERS.length + 1);
   const client = createPlanClient({ transport: fetchTransport({ userAgent: USER_AGENT }), pace: { scheduler, now: () => Date.now() } });
   const offers: MeteredObservation[] = [];
   const reads: { readonly source: string; readonly offers: number; readonly notes: number; readonly problems: readonly string[] }[] = [];
@@ -246,6 +257,23 @@ if (typeof parsed === "string") {
       } else reads.push({ source: provider.source, offers: 0, notes: 0, problems: result.problems });
     } catch (error) {
       reads.push({ source: provider.source, offers: 0, notes: 0, problems: [errorMessage(error)] });
+    }
+  }
+  // The Azure prices of the smallest sizes that meet the memory need, one read for each size. Only the Linux offers count.
+  const azure = createAzureClient({ transport: fetchTransport({ userAgent: USER_AGENT }), pace: { scheduler, now: () => Date.now() } });
+  const sizes = azureSizesFor(AZURE_VM_SIZE_TABLE, parsed.minMemoryMiB, parsed.azureSizes);
+  if (sizes.length > 0) console.log(`The Azure sizes: ${sizes.join(", ")}.`);
+  for (const size of sizes) {
+    const source = `${AZURE_SOURCE} ${size}`;
+    try {
+      const result = await azure.prices({ serviceName: "Virtual Machines", priceType: "Consumption", armSkuName: size });
+      if (result.ok) {
+        const linux = result.observations.filter((observation) => !windowsOffer(observation));
+        offers.push(...linux);
+        reads.push({ source, offers: linux.length, notes: result.notes.length, problems: [] });
+      } else reads.push({ source, offers: 0, notes: 0, problems: result.problems });
+    } catch (error) {
+      reads.push({ source, offers: 0, notes: 0, problems: [errorMessage(error)] });
     }
   }
   for (const read of reads) {
