@@ -26256,5 +26256,194 @@
       "https://www.faa.gov/robots.txt"
     ],
     "round": 38
+  },
+  {
+    "id": "aaib-deployments-govuk",
+    "name": "AAIB news of the deployment of a team, on GOV.UK",
+    "classes": [
+      "transport.air.accident"
+    ],
+    "url": "https://www.gov.uk/api/search.json?filter_organisations=air-accidents-investigation-branch&filter_content_store_document_type=news_story&order=-public_timestamp",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.gov.uk/help/reuse-govuk-content",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "GOV.UK gives its APIs for the reuse of its content, under the Open Government Licence v3. The round read only /api/search.json and /api/content, which robots.txt does not block."
+    },
+    "cost": "free",
+    "delay": "The same day: the news of 2026-11-20 told of an accident on that day.",
+    "history": "Each news story of the AAIB on GOV.UK. In the read of 2026-11-25, 35 stories matched the word deployed.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "Accidents in the United Kingdom that the AAIB investigates with a team at the site, a few in each year. The feed also has vacancies and anniversary statements, so an adapter keeps only the deployment stories.",
+    "origins": [
+      "uk-aaib"
+    ],
+    "path": [
+      "www.gov.uk"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "The first live source of the class. The AAIB tells on the same day that it sent a team to an accident. The search API gives JSON with no key.",
+    "evidence": [
+      "https://www.gov.uk/api/search.json?filter_organisations=air-accidents-investigation-branch&filter_content_store_document_type=news_story",
+      "https://www.gov.uk/api/content/government/news/the-aaib-has-deployed-a-team-to-loch-leven-near-kinross-fife",
+      "https://www.gov.uk/robots.txt"
+    ],
+    "round": 39
+  },
+  {
+    "id": "raib-notices-govuk",
+    "name": "RAIB notices of investigation, on GOV.UK",
+    "classes": [
+      "transport.rail.accident"
+    ],
+    "url": "https://www.gov.uk/api/search.json?filter_organisations=rail-accident-investigation-branch&filter_content_store_document_type=news_story&order=-public_timestamp",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.gov.uk/help/reuse-govuk-content",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "GOV.UK gives its APIs for the reuse of its content, under the Open Government Licence v3. The round read only /api/search.json and /api/content, which robots.txt does not block."
+    },
+    "cost": "free",
+    "delay": "19 to 36 days after the event in the read of 2026-11-25: Barking 20 days, Liverpool Street 19 days, Welshpool 36 days.",
+    "history": "Each notice and report of the RAIB on GOV.UK: 606 reports in the format raib_report.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "Rail, tram and heritage railway accidents in the United Kingdom that the RAIB investigates.",
+    "origins": [
+      "uk-raib"
+    ],
+    "path": [
+      "www.gov.uk"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "The RAIB tells of a new investigation weeks after the event. That is a record after the fact, not a live alert, so the class keeps its gap.",
+    "evidence": [
+      "https://www.gov.uk/api/search.json?filter_organisations=rail-accident-investigation-branch&filter_content_store_document_type=news_story",
+      "https://www.gov.uk/api/content/government/news/derailment-of-a-freight-train-at-barking"
+    ],
+    "round": 39
+  },
+  {
+    "id": "faa-preliminary-accident-notices",
+    "name": "FAA Preliminary Accident and Incident Notices",
+    "classes": [
+      "transport.air.accident"
+    ],
+    "url": "https://www.faa.gov/data_research/accident_incident/preliminary_data",
+    "access": "page",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "A work of the US government. The page shows the notices in a dashboard. It tells of a CSV file, but the round found no link to the file."
+    },
+    "cost": "free",
+    "delay": "The page tells that a notice comes a day or two after the event. It keeps the last 10 business days.",
+    "history": "The last 10 business days only.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "Civil aviation accidents and incidents in the United States.",
+    "origins": [
+      "faa"
+    ],
+    "path": [
+      "www.faa.gov"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "A fast official list of US accidents, but only as a dashboard. An adapter needs a documented file or API first. The round did not read the data behind the dashboard.",
+    "evidence": [
+      "https://www.faa.gov/data_research/accident_incident/preliminary_data"
+    ],
+    "round": 39
+  },
+  {
+    "id": "tsb-canada-news",
+    "name": "Transportation Safety Board of Canada: news of the deployment of a team",
+    "classes": [
+      "transport.air.accident",
+      "transport.rail.accident"
+    ],
+    "url": "https://www.tsb-bst.gc.ca/eng/medias-media/rss/index.html",
+    "access": "feed",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The terms were not read. The RSS page returned 403 to the user agent of the round."
+    },
+    "cost": "free",
+    "delay": "unknown",
+    "history": "unknown",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "Air, rail, marine and pipeline accidents in Canada.",
+    "origins": [
+      "ca-tsb"
+    ],
+    "path": [
+      "www.tsb-bst.gc.ca"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "The TSB tells when it sends a team to an accident. The site returned 403, and the round did not go around the block.",
+    "evidence": [
+      "https://www.tsb-bst.gc.ca/eng/medias-media/rss/index.html"
+    ],
+    "round": 39
+  },
+  {
+    "id": "marad-msci-advisories",
+    "name": "MARAD Maritime Security Communications with Industry (MSCI) advisories",
+    "classes": [
+      "security.maritime-threat"
+    ],
+    "url": "https://www.maritime.dot.gov/msci-advisories",
+    "access": "page",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "A work of the US government. The page returned 403 to the user agent of the round."
+    },
+    "cost": "free",
+    "delay": "unknown",
+    "history": "unknown",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "Threats to US commercial ships in each region of the world.",
+    "origins": [
+      "us-marad"
+    ],
+    "path": [
+      "www.maritime.dot.gov"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "The US Maritime Administration tells ships of threats in each region. The page returned 403, and the round did not go around the block.",
+    "evidence": [
+      "https://www.maritime.dot.gov/msci-advisories"
+    ],
+    "round": 39
   }
 ]
