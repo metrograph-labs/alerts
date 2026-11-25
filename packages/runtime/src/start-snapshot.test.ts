@@ -8,7 +8,7 @@ import { entryIndex } from "./entries.ts";
 import { envelope, type RuntimeEvent } from "./events.ts";
 import { importOf, sharedItem } from "./exchange.ts";
 import type { FoldSnapshot } from "@mark1russell7/sqlite";
-import { FOLD_VERSION, openStartSnapshot, openStartSnapshots, readSnapshot, snapshotFileName, START_SNAPSHOT_FILE, START_SNAPSHOTS_FOLDER, SNAPSHOT_UPGRADES, snapshotKey, snapshotRows, startReadText, type StartSnapshot } from "./start-snapshot.ts";
+import { contextKey, FOLD_VERSION, openStartSnapshot, openStartSnapshots, readSnapshot, snapshotFileName, START_SNAPSHOT_FILE, START_SNAPSHOTS_FOLDER, SNAPSHOT_UPGRADES, snapshotKey, snapshotRows, startReadText, type StartSnapshot } from "./start-snapshot.ts";
 import { EMPTY_RUNTIME, fold, rebuild, type FoldContext, type RuntimeState } from "./state.ts";
 
 const T0 = Date.UTC(2026, 3, 1, 18, 0, 0);
@@ -455,5 +455,27 @@ describe("the fold under a write of the snapshot (AL-115)", () => {
         }
       }
     }
+  });
+});
+
+describe("the context key of a fold (AL-169)", () => {
+  it("keeps the value of the snapshot key of AL-156: the snapshots of a live copy stay valid", () => {
+    expect(snapshotKey({ sources: [], retention: {} }, { first: "event-1", recoveries: 2 }).key).toBe("b3d7dbe860c2cdfffe28ea9feb63778ece82eebae6d10fbef3f399af4e0aeeee");
+  });
+
+  it("reads no part of the log, and starts with the fold version", () => {
+    const context = { sources: [], retention: {} };
+    // The hash is pinned. The version comes from FOLD_VERSION, thus a new version of the fold does not change this test.
+    expect(contextKey(context)).toBe(`${String(FOLD_VERSION)}:7921159f7f68953ad57bbb40c564d533dd3118f51c812cd953fb82b4dd12c27b`);
+  });
+
+  it("changes when the snapshot key changes on the same log", () => {
+    const log = { first: "event-1", recoveries: 0 };
+    const other = { sources: [], retention: { quiet: 6 * HOUR } };
+    const base = { sources: [], retention: {} };
+    expect(contextKey(other) === contextKey(base)).toBe(snapshotKey(other, log).key === snapshotKey(base, log).key);
+    const linked = { ...base, link: { window: HOUR } as never };
+    expect(contextKey(linked)).not.toBe(contextKey(base));
+    expect(snapshotKey(linked, log).key).not.toBe(snapshotKey(base, log).key);
   });
 });
