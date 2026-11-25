@@ -7900,6 +7900,43 @@
     "round": 1
   },
   {
+    "id": "eskom-loadshedding-status",
+    "name": "Eskom load-shedding status (JSON)",
+    "classes": [
+      "infra.power.load-shedding"
+    ],
+    "url": "https://loadshedding.eskom.co.za/LoadShedding/GetStatus",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "Eskom does not document this address. No terms page was found."
+    },
+    "cost": "free",
+    "delay": "unknown",
+    "history": "unknown",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "South Africa: the national stage of load shedding as one number. On 2026-11-25 the answer was 1. Other clients read the stage as the number less 1.",
+    "origins": [
+      "eskom"
+    ],
+    "path": [
+      "loadshedding.eskom.co.za"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "The status address of the national power utility, with no key. Eskom does not document the number, so an adapter needs a test against the stage in the news.",
+    "evidence": [
+      "https://loadshedding.eskom.co.za/LoadShedding/GetStatus"
+    ],
+    "round": 24
+  },
+  {
     "id": "eskomsepush-api",
     "name": "EskomSePush API",
     "classes": [
@@ -8333,7 +8370,7 @@
       "infra.telecom.outage",
       "infra.telecom.911-outage"
     ],
-    "url": "https://www.fcc.gov/disaster-information-reporting-system-dirs-0",
+    "url": "https://www.fcc.gov/general/disaster-information-reporting-system-dirs-0",
     "access": "page",
     "auth": "none",
     "terms": {
@@ -8358,8 +8395,10 @@
     "risks": [],
     "decision": "later",
     "adapter": null,
-    "reason": "Official telecom outage counts in disasters; access to be checked.",
-    "evidence": [],
+    "reason": "Official telecom outage counts in disasters; access to be checked. Round 24: the page moved, and it opens. The FCC gives a status report only while DIRS is active for a disaster, as a PDF, and the data of each provider is confidential. Thus it is no live feed.",
+    "evidence": [
+      "https://www.fcc.gov/general/disaster-information-reporting-system-dirs-0"
+    ],
     "round": 1
   },
   {
@@ -8680,14 +8719,14 @@
       "url": null,
       "automated": "unclear",
       "redistribution": "unclear",
-      "note": "The service timed out."
+      "note": "The service states no terms. FEMA is a federal agency of the US. On 2026-11-25 a query answered in 1 s with JSON."
     },
-    "cost": "unknown",
+    "cost": "free",
     "delay": "unknown",
     "history": "unknown",
     "rateLimit": "unknown",
     "calibration": null,
-    "coverage": "unknown",
+    "coverage": "The US: each open shelter of the National Shelter System, with its state, status, population, operator and point.",
     "origins": [
       "fema"
     ],
@@ -8696,10 +8735,12 @@
     ],
     "subjectIds": null,
     "risks": [],
-    "decision": "later",
+    "decision": "plan",
     "adapter": null,
-    "reason": "Known shelter layer; not confirmed.",
-    "evidence": [],
+    "reason": "An open query service of FEMA with no key. In round 1 it timed out. In round 24 it gave the open shelters as JSON.",
+    "evidence": [
+      "https://gis.fema.gov/arcgis/rest/services/NSS/OpenShelters/MapServer"
+    ],
     "round": 1
   },
   {
@@ -9428,6 +9469,44 @@
       "https://consumer.ftc.gov/consumer-alerts"
     ],
     "round": 1
+  },
+  {
+    "id": "gac-travel-advice",
+    "name": "Global Affairs Canada travel advice (open data JSON)",
+    "classes": [
+      "security.travel-advisory"
+    ],
+    "url": "https://data.international.gc.ca/travel-voyage/index-alpha-eng.json",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://open.canada.ca/en/open-government-licence-canada",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The data set is under the Open Government Licence - Canada, with credit to the source."
+    },
+    "cost": "free",
+    "delay": "The file read at 06:10 UTC on 2026-11-25 had the time 2026-11-24 16:00 UTC.",
+    "history": "unknown",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "The world: the advisory level from 0 to 3 of each country and territory, its text in English and French, and the time of its last change.",
+    "origins": [
+      "global-affairs-canada"
+    ],
+    "path": [
+      "data.international.gc.ca"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "One open JSON file with no key gives the level and the change time of the advice of Canada for each country. With fcdo-travel-advice-api, the class has 2 sources.",
+    "evidence": [
+      "https://open.canada.ca/data/en/dataset/bef2ebb3-ca9a-485f-aaff-5dc36eb89426",
+      "https://data.international.gc.ca/travel-voyage/index-alpha-eng.json"
+    ],
+    "round": 24
   },
   {
     "id": "gasbuddy-availability-tracker",
@@ -10890,6 +10969,44 @@
       "cve-cnas",
       "first-teams"
     ]
+  },
+  {
+    "id": "ic3-psa-rss",
+    "name": "FBI IC3 public service announcements (RSS)",
+    "classes": [
+      "safety.scam"
+    ],
+    "url": "https://www.ic3.gov/PSA/RSS",
+    "access": "feed",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "No terms page was found. The IC3 is part of the FBI, a federal agency of the US."
+    },
+    "cost": "free",
+    "delay": "unknown",
+    "history": "unknown",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "The US: the warnings of the FBI about frauds and scams. On 2026-11-25 the feed held one item, of 2026-10-23.",
+    "origins": [
+      "fbi-ic3"
+    ],
+    "path": [
+      "www.ic3.gov"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "An RSS feed with no key. The FBI posts few notices, so it is a slow second source of scam warnings.",
+    "evidence": [
+      "https://www.ic3.gov/PSA",
+      "https://www.ic3.gov/PSA/RSS"
+    ],
+    "round": 24
   },
   {
     "id": "iem-vtec",
@@ -13183,6 +13300,46 @@
       "https://meteoalarm.org/en/live/page/about"
     ],
     "round": 1
+  },
+  {
+    "id": "mhra-alerts-govuk",
+    "name": "UK MHRA medical safety alerts (GOV.UK Search API)",
+    "classes": [
+      "safety.recall.drug",
+      "safety.recall.medical-device"
+    ],
+    "url": "https://www.gov.uk/api/search.json?filter_format=medical_safety_alert",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.gov.uk/help/reuse-govuk-content",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "GOV.UK gives its APIs for the reuse of its content, under the Open Government Licence v3."
+    },
+    "cost": "free",
+    "delay": "On 2026-11-25 the newest alerts had the date 2026-11-24.",
+    "history": "unknown",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "The UK: the recalls and defect notices of medicines, and the field safety notices of medical devices. The search gave 1471 alerts.",
+    "origins": [
+      "uk-mhra"
+    ],
+    "path": [
+      "www.gov.uk"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "The MHRA alerts of the UK as JSON with no key, newest first. With canada-recalls, each of the two classes has 2 sources.",
+    "evidence": [
+      "https://www.gov.uk/api/search.json?filter_format=medical_safety_alert&count=3&order=-public_timestamp",
+      "https://www.gov.uk/drug-device-alerts",
+      "https://www.gov.uk/help/reuse-govuk-content"
+    ],
+    "round": 24
   },
   {
     "id": "mikrotik-security-rss",
@@ -19238,6 +19395,44 @@
       "cve-cnas",
       "first-teams"
     ]
+  },
+  {
+    "id": "scamwatch-rss",
+    "name": "Scamwatch news and alerts (ACCC, RSS)",
+    "classes": [
+      "safety.scam"
+    ],
+    "url": "https://www.scamwatch.gov.au/rss/news-feed.xml",
+    "access": "feed",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.accc.gov.au/about-us/using-our-website/disclaimer-and-copyright",
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The copyright page did not give its text to a plain fetch."
+    },
+    "cost": "free",
+    "delay": "On 2026-11-25 the newest item had the date 2026-11-20.",
+    "history": "unknown",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "Australia: the scam warnings and news of the ACCC. The feed held 10 items.",
+    "origins": [
+      "accc"
+    ],
+    "path": [
+      "www.scamwatch.gov.au"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "An RSS feed with no key, from the agency of Australia for scams.",
+    "evidence": [
+      "https://www.scamwatch.gov.au/about-us/news-and-alerts",
+      "https://www.scamwatch.gov.au/rss/news-feed.xml"
+    ],
+    "round": 24
   },
   {
     "id": "schneider-electric-csaf",
