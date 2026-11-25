@@ -41,10 +41,10 @@ jobs:
   start-gate:
     needs: changes
     if: needs.changes.outputs.match == 'true'
-    uses: metrograph-labs/capacity/.github/workflows/start-gate.yml@7bf8caada6cc08a57f482d6738b34a0de7858ae1
+    uses: metrograph-labs/capacity/.github/workflows/start-gate.yml@8b6878f15f3d4128bf62a36f353dcbca77edf8bd
     with:
       commit: ${{ github.event.pull_request.head.sha || github.sha }}
-      capacity: 7bf8caada6cc08a57f482d6738b34a0de7858ae1
+      capacity: 8b6878f15f3d4128bf62a36f353dcbca77edf8bd
 
   summary:
     name: Start gate OK
