@@ -1,17 +1,28 @@
 import { fakeWallClock } from "@mark1russell7/algebra/clock";
 import {
   DEFAULT_LINK_POLICY,
+  downChannels,
+  drillVerdict,
+  exhaustions,
+  heldPersons,
   incidents,
+  limitRoutes,
   linkRule,
   OBSERVE_WINDOW,
   QUIET_HORIZON,
   RETENTION_HORIZON,
   reportId,
   route,
+  SEND_LIMIT_MAX_WINDOW,
+  SYSTEM_SOURCE,
+  THROTTLE_MAX_WINDOW,
+  throttleRoutes,
   TOMBSTONE_LIFE,
   type ChannelDescriptor,
   type ChannelId,
   type Delivery,
+  type DrillConfig,
+  type Level,
   type Observation,
   type ObservationId,
   type PersonId,
@@ -20,15 +31,19 @@ import {
   type Report,
   type ReportId,
   type Route,
+  type SendLimits,
   type SourceId,
   type SourceProcedures,
+  type Throttle,
   type WatchedPlace,
 } from "@mark1russell7/alerts";
 import { random, seedsFrom, type Random } from "@mark1russell7/rigor-generators";
 import { describe, expect, it } from "vitest";
+import { drillRunOf } from "./drills.ts";
 import { envelope, type RuntimeEvent } from "./events.ts";
 import { importOf, sharedItem } from "./exchange.ts";
 import { openRuntimeLog } from "./log.ts";
+import { cutIncidents, observeStep, type ObserveParts } from "./observe.ts";
 import { ENTRY_KEEP, quietKeeps, retention, retiredEvent, RETIRE_EVERY } from "./retention.ts";
 import { openRuntime } from "./runtime.ts";
 import { cancelledKeys, EMPTY_RUNTIME, fold, rebuild, type FoldContext, type RuntimeState } from "./state.ts";
@@ -55,8 +70,8 @@ const RECIPIENT: Recipient = {
 const POLLED: ChannelDescriptor = { id: PUSHOVER, title: "Pushover", dependsOn: ["provider:pushover"], uses: ["internet", "power"], breaksThrough: true, repeats: true, ack: "poll", maxTitle: 250, maxBody: 1024 };
 const SEEDS = seedsFrom(process.env["SEED"], [1, 2, 3, 4, 5, 6, 7, 8]);
 
-/** One tornado warning for a county of Kansas, sent at `sent`, that a copy received at `received`. */
-function report(key: string, received: number, sent = T0): Report {
+/** One tornado warning for a county of Kansas, sent at `sent`, that a copy received at `received`. `part` changes its fields. */
+function report(key: string, received: number, sent = T0, part: Partial<Report> = {}): Report {
   return {
     id: reportId({ source: API, key, sent }),
     source: API,
@@ -81,6 +96,7 @@ function report(key: string, received: number, sent = T0): Report {
     headline: "Tornado Warning",
     observation: `api:${key}` as ObservationId,
     parameters: {},
+    ...part,
   };
 }
 
@@ -232,15 +248,33 @@ describe("the fold of a retirement (AL-47)", () => {
   });
 });
 
-// A random log of one copy with imports, steps of the clock and retirements. The reports come from a small pool, thus the retirements and the late copies meet.
-function randomLog(r: Random): RuntimeEvent[] {
-  const pool = Array.from({ length: 6 }, (_, index) => `w${index}`);
-  const idOf = (key: string): ReportId => report(key, T0).id;
+// The events of one moment of a random log: one event, or the events of a drill start with its run report.
+type Moment = (r: Random, index: number, time: number) => readonly RuntimeEvent[];
+
+// The options of a random log: the count of the moments, the time between two moments, and the events of each moment.
+interface LogShape {
+  readonly count: number;
+  readonly gap: (r: Random) => number;
+  readonly moment: Moment;
+}
+
+// A random log of one copy with imports, steps of the clock and retirements. The default moments come from a small pool of reports.
+function randomLog(r: Random, shape: LogShape = { count: 60, gap: (each) => each.int(1, 48) * HOUR, moment: poolMoments() }): RuntimeEvent[] {
   const events: RuntimeEvent[] = [started("run-a", T0)];
   let time = T0;
+  for (let index = 0; index < shape.count; index += 1) {
+    time += shape.gap(r);
+    events.push(...shape.moment(r, index, time));
+  }
+  return events;
+}
+
+// The moments of a small pool of reports, thus the retirements and the late copies meet.
+function poolMoments(): Moment {
+  const pool = Array.from({ length: 6 }, (_, index) => `w${index}`);
+  const idOf = (key: string): ReportId => report(key, T0).id;
   let steps = 0;
-  for (let index = 0; index < 60; index += 1) {
-    time += r.int(1, 48) * HOUR;
+  return (r, index, time) => {
     const key = r.pick(pool);
     const choice = r.below(9);
     const own = r.chance(0.5);
@@ -270,9 +304,8 @@ function randomLog(r: Random): RuntimeEvent[] {
     const made = event();
     // Only a shared event can come by import.
     const canImport = made.type !== "clock" && made.type !== "escalation" && made.type !== "retired";
-    events.push(canImport && !own ? imported(made) : made);
-  }
-  return events;
+    return [canImport && !own ? imported(made) : made];
+  };
 }
 
 describe("a random log with retirements", () => {
@@ -288,6 +321,259 @@ describe("a random log with retirements", () => {
       if (count % 10 === 0 || count === events.length) expect(state).toEqual(rebuild(events.slice(0, count), CONTEXT));
     }
     expect(retirements).toBeGreaterThan(0);
+  });
+});
+
+/** The copy of the drill runs in the logs of the readers (AL-189). */
+const COPY = "a";
+/** Two drills of the person on the push channel. Only the run reports and the acknowledgments give their verdicts. */
+const DRILLS: readonly DrillConfig[] = ["push-weekly", "push-daily"].map((id): DrillConfig => ({
+  id,
+  person: PERSON,
+  path: { kind: "channel", channel: PUSHOVER },
+  every: 6 * DAY,
+  window: { zone: "America/Chicago", start: "11:00", end: "17:00", days: [6] },
+  ackWithin: 30 * MINUTE,
+}));
+/** The shapes of the reports of the readers: a life-safety warning, an urgent wind warning and a wind advisory, each with its level. */
+const SHAPES: readonly { readonly level: Level; readonly part: Partial<Report> }[] = [
+  { level: "life-safety", part: {} },
+  { level: "urgent", part: { kind: { code: "met.wind", label: "High Wind Warning" }, severity: "severe", urgency: "immediate", headline: "High Wind Warning" } },
+  { level: "notice", part: { kind: { code: "met.wind", label: "Wind Advisory" }, severity: "moderate", urgency: "future", headline: "Wind Advisory" } },
+];
+/** A person who watches the place in Kansas, with two pushes at each level. The address is fake. */
+const WATCHER: Recipient = {
+  watch: { person: PERSON, places: [KANSAS.id], rules: [] },
+  policies: SHAPES.map(({ level }) => ({ level, steps: [{ channel: PUSHOVER, at: 0 }, { channel: PUSHOVER, at: 10 * MINUTE }], exhaustedAfter: 20 * MINUTE })),
+  addresses: { pushover: { user: "fake-user" } },
+};
+
+// A report of a reader log, and the facts that the next moments read.
+interface Made {
+  readonly report: Report;
+  readonly level: Level;
+  ended: boolean;
+  started: boolean;
+  closed: boolean;
+}
+
+// A delivery of a reader log, and the facts that the next moments read.
+interface Sent {
+  readonly delivery: Delivery;
+  cancelled: boolean;
+  acked: boolean;
+}
+
+/**
+ * The moments of a log for the readers of the state (AL-189). Each event is an event that a copy can write. A delivery,
+ * a start, a hold or a suppression goes only to a live report. An acknowledgment goes only to a delivery with a receipt and no cancel.
+ */
+function readerMoments(): Moment {
+  const made: Made[] = [];
+  const runs: { readonly made: Made; readonly key: string }[] = [];
+  const sent: Sent[] = [];
+  let steps = 0;
+  let lines = 0;
+  let observing = false;
+  const start = (one: Made, level: Level, time: number): RuntimeEvent => {
+    one.started = true;
+    return { ...envelope("escalation", `escalation:${one.report.id}`, time), start: { incident: one.report.id, level, person: PERSON, at: time } };
+  };
+  const send = (one: Made, key: string, level: Level, time: number, receipt: boolean): RuntimeEvent => {
+    const item: Delivery = { key, incident: one.report.id, level, person: PERSON, channel: PUSHOVER, step: 0, at: time, ...(receipt ? { receipt: { receipt: `r-${key}` } } : {}) };
+    sent.push({ delivery: item, cancelled: false, acked: false });
+    return { ...envelope("delivery", `delivery:${key}`, time), delivery: item };
+  };
+  const ack = (item: Sent, time: number): RuntimeEvent => {
+    item.acked = true;
+    const { incident, level, person } = item.delivery;
+    return { ...envelope("acknowledgment", `ack:${item.delivery.key}`, time), acknowledgment: { incident, level, person, at: time, via: PUSHOVER } };
+  };
+  const cancel = (item: Sent, time: number): RuntimeEvent => {
+    item.cancelled = true;
+    return cancelled(item.delivery.key, time);
+  };
+  return (r, index, time) => {
+    const own = r.chance(0.6);
+    const shared = (event: RuntimeEvent): RuntimeEvent => (own ? event : imported(event));
+    const live = made.filter((one) => !one.ended && (one.report.expires === undefined || one.report.expires > time));
+    const pick = <T,>(list: readonly T[], then: (item: T) => readonly RuntimeEvent[]): readonly RuntimeEvent[] => (list.length === 0 ? [] : then(r.pick(list)));
+    // The first moment can put the source in the observe mode. Then the observe verdict and the cut read its reports.
+    if (index === 0 && r.chance(0.5)) observing = true;
+    const first: RuntimeEvent[] = index === 0 && observing ? [{ ...envelope("mode", "mode:observe", time - SECOND), source: API, mode: "observe", reason: "a test" }] : [];
+    const choice = r.below(17);
+    const eventsOf = (): readonly RuntimeEvent[] => {
+      switch (choice) {
+        case 0:
+        case 1: {
+          const shape = r.pick(SHAPES);
+          const area = r.chance(0.8) ? "KSZ083" : "TXZ205";
+          const part: Partial<Report> = { ...shape.part, expires: time + r.int(1, 6) * HOUR, areas: [{ type: "code", system: "ugc", code: area }] };
+          const one: Made = { report: report(`r${index}`, time, time, part), level: shape.level, ended: false, started: false, closed: false };
+          made.push(one);
+          return [shared(fetched(`fetch:${index}`, time, [one.report]))];
+        }
+        case 2:
+          // The feed lists a live report again.
+          return pick(live, (one) => [shared(fetched(`fetch:${index}`, time, [{ ...one.report, received: time }]))]);
+        case 3:
+        case 4:
+          return pick(live, (one) => {
+            const level: Level = r.chance(0.15) ? "digest" : one.level;
+            const delivery = send(one, `k${index}`, level, time, r.chance(0.6));
+            // Another copy writes its own start. Only the delivery comes by import.
+            if (!own) return [imported(delivery)];
+            return level === "digest" || one.started ? [delivery] : [start(one, level, time), delivery];
+          });
+        case 5:
+          return pick(
+            sent.filter((item) => item.delivery.receipt !== undefined && !item.cancelled && !item.acked),
+            (item) => [shared(ack(item, time))],
+          );
+        case 6:
+          return pick(
+            sent.filter((item) => !item.cancelled),
+            (item) => [shared(cancel(item, time))],
+          );
+        case 7:
+          return pick(
+            live.filter((one) => !one.started),
+            (one) => [start(one, one.level, time)],
+          );
+        case 8:
+          return pick(
+            made.filter((one) => one.started && !one.closed),
+            (one) => {
+              one.closed = true;
+              return [shared(endOf(one.report.id, time))];
+            },
+          );
+        case 9:
+          return pick(
+            live.filter((one) => one.level !== "life-safety"),
+            (one) => [{ ...envelope("hold", `hold:${index}`, time), hold: { incident: one.report.id, level: one.level, person: PERSON, episode: 0, at: time } }],
+          );
+        case 10:
+          return pick(
+            live.filter((one) => one.level !== "life-safety"),
+            (one) => [
+              {
+                ...envelope("suppressed", `suppressed:s${index}`, time),
+                suppression: { key: `s${index}`, incident: one.report.id, level: one.level, person: PERSON, channel: PUSHOVER, step: 0, episode: 0, at: time, reason: "same-level", over: "life-safety" },
+              },
+            ],
+          );
+        case 11:
+          // A source ends a report while the feed lists it, or soon after its expiry.
+          return pick(
+            made.filter((one) => !one.ended && (one.report.expires === undefined || one.report.expires + HOUR > time)),
+            (one) => {
+              one.ended = true;
+              return [shared(ended(time, [one.report.id]))];
+            },
+          );
+        case 12:
+          steps += 1;
+          return [stepped(steps, time, r.pick([-5, 5, 60]) * MINUTE)];
+        case 13: {
+          // A drill starts, and its run report goes to the person with a receipt. The person acknowledges some runs at once.
+          const drill = r.pick(DRILLS);
+          const { expires: _expires, ...run } = report(`run${index}`, time + SECOND, time + SECOND, {
+            kind: { code: "system.drill.run", label: "Drill run" },
+            status: "system",
+            onset: time,
+            areas: [],
+            headline: `Drill ${drill.id}`,
+            parameters: { drill: [drill.id], copy: [COPY] },
+          });
+          const one: Made = { report: run, level: "life-safety", ended: false, started: false, closed: false };
+          made.push(one);
+          runs.push({ made: one, key: `k${index}` });
+          const events: RuntimeEvent[] = [{ ...envelope("drill", `drill:${COPY}:${drill.id}:${String(time)}`, time), drill: drill.id, copy: COPY }, fetched(`fetch:${index}`, time + SECOND, [run])];
+          if (r.chance(0.5)) events.push(start(one, "life-safety", time + 2 * SECOND));
+          events.push(send(one, `k${index}`, "life-safety", time + 2 * SECOND, true));
+          if (r.chance(0.6)) events.push(ack(sent.at(-1)!, time + 3 * SECOND));
+          return events;
+        }
+        case 14:
+          // The line of a run ends, and its alert gets its cancel. Then only the drill keeps its incident.
+          return pick(
+            runs.filter((one) => !one.made.ended),
+            (one) => {
+              one.made.ended = true;
+              const item = sent.find((each) => each.delivery.key === one.key)!;
+              return [ended(time, [one.made.report.id]), ...(item.cancelled ? [] : [cancel(item, time + SECOND)])];
+            },
+          );
+        case 15:
+          return observing ? [{ ...envelope("mode", `mode:live:${index}`, time), source: API, mode: "live", reason: "a test" }] : [];
+        default: {
+          // A line of a down channel of the copy opens or closes.
+          lines += 1;
+          const key = `channel/${COPY}/pushover#${String(lines)}`;
+          const observation: Observation = { id: `system:${key}` as ObservationId, source: SYSTEM_SOURCE, fetched: time, contentType: "application/json", body: JSON.stringify({ facts: { copy: COPY, channel: "pushover" } }), transport: { latency: 0 } };
+          const part: Partial<Report> = { id: reportId({ source: SYSTEM_SOURCE, key, sent: time }), source: SYSTEM_SOURCE, status: "system", op: lines % 2 === 1 ? "alert" : "cancel", kind: { code: "system.channel", label: "Channel down" }, areas: [], observation: observation.id };
+          return [{ ...envelope("system", `system:${key}`, time), reports: [report(key, time, time, part)], observations: [observation] }];
+        }
+      }
+    };
+    return [...first, ...eventsOf()];
+  };
+}
+
+describe("a retirement changes no verdict and sends nothing (AL-189)", () => {
+  // The times are short, thus each log has many retirements. The send limit and the throttle have their longest windows.
+  const RETIRE: FoldContext = { sources: [], retention: { horizon: DAY, quiet: 3 * HOUR, life: 2 * DAY, every: HOUR } };
+  const LIMITS: SendLimits = { window: SEND_LIMIT_MAX_WINDOW, notice: 2, urgent: 3 };
+  const THROTTLE: Throttle = { window: THROTTLE_MAX_WINDOW, key: "channel", streams: "system", exempt: ["life-safety"] };
+  const link = linkRule(DEFAULT_LINK_POLICY);
+  const parts: ObserveParts = { people: [WATCHER.watch], places: [KANSAS], limits: LIMITS };
+  const gap = (r: Random): number => (r.chance(0.85) ? r.int(1, 30) * MINUTE : r.int(2, 30) * HOUR);
+
+  // The output of each reader of the state at a time, as the pass and the delivery step read them.
+  function readers(state: RuntimeState, at: number) {
+    const found = incidents(state.merge, at, { link });
+    const cut = cutIncidents(state, state.merge, found, parts, at);
+    const routes = route({ state: state.merge, incidents: cut.sent, recipients: [WATCHER], places: [KANSAS], starts: state.starts, ends: state.escalationEnds, cancelled: cancelledKeys(state), channels: [POLLED], now: at });
+    const limited = limitRoutes({ routes, deliveries: state.merge.deliveries, holds: state.holds, limits: LIMITS, reports: state.merge.reports, now: at });
+    const throttled = throttleRoutes({ routes: limited.routes, deliveries: state.merge.deliveries, suppressions: state.suppressions, reports: state.merge.reports, throttle: THROTTLE, now: at });
+    const runs = DRILLS.map((drill) => drillRunOf(state, COPY, drill));
+    return {
+      runs,
+      verdicts: runs.map((run, index) => (run === undefined ? undefined : drillVerdict(DRILLS[index]!, run, at))),
+      observe: observeStep(state, found, parts, at),
+      lifeSafety: cut.lifeSafety,
+      held: heldPersons(state.holds, state.merge.reports, LIMITS.window, at),
+      holds: limited.holds,
+      suppressions: throttled.suppressions,
+      routes: throttled.routes,
+      exhausted: exhaustions(throttled.routes, [POLLED], state.merge.reports),
+      down: downChannels(state.lines, COPY),
+    };
+  }
+
+  it.each(SEEDS)("gives the same output of each reader with and without the retirements of the fold (seed %i)", (seed) => {
+    const events = randomLog(random(seed), { count: 240, gap, moment: readerMoments() });
+    let kept = EMPTY_RUNTIME;
+    let retiring = EMPTY_RUNTIME;
+    let retirements = 0;
+    // The counts of the outputs that the gate compares. A log with none of them tests nothing.
+    let passed = 0;
+    let sends = 0;
+    for (const [index, event] of events.entries()) {
+      kept = fold(kept, event, CONTEXT);
+      retiring = fold(retiring, event, RETIRE, () => {
+        retirements += 1;
+      });
+      expect(retiring.time).toBe(kept.time);
+      const expected = readers(kept, kept.time);
+      expect(readers(retiring, kept.time), `the event ${String(index)}: ${event.id}`).toEqual(expected);
+      passed += expected.verdicts.filter((verdict) => verdict?.state === "passed").length;
+      sends += expected.routes.flatMap((entry) => entry.plan.sends).length;
+    }
+    expect(retirements).toBeGreaterThan(0);
+    expect(passed).toBeGreaterThan(0);
+    expect(sends).toBeGreaterThan(0);
   });
 });
 
