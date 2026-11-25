@@ -8251,7 +8251,9 @@
   {
     "id": "faa-nas-status",
     "name": "FAA NAS Status airport status XML",
-    "classes": ["transport.air.disruption"],
+    "classes": [
+      "transport.air.disruption"
+    ],
     "dimensions": [
       "aviation-delays"
     ],
@@ -23803,5 +23805,154 @@
     "risks": [],
     "adapter": null,
     "round": 22
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "round": 25,
+    "id": "dma-niord-warnings",
+    "name": "Danish Maritime Authority navigational warnings and notices (Niord REST, JSON)",
+    "classes": [
+      "transport.sea.navigational-warning"
+    ],
+    "url": "https://niord.dma.dk/rest/public/v1/messages?lang=en",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.dma.dk/safety-at-sea/navigational-information/download-data",
+      "automated": "allowed",
+      "redistribution": "unclear",
+      "note": "The download page of the DMA names the Niord REST service. The page of its conditions returned 404 on 2026-11-25. A search snippet tells of credit to the DMA."
+    },
+    "delay": "The newest warning of one read on 2026-11-25 was about 1 hour old.",
+    "history": "unknown (the answer holds the messages in force)",
+    "rateLimit": "unknown",
+    "coverage": "Danish waters: coastal and local navigational warnings, firing warnings and notices to mariners, each with GeoJSON. On 2026-11-25 the answer had 209 messages, 37 of them warnings, and the newest was 1 hour old.",
+    "origins": [
+      "dma"
+    ],
+    "path": [
+      "niord.dma.dk"
+    ],
+    "reason": "A live list of the warnings in force, with a shape for each, and no key. Niord is open-source software, so other authorities can publish the same form.",
+    "evidence": [
+      "https://niord.dma.dk/rest/public/v1/messages?lang=en",
+      "https://admin.dma.dk/safety-at-sea/navigational-information/download-data"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "round": 25,
+    "id": "alaska-dec-boil-water",
+    "name": "Alaska DEC open boil water and do not drink notices (ArcGIS, JSON)",
+    "classes": [
+      "env.water.drinking-advisory"
+    ],
+    "url": "https://dec.alaska.gov/arcgis/rest/services/EH/BWN_DND/FeatureServer/0",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The service names the Drinking Water Program of the Alaska DEC as its owner. No terms page was found."
+    },
+    "delay": "unknown (the service says that it shows each notice after its entry in SDWIS)",
+    "history": "none (only the notices in force)",
+    "rateLimit": "2,000 records for each query",
+    "coverage": "Alaska: each public water system with an open boil water or do not drink notice, with its issue date, population and point.",
+    "origins": [
+      "alaska-dec"
+    ],
+    "path": [
+      "dec.alaska.gov"
+    ],
+    "reason": "A state list of the notices in force, with no key. The layer also has the contact fields of the staff, so an adapter asks only for the fields of the notice.",
+    "evidence": [
+      "https://dec.alaska.gov/arcgis/rest/services/EH/BWN_DND/FeatureServer?f=json"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "round": 25,
+    "id": "nl-boil-water-advisories",
+    "name": "Newfoundland and Labrador boil water advisories (ArcGIS, JSON)",
+    "classes": [
+      "env.water.drinking-advisory"
+    ],
+    "url": "https://maps.gov.nl.ca/gsdw/rest/services/water/BoilAdvisories/FeatureServer/0",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The service names the Water Resources Management Division of the province. No terms page was found."
+    },
+    "delay": "unknown",
+    "history": "none (only the advisories in force)",
+    "rateLimit": "1,000 records for each query",
+    "coverage": "Newfoundland and Labrador, Canada: each boil water advisory in force, with the community, the population, the issue date and the reason.",
+    "origins": [
+      "nl-water-resources"
+    ],
+    "path": [
+      "maps.gov.nl.ca"
+    ],
+    "reason": "A provincial list of the advisories in force, with no key and a reason code for each. It gives the class a second source, outside the US.",
+    "evidence": [
+      "https://maps.gov.nl.ca/gsdw/rest/services/water/BoilAdvisories/FeatureServer?f=json"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "round": 25,
+    "id": "ca-fhab-reports",
+    "name": "California freshwater harmful algal bloom reports (CKAN datastore, JSON)",
+    "classes": [
+      "env.water.harmful-algal-bloom"
+    ],
+    "url": "https://data.ca.gov/api/3/action/datastore_search?resource_id=c6a36b91-ad38-4611-8750-87ee99e497dd",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.ca.gov/dataset/surface-water-freshwater-harmful-algal-blooms",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The dataset record gives the licence Other (Public Domain)."
+    },
+    "delay": "Days: the newest report of the read on 2026-11-25 was created on 2026-11-23.",
+    "history": "3,744 records, the total of the datastore on 2026-11-25.",
+    "rateLimit": "unknown",
+    "coverage": "California: each report of a freshwater bloom, from the public and from staff, with the water body, the county, a point and the reported advisory types. On 2026-11-25 the datastore had 3,744 records, and the newest was from 2026-11-23.",
+    "origins": [
+      "ca-water-board"
+    ],
+    "path": [
+      "data.ca.gov"
+    ],
+    "reason": "A public-domain list of bloom reports with points, with no key. A public report is not an advisory until staff review it, so an adapter uses the case and advisory fields.",
+    "evidence": [
+      "https://data.ca.gov/api/3/action/package_show?id=surface-water-freshwater-harmful-algal-blooms"
+    ]
   }
 ]
