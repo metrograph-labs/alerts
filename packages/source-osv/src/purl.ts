@@ -2,8 +2,10 @@
  * The package URL (purl) of a package of a record: the id of the subject `purl` of a report. The purl has no version, no
  * qualifiers and no subpath, so a person who names a package gets each report of each version.
  *
- * The rules of each type come from the purl specification (`https://github.com/package-url/purl-spec`). No home package
- * has a purl builder. The gap is in the README.
+ * The rules of each type come from the purl specification (`https://github.com/package-url/purl-spec`).
+ *
+ * The home of purl is the planned package `package-id` (`mark1russell7/package-id`). This file moves there in AL-200,
+ * after the first release of that package. Until then, this file is a temporary copy.
  */
 
 /** The purl type of each OSV ecosystem that has one. An ecosystem that is not in the table has no purl. */
