@@ -5,8 +5,8 @@
  * `measure-blocks.yml` starts it in CI.
  *
  * Usage: node scripts/start-blocks.ts <folder> [size in MB] [passes]. With the environment variable `BLOCK_LIMIT_MS`, the
- * script is a gate. It exits with 1 when one part of a snapshot write between two pauses has more CPU time of the thread
- * than the limit (AL-122). The wall time of a part also has the waits for the disk and for the runner. It also
+ * script is a gate. It exits with 1 when one part of a snapshot write between two pauses has more work than the limit
+ * (AL-122). The work of a part is its CPU time of the thread apart from the pauses of the garbage collector (AL-174). The wall time of a part also has the waits for the disk and for the runner. It also
  * exits with 1 when the start that folds the whole log has no snapshot write. A gate that cannot read the case is no pass.
  *
  * Each start gives one JSON line. For each phase, the line has the wall time, the CPU time, the blocks of the event loop and
@@ -18,7 +18,7 @@ import { statSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { PerformanceObserver, type PerformanceEntry } from "node:perf_hooks";
-import { openMeasuredRuntime, START_SNAPSHOT_FILE, type MeasuredRuntime } from "@mark1russell7/alerts-runtime";
+import { longestPartWork, openMeasuredRuntime, START_SNAPSHOT_FILE, type MeasuredRuntime } from "@mark1russell7/alerts-runtime";
 import { wallClock } from "@mark1russell7/algebra/clock";
 import { seedHome } from "../src/seed-home.ts";
 
@@ -101,7 +101,7 @@ const seeded = await seedHome(dir, { log: size * 1_000_000, seed: "al105" });
 
 // The parts of the snapshot writes in the start that folds the whole log, for the gate: the most CPU time of the thread in one
 // part, and the wall time and the wait of the longest part.
-let work: { readonly cpuMs: number; readonly wallMs: number; readonly waitMs: number } | undefined;
+let work: { readonly workMs: number; readonly cpuMs: number; readonly gcMs: number; readonly wallMs: number; readonly waitMs: number } | undefined;
 for (const kind of ["full", "snapshot"] as const) {
   const phases: Phase[] = [];
   const recorder = recordBlocks();
@@ -123,6 +123,7 @@ for (const kind of ["full", "snapshot"] as const) {
   }
   const gc: Block[] = pauses.map((entry) => ({ start: entry.startTime, ms: entry.duration }));
   const writes = measured!.snapshotWrites;
+  const works = writes.map((write) => longestPartWork(write.parts, pauses));
   // A block overlaps a write when the two intervals share a point. The interval of a write has its pauses. The longest block
   // outside each write is the work of the pass apart from the snapshot.
   const inWrite = (block: Block): boolean => writes.some((write) => block.start < write.at + write.wallMs && block.start + block.ms > write.at);
@@ -156,7 +157,7 @@ for (const kind of ["full", "snapshot"] as const) {
           .map((block) => ({ atMs: round(block.start - each.start), ms: round(block.ms), write: inWrite(block) })),
       };
     }),
-    writes: writes.map((write) => ({
+    writes: writes.map((write, index) => ({
       phase: phases.find((each) => write.at >= each.start && write.at < each.end)?.name ?? "none",
       rows: write.rows,
       chars: write.chars,
@@ -167,6 +168,8 @@ for (const kind of ["full", "snapshot"] as const) {
       longestMs: round(write.longestMs),
       longestCpuMs: round(write.longestCpuMs),
       longestWaitMs: round(write.longestWaitMs),
+      longestWorkMs: round(works[index]?.workMs ?? 0),
+      longestPartGcMs: round(works[index]?.gcMs ?? 0),
       chunks: write.chunks,
     })),
     files: { snapshot: fileBytes(join(dir, START_SNAPSHOT_FILE)), wal: fileBytes(join(dir, `${START_SNAPSHOT_FILE}-wal`)) },
@@ -175,7 +178,13 @@ for (const kind of ["full", "snapshot"] as const) {
   console.log(JSON.stringify(record));
   if (kind === "full" && writes.length > 0) {
     const slowest = writes.reduce((one, other) => (other.longestMs > one.longestMs ? other : one));
-    work = { cpuMs: Math.max(...writes.map((write) => write.longestCpuMs)), wallMs: slowest.longestMs, waitMs: slowest.longestWaitMs };
+    work = {
+      workMs: Math.max(...works.map((each) => each.workMs)),
+      cpuMs: Math.max(...writes.map((write) => write.longestCpuMs)),
+      gcMs: Math.max(...works.map((each) => each.gcMs)),
+      wallMs: slowest.longestMs,
+      waitMs: slowest.longestWaitMs,
+    };
   }
 }
 await rm(dir, { recursive: true, force: true });
@@ -184,12 +193,14 @@ if (limit !== undefined) {
   if (work === undefined) {
     console.error("gate: no read. The start that folds the whole log wrote no snapshot.");
     process.exitCode = 1;
-  } else if (work.cpuMs > limit) {
-    console.error(`gate: block. One part of the snapshot write has ${String(round(work.cpuMs))} ms of CPU time of the thread, above the limit of ${String(limit)} ms.`);
+  } else if (work.workMs > limit) {
+    console.error(`gate: block. One part of the snapshot write has ${String(round(work.workMs))} ms of work of the thread, above the limit of ${String(limit)} ms.`);
     process.exitCode = 1;
   } else {
-    console.error(`gate: pass. Each part of the snapshot write has at most ${String(round(work.cpuMs))} ms of CPU time of the thread, and the limit is ${String(limit)} ms.`);
+    console.error(`gate: pass. Each part of the snapshot write has at most ${String(round(work.workMs))} ms of work of the thread, and the limit is ${String(limit)} ms.`);
     // A wait is the disk or the runner, not the work of the write. The record keeps it, and the gate does not count it.
+    // A pause of the garbage collector is not the work of the write either (AL-174). The record keeps the most CPU time and the most pause time of one part.
+    if (work.gcMs > 0) console.error(`The most CPU time of one part was ${String(round(work.cpuMs))} ms, and the most pause time of the garbage collector in one part was ${String(round(work.gcMs))} ms.`);
     if (work.wallMs > limit) console.error(`The longest part took ${String(round(work.wallMs))} ms, with ${String(round(work.waitMs))} ms of wait for the disk or the runner.`);
   }
 }

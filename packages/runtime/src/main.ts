@@ -5,8 +5,8 @@
  * - `node src/main.ts supervise <folder>` starts the supervisor of the runtime (`supervise.ts`). The boot task starts it.
  * - `node src/main.ts load` loads each module of the runtime, and stops with the code 0. It starts no service. The stage of a
  *   deploy uses it to check the code of a new slot (`deploy.ts`).
- * - `node src/main.ts fold` folds the log, writes the snapshot of the start, and stops. It starts no service (`fold-mode.ts`).
- *   After a change of the fold version, `deploy.ts fold` starts it while the runtime is stopped (AL-153).
+ * - `node src/main.ts fold [files|good]` folds the log, writes the snapshot of the start, and stops. It starts no service
+ *   (`fold-mode.ts`). With no set, it folds for the set of the next start. `deploy.ts fold` starts it for each set (AL-169).
  *
  * The lifecycle owns the signals of the process. After SIGTERM or Ctrl-C, the service stops in its
  * phases, and the process exits with 0 or 1.
@@ -81,13 +81,13 @@ import { fileBundleStore } from "./outage.ts";
 import type { ExchangeRound } from "./peers.ts";
 import { loadPriors } from "./priors.ts";
 import { openReadingStore, READINGS_FILE } from "./readings.ts";
-import { GOOD_FILE, privateFiles, readStartTexts, reloadHook, startConfig, type CheckOf } from "./reload.ts";
+import { GOOD_FILE, privateFiles, readStartTexts, reloadHook, startConfig, type CheckOf, type StartUse } from "./reload.ts";
 import { shapeReport, zoneCodesText } from "./shapes.ts";
 import { openTransitCache, TRANSIT_FILE, transitReport, transitText } from "./transit.ts";
 import { hostFolder, signalWarning } from "./host.ts";
 import { recordRunningCode } from "./running.ts";
-import { checkoutOf, liveRoot, slotsOf } from "./slots.ts";
-import { openStartSnapshot, START_SNAPSHOT_FILE, startReadText } from "./start-snapshot.ts";
+import { checkoutOf, liveRoot, slotsOfCheckout } from "./slots.ts";
+import { openStartSnapshots, START_SNAPSHOTS_FOLDER, startReadText } from "./start-snapshot.ts";
 import { supervisor } from "./supervise.ts";
 import { outputOf, timedLogger } from "./output.ts";
 import { runtimeVersion, startTelemetry } from "./telemetry.ts";
@@ -109,7 +109,8 @@ const port = (name: string, fallback: number): number => {
 
 /** This function makes the service of the runtime from the environment and the private files. */
 // The mode `fold` (AL-153) folds the log and writes the snapshot of the start, then it gives no service (`fold-mode.ts`).
-async function runtime(fold: boolean): Promise<ServiceBuilder | undefined> {
+// It folds for the set of the next start, or for the set that `pick` names (AL-169).
+async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder | undefined> {
   const name = process.env["SERVICE_PROFILE"] ?? "local";
   const profile = PROFILES[name];
   if (profile === undefined) throw new Error(`SERVICE_PROFILE is "${name}". The profiles are: ${Object.keys(PROFILES).join(", ")}.`);
@@ -129,7 +130,7 @@ async function runtime(fold: boolean): Promise<ServiceBuilder | undefined> {
   // The record of the code of this start (AL-167). The probes of a deploy do not tell the slot that runs.
   if (!fold) {
     const checkout = checkoutOf(liveRoot(process.env, process.argv[1], join(fileURLToPath(new URL(".", import.meta.url)), "..")));
-    await recordRunningCode(slotsOf(checkout), checkout, hostFolder(home), process.pid, new Date()).catch((error: unknown) => {
+    await recordRunningCode(await slotsOfCheckout(checkout), checkout, hostFolder(home), process.pid, new Date()).catch((error: unknown) => {
       out.error(`The record of the running code was not written: ${errorMessage(error)}`);
     });
   }
@@ -144,7 +145,16 @@ async function runtime(fold: boolean): Promise<ServiceBuilder | undefined> {
   const startPorts = fold
     ? { write: () => Promise.resolve(), remove: () => Promise.resolve() }
     : { write: (path: string, text: string) => writeFileAtomic(path, text, { mode: 0o600 }), remove: (path: string) => rm(path, { force: true }) };
-  const loaded = await startConfig(files, checkOf, startPorts);
+  const loaded = await startConfig(files, checkOf, startPorts, pick);
+  if (fold) {
+    // The fold names its set. When the two sets have the same texts, they have one key, thus a fold for the good set does nothing new.
+    if (pick === "good" && loaded.same) {
+      out.log("The last good set has the same texts as the private files. Their snapshot is one snapshot, thus this fold stops.");
+      held.lock.release();
+      return undefined;
+    }
+    out.log(`The mode fold folds for the set of ${loaded.use === "files" ? "the private files" : `the last good set ${GOOD_FILE}`}.`);
+  }
   if (loaded.use === "good") out.error(`The runtime uses the last good set ${GOOD_FILE} of the private files:\n- ${loaded.fallback.join("\n- ")}`);
   for (const note of loaded.notes) out.error(note);
   // The settings of this copy of the system, from the files of the start.
@@ -296,10 +306,11 @@ async function runtime(fold: boolean): Promise<ServiceBuilder | undefined> {
   // A broken log file goes into quarantine. The new file gets each event that the salvage reads, and a system report tells the loss.
   const { log, recovered } = openCheckedRuntimeLog(join(home, "runtime.sqlite"), { now: () => wall.now() });
   if (recovered !== undefined) out.error(`The log file was broken. It is in the quarantine folder ${recovered.quarantine}. The new log kept ${String(recovered.added)} events and lost ${String(recovered.lost)}.`);
-  // The snapshot of the start (AL-105). A salvaged log has a new key, and the clear frees the rows of the old log.
-  const snapshot = openStartSnapshot(join(home, START_SNAPSHOT_FILE));
-  if (snapshot.quarantined !== undefined) out.error(`The file ${START_SNAPSHOT_FILE} was broken. It is in quarantine, and the start folds the whole log.`);
-  if (snapshot.fault !== undefined) out.error(`The file ${START_SNAPSHOT_FILE} did not open (${snapshot.fault}). Each start folds the whole log.`);
+  // The snapshots of the start (AL-105), one for each key (AL-169). A salvaged log has a new key, and the clear frees the rows of the old log.
+  const snapshot = openStartSnapshots(home, {
+    onQuarantine: () => out.error(`A file of the snapshots of the start was broken. It is in quarantine, and the start folds the whole log.`),
+  });
+  if (snapshot.fault !== undefined) out.error(`The folder ${START_SNAPSHOTS_FOLDER} did not open (${snapshot.fault}). Each start folds the whole log.`);
   if (recovered !== undefined) snapshot.store?.clear();
   // A broken file of shapes goes into quarantine, and the store starts empty. Then the outlines come again from the NWS API.
   const shapes = openShapeCache(join(home, SHAPES_FILE));
@@ -395,7 +406,7 @@ async function runtime(fold: boolean): Promise<ServiceBuilder | undefined> {
   // The mode fold writes the snapshot of this fold. Then it closes the files in the sequence of the shutdown of the service.
   if (fold) {
     const store = snapshot.store;
-    if (store === undefined) throw new Error(`The file ${START_SNAPSHOT_FILE} did not open. The mode fold writes no snapshot.`);
+    if (store === undefined) throw new Error(`The folder ${START_SNAPSHOTS_FOLDER} did not open. The mode fold writes no snapshot.`);
     blockWatch?.phase("fold: write of the snapshot");
     const transitKeeper = instance.transit;
     const rows = await writeFold({
@@ -449,6 +460,11 @@ async function runtime(fold: boolean): Promise<ServiceBuilder | undefined> {
 }
 
 const MODES = ["supervise", "load", "fold"];
+// The set of the mode fold: `files`, `good`, or no argument for the set of the next start (AL-169).
+function foldPick(argument: string | undefined): StartUse | undefined {
+  if (argument === undefined || argument === "files" || argument === "good") return argument;
+  throw new Error(`The set of the fold is "${argument}". Give files, good, or no argument for the set of the next start.`);
+}
 const mode = process.argv[2];
 if (mode !== undefined && !MODES.includes(mode)) throw new Error(`The first argument is "${mode}". Give no argument for the runtime, or one of: ${MODES.join(", ")}.`);
 
@@ -463,7 +479,7 @@ const signal = signalWarning();
 if (signal !== null) out.warn(signal);
 
 // The process exits after the shutdown of the service.
-const started = mode === "supervise" ? supervisor(process.argv[3]) : await runtime(mode === "fold");
+const started = mode === "supervise" ? supervisor(process.argv[3]) : await runtime(mode === "fold", mode === "fold" ? foldPick(process.argv[3]) : undefined);
 // The mode fold has no service. Its timers of the telemetry and of the watches end with the process.
 if (started === undefined) {
   await blockWatch?.stop();

@@ -907,7 +907,7 @@ export interface InstanceOptions {
   readonly onReadingsFault?: RuntimeOptions["onReadingsFault"];
   /**
    * The store of the snapshot of the start (AL-105). The open of the runtime reads it. After the good start, a pass writes it
-   * at most once in each `START_SNAPSHOT_EVERY` of the wall clock. The entry gives the file `snapshot.sqlite` next to the log.
+   * at most once in each `START_SNAPSHOT_EVERY` of the wall clock. The entry gives the folder `snapshots` next to the log, with one file for each key (AL-169).
    */
   readonly startSnapshot?: RuntimeOptions["startSnapshot"];
   /** The instance gives each fault of a write of the snapshot of the start to this function. The pass continues. */
