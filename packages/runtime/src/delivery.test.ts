@@ -1710,3 +1710,49 @@ describe("the send limit in the passes of the runtime (AL-72)", () => {
     log.close();
   });
 });
+
+describe("the holds of a moving place at the edge of an area (AL-40)", () => {
+  // The fix of a phone at the edge of the warning area. The zone codes of the fix stand for its position: in, then out.
+  const MOVER: WatchedPlace = { id: "place:m" as PlaceId, codes: [{ system: "ugc", code: "KSZ083" }], bufferKm: 0 };
+  const AWAY: WatchedPlace = { ...MOVER, codes: [{ system: "ugc", code: "KSZ084" }] };
+
+  // Ten passes, 20 s apart: the fix crosses the edge 5 times. A place of the view is a fixed place, with no hold.
+  async function flap(fixed: boolean) {
+    const clock = fakeWallClock(T0);
+    const log = openRuntimeLog(":memory:");
+    const pushover = channel(PUSHOVER, "poll", () => clock.now());
+    const sms = channel(SMS, "none", () => clock.now());
+    let inside = true;
+    const runtime = openRuntime({
+      log,
+      clock,
+      sources: [SOURCE],
+      watch: () => ({ places: [KANSAS], kinds: ["met"] }),
+      view: fixed ? { ...VIEW, places: [KANSAS, MOVER] } : VIEW,
+      places: () => [KANSAS, inside ? MOVER : AWAY],
+      run: RUN,
+      delivery: { ...DELIVERY, recipients: [{ ...RECIPIENT, watch: { ...RECIPIENT.watch, places: [MOVER.id] } }], channels: [pushover.procedures, sms.procedures] },
+    });
+    for (let pass = 0; pass < 10; pass += 1) {
+      inside = pass % 2 === 0;
+      await runtime.pass();
+      await clock.advance(20 * SECOND);
+    }
+    const events = [...log.read()];
+    log.close();
+    return { sends: pushover.calls.send, ends: events.filter((event) => event.type === "escalation-end"), starts: events.filter((event) => event.type === "escalation") };
+  }
+
+  it("gives 1 send and no end to a moving place whose fix crosses the edge 5 times", async () => {
+    const moving = await flap(false);
+    expect(moving.sends).toHaveLength(1);
+    expect(moving.starts).toHaveLength(1);
+    expect(moving.ends).toEqual([]);
+  });
+
+  it("keeps the rule with no hold for a fixed place: each return starts a new episode", async () => {
+    const fixed = await flap(true);
+    expect(fixed.ends.length).toBeGreaterThan(1);
+    expect(fixed.sends.length).toBeGreaterThan(1);
+  });
+});
