@@ -5,7 +5,7 @@
  * that it gets.
  */
 import { isFrameClock, type WallClock } from "@mark1russell7/algebra/clock";
-import { bucketOf, channelDownPolicy, DEFAULT_SEND_LIMITS, downChannels, heldPersons, indicatorBreadth, indicatorSurprise, indicatorUnits, knowsReport, MIN_READS, limitShare, matchPlaces, observeConditions, ONLY_COPY, type StalePlace, type StoreBound, type WatchedPlace, type ChannelQuota, type ChannelSnapshot, type CopyWatch, type DrillWatch, type Duration, type EntryTimes, type Exhaustion, type FetchOutcome, type HeldPerson, type Incident, type IndicatorBreadth, type IndicatorSurprise, type Instant, type LatenessFolds, type LoopBlock, type MergeState, type ObserveCondition, type Report, type ReportId, type SourceDescriptor, type SourceId, type StoreFill, type SourceProcedures, type Watch, type ZoneRegions, type JointDown, type DriftCheck } from "@mark1russell7/alerts";
+import { bucketOf, channelDownPolicy, DEFAULT_SEND_LIMITS, downChannels, heldPersons, indicatorBreadth, indicatorSurprise, indicatorUnits, knowsReport, MIN_READS, limitShare, matchPlaces, observeConditions, ONLY_COPY, type PlaceId, type StalePlace, type StoreBound, type WatchedPlace, type ChannelQuota, type ChannelSnapshot, type CopyWatch, type DrillWatch, type Duration, type EntryTimes, type Exhaustion, type FetchOutcome, type HeldPerson, type Incident, type IndicatorBreadth, type IndicatorSurprise, type Instant, type LatenessFolds, type LoopBlock, type MergeState, type ObserveCondition, type Report, type ReportId, type SourceDescriptor, type SourceId, type StoreFill, type SourceProcedures, type Watch, type ZoneRegions, type JointDown, type DriftCheck } from "@mark1russell7/alerts";
 import type { ChunkOptions, FoldMark, FoldSnapshot } from "@mark1russell7/sqlite";
 import { errorMessage } from "@mark1russell7/text";
 import { compareCodeUnits } from "@mark1russell7/text/order";
@@ -444,6 +444,7 @@ export function openRuntime(options: RuntimeOptions): Runtime {
   const positions = new Map<string, ExchangeCursor>();
   // The places of the pass in progress (AL-40). Each pass reads them at its start. Thus each part of one pass reads the same places.
   let places: readonly WatchedPlace[] = config.places;
+  const fixedIds = new Set<PlaceId>(config.places.map((place) => place.id));
 
   const copies = options.copies;
   // The parts of the observe mode of the new sources (AL-73). With no delivery, no person watches. Thus each verdict passes after its window.
@@ -468,6 +469,8 @@ export function openRuntime(options: RuntimeOptions): Runtime {
           get places() {
             return places;
           },
+          // A place of the pass that is not a fixed place of the view is a moving place (AL-40). It gets the holds of the route.
+          ...(options.places === undefined ? {} : { moving: (id: PlaceId) => !fixedIds.has(id) }),
           link: config.link,
           state: () => state,
           append,
@@ -575,7 +578,8 @@ export function openRuntime(options: RuntimeOptions): Runtime {
     // The step reads the merge state after the fetch, thus a new report of the fetch has no miss. It reads only the own
     // merge state: a report that only another copy sees does not end or come back in this copy.
     const step = snapshotStep({ source: descriptor.id, started, ended, outcome, merge: state.own.merge, misses: misses.get(descriptor.id) ?? new Map(), limit, frame: state.steps.length });
-    const more = append(step.events);
+    // A step with no event writes no transaction (AL-165).
+    const more = step.events.length === 0 ? [] : append(step.events);
     // The counts change only after the write. A failed write leaves the old counts, thus the end comes later.
     misses.set(descriptor.id, step.misses);
     return [...conflicts, ...more];

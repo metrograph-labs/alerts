@@ -95,6 +95,8 @@ CopyMeasureOptions: build/index.d.ts#CopyMeasureOptions
 CopyPeer: build/index.d.ts#CopyPeer
 CopyRead: build/index.d.ts#CopyRead
 CopySettings: build/index.d.ts#CopySettings
+CopySounder: build/index.d.ts#CopySounder
+CopySounderDevice: build/index.d.ts#CopySounderDevice
 CopyStage: build/index.d.ts#CopyStage
 CopyTime: build/index.d.ts#CopyTime
 CopyWatch: build/index.d.ts#CopyWatch
@@ -322,6 +324,7 @@ NEEDS: build/index.d.ts#NEEDS
 NEED_ALERT_LEVELS: build/index.d.ts#NEED_ALERT_LEVELS
 NEED_LEVELS: build/index.d.ts#NEED_LEVELS
 NO_HISTORIES: build/index.d.ts#NO_HISTORIES
+NO_HOLDS: build/index.d.ts#NO_HOLDS
 NO_LABELS: build/index.d.ts#NO_LABELS
 NO_SYSTEM_LINES: build/index.d.ts#NO_SYSTEM_LINES
 NamedPart: build/index.d.ts#NamedPart
@@ -376,6 +379,7 @@ PersonInterests: build/index.d.ts#PersonInterests
 PersonWatch: build/index.d.ts#PersonWatch
 PlaceBreadth: build/index.d.ts#PlaceBreadth
 PlaceConfig: build/index.d.ts#PlaceConfig
+PlaceHolds: build/index.d.ts#PlaceHolds
 PlaceId: build/index.d.ts#PlaceId
 PlaceMatch: build/index.d.ts#PlaceMatch
 PlaceSurprise: build/index.d.ts#PlaceSurprise
@@ -623,6 +627,8 @@ copyPeerSchema: build/index.d.ts#copyPeerSchema
 copyProblems: build/index.d.ts#copyProblems
 copyReadSchema: build/index.d.ts#copyReadSchema
 copySettingsSchema: build/index.d.ts#copySettingsSchema
+copySounderDeviceSchema: build/index.d.ts#copySounderDeviceSchema
+copySounderSchema: build/index.d.ts#copySounderSchema
 copyStageSchema: build/index.d.ts#copyStageSchema
 copyStages: build/index.d.ts#copyStages
 copyUnreadAt: build/index.d.ts#copyUnreadAt
@@ -697,6 +703,7 @@ healthPayloadSchema: build/index.d.ts#healthPayloadSchema
 healthSource: build/index.d.ts#healthSource
 healthStateSchema: build/index.d.ts#healthStateSchema
 heldPersons: build/index.d.ts#heldPersons
+heldPlaces: build/index.d.ts#heldPlaces
 heldText: build/index.d.ts#heldText
 higherLevel: build/index.d.ts#higherLevel
 historyChangeAt: build/index.d.ts#historyChangeAt
@@ -709,6 +716,7 @@ historyRegionSchema: build/index.d.ts#historyRegionSchema
 historyTimes: build/index.d.ts#historyTimes
 historyView: build/index.d.ts#historyView
 holdKey: build/index.d.ts#holdKey
+holdPlaces: build/index.d.ts#holdPlaces
 inAudience: build/index.d.ts#inAudience
 inQuietWindow: build/index.d.ts#inQuietWindow
 incidentLineSchema: build/index.d.ts#incidentLineSchema
@@ -1575,7 +1583,22 @@ export interface CopySettings {
   readonly configFrom?: string;
   readonly leaveChannels?: readonly ChannelId[];
   readonly leaveSources?: readonly SourceId[];
+  readonly sounder?: CopySounder;
   readonly drift?: DriftConfig;
+}
+
+### build/index.d.ts#CopySounder
+export interface CopySounder {
+  readonly devices: Readonly<Record<string, CopySounderDevice>>;
+  readonly sounds?: Partial<Readonly<Record<Level, number>>>;
+  readonly gapMs?: Duration;
+}
+
+### build/index.d.ts#CopySounderDevice
+export interface CopySounderDevice {
+  readonly sound: readonly string[];
+  readonly levels?: Partial<Readonly<Record<Level, readonly string[]>>>;
+  readonly probe?: readonly string[];
 }
 
 ### build/index.d.ts#CopyStage
@@ -3145,6 +3168,9 @@ export declare const NEED_LEVELS: readonly ["life", "health", "comfort"];
 ### build/index.d.ts#NO_HISTORIES
 export declare const NO_HISTORIES: Histories;
 
+### build/index.d.ts#NO_HOLDS
+export declare const NO_HOLDS: PlaceHolds;
+
 ### build/index.d.ts#NO_LABELS
 export declare const NO_LABELS: WhyLabels;
 
@@ -3477,6 +3503,9 @@ export interface PlaceConfig {
   readonly moving?: MovingRule;
 }
 
+### build/index.d.ts#PlaceHolds
+export type PlaceHolds = ReadonlyMap<ReportId, readonly WatchedPlace[]>;
+
 ### build/index.d.ts#PlaceId
 export type PlaceId = Id<"PlaceId">;
 
@@ -3793,6 +3822,7 @@ export interface RouteInput {
   readonly incidents: readonly Incident[];
   readonly recipients: readonly Recipient[];
   readonly places: readonly WatchedPlace[];
+  readonly holds?: PlaceHolds | undefined;
   readonly assess?: AssessPolicy | undefined;
   readonly sources?: ReadonlySet<string> | undefined;
   readonly starts: readonly EscalationStart[];
@@ -4776,6 +4806,12 @@ export declare const copyReadSchema: z.ZodType<CopyRead, CopyRead>;
 ### build/index.d.ts#copySettingsSchema
 export declare const copySettingsSchema: z.ZodType<CopySettings, CopySettings>;
 
+### build/index.d.ts#copySounderDeviceSchema
+export declare const copySounderDeviceSchema: z.ZodType<CopySounderDevice, CopySounderDevice>;
+
+### build/index.d.ts#copySounderSchema
+export declare const copySounderSchema: z.ZodType<CopySounder, CopySounder>;
+
 ### build/index.d.ts#copyStageSchema
 export declare const copyStageSchema: z.ZodType<CopyStage, CopyStage>;
 
@@ -5004,6 +5040,9 @@ export declare const healthStateSchema: z.ZodType<HealthState, HealthState>;
 ### build/index.d.ts#heldPersons
 export declare function heldPersons(holds: readonly EscalationHold[], reports: readonly Pick<Report, "id" | "addresses" | "headline">[], window: Duration, at: Instant): HeldPerson[];
 
+### build/index.d.ts#heldPlaces
+export declare function heldPlaces(incident: Pick<Incident, "anchor" | "reports" | "areas">, places: readonly WatchedPlace[], holds: PlaceHolds): readonly WatchedPlace[];
+
 ### build/index.d.ts#heldText
 export declare function heldText(entry: Pick<HeldPerson, "alerts">): string;
 
@@ -5039,6 +5078,9 @@ export declare function historyView(kept: Histories, at: Instant, places: readon
 
 ### build/index.d.ts#holdKey
 export declare function holdKey(hold: Pick<EscalationHold, "incident" | "level" | "person" | "episode">): string;
+
+### build/index.d.ts#holdPlaces
+export declare function holdPlaces(holds: PlaceHolds, incidents: readonly Incident[], places: readonly WatchedPlace[], moving: (place: PlaceId) => boolean): PlaceHolds;
 
 ### build/index.d.ts#inAudience
 export declare function inAudience(item: Audience, person: PersonId): boolean;

@@ -181,7 +181,7 @@ describe("the first table", () => {
   });
 
   it("gives a kind of context the digest at most, also at the worst severity and urgency, and keeps the other transport kinds", () => {
-    expect(CONTEXT_KINDS).toEqual(["transport.transit"]);
+    expect(CONTEXT_KINDS).toEqual(["transport.transit", "transport.air.disruption"]);
     const worst = { severity: "extreme", urgency: "immediate" } as const;
     const transit = { code: "transport.transit.service-alert", label: "" };
     expect(tableLevel(DEFAULT_ASSESS_POLICY, { kind: transit, ...worst })).toEqual({
@@ -193,6 +193,8 @@ describe("the first table", () => {
     // A minor alert and an alert that passed stay in the map and the log.
     expect(tableLevel(DEFAULT_ASSESS_POLICY, { kind: transit, severity: "minor", urgency: "immediate" }).level).toBe("none");
     expect(tableLevel(DEFAULT_ASSESS_POLICY, { kind: transit, severity: "severe", urgency: "past" }).level).toBe("none");
+    // A ground stop of the FAA is context too (AL-165).
+    expect(tableLevel(DEFAULT_ASSESS_POLICY, { kind: { code: "transport.air.disruption", label: "" }, severity: "moderate", urgency: "immediate" })).toMatchObject({ class: "context", level: "digest" });
     expect(tableLevel(DEFAULT_ASSESS_POLICY, { kind: { code: "transport.rail.accident", label: "" }, ...worst })).toEqual({
       bySeverity: "urgent",
       byUrgency: "urgent",

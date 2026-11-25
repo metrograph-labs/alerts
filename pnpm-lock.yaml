@@ -648,6 +648,9 @@ importers:
       '@mark1russell7/alerts-channel-pushover':
         specifier: workspace:*
         version: link:../channel-pushover
+      '@mark1russell7/alerts-channel-sounder':
+        specifier: workspace:*
+        version: link:../channel-sounder
       '@mark1russell7/alerts-channel-twilio':
         specifier: workspace:*
         version: link:../channel-twilio

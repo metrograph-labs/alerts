@@ -85,6 +85,7 @@ import {
   type TwilioFetch,
 } from "@mark1russell7/alerts-channel-twilio";
 import { createWebhookChannel, parseWebhookSecrets, WEBHOOK_CHANNEL, webhookDescriptor, type WebhookFetch, type WebhookSecret } from "@mark1russell7/alerts-channel-webhook";
+import { commandSounder, createSounderChannel, SOUNDER_CHANNEL, sounderDescriptor, sounderProblems, type CommandRunner, type SounderChannelOptions } from "@mark1russell7/alerts-channel-sounder";
 import { CHANNEL_ID, createPushoverChannel, isPushoverKey, pushoverDescriptor, PUSHOVER_REPEAT_MS, PUSHOVER_TIMEOUT_MS, type PushoverChannelOptions } from "@mark1russell7/alerts-channel-pushover";
 import { createEmscSource, EMSC_DESCRIPTOR } from "@mark1russell7/alerts-source-emsc";
 import { createIpawsSource, IPAWS_DESCRIPTOR, WEA_EXPECTATION } from "@mark1russell7/alerts-source-ipaws";
@@ -117,7 +118,7 @@ import type { Meter } from "@opentelemetry/api";
 import type { UseRead } from "@mark1russell7/stack-spend";
 import { limitProblems, limitWatches, type LimitWatch } from "./use.ts";
 import { jointReader, jointWatch, type JointWatch } from "./joint.ts";
-import { driftWatch, type DriftRunner, type DriftWatch } from "./drift.ts";
+import { commandRunner, driftWatch, type DriftRunner, type DriftWatch } from "./drift.ts";
 import { billingWatch, type BillingWatch } from "./billing.ts";
 import { chainProblems, chainWatch, readChain } from "./chain.ts";
 import { balanceWatch, SPEND_UNIT, spendEntryOf, spendGates, spendQuota, spendUnits, spendWatch, type BalanceWatch, type SpendGates, type SpendWatch } from "./balance.ts";
@@ -252,7 +253,7 @@ export { DELAY_LIMITS };
  * recipient against this list: the channel of each step, and the fields of each address. Thus the loader
  * and the instance agree on the channels.
  */
-export const INSTANCE_CHANNELS: readonly ChannelDescriptor[] = [pushoverDescriptor(), twilioCallDescriptor(), twilioTextDescriptor(), webhookDescriptor()];
+export const INSTANCE_CHANNELS: readonly ChannelDescriptor[] = [pushoverDescriptor(), twilioCallDescriptor(), twilioTextDescriptor(), webhookDescriptor(), sounderDescriptor()];
 
 /**
  * The names of the keys of `secrets.env` for the Twilio call channel. The secret is the secret of an API key
@@ -364,13 +365,42 @@ function leaveProblems(copy: CopySettings): string[] {
 }
 
 /**
- * This function gives the channels that the instance sends on. Pushover is always one. The Twilio call channel needs the keys of
- * `TWILIO_KEYS`, and the text channel also needs `TWILIO_TEXT_FROM_KEY`. The webhook channel needs `WEBHOOK_SECRET_KEY`. A step
- * on another channel of `INSTANCE_CHANNELS` stops the start.
+ * This function gives the options of the sounder channel of a copy (AL-41), or `undefined` when the copy has no field
+ * `sounder`. Each device starts its programs with the runner `run`, with no shell.
  */
-export function instanceSenders(secret: SecretLookup): readonly ChannelId[] {
+export function sounderOptions(copy: CopySettings, run: CommandRunner, now: () => Instant = Date.now): SounderChannelOptions | undefined {
+  const sounder = copy.sounder;
+  if (sounder === undefined) return undefined;
+  const sounders = Object.fromEntries(
+    Object.entries(sounder.devices).map(([name, device]) => [
+      name,
+      commandSounder({ sound: device.sound, run, ...(device.levels === undefined ? {} : { levels: device.levels }), ...(device.probe === undefined ? {} : { probe: device.probe }) }),
+    ]),
+  );
+  return { sounders, now, ...(sounder.sounds === undefined ? {} : { sounds: sounder.sounds }), ...(sounder.gapMs === undefined ? {} : { gapMs: sounder.gapMs }) };
+}
+
+/**
+ * This function gives the problems of the field `sounder` of a copy (AL-41). These are the problems of `sounderProblems`.
+ * Also, a copy with a sounder does not leave the channel to the other copies. The problems name no program and no argument.
+ */
+export function copySounderProblems(copy: CopySettings): string[] {
+  const options = sounderOptions(copy, () => Promise.resolve({ exitCode: 0 }));
+  if (options === undefined) return [];
+  const left = (copy.leaveChannels ?? []).includes(SOUNDER_CHANNEL)
+    ? [`The file ${COPY_FILE}: the copy has the field sounder, and its field leaveChannels names the channel ${SOUNDER_CHANNEL}. Remove one of the two.`]
+    : [];
+  return [...sounderProblems(options).map((problem) => `The file ${COPY_FILE}: the field sounder: ${problem}`), ...left];
+}
+
+/**
+ * This function gives the channels that the instance sends on. Pushover is always one. The Twilio call channel needs the keys of
+ * `TWILIO_KEYS`, and the text channel also needs `TWILIO_TEXT_FROM_KEY`. The webhook channel needs `WEBHOOK_SECRET_KEY`. The sounder channel
+ * needs the field `sounder` of the copy (AL-41). A step on another channel of `INSTANCE_CHANNELS` stops the start.
+ */
+export function instanceSenders(secret: SecretLookup, copy: CopySettings = ONLY_COPY): readonly ChannelId[] {
   const webhook = webhookSetup(secret);
-  const hooks = webhook.tag === "ok" && webhook.value !== undefined ? [WEBHOOK_CHANNEL] : [];
+  const hooks = [...(webhook.tag === "ok" && webhook.value !== undefined ? [WEBHOOK_CHANNEL] : []), ...(copy.sounder === undefined ? [] : [SOUNDER_CHANNEL])];
   const twilio = twilioSetup(secret);
   if (twilio.tag === "err" || twilio.value === undefined) return [CHANNEL_ID, ...hooks];
   return twilio.value.textFrom === undefined ? [CHANNEL_ID, TWILIO_CHANNEL, ...hooks] : [CHANNEL_ID, TWILIO_CHANNEL, TEXT_CHANNEL_ID, ...hooks];
@@ -588,6 +618,7 @@ export const RANK_FLOOR: Duration = DELIVERY_TIMES.callLimit + 3 * EXCHANGE_EVER
  * - one key of the NWWS-OI account of the copy and not the other, or an account of the copy with no keys
  * - an id of a source with no account in the field `accounts` of the copy
  * - an id in the field `leaveChannels` of the copy that is not a channel of `INSTANCE_CHANNELS`
+ * - each problem of `copySounderProblems`: a bad field `sounder` of the copy (AL-41)
  * - a step of a policy on a channel with no sender, when the copy does not leave the channel to the other copies
  * - a step on a channel with a cost, when the configuration has no spend entry for its provider
  * - a place that no regional source covers. A source with the coverage `global` covers each place, with no code.
@@ -620,7 +651,7 @@ export function instanceProblems(parsed: ParsedConfig, secret: SecretLookup, des
   const nwwsProblems = nwws.tag === "err" ? nwws.error : [];
   // A step on a channel with no sender fails each send of the step. Thus it stops the start. A copy sends nothing on a
   // channel that it leaves to the other copies (AL-55). Thus such a step needs no sender of this copy.
-  const senders = instanceSenders(secret);
+  const senders = instanceSenders(secret, copy);
   const left = new Set<string>(copy.leaveChannels ?? []);
   const senderProblems = parsed.recipients.flatMap((recipient) =>
     recipient.policies.flatMap((policy) =>
@@ -659,6 +690,7 @@ export function instanceProblems(parsed: ParsedConfig, secret: SecretLookup, des
     ...nwwsProblems,
     ...accountProblems(copy),
     ...leaveProblems(copy),
+    ...copySounderProblems(copy),
     ...senderProblems,
     ...spendProblems,
     ...placeProblems,
@@ -799,6 +831,11 @@ export interface InstanceOptions {
    * A test gives a fake. The instance starts a read only for a peer with the field `billing`, when the copy is down.
    */
   readonly billingRunner?: DriftRunner;
+  /**
+   * The runner of the programs of the sounders of the copy (AL-41). The default is `commandRunner` of `drift.ts`. A test
+   * gives a fake. The instance starts a program only when the copy has the field `sounder`.
+   */
+  readonly sounderRunner?: CommandRunner;
   /** The store of the file of the outage bundles. The entry gives the file of the slot. Without it, each deploy makes the bundles. */
   readonly outageBundles?: BundleStore;
   /**
@@ -1160,6 +1197,8 @@ export function openInstance(options: InstanceOptions): Instance {
   });
   const twilio = twilioChannel(options, config.spend, options.config.optIn);
   const webhook = webhookChannel(options, () => wall.now());
+  const sounding = sounderOptions(copy, options.sounderRunner ?? commandRunner, () => wall.now());
+  const sounder = sounding === undefined ? undefined : createSounderChannel(sounding);
   // The worker of the exchange reads the runtime only in its rounds, after the start of the service. Thus it gets the runtime through a function.
   const peers = copy.peers ?? [];
   const worker =
@@ -1197,6 +1236,7 @@ export function openInstance(options: InstanceOptions): Instance {
     pushover,
     ...(twilio === undefined ? [] : [twilio.channel, ...(twilio.text === undefined ? [] : [twilio.text])]),
     ...(webhook === undefined ? [] : [webhook]),
+    ...(sounder === undefined ? [] : [sounder]),
   ];
   // The labels of the places go only into the why line of each message. The policy of the configuration replaces the default policy of the core.
   // A person with a score rule needs the priors in the policy (AL-31). With no score rule, the policy stays the same.

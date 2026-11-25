@@ -7,7 +7,7 @@ import { localTime } from "@mark1russell7/algebra/clock";
 import { err, ok, type Result } from "@mark1russell7/optional";
 import { canonicalHash } from "@mark1russell7/rigor-generators";
 import { compareCodeUnits } from "@mark1russell7/text/order";
-import type { Address, AssessPolicy, ChannelDescriptor, ChannelId, ContactServices, Duration, EscalationPolicy, Instant, InterestGraph, NodeKey, PersonId, PersonWatch, PlaceId, Position, RegionCode, SourceId, WatchedPlace } from "./contracts.ts";
+import type { Address, AssessPolicy, ChannelDescriptor, ChannelId, ContactServices, Duration, EscalationPolicy, Instant, InterestGraph, Level, NodeKey, PersonId, PersonWatch, PlaceId, Position, RegionCode, SourceId, WatchedPlace } from "./contracts.ts";
 import { assess, CHANNEL_KIND, DEFAULT_ASSESS_POLICY, DRILL_KIND, matchSubjects, reachedAssessment } from "./assess.ts";
 import type { ChannelDownConfig } from "./channel-down.ts";
 import { policyFor, recipientProblems, ruleSteps, type ChannelRule, type Recipient } from "./delivery.ts";
@@ -488,6 +488,31 @@ export interface CopyPeer {
 }
 
 /**
+ * The programs of one sounder of a copy (AL-41). The values are private. Only `copy.json` holds them.
+ *
+ * - The runtime starts each program with no shell. The program of one sound ends when the sound ends.
+ * - A level with a program in `levels` has its own sound. Each other level has the program `sound`.
+ */
+export interface CopySounderDevice {
+  /** The program of one sound and its arguments. */
+  readonly sound: readonly string[];
+  /** The program of the sound of a level, for a level with a sound of its own. */
+  readonly levels?: Partial<Readonly<Record<Level, readonly string[]>>>;
+  /** The program that examines the device with no sound. An exit code of 0 is a pass. */
+  readonly probe?: readonly string[];
+}
+
+/** The sounder channel of a copy (AL-41): the devices in the home of the copy, and the counts of the sounds. */
+export interface CopySounder {
+  /** The programs of each device, by the name of the device. The channel checks the form of each name. */
+  readonly devices: Readonly<Record<string, CopySounderDevice>>;
+  /** The most sounds of one message at a level. A level with no value has the count of the channel. */
+  readonly sounds?: Partial<Readonly<Record<Level, number>>>;
+  /** The wait between two sounds of a message. The default of the channel is 1 second. */
+  readonly gapMs?: Duration;
+}
+
+/**
  * The settings of one copy of the system: the file `copy.json`. Each copy has its own file. The configuration and the
  * secrets are the same in each copy. A runtime with no file is the only copy, `ONLY_COPY`.
  */
@@ -525,6 +550,11 @@ export interface CopySettings {
    * An id that names no source of the instance changes nothing.
    */
   readonly leaveSources?: readonly SourceId[];
+  /**
+   * The sounder channel of this copy (AL-41). A copy with no field sends nothing on the channel sounder. Thus a step on
+   * that channel needs the channel in `leaveChannels`, or the start stops.
+   */
+  readonly sounder?: CopySounder;
   /**
    * The drift checks of the host of this copy (AL-139). Without them, the copy starts no drift check. A command has the
    * paths and the programs of one host. Thus the checks are a setting of the copy, and a mirror does not take them.

@@ -15,7 +15,9 @@ import {
   digestMessageOf,
   exhaustions,
   holdKey,
+  holdPlaces,
   limitRoutes,
+  NO_HOLDS,
   throttleRoutes,
   graphLabels,
   incidents,
@@ -48,6 +50,8 @@ import {
   type Throttle,
   type ScorePriors,
   type SendOutcome,
+  type PlaceHolds,
+  type PlaceId,
   type WatchedPlace,
   type WhyLabels,
   type WhyLimit,
@@ -215,6 +219,11 @@ export interface DeliveryContext {
   /** The id of the run. Its characters match `COPY_ID`. Each copy id starts with it, thus two runs do not give the same copy id. */
   readonly run: string;
   readonly places: readonly WatchedPlace[];
+  /**
+   * This function tells the moving places (AL-40). With it, the dispatcher keeps the holds of the moving places in memory
+   * (`holdPlaces`), and the route reads them. Without it, no place has a hold.
+   */
+  readonly moving?: ((place: PlaceId) => boolean) | undefined;
   /** The policy of the link rule of the merge, the policy of the view. The default is `DEFAULT_LINK_POLICY`. */
   readonly link?: LinkPolicy | undefined;
   state(): RuntimeState;
@@ -364,6 +373,8 @@ export function createDispatcher(options: DeliveryOptions, context: DeliveryCont
   if (!COPY_ID.test(context.run)) throw new Error(`The run id "${context.run}" has a character that a copy id cannot have. Use letters, digits, _ and -.`);
   const polled = new Map<string, Instant>();
   const waits = new Map<string, Instant>();
+  // The holds of the moving places, in memory only (AL-40). A restart loses them. They hold a position, thus no log gets them.
+  let holds: PlaceHolds = NO_HOLDS;
   // The send in flight of each key. Each flight is an object, thus a late end does not remove a later flight of the same key.
   const flying = new Map<string, Flight>();
   // The stale copies that the channel can repeat, by copy id. Each step stops them.
@@ -410,6 +421,8 @@ export function createDispatcher(options: DeliveryOptions, context: DeliveryCont
       for (const [call, until] of waits) if (until <= at) waits.delete(call);
       const merged = incidents(context.state().merge, at, { link });
       const found = context.cut === undefined ? merged : context.cut(merged, at);
+      // The holds read each incident of the merge, also an incident that the observe mode cuts. Thus a cut keeps its holds.
+      if (context.moving !== undefined) holds = holdPlaces(holds, merged, context.places, context.moving);
       // The routes at the time of the step, after the send limit of each person and the throttle of each channel. The new
       // holds and suppressions go to the log in step 2.
       const routesNow = (): { readonly routes: readonly Route[]; readonly holds: readonly EscalationHold[]; readonly suppressions: readonly Suppression[] } => {
@@ -419,6 +432,7 @@ export function createDispatcher(options: DeliveryOptions, context: DeliveryCont
           incidents: found,
           recipients: options.recipients,
           places: context.places,
+          ...(context.moving === undefined ? {} : { holds }),
           assess: options.assess,
           sources: options.sources,
           starts: state.starts,
