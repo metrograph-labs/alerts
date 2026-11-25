@@ -6325,22 +6325,24 @@
       "note": "CC BY 4.0 with the credit of Fintraffic. The limit for rail is 30 requests per minute per IP."
     },
     "cost": "free",
-    "delay": "unknown",
+    "delay": "One read at 13:31 UTC on 2026-11-25 held an actual time of 13:32 UTC.",
     "history": "unknown (the docs suggest about 2 months)",
-    "rateLimit": "30 requests per minute per IP",
+    "rateLimit": "30 requests per minute per IP. The adapter asks once each 5 minutes, with one GraphQL query.",
     "calibration": null,
     "coverage": "Finland",
     "origins": [
       "fintraffic"
     ],
     "path": [
-      "unknown"
+      "rata.digitraffic.fi"
     ],
-    "subjectIds": null,
+    "subjectIds": [
+      "iso3166"
+    ],
     "risks": [],
-    "decision": "later",
-    "adapter": null,
-    "reason": "Train delays and cancellations for Finland under CC BY 4.0, with no key. The ranking of round 10 puts other sources first.",
+    "decision": "adopt",
+    "adapter": "@mark1russell7/alerts-source-digitraffic-rail",
+    "reason": "Train delays and cancellations for Finland under CC BY 4.0, with no key. The adapter counts the running, late and cancelled passenger trains of each category for the country, from one GraphQL query each 5 minutes.",
     "evidence": [
       "https://www.digitraffic.fi/en/railway-traffic/",
       "https://www.digitraffic.fi/en/terms-of-service/"

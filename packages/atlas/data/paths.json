@@ -1776,6 +1776,12 @@
     "note": "The host of the feed of abusech-threatfox."
   },
   {
+    "id": "rata.digitraffic.fi",
+    "name": "rata.digitraffic.fi",
+    "kind": "host",
+    "note": "The host of the rail API of digitraffic-rail."
+  },
+  {
     "id": "tie.digitraffic.fi",
     "name": "tie.digitraffic.fi",
     "kind": "host",

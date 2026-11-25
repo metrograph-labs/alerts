@@ -98,6 +98,7 @@ import { createEnergyChartsSource, ENERGY_CHARTS_DESCRIPTOR } from "@mark1russel
 import { createEia930Source, type Eia930FetchOptions } from "@mark1russell7/alerts-source-eia-930";
 import { createFaaSource, FAA_DESCRIPTOR } from "@mark1russell7/alerts-source-faa";
 import { createNdwSource, NDW_DESCRIPTOR } from "@mark1russell7/alerts-source-ndw";
+import { createRailSource, RAIL_DESCRIPTOR } from "@mark1russell7/alerts-source-digitraffic-rail";
 import { createKevSource, KEV_DESCRIPTOR } from "@mark1russell7/alerts-source-cisa-kev";
 import { CERT_PROVIDERS, certDescriptor, createCertSource, type CertFetchOptions } from "@mark1russell7/alerts-source-cert-feeds";
 import { createCsafSource, CSAF_PROVIDERS, csafDescriptor, type CsafFetchOptions } from "@mark1russell7/alerts-source-csaf";
@@ -524,6 +525,7 @@ export const INSTANCE_SOURCES: readonly SourceDescriptor[] = [
   ENERGY_CHARTS_DESCRIPTOR,
   FAA_DESCRIPTOR,
   NDW_DESCRIPTOR,
+  RAIL_DESCRIPTOR,
   KEV_DESCRIPTOR,
   ...CSAF_PROVIDERS.map((provider) => csafDescriptor(provider)),
   ...CERT_PROVIDERS.map((provider) => certDescriptor(provider)),
@@ -1075,6 +1077,7 @@ export function openInstance(options: InstanceOptions): Instance {
     createEnergyChartsSource,
     createFaaSource,
     createNdwSource,
+    createRailSource,
     ...(eiaKey === "" ? [] : [eiaFactory(eiaKey)]),
     createKevSource,
     ...CSAF_PROVIDERS.map((provider) => (fetchOptions: CsafFetchOptions) => createCsafSource(provider, fetchOptions)),

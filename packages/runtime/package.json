@@ -32,6 +32,7 @@
     "@mark1russell7/alerts-source-energy-charts": "workspace:*",
     "@mark1russell7/alerts-source-faa": "workspace:*",
     "@mark1russell7/alerts-source-ndw": "workspace:*",
+    "@mark1russell7/alerts-source-digitraffic-rail": "workspace:*",
     "@mark1russell7/alerts-source-gcp": "workspace:*",
     "@mark1russell7/alerts-source-gdelt": "workspace:*",
     "@mark1russell7/alerts-source-gfz": "workspace:*",
