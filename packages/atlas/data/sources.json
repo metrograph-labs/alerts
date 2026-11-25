@@ -25540,5 +25540,329 @@
     "evidence": [
       "https://api.politie.nl/v4/vermist?language=nl&maxnumberofitems=1"
     ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 36,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "bbk-nina-api",
+    "name": "BBK NINA API: the warnings of MoWaS and of the police in Germany (JSON)",
+    "classes": [
+      "security.explosive-ordnance",
+      "security.active-threat",
+      "safety.national-emergency",
+      "infra.telecom.outage"
+    ],
+    "url": "https://warnung.bund.de/api31/mowas/mapData.json",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The research found no terms of use for the API. The imprint page of warnung.bund.de needs JavaScript. warnung.bund.de has no robots.txt. The BBK sends each MoWaS warning to warning multipliers, for example broadcasters and app servers."
+    },
+    "delay": "Minutes to hours: the MoWaS list of the read of 2026-11-25 had a warning that a city sent less than two hours before.",
+    "history": "None: each list holds the current warnings. The API also gives the history of one MoWaS warning.",
+    "coverage": "Germany: the warnings of the federal, state and local authorities through MoWaS, and the police warnings since July 2025. The MoWaS list of 2026-11-25 had 10 warnings. Two of them were bomb finds.",
+    "origins": [
+      "de-warning-authorities"
+    ],
+    "path": [
+      "warnung.bund.de"
+    ],
+    "reason": "The BBK gives the warnings of MoWaS and of the police as JSON with no key. Each warning has a CAP form with an event code of the BBK. The bomb finds, the police warnings of attacks, the federal warnings and the warnings of phone network outages give these classes.",
+    "evidence": [
+      "https://nina.api.bund.dev/",
+      "https://github.com/bundesAPI/nina-api",
+      "https://warnung.bund.de/api31/mowas/mapData.json",
+      "https://warnung.bund.de/api31/police/mapData.json",
+      "https://warnung.bund.de/api31/appdata/gsb/eventCodes/eventCodes.json",
+      "https://www.bbk.bund.de/DE/Warnung-Vorsorge/Bundesweiter-Warntag/bundesweiter-warntag_node.html",
+      "https://www.sonntagsblatt.de/artikel/medien/nina-warnt-jetzt-auch-vor-amoklaeufen-und-bombendrohungen-was-die-notfall-app-kann",
+      "https://winfuture.de/news,134527.html",
+      "https://www.boerse-online.de/dpa-afx/roundup-2-stoerung-im-mobilfunk-bei-o2-auch-notrufe-teils-nicht-anwaehlbar-246643.html"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 36,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "naad-alerts",
+    "name": "Pelmorex NAAD System: the public alerts of Canada (CAP in Atom)",
+    "classes": [
+      "security.explosive-ordnance",
+      "security.active-threat",
+      "safety.national-emergency",
+      "infra.telecom.outage",
+      "infra.telecom.911-outage",
+      "civic.school-closure"
+    ],
+    "url": "https://rss.naad-adna.pelmorex.com/",
+    "access": "feed",
+    "auth": "none",
+    "terms": {
+      "url": "https://alerts.pelmorex.com/terms-and-conditions-of-use",
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The terms tell that the alerts come from authorized government agencies of Canada, as is. They give no limit on automated reading or redistribution. The robots.txt of the documentation site blocks some crawlers of AI companies. The feed host has no robots.txt."
+    },
+    "delay": "Minutes: the newest entry of the read of 2026-11-25 was less than one minute old.",
+    "history": "The feed holds the recent alerts. Each entry links its CAP file in an archive by date.",
+    "coverage": "Canada: the alerts of the authorized government agencies, with the event codes of CAP-CP. The read of 2026-11-25 had 203 entries: 173 actual and 30 tests. Most were weather, and one was a telephone service outage.",
+    "origins": [
+      "canada-alerting-authorities"
+    ],
+    "path": [
+      "rss.naad-adna.pelmorex.com"
+    ],
+    "reason": "The NAAD System collects the public alerts of Canada and gives them in CAP with no key and no charge. The CAP-CP event list has the codes explosive, dangerPerson, terrorism, civilEmerg, telephone, 911Service and schoolClose. These codes give the classes.",
+    "evidence": [
+      "https://rss.naad-adna.pelmorex.com/",
+      "https://alerts.pelmorex.com/",
+      "https://alerts.pelmorex.com/terms-and-conditions-of-use",
+      "https://alerts.pelmorex.com/robots.txt",
+      "https://www.publicsafety.gc.ca/cnt/rsrcs/pblctns/capcp-vnt-rfrncs/index4-eng.aspx"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 36,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "jrc-asap-hotspots",
+    "name": "JRC ASAP: the hotspots of agricultural production anomalies (CSV)",
+    "classes": [
+      "infra.supply-chain.food"
+    ],
+    "url": "https://agricultural-production-hotspots.ec.europa.eu/files/hotspots_ts.zip",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.jrc.ec.europa.eu/dataset/jrc-10112-10001",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The JRC Data Catalogue gives the ASAP data with no limitations of access, with no registration. The reuse notice of the European Commission permits reuse with acknowledgement of the source. The robots.txt blocks /data/ and /public/, not /files/."
+    },
+    "delay": "Weeks: JRC analysts make a hotspot assessment each month. The file of the read of 2026-11-25 had a change on 2026-11-10, and its first rows had the date 2026-10-11.",
+    "history": "Each hotspot assessment since October 2016.",
+    "coverage": "The countries that ASAP monitors: the hotspot code of each country, a narrative of the analyst, and the counts of the warnings of crops and rangeland.",
+    "origins": [
+      "eu-jrc"
+    ],
+    "path": [
+      "agricultural-production-hotspots.ec.europa.eu"
+    ],
+    "reason": "JRC analysts mark each country with a critical anomaly of crops or rangeland as a hotspot. A new hotspot is an early signal of a food shortage. The warnings come from the satellite data of the JRC, so the source is apart from FEWS NET.",
+    "evidence": [
+      "https://agricultural-production-hotspots.ec.europa.eu/download.php",
+      "https://agricultural-production-hotspots.ec.europa.eu/files/hotspots_ts.zip",
+      "https://agricultural-production-hotspots.ec.europa.eu/robots.txt",
+      "https://data.jrc.ec.europa.eu/dataset/jrc-10112-10001"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 36,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "faa-tfr-list",
+    "name": "FAA: the list of temporary flight restrictions (JSON)",
+    "classes": [
+      "transport.air.notam"
+    ],
+    "url": "https://tfr.faa.gov/tfrapi/exportTfrList",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.faa.gov/web_policies",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The FAA is an agency of the US government, so its works are in the public domain in the United States. The web policies page gives no rule on automated reading. tfr.faa.gov has no robots.txt."
+    },
+    "delay": "Hours: the list of the read of 2026-11-25 had TFRs with a creation date of the same day.",
+    "history": "None: the list holds the active and the planned TFRs.",
+    "coverage": "The United States: 53 TFRs in the read of 2026-11-25. Their types were security, hazards, VIP, air shows and sports, drones at public gatherings, and special.",
+    "origins": [
+      "faa"
+    ],
+    "path": [
+      "tfr.faa.gov"
+    ],
+    "reason": "The FAA gives each temporary flight restriction with its NOTAM number, its type, its facility and its place as JSON with no key. The class has 1 source, so its gap stays.",
+    "evidence": [
+      "https://tfr.faa.gov/tfrapi/exportTfrList",
+      "https://tfr.faa.gov/robots.txt",
+      "https://www.faa.gov/web_policies"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 36,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "nav-canada-notam",
+    "name": "NAV CANADA: the NOTAMs of the flight planning site (JSON)",
+    "classes": [
+      "transport.air.notam"
+    ],
+    "url": "https://plan.navcanada.ca/weather/api/alpha/?site=CYOW&alpha=notam",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.navcanada.ca/en/terms-of-use.aspx",
+      "automated": "forbidden",
+      "redistribution": "forbidden",
+      "note": "The terms permit one copy for personal, non-commercial home use only. They forbid a copy of the data in any way for any purpose without written permission. NAV CANADA sells its aeronautical data under a licence."
+    },
+    "delay": "Hours: the read of 2026-11-25 had NOTAMs that started on the same day.",
+    "history": "None: the reply holds the active NOTAMs of a site.",
+    "coverage": "Canada: the NOTAMs of each aerodrome and region. The read for one aerodrome on 2026-11-25 gave 16 NOTAMs.",
+    "origins": [
+      "nav-canada"
+    ],
+    "path": [
+      "plan.navcanada.ca"
+    ],
+    "reason": "The API answers with no key. But the terms forbid commercial use and a copy of the data. A source with such terms does not close a gap (AL-195).",
+    "evidence": [
+      "https://plan.navcanada.ca/weather/api/alpha/?site=CYOW&alpha=notam",
+      "https://www.navcanada.ca/en/terms-of-use.aspx"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 36,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "nsw-school-closures",
+    "name": "NSW Department of Education: the closed public schools (ArcGIS)",
+    "classes": [
+      "civic.school-closure"
+    ],
+    "url": "https://portal.data.nsw.gov.au/arcgis/rest/services/Hosted/School_Closure_Public/FeatureServer/layers",
+    "access": "api",
+    "auth": "account",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The research did not read the terms, because the layer needs a token."
+    },
+    "delay": "unknown",
+    "history": "unknown",
+    "coverage": "New South Wales: the public schools that are closed, for example for a bushfire or a flood.",
+    "origins": [
+      "nsw-education"
+    ],
+    "path": [
+      "portal.data.nsw.gov.au"
+    ],
+    "reason": "The layer answered with the error Token Required. A source that needs a token does not close a gap (AL-195), so the round did not try again.",
+    "evidence": [
+      "https://portal.data.nsw.gov.au/arcgis/rest/services/Hosted/School_Closure_Public/FeatureServer/layers?f=json"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 36,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "dgpa-closures",
+    "name": "DGPA of Taiwan: the closures of work and schools for natural disasters (CAP)",
+    "classes": [
+      "civic.school-closure"
+    ],
+    "url": "https://alerts.ncdr.nat.gov.tw/RssAtomFeed.ashx?AlertType=33",
+    "access": "feed",
+    "auth": "account",
+    "terms": {
+      "url": "https://data.gov.tw/license",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The open data platform of Taiwan lists the feed under the Open Government Data License. That licence permits reuse with attribution."
+    },
+    "delay": "unknown",
+    "history": "unknown",
+    "coverage": "Taiwan: the closures of work and schools of each city and county for typhoons and other natural disasters.",
+    "origins": [
+      "dgpa"
+    ],
+    "path": [
+      "alerts.ncdr.nat.gov.tw"
+    ],
+    "reason": "The feed answered that a member login is necessary. A source that needs an account does not close a gap (AL-195), so the round did not log in.",
+    "evidence": [
+      "https://data.gov.tw/api/v2/rest/dataset/20457",
+      "https://alerts.ncdr.nat.gov.tw/RssAtomFeed.ashx?AlertType=33"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 36,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "wvde-closings",
+    "name": "West Virginia Department of Education: the school closings (XML)",
+    "classes": [
+      "civic.school-closure"
+    ],
+    "url": "https://wvde.state.wv.us/closings/xml-fields.php",
+    "access": "feed",
+    "auth": "unknown",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The research found no terms. The robots.txt of wvde.state.wv.us blocks only the paths of the site software."
+    },
+    "delay": "unknown",
+    "history": "unknown",
+    "coverage": "West Virginia: the closings and delays of the schools of each county, according to a search result.",
+    "origins": [
+      "wvde"
+    ],
+    "path": [
+      "wvde.state.wv.us"
+    ],
+    "reason": "A search result names XML feeds of the school closings of West Virginia. The documentation page gave 404, so the round did not find the feed.",
+    "evidence": [
+      "https://wvde.state.wv.us/closings/xml-fields.php",
+      "https://wvde.state.wv.us/robots.txt"
+    ]
   }
 ]

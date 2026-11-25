@@ -1761,5 +1761,63 @@
       "members": 1757,
       "cause": "Round 35 adds 4 planned sources and 2 later sources, and moves 3 later sources to plan. Five classes get a second source, so the gaps go from 77 to 72. No layer of the cover changes."
     }
+  },
+  {
+    "round": 36,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took the classes with a gap and ranked them by their value to a person at home. Life safety came first, then health, property and travel. It looked for national public alerting systems with open CAP feeds, because one such feed covers many classes. It read the terms and the robots.txt of each candidate. One fetch went to each URL, with the user agent alerts-atlas-research/1.0. A source that needs an account, a key or a token, or whose terms forbid commercial use, did not close a gap (AL-195).",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The OpenAPI document of the NINA API: https://github.com/bundesAPI/nina-api",
+      "The Atom feed of the NAAD System of Canada: https://rss.naad-adna.pelmorex.com/",
+      "The CAP-CP event list of Public Safety Canada: https://www.publicsafety.gc.ca/cnt/rsrcs/pblctns/capcp-vnt-rfrncs/index4-eng.aspx",
+      "The download page of the ASAP hotspots of the JRC: https://agricultural-production-hotspots.ec.europa.eu/download.php",
+      "The TFR list of the FAA: https://tfr.faa.gov/tfrapi/exportTfrList",
+      "The CAP platform of the NCDR of Taiwan: https://alerts.ncdr.nat.gov.tw/RssAtomFeed.ashx"
+    ],
+    "queries": [
+      "NINA API warnung.bund.de Nutzungsbedingungen Lizenz Warnmeldungen Open Data BBK",
+      "NAAD System Pelmorex terms of use last mile distributor CAP feed redistribution",
+      "CAP-CP event list \"explosive\" \"telephoneService\" \"collapse\" \"dangerPerson\" profile:CAP-CP:Event",
+      "NINA Warn-App Polizeimeldungen Polizei warnt Amoklage Gefahrenlage Bundesländer BBK",
+      "NINA Warnmeldung Störung Telefonnetz Mobilfunk Festnetz Ausfall Gefahreninformation Landkreis",
+      "JRC ASAP anomaly hotspots agricultural production download csv hotspots country warnings data",
+      "NAV CANADA CFPS plan.navcanada.ca terms of use NOTAM data redistribution automated",
+      "school closures open data API JSON feed emergency school closures education department current closures",
+      "alerts.ncdr.nat.gov.tw 示警 類別 停班停課 鐵路事故 CAP 開放資料 RssAtomFeed",
+      "Alertswiss API JSON open data alerts feed polyalert"
+    ],
+    "notes": [
+      "bbk-nina-api and naad-alerts are new. Each gives security.explosive-ordnance, security.active-threat, safety.national-emergency and infra.telecom.outage, so each of these classes has 2 sources from 2 origins.",
+      "The MoWaS list of 2026-11-25 had two bomb finds. The NAAD feed of the same day had a telephone service outage. News reports tell that NINA warned of phone network outages in 2021 and 2022.",
+      "jrc-asap-hotspots is new. With fews-net-fdw-ipc-api, infra.supply-chain.food has 2 sources from 2 origins. The JRC hotspots come from satellite data, apart from FEWS NET.",
+      "faa-tfr-list is new. transport.air.notam has 1 source, so its gap stays. nav-canada-notam is later, because its terms forbid commercial use and a copy of the data.",
+      "naad-alerts gives civic.school-closure for Canada. nsw-school-closures needs a token, and dgpa-closures needs a member login, so both are later. The feed of wvde-closings was not found.",
+      "The research found no terms of use for the NINA API. Its terms of automated use are unclear, and an adapter needs a new read of the terms.",
+      "The robots.txt of the documentation site of the NAAD System blocks some crawlers of AI companies. The terms of the feed do not forbid automated use, and the feed host has no robots.txt.",
+      "The NZ feed of emergency mobile alerts and the VMA API of Sweden answered with no alert, so the round did not record them."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 67,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 34,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 36 adds 4 planned sources and 4 later sources. Five classes get a second source, so the gaps go from 72 to 67. No layer of the cover changes."
+    }
   }
 ]
