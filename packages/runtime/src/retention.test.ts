@@ -3,6 +3,7 @@ import {
   DEFAULT_LINK_POLICY,
   incidents,
   linkRule,
+  OBSERVE_WINDOW,
   QUIET_HORIZON,
   RETENTION_HORIZON,
   reportId,
@@ -393,9 +394,9 @@ describe("the incidents that are not quiet (AL-109)", () => {
   const w1 = report("w1", T0 + SECOND);
   const base: RuntimeEvent[] = [started("run-a", T0), fetched("fetch:1", T0 + SECOND, [w1])];
   const incidentOf = (state: RuntimeState) => incidents(state.merge, T0 + 2 * HOUR, { link: linkRule(DEFAULT_LINK_POLICY) })[0]!;
-  const keeps = (events: readonly RuntimeEvent[], expectations: Parameters<typeof quietKeeps>[1] = []): boolean => {
+  const keeps = (events: readonly RuntimeEvent[], expectations: Parameters<typeof quietKeeps>[1] = [], at = T0 + 2 * HOUR): boolean => {
     const state = foldAll([...base, ...events]);
-    return quietKeeps(state, expectations)(incidentOf(state));
+    return quietKeeps(state, expectations, at)(incidentOf(state));
   };
 
   it("keeps no incident with no escalation, hold, suppression, observed source or expectation", () => {
@@ -420,6 +421,13 @@ describe("the incidents that are not quiet (AL-109)", () => {
     expect(keeps([observe, live])).toBe(false);
   });
 
+  it("keeps an incident of a source in observe mode only for the observe window after the receipt of its report (AL-172)", () => {
+    const observe: RuntimeEvent = { ...envelope("mode", "mode:1", T0), source: API, mode: "observe", reason: "a test" };
+    // The verdict counts the report until the end of the window. After that, nothing reads the report.
+    expect(keeps([observe], [], T0 + SECOND + OBSERVE_WINDOW)).toBe(true);
+    expect(keeps([observe], [], T0 + SECOND + OBSERVE_WINDOW + 1)).toBe(false);
+  });
+
   it("keeps an incident with a report that starts the check of an expectation", () => {
     const expectation = { id: "e1", from: API, to: "other" as SourceId, when: { kinds: ["met.tornado"] } };
     expect(keeps([], [expectation])).toBe(true);
@@ -434,6 +442,21 @@ describe("the cadence of the retirement (AL-109)", () => {
   const expectRebuild = (events: readonly RuntimeEvent[], context: FoldContext = RETAIN): void => {
     for (let count = 1; count <= events.length; count += 1) expect(rebuild(events.slice(0, count), context)).toEqual(foldIn(events.slice(0, count), context));
   };
+
+  it("retires an incident of a source in observe mode one observe window after the receipt, not at the horizon (AL-172)", () => {
+    const events = [
+      started("run-a", T0),
+      { ...envelope("mode", "mode:1", T0), source: API, mode: "observe", reason: "a test" } as RuntimeEvent,
+      fetched("fetch:1", T0 + SECOND, [report("w1", T0 + SECOND)]),
+      // The verdict still counts the report at the end of its window, thus it stays.
+      fetched("fetch:2", T0 + SECOND + OBSERVE_WINDOW, []),
+      // At the next step, nothing reads the report, and its quiet horizon is over.
+      fetched("fetch:3", T0 + SECOND + OBSERVE_WINDOW + 2 * HOUR, []),
+    ];
+    expect(ids(foldIn(events.slice(0, 4)).merge.reports)).toEqual([W1]);
+    expect(foldIn(events).merge.reports).toEqual([]);
+    expectRebuild(events);
+  });
 
   it("retires a quiet incident at the first event one interval after the last step, and the log has no retired event", () => {
     // The warning expires at T0 + 1 h, thus its quiet horizon of 6 h ends at T0 + 7 h.

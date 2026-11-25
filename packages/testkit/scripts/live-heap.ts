@@ -16,6 +16,10 @@
  * passes after the first pass, and the line gives the time of each one in `passMs`. With `--score-risk=<x>`, each score rule
  * has the risk `x`. A risk that no alert reaches gives the cost of the score with the sends of the base (AL-168).
  *
+ * The flags `--log=<bytes>` and `--observe` give the state of a live copy (AL-172). With `--log=<bytes>`, the seeded log has
+ * that byte size, not 300,000 bytes. The live mix gives 181.6 MB in 5.8 days. With `--observe`, the seeded transit feeds
+ * are in observe mode, as new feeds of a live copy. The line gives `reports`: the reports of the merge state after the open.
+ *
  * The line also gives the writes of the log: `openWrites` has the events of the open and its first pass, and `passWrites`
  * has the transactions and the events of each later pass. A send in flight writes its delivery in its own transaction.
  *
@@ -51,6 +55,8 @@ const scoreRiskText = valueOf("score-risk");
 const scoreRisk = scoreRiskText === undefined ? undefined : Number(scoreRiskText);
 const chain = flags.includes("--chain") ? 1 : 0;
 const passes = Number(valueOf("passes") ?? "0");
+const logBytes = Number(valueOf("log") ?? "300000");
+const observe = flags.includes("--observe");
 // The kept lines of GDELT at the place in each file: each one gives a report, as on a busy day at a place.
 const GDELT_NEAR = 2;
 // The functions of a start and of its delivery step, for their inclusive time (AL-150).
@@ -58,6 +64,7 @@ const STEP_FUNCTIONS = ["readEventFile", "readZipEntries", "eventOf", "keepEvent
 const alerts = Number(alertsText ?? "0");
 const persons = Number(personsText ?? "1");
 if (!(Number.isInteger(alerts) && alerts >= 0 && Number.isInteger(persons) && persons >= 1)) throw new RangeError("Give a count of alerts of 0 or more and a count of persons of 1 or more.");
+if (!(Number.isFinite(logBytes) && logBytes > 0)) throw new RangeError("Give a byte size of the log above 0.");
 for (const [name, amount] of Object.entries({ feeds: transit, score, passes })) {
   if (!(Number.isInteger(amount) && amount >= 0)) throw new RangeError(`Give a count of ${name} of 0 or more.`);
 }
@@ -67,7 +74,7 @@ const gc = (globalThis as { gc?: () => void }).gc;
 if (gc === undefined) throw new Error("Start node with --expose-gc.");
 const dir = await mkdtemp(join(tmpdir(), "live-heap-"));
 const home = join(dir, "home");
-await seedHome(home, { log: 300_000, seed: "al-145", files: { shapes: 200_000, transit: 100_000 }, levels: { feeds: transit, persons, incidents: 0, gdelt, score, chain }, ...(scoreRisk === undefined ? {} : { scoreRisk }) });
+await seedHome(home, { log: logBytes, seed: "al-145", ...(observe ? { observe: ["gtfs-seed-"] } : {}), files: { shapes: 200_000, transit: 100_000 }, levels: { feeds: transit, persons, incidents: 0, gdelt, score, chain }, ...(scoreRisk === undefined ? {} : { scoreRisk }) });
 const { end, events: seeded } = readSeedRecord(home);
 const at = end + MINUTE;
 let feeds: ReturnType<typeof createFakeFeeds> | undefined = createFakeFeeds({
@@ -129,6 +136,7 @@ const sending = measured.first.delivery?.routes.filter((item) => item.plan.sends
 // an event of the log, thus they give the size of the write of the first pass.
 const { holds: heldList, suppressions: suppressedList } = measured.instance.runtime.state();
 const holds = heldList.length;
+const reports = measured.instance.runtime.state().merge.reports.length;
 const suppressions = suppressedList.length;
 // A live instance keeps only the time of its first pass. The measure drops its own copy of the pass too.
 Reflect.deleteProperty(measured, "first");
@@ -137,7 +145,7 @@ await new Promise((resolve) => setTimeout(resolve, 50));
 gc();
 const { heapUsed: heap, external, rss } = process.memoryUsage();
 if (snap !== undefined) writeHeapSnapshot(snap);
-process.stdout.write(`${JSON.stringify({ alerts, persons, feeds: transit, gdelt, score, ...(scoreRisk === undefined ? {} : { scoreRisk }), chain, gdeltFiles, passMs, passWrites, openWrites, live, incidents, routes, holds, suppressions, heap, external, rss, peakRss: peakRss(), blockWatch: watching, ms: Math.round(ms), ...(profile === undefined ? {} : { sending, profile }) })}\n`);
+process.stdout.write(`${JSON.stringify({ alerts, persons, feeds: transit, gdelt, score, ...(scoreRisk === undefined ? {} : { scoreRisk }), chain, log: logBytes, observe, reports, gdeltFiles, passMs, passWrites, openWrites, live, incidents, routes, holds, suppressions, heap, external, rss, peakRss: peakRss(), blockWatch: watching, ms: Math.round(ms), ...(profile === undefined ? {} : { sending, profile }) })}\n`);
 await measured.close();
 await watch?.stop();
 await rm(dir, { recursive: true, force: true });

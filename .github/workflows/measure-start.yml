@@ -35,7 +35,7 @@ on:
         description: The cases, as a list of <alerts>x<persons> or <alerts>x<persons>x<feeds> with spaces
         default: "0x1 1000x1 1000x10 4000x1 4000x10"
       parts:
-        description: The cases at the size of a small host, as <alerts>x<persons>:<flags> with spaces. Flags are gdelt, score=<n>, score-risk=<x> and chain, with commas.
+        description: The cases at the size of a small host, as <alerts>x<persons>:<flags> with spaces. Flags are gdelt, score=<n>, score-risk=<x>, chain, log=<bytes> and observe, with commas.
         default: "200x2 200x2:gdelt 200x2:score=1 200x2:score=1,score-risk=1000000 200x2:chain 200x2:gdelt,score=1,chain"
 
 permissions:
