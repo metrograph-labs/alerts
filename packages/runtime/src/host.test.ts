@@ -27,6 +27,7 @@ import {
   RUNTIME_GRACE,
   RUNTIME_PROFILE,
   RUNTIME_PROGRAM,
+  LIVENESS_STALL,
   PROBE_TIMEOUT,
   runtimeReady,
   runtimeDiscovery,
@@ -115,6 +116,13 @@ describe("the host of the instance", () => {
     expect(ready?.measured).toEqual({ ...READY_MEASURE, cap: { value: 600_000, unit: "ms" } });
     expect(ready?.grow).toBeUndefined();
     expect(msOf(READY_MEASURE.floor)).toBe(msOf(READY_WITHIN));
+  });
+
+  it("excuses at most 6 liveness failures in sequence in a full stall of the host (AL-180)", () => {
+    const program = hostGroup(OPTIONS).programs[0];
+    expect(program?.alive?.stall).toEqual(LIVENESS_STALL);
+    expect(LIVENESS_STALL).toEqual({ share: 0.5, most: 6 });
+    expect(groupProblems(hostGroup(OPTIONS))).toEqual([]);
   });
 
   it("gives the readiness probe the time of the liveness probe, thus a slow first pass does not stop a start (AL-159)", () => {

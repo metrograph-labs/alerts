@@ -9,7 +9,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { add, sum, valueIn, type Quantity } from "@mark1russell7/quantity";
 import { daemon, service, type Profile, type ServiceBuilder } from "@mark1russell7/service";
-import { nextReadyWindow, readyTimesPath, type GroupSpec, type ReadyMeasure, type ReadySpec, type ReadyWindow, type ServiceSpec } from "@mark1russell7/service/host";
+import { nextReadyWindow, readyTimesPath, type AliveStall, type GroupSpec, type ReadyMeasure, type ReadySpec, type ReadyWindow, type ServiceSpec } from "@mark1russell7/service/host";
 import { holdingPasses, READINESS, STARTUP_BUDGET, STOP_MESSAGE } from "./index.ts";
 import { alertsHome, HOME_VARIABLE, readText, type FileText } from "./config.ts";
 import { INSTANCE_TIMES } from "./instance.ts";
@@ -191,6 +191,13 @@ export function discoveryPid(text: FileText): number | undefined {
 }
 
 /**
+ * The stall excuse of the liveness probe (AL-180). On a small Linux host, a swap-in or an IO wait stops each task for many
+ * seconds. The runtime then does not answer, but it does not hang. A failure counts only when the host was in a full stall
+ * for less than half of its span. At most 6 failures in sequence are excused, approximately 1 min. Then each failure counts.
+ */
+export const LIVENESS_STALL: AliveStall = { share: 0.5, most: 6 };
+
+/**
  * This function gives the group of the supervisor: one program, the runtime.
  *
  * - The runtime is ready when `/readiness` passes in the ready window. The window comes from the measured starts of the host
@@ -199,6 +206,7 @@ export function discoveryPid(text: FileText): number | undefined {
  *   start at the same time.
  * - A ready runtime that fails `/liveness` 3 times in sequence, 10 s apart, stops. Then the supervisor
  *   starts it again. One slow answer does not stop it.
+ * - A failure in a full stall of the host does not count, up to `LIVENESS_STALL.most` in sequence (AL-180).
  * - The stop goes on the IPC channel, because a Windows process cannot catch a signal of its parent.
  * - The runtime starts with `nodeFlags()`. Thus a `SIGUSR1` does not open the inspector of a process that holds the keys.
  */
@@ -218,7 +226,7 @@ export function hostGroup(options: HostOptions): GroupSpec {
         env: { ALERTS_HOME: options.home, PORT: String(port), PROBE_PORT: String(probePort), SERVICE_PROFILE: "daemon" },
         ipc: true,
         ready: runtimeReady(probePort, options.readyWithin),
-        alive: { probe: { kind: "http", url: `${probes}/liveness` }, interval: s(10), timeout: PROBE_TIMEOUT, failures: 3 },
+        alive: { probe: { kind: "http", url: `${probes}/liveness` }, interval: s(10), timeout: PROBE_TIMEOUT, failures: 3, stall: LIVENESS_STALL },
         stop: { grace: RUNTIME_GRACE, message: STOP_MESSAGE },
         listen: { port, url: `http://127.0.0.1:${port}/` },
       },
