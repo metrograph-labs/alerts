@@ -1,8 +1,9 @@
 /**
  * The fetch function of a status page. It reads the summary of the page (`/api/v2/summary.json`) through
  * polite-crawler. Atlassian Statuspage gives this API on each page that it hosts, and incident.io gives the same format.
- * A page of the format `statusiq` gives its RSS feed (`/rss`) in place of the summary. The request holds no place and no
- * query.
+ * A page of the format `incident-list` gives the list of its latest incidents (`/api/v2/incidents.json`) in place of the
+ * summary. The fetch keeps each incident that is not resolved. A page of the format `statusiq` gives its RSS feed
+ * (`/rss`) in place of the summary. The request holds no place and no query.
  *
  * The page documents the API for programs. Its `robots.txt` file stops crawlers under `/api/`. This source is not a
  * crawler: it asks for one documented file, at most one time in each interval of the page. A page of StatusIQ links its
@@ -17,6 +18,7 @@ import { createRequester } from "@mark1russell7/alerts-fetch";
 import { isRecord, timeOf, type Fields } from "@mark1russell7/optional/read";
 import type { Condition, Pace, Transport } from "polite-crawler/api";
 
+import { HISTORY_PATH } from "./history.ts";
 import { COMPONENT_FIELDS, INCIDENT_FIELDS, isIncident, PAGE_FIELDS, UPDATE_FIELDS } from "./map.ts";
 import type { PageFormat, StatusPage } from "./page.ts";
 import { readComponents, STATUSIQ_PATH } from "./statusiq.ts";
@@ -112,6 +114,35 @@ export function readSummary(body: string): Summary | undefined {
   };
 }
 
+/** The states of an incident that has an end. The provider adds no update to an incident in one of these states. */
+export const ENDED_STATUSES: readonly string[] = ["resolved", "postmortem"];
+
+/**
+ * This function reads the list of the latest incidents of a page (`/api/v2/incidents.json`). It keeps each incident
+ * with no time of resolution and a state that is not in `ENDED_STATUSES`. The head is the page with no status, because
+ * the list gives none. An answer that is not a list of incidents gives its whole body as the head, and `complete` false.
+ * A body that does not parse gives `undefined`.
+ */
+export function readIncidentList(body: string): Summary | undefined {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return undefined;
+  }
+  const page = isRecord(parsed) ? parsed["page"] : undefined;
+  const incidents = isRecord(parsed) ? parsed["incidents"] : undefined;
+  if (!isRecord(page) || typeof page["id"] !== "string" || !Array.isArray(incidents)) return { head: body, incidents: [], complete: false };
+  const open = incidents.filter((incident) => !isRecord(incident) || ((incident["resolved_at"] ?? null) === null && !ENDED_STATUSES.includes(String(incident["status"]))));
+  const updated = timeOf(page, "updated_at");
+  return {
+    head: JSON.stringify({ page: pick(page, PAGE_FIELDS) }),
+    incidents: [...new Set(open.map((incident) => (isRecord(incident) ? incidentBody(incident) : JSON.stringify(incident))))],
+    complete: open.every((incident) => isRecord(incident) && isIncident(incident)),
+    ...(updated === undefined ? {} : { asOf: updated }),
+  };
+}
+
 /** The request of one format of a page, and the reader of its answer. */
 interface FormatRequest {
   /** The path of the file that the fetch asks for. */
@@ -129,10 +160,11 @@ interface FormatRequest {
 /** The request of each format. A body of a component of StatusIQ is JSON that the fetch makes from one item of the feed. */
 const FORMATS: Readonly<Record<PageFormat, FormatRequest>> = {
   statuspage: { path: SUMMARY_PATH, accept: "application/json", what: "the summary of the status page", read: readSummary },
+  "incident-list": { path: HISTORY_PATH, accept: "application/json", what: "the list of the latest incidents of the status page", read: readIncidentList },
   statusiq: { path: STATUSIQ_PATH, accept: "application/rss+xml, application/xml;q=0.9", what: "the RSS feed of the status page", read: readComponents, bodyType: "application/json" },
 };
 
-/** This function gives the path of the file that the fetch of a page asks for: the summary, or the feed of StatusIQ. */
+/** This function gives the path of the file that the fetch of a page asks for: the summary, the list of incidents, or the feed. */
 export function pagePath(page: Pick<StatusPage, "format">): string {
   return FORMATS[page.format ?? "statuspage"].path;
 }
