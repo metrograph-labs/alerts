@@ -191,6 +191,11 @@ export interface PartChance extends ChanceInput {
   readonly part: string;
   /** The status page of the part. With it, the plan measures the input from the incident history of the page. */
   readonly status?: StatusRef | undefined;
+  /**
+   * The channel id of the part, for a push or call service (AL-147). With it, the plan measures the input from the
+   * calls of that channel in the logs of the live copies. A measure from the calls replaces a measure from a page.
+   */
+  readonly channel?: string | undefined;
 }
 
 /**
@@ -226,8 +231,8 @@ function statusOf(value: unknown, part: string): StatusRef | undefined | string 
 
 /**
  * This function reads a base input from a JSON value: `{ stack, part, copies?, chances? }`. Each chance has `part`,
- * `works`, `kind` (`measured` or `assumed`) and `source`. A chance can name its status page in `status` (`StatusRef`).
- * It gives the base, or a problem as a text.
+ * `works`, `kind` (`measured` or `assumed`) and `source`. A chance can name its status page in `status` (`StatusRef`),
+ * and its channel id in `channel`. It gives the base, or a problem as a text.
  */
 export function readBase(value: unknown): PlacementBase | string {
   if (!isRecord(value)) return "The base is not an object.";
@@ -250,7 +255,9 @@ export function readBase(value: unknown): PlacementBase | string {
     }
     const status = statusOf(isRecord(item) ? item["status"] : undefined, id);
     if (typeof status === "string") return status;
-    chances.push({ part: id, works, kind, source, ...(status === undefined ? {} : { status }) });
+    const channel: unknown = isRecord(item) ? item["channel"] : undefined;
+    if (channel !== undefined && (typeof channel !== "string" || channel === "")) return `The channel of the chance of ${id} is not a text.`;
+    chances.push({ part: id, works, kind, source, ...(status === undefined ? {} : { status }), ...(channel === undefined ? {} : { channel }) });
   }
   return { stack: stack.stack, part, copies: copyList as readonly string[], chances };
 }

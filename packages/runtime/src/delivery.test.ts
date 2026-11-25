@@ -199,7 +199,7 @@ function open(scripts: { readonly pushover?: Script; readonly sms?: Script } = {
 }
 
 // The events of the delivery. The first pass also seeds the mode of the source (AL-73), and `observe.test.ts` tests it.
-const types = (log: RuntimeLog) => [...log.read()].map((event) => event.type).filter((type) => type !== "observation" && type !== "fetch" && type !== "system" && type !== "mode");
+const types = (log: RuntimeLog) => [...log.read()].map((event) => event.type).filter((type) => type !== "observation" && type !== "fetch" && type !== "system" && type !== "mode" && type !== "calls");
 
 describe("the delivery step of a pass", () => {
   it("keeps the shadow score of the incident at the start of each escalation, and the score changes no send", async () => {

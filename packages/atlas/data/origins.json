@@ -2496,5 +2496,29 @@
     "name": "ReliefWeb, of the UN Office for the Coordination of Humanitarian Affairs",
     "issues": null,
     "note": "The record of reliefweb-api names this body."
+  },
+  {
+    "id": "dma",
+    "name": "The Danish Maritime Authority (DMA)",
+    "issues": null,
+    "note": "The DMA publishes the warnings of Danish waters through Niord, its open-source system."
+  },
+  {
+    "id": "alaska-dec",
+    "name": "The Alaska Department of Environmental Conservation (DEC)",
+    "issues": null,
+    "note": "Its Drinking Water Program enters each notice in SDWIS, and the map service shows it."
+  },
+  {
+    "id": "nl-water-resources",
+    "name": "The Water Resources Management Division of Newfoundland and Labrador",
+    "issues": null,
+    "note": "The division issues the boil water advisories of the province."
+  },
+  {
+    "id": "ca-water-board",
+    "name": "The California State Water Resources Control Board",
+    "issues": null,
+    "note": "Its FHAB data system holds the bloom reports of the state."
   }
 ]
