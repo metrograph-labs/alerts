@@ -13,6 +13,7 @@ AddressField: build/index.d.ts#AddressField
 AddressValue: build/index.d.ts#AddressValue
 AlertArea: build/index.d.ts#AlertArea
 AlertConfig: build/index.d.ts#AlertConfig
+AllRetirements: build/index.d.ts#AllRetirements
 Area: build/index.d.ts#Area
 AreaBlock: build/index.d.ts#AreaBlock
 AssessPolicy: build/index.d.ts#AssessPolicy
@@ -560,6 +561,7 @@ admits: build/index.d.ts#admits
 advanceHealth: build/index.d.ts#advanceHealth
 alertAreaSchema: build/index.d.ts#alertAreaSchema
 alertConfigSchema: build/index.d.ts#alertConfigSchema
+allRetirements: build/index.d.ts#allRetirements
 areaMeetsPlace: build/index.d.ts#areaMeetsPlace
 areaSchema: build/index.d.ts#areaSchema
 areasWithoutBlocks: build/index.d.ts#areasWithoutBlocks
@@ -1052,6 +1054,12 @@ export interface AlertConfig {
   readonly sendLimit?: SendLimitConfig;
   readonly throttle?: ThrottleConfig;
   readonly tell?: TellConfig;
+}
+
+### build/index.d.ts#AllRetirements
+export interface AllRetirements {
+  readonly whole: ReportId[];
+  readonly late: ReportId[];
 }
 
 ### build/index.d.ts#Area
@@ -4630,6 +4638,9 @@ export declare const alertAreaSchema: z.ZodType<AlertArea, AlertArea>;
 
 ### build/index.d.ts#alertConfigSchema
 export declare const alertConfigSchema: z.ZodType<AlertConfig, AlertConfig>;
+
+### build/index.d.ts#allRetirements
+export declare function allRetirements(state: MergeState, found: readonly Incident[], at: Instant, horizon?: Duration, quiet?: QuietRule, options?: LateOptions): AllRetirements;
 
 ### build/index.d.ts#areaMeetsPlace
 export declare function areaMeetsPlace(area: IndicatorArea, place: WatchedPlace, zones?: readonly ZoneRegions[]): boolean | undefined;

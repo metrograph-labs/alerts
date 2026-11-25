@@ -12,13 +12,12 @@
  *   A report that a reader of the runtime needs stays. Thus a long stream of updates of one event has a bound.
  */
 import {
+  allRetirements,
   DRILL_KIND,
   incidents,
-  lateRetirements,
   OBSERVE_WINDOW,
   QUIET_HORIZON,
   reportPasses,
-  retirements,
   RETENTION_HORIZON,
   SEND_LIMIT_MAX_WINDOW,
   THROTTLE_MAX_WINDOW,
@@ -170,9 +169,8 @@ export function retiredEvent(
   const found = incidents(state.merge, at, { link });
   const needed = neededReports(state, expectations, at);
   const rule = { horizon: quiet, told, keeps: (incident: Incident) => incident.reports.some(needed.recent) };
-  const whole = retirements(state.merge, found, at, horizon, rule);
   // The reports of a live incident that leave it (AL-177). No delivery names them, thus they add no key.
-  const late = lateRetirements(state.merge, found, at, horizon, rule, { link, keeps: needed.always });
+  const { whole, late } = allRetirements(state.merge, found, at, horizon, rule, { link, keeps: needed.always });
   const reports = late.length === 0 ? whole : [...whole, ...late].sort(compareCodeUnits);
   const gone = new Set(reports);
   // A delivery key does not name its incident, thus the event names the cancelled keys of the deliveries of the incidents.

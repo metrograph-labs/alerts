@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { Acknowledgment, ChannelId, Delivery, EndMark, Incident, MergeState, ObservationId, PersonId, Report, ReportId, SourceId } from "./contracts.ts";
 import { reportId } from "./ids.ts";
 import { acknowledgedLevel, add, EMPTY_STATE, incidents, join, normalize, sentLevel, type IncidentOptions } from "./merge.ts";
-import { lateRetirements, pruneTombstones, QUIET_HORIZON, retire, retirements, RETENTION_HORIZON, TOMBSTONE_LIFE, type QuietRule } from "./retention.ts";
+import { allRetirements, lateRetirements, pruneTombstones, QUIET_HORIZON, retire, retirements, RETENTION_HORIZON, TOMBSTONE_LIFE, type QuietRule } from "./retention.ts";
 
 const SEEDS = seedsFrom(process.env["SEED"], [1, 2, 3, 4, 5, 6, 7, 8]);
 const HOUR = 3_600_000;
@@ -431,6 +431,8 @@ describe("the late retirements of a live incident (AL-177)", () => {
       for (const options of [{}, LINK] as IncidentOptions[]) {
         const found = incidents(state, at, options);
         const gone = lateRetirements(state, found, at, horizon, rule, { link: options.link });
+        // One pass of `allRetirements` gives the same two lists.
+        expect(allRetirements(state, found, at, horizon, rule, { link: options.link })).toEqual({ whole: retirements(state, found, at, horizon, rule), late: gone });
         leftCount += gone.length;
         const left = new Set(gone);
         const after = retire(state, gone, at + TOMBSTONE_LIFE);
