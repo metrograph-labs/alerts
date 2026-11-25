@@ -24,6 +24,7 @@
   "license": "MIT",
   "version": "0.2.2",
   "type": "module",
+  "sideEffects": false,
   "main": "./src/index.ts",
   "files": [
     "build"
