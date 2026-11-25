@@ -9208,10 +9208,10 @@
     "access": "page",
     "auth": "none",
     "terms": {
-      "url": "https://www.freddiemac.com/pmms",
-      "automated": "unclear",
+      "url": "https://www.freddiemac.com/terms",
+      "automated": "forbidden",
       "redistribution": "limited",
-      "note": "The page disclaimer says the information may be used with proper attribution and its alteration is prohibited. The linked /terms page was not opened."
+      "note": "Round 28: the terms forbid automated means to access, copy or monitor the content. Data is for internal business or personal use only."
     },
     "cost": "free",
     "delay": "weekly, Thursday 12 p.m. ET (Wednesday in a holiday week)",
@@ -9229,8 +9229,9 @@
     "risks": [],
     "decision": "later",
     "adapter": null,
-    "reason": "The standard weekly US mortgage rate, useful for a threshold alert for a person who plans a loan. The decision is later because a page source needs terms that let automated reading.",
+    "reason": "Later: the terms forbid automated reading. The CSV file of the rate history answers a plain request, but the terms apply to it.",
     "evidence": [
+      "https://www.freddiemac.com/terms",
       "https://www.freddiemac.com/pmms"
     ],
     "round": 1
@@ -24192,6 +24193,121 @@
     "reason": "The authority of England gives its bird flu cases as JSON with a dated change history, under an open licence and with no key.",
     "evidence": [
       "https://www.gov.uk/api/content/guidance/avian-influenza-bird-flu-cases-and-disease-control-zones-in-england"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 28,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "uk-sanctions-list",
+    "name": "The UK Sanctions List of the FCDO (XML and CSV files)",
+    "classes": [
+      "civic.sanctions"
+    ],
+    "url": "https://sanctionslist.fcdo.gov.uk/docs/UK-Sanctions-List.xml",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.gov.uk/government/publications/the-uk-sanctions-list",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The GOV.UK page of the list puts its content under the Open Government Licence v3.0."
+    },
+    "delay": "One read on 2026-11-25 gave a file changed on 2026-11-24. The GOV.UK page of the list has 498 dated changes, each with a note.",
+    "history": "The file holds the current list. The change history of the GOV.UK page names each new designation and each change.",
+    "coverage": "Each designation of the UK under each sanctions regime, with its regime and dates. The same list comes as XML, CSV, ODS and text.",
+    "origins": [
+      "uk-fcdo"
+    ],
+    "path": [
+      "sanctionslist.fcdo.gov.uk"
+    ],
+    "reason": "The official list of the UK, as a file with no key and under an open licence. Its origin is different from the OFAC lists.",
+    "evidence": [
+      "https://www.gov.uk/api/content/government/publications/the-uk-sanctions-list",
+      "https://sanctionslist.fcdo.gov.uk/docs/UK-Sanctions-List.xml"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 28,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "un-sc-consolidated-list",
+    "name": "The Consolidated List of the UN Security Council (XML file)",
+    "classes": [
+      "civic.sanctions"
+    ],
+    "url": "https://scsanctions.un.org/resources/xml/en/consolidated.xml",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The page of the list gave 202 with no text to a plain request. The file address sends a redirect to a signed address on a blob store."
+    },
+    "delay": "One read on 2026-11-25 gave a file generated at 00:00 UTC on the same day.",
+    "history": "The file holds the current list only.",
+    "coverage": "Each person and entity on the sanctions lists of the committees of the Security Council, with the date of each listing.",
+    "origins": [
+      "un-security-council"
+    ],
+    "path": [
+      "scsanctions.un.org",
+      "provider:azure"
+    ],
+    "reason": "The list that all members of the UN apply, as one XML file with no key. The terms are not known, so the adapter keeps one read each day.",
+    "evidence": [
+      "https://scsanctions.un.org/resources/xml/en/consolidated.xml",
+      "https://main.un.org/securitycouncil/content/un-sc-consolidated-list"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 28,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "ripestat-data-api",
+    "name": "RIPEstat Data API: the BGP updates and the routing status of a prefix",
+    "classes": [
+      "infra.internet.bgp"
+    ],
+    "url": "https://stat.ripe.net/data/bgp-updates/data.json",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.ripe.net/about-us/legal/terms-of-service",
+      "automated": "allowed",
+      "redistribution": "limited",
+      "note": "The terms of service of the public RIPE NCC services cover automated use. Article 3.5 limits a copy of the data. A derived product needs the credit of the RIS page: the logo, a link and its text."
+    },
+    "delay": "One read at about 14:15 UTC on 2026-11-25 gave the updates to 12:00 UTC. The data is about 2 hours old.",
+    "history": "Each call takes a window of time. The round read a window of 2 days.",
+    "coverage": "The BGP updates, the visibility and the first and last times of a prefix or an AS, from the RIS collectors of the RIPE NCC.",
+    "origins": [
+      "ripe-ncc"
+    ],
+    "path": [
+      "stat.ripe.net"
+    ],
+    "reason": "A JSON API with no key. It gives the visibility and the updates of the prefixes that a user names, so a loss of a route needs no detector of its own.",
+    "evidence": [
+      "https://stat.ripe.net/data/bgp-updates/data.json?resource=193.0.0.0/21",
+      "https://stat.ripe.net/data/routing-status/data.json?resource=AS3333"
     ]
   }
 ]

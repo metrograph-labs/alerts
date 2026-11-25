@@ -334,7 +334,7 @@
       "https://ofac.treasury.gov/recent-actions",
       "WEF Global Risks: geoeconomic confrontation (not opened)"
     ],
-    "gap": "Round 1 found 1 adopted or planned source with no risk: ofac-sanctions-list-service. ofac-recent-actions is later: see the reason of each.",
+    "gap": null,
     "round": 1
   },
   {
@@ -1332,7 +1332,7 @@
       "Cloudflare Radar",
       "No hazard list names this class. Found by the search for missing classes."
     ],
-    "gap": "The RIS Live pages returned 404, so only the Cloudflare endpoints were seen.",
+    "gap": null,
     "round": 1
   },
   {
@@ -2154,7 +2154,7 @@
     "references": [
       "https://www.freddiemac.com/pmms"
     ],
-    "gap": "Round 1 found 1 adopted or planned source with no risk: fred-api. freddie-mac-pmms is later: see the reason of each.",
+    "gap": "One source: fred-api. Its mortgage series comes from the survey of Freddie Mac. Round 28: the terms of Freddie Mac forbid automated reading.",
     "round": 1
   },
   {

@@ -2854,5 +2854,23 @@
     "name": "data.iana.org",
     "kind": "host",
     "note": "The host of the data files of iana-tz."
+  },
+  {
+    "id": "sanctionslist.fcdo.gov.uk",
+    "name": "sanctionslist.fcdo.gov.uk",
+    "kind": "host",
+    "note": "The host of the feed of uk-sanctions-list."
+  },
+  {
+    "id": "scsanctions.un.org",
+    "name": "scsanctions.un.org",
+    "kind": "host",
+    "note": "The host of the feed of un-sc-consolidated-list."
+  },
+  {
+    "id": "stat.ripe.net",
+    "name": "stat.ripe.net",
+    "kind": "host",
+    "note": "The host of the feed of ripestat-data-api."
   }
 ]
