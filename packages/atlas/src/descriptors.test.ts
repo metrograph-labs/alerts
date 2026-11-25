@@ -4,6 +4,7 @@ import { AZURE_DESCRIPTOR } from "@mark1russell7/alerts-source-azure";
 import { BOM_SWS_DESCRIPTOR } from "@mark1russell7/alerts-source-bom-sws";
 import { ANOMALIES_DESCRIPTOR, OUTAGES_DESCRIPTOR } from "@mark1russell7/alerts-source-cloudflare-radar";
 import { KEV_DESCRIPTOR } from "@mark1russell7/alerts-source-cisa-kev";
+import { CERT_PROVIDERS, certDescriptor } from "@mark1russell7/alerts-source-cert-feeds";
 import { CSAF_PROVIDERS, csafDescriptor } from "@mark1russell7/alerts-source-csaf";
 import { EMSC_DESCRIPTOR } from "@mark1russell7/alerts-source-emsc";
 import { EIA_930_DESCRIPTOR } from "@mark1russell7/alerts-source-eia-930";
@@ -31,6 +32,7 @@ const DESCRIPTORS: Readonly<Record<string, readonly SourceDescriptor[]>> = {
   "@mark1russell7/alerts-source-cisa-kev": [KEV_DESCRIPTOR],
   "@mark1russell7/alerts-source-eia-930": [EIA_930_DESCRIPTOR],
   "@mark1russell7/alerts-source-emsc": [EMSC_DESCRIPTOR],
+  "@mark1russell7/alerts-source-cert-feeds": CERT_PROVIDERS.map((provider) => certDescriptor(provider)),
   "@mark1russell7/alerts-source-csaf": CSAF_PROVIDERS.map((provider) => csafDescriptor(provider)),
   "@mark1russell7/alerts-source-energy-charts": [ENERGY_CHARTS_DESCRIPTOR],
   "@mark1russell7/alerts-source-faa": [FAA_DESCRIPTOR],

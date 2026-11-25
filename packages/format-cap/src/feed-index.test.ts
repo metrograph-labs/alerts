@@ -114,7 +114,7 @@ describe("readCapIndex", () => {
   it("refuses a DOCTYPE, a text that is not well formed, a CAP message and an rss element with no channel", () => {
     expect(readCapIndex(`<!DOCTYPE rss [<!ENTITY e "x">]>${rss("")}`)).toMatchObject({ ok: false, reason: expect.stringContaining("DOCTYPE") });
     expect(readCapIndex(NIUE.slice(0, NIUE.indexOf("</channel>")))).toMatchObject({ ok: false, reason: expect.stringContaining("not well formed") });
-    expect(readCapIndex(fixture("hub/oet-wind.xml"))).toMatchObject({ ok: false, reason: "the root element is cap:alert, not rss or an Atom feed" });
+    expect(readCapIndex(fixture("hub/oet-wind.xml"))).toMatchObject({ ok: false, reason: "the root element is cap:alert, not rss, rdf:RDF or an Atom feed" });
     expect(readCapIndex('<rss version="2.0"></rss>')).toEqual({ ok: false, reason: "the rss element has no channel" });
     expect(readCapIndex("")).toMatchObject({ ok: false });
   });

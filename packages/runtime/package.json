@@ -23,6 +23,7 @@
     "@mark1russell7/alerts-source-aws": "workspace:*",
     "@mark1russell7/alerts-source-azure": "workspace:*",
     "@mark1russell7/alerts-source-bom-sws": "workspace:*",
+    "@mark1russell7/alerts-source-cert-feeds": "workspace:*",
     "@mark1russell7/alerts-source-cisa-kev": "workspace:*",
     "@mark1russell7/alerts-source-cloudflare-radar": "workspace:*",
     "@mark1russell7/alerts-source-csaf": "workspace:*",

@@ -51,6 +51,26 @@ describe("readFeed", () => {
     expect(entriesOf(readFeed(NIUE)).map((entry) => entry.categories)).toEqual(Array.from({ length: 5 }, () => ["Met"]));
   });
 
+  it("reads each item of an RSS 1.0 feed: the rdf:about as the id and dc:date as the time, with a note", () => {
+    const read = readFeed(
+      `<?xml version="1.0"?><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://purl.org/rss/1.0/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+        <channel rdf:about="https://example.org/rss.rdf"><title>Alerts</title><items><rdf:Seq><rdf:li rdf:resource="https://example.org/a.html"/></rdf:Seq></items></channel>
+        <item rdf:about="https://example.org/a.html"><title>Security Alert: A</title><link>https://example.org/a.html</link><dc:date>2026-11-11T11:21+09:00</dc:date></item>
+        <item rdf:about="https://example.org/b.html"><title>B</title><description>Text</description></item></rdf:RDF>`,
+    );
+    expect(read).toEqual({
+      ok: true,
+      format: "rss",
+      title: "Alerts",
+      problems: [{ path: "rdf:RDF", message: "the feed is RSS 1.0", fatal: false }],
+      entries: [
+        { id: "https://example.org/a.html", title: "Security Alert: A", link: "https://example.org/a.html", updated: "2026-11-11T11:21+09:00" },
+        { id: "https://example.org/b.html", title: "B", summary: "Text" },
+      ],
+    });
+    expect(readFeed(`<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"><item/></rdf:RDF>`)).toEqual({ ok: false, reason: "the rdf:RDF element has no channel", malformed: false });
+  });
+
   it("reads the real feeds of Niue and the DWD", () => {
     const niue = entriesOf(readFeed(NIUE));
     expect(niue).toHaveLength(5);
@@ -73,7 +93,7 @@ describe("readFeed", () => {
   it("refuses a DOCTYPE and a document that is not a feed, and marks only a text that is not well formed as malformed", () => {
     expect(readFeed(`<!DOCTYPE rss [<!ENTITY e "x">]>${rss("")}`)).toMatchObject({ ok: false, reason: expect.stringContaining("DOCTYPE"), malformed: false });
     expect(readFeed(NIUE.slice(0, NIUE.indexOf("</channel>")))).toMatchObject({ ok: false, reason: expect.stringContaining("not well formed"), malformed: true });
-    expect(readFeed("<html><body/></html>")).toEqual({ ok: false, reason: "the root element is html, not rss or an Atom feed", malformed: false });
+    expect(readFeed("<html><body/></html>")).toEqual({ ok: false, reason: "the root element is html, not rss, rdf:RDF or an Atom feed", malformed: false });
     expect(readFeed('<rss version="2.0"></rss>')).toEqual({ ok: false, reason: "the rss element has no channel", malformed: false });
   });
 
