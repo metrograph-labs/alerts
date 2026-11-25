@@ -141,6 +141,31 @@ describe("the quiet rule (AL-109)", () => {
     expect(retirements(state, incidents(state, ended + DAY), ended + DAY, DAY, { horizon: 30 * DAY })).toEqual([alert.id]);
   });
 
+  it("retires an incident that a person knows at the time told of the rule, unless the rule keeps it (AL-172)", () => {
+    const told: QuietRule = { horizon: QUIET_HORIZON, told: QUIET_HORIZON };
+    for (const parts of [{ reports: [alert], deliveries: [delivery(alert, T0)] }, { reports: [alert], acks: [ack(alert, T0)] }]) {
+      const state = normalize(parts);
+      expect(quietAt(state, ended + QUIET_HORIZON - 1, told)).toEqual([]);
+      expect(quietAt(state, ended + QUIET_HORIZON, told)).toEqual([alert.id]);
+      const kept = { ...told, keeps: (incident: Incident) => incident.reports.includes(alert.id) };
+      expect(quietAt(state, ended + QUIET_HORIZON, kept)).toEqual([]);
+      expect(quietAt(state, ended + RETENTION_HORIZON, kept)).toEqual([alert.id]);
+      // A time told above the horizon gives the horizon.
+      expect(quietAt(state, ended + RETENTION_HORIZON, { horizon: QUIET_HORIZON, told: 30 * DAY })).toEqual([alert.id]);
+    }
+  });
+
+  it("keeps a late copy of a told incident out after its retirement (AL-172)", () => {
+    const rule: QuietRule = { horizon: QUIET_HORIZON, told: QUIET_HORIZON };
+    const at = ended + QUIET_HORIZON;
+    const state = normalize({ reports: [alert], deliveries: [delivery(alert, T0)] });
+    const gone = retire(state, quietAt(state, at, rule), at + TOMBSTONE_LIFE);
+    const again = add(gone, { reports: [alert], deliveries: [delivery(alert, T0)] });
+    expect(again.reports).toEqual([]);
+    expect(again.deliveries).toEqual([]);
+    expect(incidents(again, at)).toEqual([]);
+  });
+
   it("keeps a live incident and an incident with an expiry in the future", () => {
     const { expires: _expires, ...open } = report({ key: "k3" });
     expect(quietAt(normalize({ reports: [open] }), T0 + 30 * DAY)).toEqual([]);
