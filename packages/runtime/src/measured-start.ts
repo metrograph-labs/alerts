@@ -33,7 +33,7 @@ import { loadPriors } from "./priors.ts";
 import { openReadingStore, READINGS_FILE } from "./readings.ts";
 import { checkStart, privateFiles, readStartTexts } from "./reload.ts";
 import type { Pass } from "./runtime.ts";
-import { openStartSnapshot, START_SNAPSHOT_FILE, type OpenedStartSnapshot } from "./start-snapshot.ts";
+import { openStartSnapshots, START_SNAPSHOTS_FOLDER, type OpenedStartSnapshot } from "./start-snapshot.ts";
 import { openTransitCache, TRANSIT_FILE } from "./transit.ts";
 
 /** The fake keys of a measure with no option `keys`: the token of the Pushover application and one Pushover user key. */
@@ -176,6 +176,43 @@ export interface SnapshotWriteTime {
   readonly longestWaitMs: number;
   /** The count of the parts of the write between two pauses. */
   readonly chunks: number;
+  /** Each part of the write between two pauses, in order (AL-174). A gate takes the pauses of the garbage collector out of each part. */
+  readonly parts: readonly WritePart[];
+}
+
+/** One part of a snapshot write between two pauses (AL-174). */
+export interface WritePart {
+  /** The start of the part, on the clock of `performance.now()`. */
+  readonly at: number;
+  /** The time of the part, in milliseconds. */
+  readonly ms: number;
+  /** The CPU time of the thread of the event loop in the part, in milliseconds. */
+  readonly cpuMs: number;
+}
+
+/** A pause of the garbage collector: a `gc` entry of `PerformanceObserver`, on the clock of `performance.now()`. */
+export interface GcPause {
+  readonly startTime: number;
+  readonly duration: number;
+}
+
+/**
+ * This function gives the most work of the thread in one part of a write (AL-174). The work of a part is its CPU time apart
+ * from the pauses of the garbage collector in it. One pause of the collector is not work of the write, and it is not the same in each
+ * run. A pause across an edge of a part counts with its part inside. The work of a part is 0 or more.
+ */
+export function longestPartWork(parts: readonly WritePart[], pauses: readonly GcPause[]): { readonly workMs: number; readonly gcMs: number } {
+  let workMs = 0;
+  let gcMs = 0;
+  for (const part of parts) {
+    const end = part.at + part.ms;
+    let inside = 0;
+    for (const pause of pauses) inside += Math.max(0, Math.min(end, pause.startTime + pause.duration) - Math.max(part.at, pause.startTime));
+    const work = Math.max(0, part.cpuMs - inside);
+    if (work > workMs) workMs = work;
+    if (inside > gcMs) gcMs = inside;
+  }
+  return { workMs, gcMs };
 }
 
 /** A runtime of a measured start. */
@@ -217,6 +254,7 @@ const oneTimer = (): Promise<void> => new Promise((resolve) => setTimeout(resolv
 function timedSnapshot(store: FoldSnapshot, writes: SnapshotWriteTime[], onWrite?: (write: SnapshotWriteTime) => void): FoldSnapshot {
   const timed = (rows: Iterable<FoldRow>, written: (record: Omit<SnapshotWriteTime, "at" | "cpuMs" | "wallMs">) => void, chunked: { readonly pause?: () => Promise<void> } = {}) => {
     const counts = { rows: 0, chars: 0, rowsMs: 0, busyMs: 0, longestMs: 0, longestCpuMs: 0, longestWaitMs: 0, chunks: 1 };
+    const parts: WritePart[] = [];
     let segment = performance.now();
     let segmentCpu = process.threadCpuUsage();
     function* each(): Generator<FoldRow> {
@@ -235,6 +273,7 @@ function timedSnapshot(store: FoldSnapshot, writes: SnapshotWriteTime[], onWrite
       const ms = performance.now() - segment;
       const used = process.threadCpuUsage(segmentCpu);
       const cpuMs = (used.user + used.system) / 1000;
+      parts.push({ at: segment, ms, cpuMs });
       counts.busyMs += ms;
       if (ms > counts.longestMs) {
         counts.longestMs = ms;
@@ -251,7 +290,7 @@ function timedSnapshot(store: FoldSnapshot, writes: SnapshotWriteTime[], onWrite
     };
     const done = (): void => {
       end();
-      written({ rows: counts.rows, chars: counts.chars, rowsMs: counts.rowsMs, writeMs: counts.busyMs - counts.rowsMs, longestMs: counts.longestMs, longestCpuMs: counts.longestCpuMs, longestWaitMs: counts.longestWaitMs, chunks: counts.chunks });
+      written({ rows: counts.rows, chars: counts.chars, rowsMs: counts.rowsMs, writeMs: counts.busyMs - counts.rowsMs, longestMs: counts.longestMs, longestCpuMs: counts.longestCpuMs, longestWaitMs: counts.longestWaitMs, chunks: counts.chunks, parts });
     };
     return { rows: each(), pause, done };
   };
@@ -307,8 +346,8 @@ export async function openMeasuredRuntime(home: string, options: MeasuredOptions
     const quotas = new SqliteHostStateStore(join(home, "quotas.sqlite"));
     const { log, recovered } = openCheckedRuntimeLog(join(home, "runtime.sqlite"), { now: () => wall.now() });
     if (recovered !== undefined) report(`The log file was broken. The new log kept ${String(recovered.added)} events and lost ${String(recovered.lost)}.`);
-    const snapshot: OpenedStartSnapshot = options.startSnapshot === true ? openStartSnapshot(join(home, START_SNAPSHOT_FILE)) : {};
-    if (snapshot.fault !== undefined) report(`The file ${START_SNAPSHOT_FILE} did not open (${snapshot.fault}).`);
+    const snapshot: OpenedStartSnapshot = options.startSnapshot === true ? openStartSnapshots(home) : {};
+    if (snapshot.fault !== undefined) report(`The folder ${START_SNAPSHOTS_FOLDER} did not open (${snapshot.fault}).`);
     if (recovered !== undefined) snapshot.store?.clear();
     const shapes = openShapeCache(join(home, SHAPES_FILE));
     const readings = openReadingStore(join(home, READINGS_FILE));

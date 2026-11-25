@@ -3585,6 +3585,7 @@ export declare const QUOTA_STAGES: readonly QuotaStage[];
 export interface QuietRule {
   readonly horizon: Duration;
   readonly keeps?: ((incident: Incident) => boolean) | undefined;
+  readonly told?: Duration | undefined;
 }
 
 ### build/index.d.ts#QuietWindow

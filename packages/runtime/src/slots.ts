@@ -40,6 +40,22 @@ export function slotsOf(live: string): Slots {
   return { live, a: `${live}-a`, b: `${live}-b` };
 }
 
+/**
+ * This function gives the slots of a checkout (AL-169). A process that starts in a slot folder has the real path of the
+ * slot, not the live path. An example is a service unit with the live path as its folder: the operating system resolves
+ * the link. The name of a slot checkout ends with `-a` or `-b`. When the path without that end is a link to the
+ * checkout, the live path is that link. Each other checkout is a live path.
+ */
+export async function slotsOfCheckout(checkout: string, platform: NodeJS.Platform = process.platform): Promise<Slots> {
+  const match = /^(.+)-([ab])$/u.exec(basename(checkout));
+  if (match?.[1] !== undefined) {
+    const slots = slotsOf(join(dirname(checkout), match[1]));
+    const live = await readLive(slots, platform).catch(() => undefined);
+    if (live?.kind === "link" && live.slot === match[2]) return slots;
+  }
+  return slotsOf(checkout);
+}
+
 /** This function gives the other slot. */
 export const otherSlot = (slot: SlotName): SlotName => (slot === "a" ? "b" : "a");
 
@@ -467,11 +483,11 @@ export function foldChange(live: number | undefined, next: number | undefined): 
 }
 
 /**
- * This function gives the fold step: `main.ts fold` of the live slot on the live home. The profile is the profile of the
- * supervised runtime, thus the fold has the configuration and the key of the next start.
+ * This function gives the fold step: `main.ts fold <set>` of the live slot on the live home. The profile is the profile of
+ * the supervised runtime, thus the fold has the configuration and the key of a start with that set (AL-169).
  */
-export function foldStep(runtime: string, home: string, node: string): StageStep {
-  return { program: node, args: [join(runtime, "src", "main.ts"), "fold"], env: { ALERTS_HOME: home, SERVICE_PROFILE: "daemon" } };
+export function foldStep(runtime: string, home: string, node: string, set: "files" | "good"): StageStep {
+  return { program: node, args: [join(runtime, "src", "main.ts"), "fold", set], env: { ALERTS_HOME: home, SERVICE_PROFILE: "daemon" } };
 }
 
 /**

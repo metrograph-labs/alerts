@@ -6,7 +6,8 @@
  * - Each case is a retention variant: `off`, or a quiet horizon in hours.
  * - The A/A pairs `base~aa` and `head~aa` give the noise of each build.
  * - The two builds share one computer in each round, so the ratio `head / base` has no offset between runners.
- * - Each child gives the hash of its incidents. The verdict checks that the two builds give the same incidents.
+ * - Each child gives the hash of its incidents and the fold version of its build. The verdict checks that two builds of one
+ *   fold version give the same incidents. A head with a new fold version declares a change of the incidents (AL-172).
  *
  * Usage:
  *
@@ -59,6 +60,11 @@ const OWN_NOISE = { aaFrom: "rounds" } as const;
 
 type Runtime = typeof import("@mark1russell7/alerts-runtime");
 type Core = typeof import("@mark1russell7/alerts");
+/** The fold version helpers of `slots.ts` in a tree (AL-153). The file of each tree gives the version of that build. */
+interface FoldFile {
+  readonly FOLD_FILE: string;
+  foldVersionOf(text: string | undefined): number | undefined;
+}
 
 /** This function gives the retention options of a case: `off`, or a quiet horizon in hours. */
 export function retentionOf(variant: string): { readonly horizon: number; readonly life: number; readonly every: number; readonly quiet: number } | undefined {
@@ -66,6 +72,16 @@ export function retentionOf(variant: string): { readonly horizon: number; readon
   const hours = Number(variant);
   if (!(hours > 0) || !Number.isFinite(hours)) throw new RangeError(`The case ${JSON.stringify(variant)} is not off or a number of hours above 0.`);
   return { horizon: HORIZON, life: LIFE, every: HOUR, quiet: hours * HOUR };
+}
+
+/** This function gives the fold version of the build in `tree`, or undefined for a tree with no helpers of the fold version. */
+async function foldVersionIn(tree: string): Promise<number | undefined> {
+  try {
+    const slots = (await import(pathToFileURL(join(tree, "packages/runtime/src/slots.ts")).href)) as FoldFile;
+    return slots.foldVersionOf(readFileSync(join(tree, slots.FOLD_FILE), "utf8"));
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -91,8 +107,12 @@ async function child(tree: string, log: string, variant: string): Promise<void> 
     .update(JSON.stringify(list.map((incident) => [incident.anchor, incident.reports])))
     .digest("hex")
     .slice(0, 16);
+  const heap = heapAfterGc();
+  // The child reads the fold version after the heap, thus the module of the slots is not in the measure.
+  // A tree before AL-153 has no helpers in the slots: then the child gives no version.
+  const fold = await foldVersionIn(tree);
   // The hash makes the runner refuse two different outputs of one build on one case. The field `incidents` goes to the record.
-  console.log(JSON.stringify({ ms, hash: incidents, incidents, count: list.length, reports: state.merge.reports.length, retirements, peakRss: rss, heap: heapAfterGc() }));
+  console.log(JSON.stringify({ ms, hash: incidents, incidents, fold, count: list.length, reports: state.merge.reports.length, retirements, peakRss: rss, heap }));
 }
 
 /** This function seeds one log in the folder, checks out the base commit and starts the children of each pair, case and round. */
@@ -126,7 +146,7 @@ async function measure(job: number, folder: string, base: string, cases: readonl
 /** The fields of the child line of one arm, in a pair record. The runner keeps each field that it does not read in `extra`. */
 export interface ArmFields {
   readonly peakRss?: number;
-  readonly extra?: { readonly incidents?: string; readonly count?: number; readonly heap?: number };
+  readonly extra?: { readonly incidents?: string; readonly fold?: number; readonly count?: number; readonly heap?: number };
 }
 
 /** One line of a job: a pair of children, or the computer and the skips of the job. */
@@ -223,25 +243,34 @@ export interface SameIncidents {
   readonly case: string;
   /** The count of pair records of the head with the hash of the incidents of each arm. */
   readonly records: number;
-  /** The count of those records where the two builds give different incidents. */
+  /** The count of those records where two builds of one fold version give different incidents. */
   readonly differ: number;
+  /**
+   * The count of those records where the two builds have different fold versions and give different incidents. The new
+   * fold version of the head declares the change, thus the gate does not count it as a fault.
+   */
+  readonly declared: number;
   /** The count of pair records of the head without a hash of each arm. */
   readonly missing: number;
 }
 
 /** This function compares the hash of the incidents of the base and the head in each pair record of the head. */
 export function sameIncidents(lines: readonly BenchLine[]): SameIncidents[] {
-  const byCase = new Map<string, { records: number; differ: number; missing: number }>();
+  const byCase = new Map<string, { records: number; differ: number; declared: number; missing: number }>();
   for (const line of lines) {
     if (line.record !== "pair" || line.pair !== PAIR) continue;
     let item = byCase.get(line.case);
-    if (item === undefined) byCase.set(line.case, (item = { records: 0, differ: 0, missing: 0 }));
+    if (item === undefined) byCase.set(line.case, (item = { records: 0, differ: 0, declared: 0, missing: 0 }));
     const a = line.fields?.a?.extra?.incidents;
     const b = line.fields?.b?.extra?.incidents;
     if (a === undefined || b === undefined) item.missing += 1;
     else {
       item.records += 1;
-      if (a !== b) item.differ += 1;
+      // Two builds with no fold version have the same version.
+      if (a !== b) {
+        if (line.fields?.a?.extra?.fold === line.fields?.b?.extra?.fold) item.differ += 1;
+        else item.declared += 1;
+      }
     }
   }
   return [...byCase.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([name, item]) => ({ case: name, ...item }));
