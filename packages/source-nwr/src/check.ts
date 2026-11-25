@@ -14,7 +14,7 @@ export const TEST_EVENTS: ReadonlySet<string> = new Set(["RWT", "RMT"]);
  * The largest age of the newest test. A test comes each week, so the limit is one week and one day. The NWS can move
  * a test to a later day in severe weather. This limit comes from the rule, not from a measure of a receiver.
  */
-export const TEST_MAX_AGE_MS = 8 * 24 * 3_600_000;
+export const TEST_MAX_AGE_MS: number = 8 * 24 * 3_600_000;
 
 /** This function gives the time of the issue of a test in an observation. Another observation gives `undefined`. */
 export function testIssuedAt(observation: Observation): Instant | undefined {
