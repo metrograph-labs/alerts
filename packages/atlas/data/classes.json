@@ -632,7 +632,7 @@
       "FEMA lifelines: Hazardous Materials",
       "CAP 1.2: Env"
     ],
-    "gap": "Round 1 found 1 adopted or planned source with no risk: noaa-incidentnews. nrc-uscg-reports is later: see the reason of each.",
+    "gap": "Round 1 found 1 adopted or planned source with no risk: noaa-incidentnews. nrc-uscg-reports is later: see the reason of each. Round 34: losco-active-spills is later, because its layer gives no licence.",
     "round": 1
   },
   {
@@ -830,7 +830,7 @@
     "references": [
       "NWS VTEC phenomena: DF Debris Flow"
     ],
-    "gap": "Round 1 found 1 adopted or planned source with no risk: iem-vtec. usgs-landslide-program is later: see the reason of each.",
+    "gap": null,
     "round": 1
   },
   {
@@ -896,7 +896,7 @@
       "EM-DAT: Mass movement (dry and wet)",
       "UNDRR-ISC HIPs 2025: GH0300-GH0311"
     ],
-    "gap": "No national real-time landslide warning feed was found. USGS gives assessments and monitoring stations. NWS flash flood warnings sometimes name debris flows, but this was not confirmed. Round 29: the data page of the NASA landslide nowcast (LHASA) gave 404.",
+    "gap": null,
     "round": 1
   },
   {
@@ -1080,7 +1080,7 @@
       "CISA sectors: Food and Agriculture",
       "FEMA lifelines: Food, Hydration, Shelter > Agriculture"
     ],
-    "gap": "One source: defra-avian-influenza-zones, for England. aphis-hpai is later, woah-wahis is later: see the reason of each. Round 32: the APHIS page of flocks gave 403, and the CFIA gives its flocks only on a page.",
+    "gap": "One source: defra-avian-influenza-zones, for England. aphis-hpai is later, woah-wahis is later: see the reason of each. Round 32: the APHIS page of flocks gave 403, and the CFIA gives its flocks only on a page. Round 34: ecdc-wnv-animal-outbreaks is later, because each query of its layer failed.",
     "round": 1
   },
   {
@@ -1112,7 +1112,7 @@
     "references": [
       "UNDRR-ISC HIPs 2025: CH0604 Opioids & Other Addictive Substances, CH0603 Methanol"
     ],
-    "gap": "Round 1 found 1 adopted or planned source with no risk: cdc-han. cfsre-nps-discovery is later: see the reason of each.",
+    "gap": "Round 1 found 1 adopted or planned source with no risk: cdc-han. cfsre-nps-discovery is later: see the reason of each. Round 34: nsw-health-drug-warnings is later, because its warnings come only on a page.",
     "round": 1
   },
   {
@@ -1185,7 +1185,7 @@
       "UNDRR-ISC HIPs 2025: BI0104 Foodborne Diseases, BI0210 E. coli, BI0218 Listeriosis",
       "CISA sectors: Food and Agriculture"
     ],
-    "gap": "Round 1 found 0 adopted or planned sources with no risk. fda-core-investigations is later, fsis-recall-api is later: see the reason of each.",
+    "gap": "Round 1 found 0 adopted or planned sources with no risk. fda-core-investigations is later, fsis-recall-api is later: see the reason of each. Round 34: the feed of public health updates of the PHAC gave no answer in 120 seconds.",
     "round": 1
   },
   {
@@ -1285,7 +1285,7 @@
       "UNDRR-ISC HIPs 2025: TL Supply Chain Failure",
       "https://tracker.gasbuddy.com/"
     ],
-    "gap": "Round 1 found 1 adopted or planned source with no risk: eia-api. gasbuddy-availability-tracker is later: see the reason of each.",
+    "gap": null,
     "round": 1
   },
   {
@@ -2091,7 +2091,7 @@
     "references": [
       "https://gasprices.aaa.com/"
     ],
-    "gap": "EIA is the only adopt or candidate source (weekly retail prices); AAA daily averages have no API and no stated terms.",
+    "gap": null,
     "round": 1
   },
   {
