@@ -161,16 +161,34 @@ describe("the drift watch", () => {
     expect(watch.nextReadAt()).toBe(T0 + 2 * DRIFT_EVERY + 60_000);
   });
 
-  it("ends a command at a stop, and the read is not a failure", async () => {
+  it("ends a command at the end of the life of the runtime, and the read is not a failure", async () => {
     const clock = fakeWallClock(T0);
-    const stop = new AbortController();
+    const life = new AbortController();
     const run: DriftRunner = (_argv, aborted) => new Promise((resolve) => aborted.addEventListener("abort", () => resolve({ exitCode: 1, stdout: "" }), { once: true }));
     const watch = driftWatch({ commands: [SETUP], run });
-    await watch.check(clock, stop.signal);
-    stop.abort();
+    await watch.check(clock, undefined, life.signal);
+    life.abort();
     await watch.settled();
     expect(watch.failure("host-a")).toBeUndefined();
     expect(watch.drift()).toEqual([{ name: "host-a", maxAge: DRIFT_MAX_AGE, since: T0 }]);
+  });
+
+  // The scope of a pass closes at the end of the pass. Its signal cut each command after 3 s on the home copy (AL-139).
+  it("does not end a command at the end of the signal of its pass", async () => {
+    const clock = fakeWallClock(T0);
+    const pass = new AbortController();
+    let release: () => void = () => undefined;
+    const run: DriftRunner = (_argv, aborted) =>
+      new Promise((resolve) => {
+        release = () => resolve({ exitCode: 0, stdout: "ok: step.one\n" });
+        aborted.addEventListener("abort", () => resolve({ exitCode: 1, stdout: "" }), { once: true });
+      });
+    const watch = driftWatch({ commands: [SETUP], run });
+    await watch.check(clock, pass.signal, new AbortController().signal);
+    pass.abort();
+    release();
+    await watch.settled();
+    expect(watch.health()).toEqual([{ what: "drift of host-a", at: T0, failed: false, next: T0 + DRIFT_EVERY }]);
   });
 
   it("refuses a bad time and two checks with one name", () => {

@@ -168,7 +168,8 @@ export function billingWatch(options: BillingWatchOptions): BillingWatch {
   };
 
   return {
-    check(clock, stop) {
+    // A read runs after the end of the pass. Thus it stops only at the end of `life`, not of the pass (AL-139).
+    check(clock, _stop, life) {
       checked = true;
       const now = clock.now();
       const watches = options.copies.watches();
@@ -183,7 +184,7 @@ export function billingWatch(options: BillingWatchOptions): BillingWatch {
         entry.down = true;
         if (entry.running !== undefined || (entry.billing !== undefined && entry.billing.state !== "unread")) continue;
         if (entry.next !== undefined && now < entry.next) continue;
-        const job = read(entry, clock, stop).finally(() => {
+        const job = read(entry, clock, life).finally(() => {
           entry.running = undefined;
         });
         entry.running = { job, startedAt: now };

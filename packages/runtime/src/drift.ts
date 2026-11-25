@@ -231,13 +231,14 @@ export function driftWatch(options: DriftWatchOptions): DriftWatch {
   let since: Instant | undefined;
   let running: { readonly job: Promise<void>; startedAt: Instant } | undefined;
   return {
-    check(clock, stop) {
+    // The commands run after the end of the pass. Thus they stop only at the end of `life`, not of the pass (AL-139).
+    check(clock, _stop, life) {
       since ??= clock.now();
       const now = clock.now();
       const due = entries.some((entry) => (entry.reads.nextReadAt() ?? now) <= now);
       if (running === undefined && due) {
         const job = (async () => {
-          for (const entry of entries) await entry.reads.check(clock, stop);
+          for (const entry of entries) await entry.reads.check(clock, life);
         })().finally(() => {
           running = undefined;
         });
