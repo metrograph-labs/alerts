@@ -4,6 +4,7 @@
  *
  * - `retirements` gives the reports of each whole incident that is not live and has no change in the horizon.
  *   With a quiet rule, an incident that sent nothing to a person retires after the shorter quiet horizon (AL-109).
+ *   With the field `told` of the rule, an incident that a person knows retires after that time (AL-172).
  * - `retire` gives them tombstones. A tombstone keeps a late copy of a report out of the state.
  *   An example is a copy from the log of another copy of the system.
  * - `pruneTombstones` drops each tombstone after its time `until`, thus the tombstones also have a bound.
@@ -39,6 +40,12 @@ export interface QuietRule {
    * incidents of a source over a longer window. The default keeps no incident.
    */
   readonly keeps?: ((incident: Incident) => boolean) | undefined;
+  /**
+   * The time after the last change of an incident that a person knows before it retires (AL-172). The default is the
+   * horizon. A value above the horizon gives the horizon. The rule `keeps` also keeps such an incident for the horizon,
+   * for example while a cancel of one of its alerts is not done. A tombstone keeps a late copy of each report out.
+   */
+  readonly told?: Duration | undefined;
 }
 
 /**
@@ -51,7 +58,8 @@ export const TOMBSTONE_LIFE: Duration = 30 * DAY;
 /**
  * This function gives the reports to retire at a time, in the order of their ids. `found` is the incidents of `state`
  * at `at`. An incident retires as a whole when it is not live and its last change is at or before `at - horizon`.
- * With the rule `quiet`, a quiet incident that the rule does not keep retires at `at - quiet.horizon`.
+ * With the rule `quiet`, a quiet incident that the rule does not keep retires at `at - quiet.horizon`. An incident that a
+ * person knows and that the rule does not keep retires at `at - quiet.told`.
  *
  * The last change of an incident is the latest time of its parts. These are the sent, received and expiry times of its
  * reports, and the times of their end marks, deliveries and acknowledgments. Thus an expiry in the future keeps a
@@ -73,9 +81,13 @@ export function retirements(state: MergeState, found: readonly Incident[], at: I
   const told = new Set<ReportId>();
   for (const delivery of state.deliveries) told.add(delivery.incident);
   for (const ack of state.acks) told.add(ack.incident);
-  const quietLimit = quiet === undefined ? limit : at - Math.min(long, Math.max(0, quiet.horizon));
-  const limitOf = (incident: Incident): Instant =>
-    quiet === undefined || incident.reports.some((report) => told.has(report)) || (quiet.keeps?.(incident) ?? false) ? limit : quietLimit;
+  const shorter = (time: Duration | undefined): Instant => (time === undefined ? limit : at - Math.min(long, Math.max(0, time)));
+  const quietLimit = quiet === undefined ? limit : shorter(quiet.horizon);
+  const toldLimit = quiet === undefined ? limit : shorter(quiet.told);
+  const limitOf = (incident: Incident): Instant => {
+    if (quiet === undefined || (quiet.keeps?.(incident) ?? false)) return limit;
+    return incident.reports.some((report) => told.has(report)) ? toldLimit : quietLimit;
+  };
   return found
     .filter((incident) => {
       if (incident.live) return false;
