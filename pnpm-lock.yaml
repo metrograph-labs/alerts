@@ -830,8 +830,8 @@ importers:
         specifier: ^0.1.8
         version: 0.1.8
       '@mark1russell7/text':
-        specifier: ^0.0.18
-        version: 0.0.18
+        specifier: ^0.0.19
+        version: 0.0.19
       '@opentelemetry/api':
         specifier: ^1.10.0
         version: 1.10.0
@@ -3010,6 +3010,10 @@ packages:
 
   '@mark1russell7/text@0.0.18':
     resolution: {integrity: sha512-sIOsTkBOhWLSDyE4qKyiokUT84NPJgPuhLPDyh2Y+mjGnNbGhF9Q6dt9NnSBtSW8C1D0rZfx8fPJ53g0gQGWfQ==}
+    engines: {node: '>=22.12'}
+
+  '@mark1russell7/text@0.0.19':
+    resolution: {integrity: sha512-pPJV318wzfEcsnnzlqVu+OBp/o9VLKWsAo1Wkf4rNaerOjgINDo+vErhmtPVQw6BzcVmGn4brXmMLcosCT9sAw==}
     engines: {node: '>=22.12'}
 
   '@mark1russell7/text@0.0.6':
@@ -5548,6 +5552,8 @@ snapshots:
   '@mark1russell7/text@0.0.17': {}
 
   '@mark1russell7/text@0.0.18': {}
+
+  '@mark1russell7/text@0.0.19': {}
 
   '@mark1russell7/text@0.0.6': {}
 
