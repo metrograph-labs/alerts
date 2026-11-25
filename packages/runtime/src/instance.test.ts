@@ -960,7 +960,7 @@ describe("openInstance", () => {
     const { instance, clock, net } = await open();
     await finish(clock, instance.runtime.pass());
     const hosts = new Set(net.exchanges.map((exchange) => new URL(exchange.url).hostname));
-    expect(hosts).toEqual(new Set(["api.weather.gov", "apps.fema.gov", "earthquake.usgs.gov", "www.seismicportal.eu", "www.tsunami.gov", "services.swpc.noaa.gov", "kp.gfz.de", "api.energy-charts.info", "nasstatus.faa.gov", "opendata.ndw.nu", "www.cisa.gov", "raw.githubusercontent.com", "cert-portal.siemens.com", "psirt.abb.com"]));
+    expect(hosts).toEqual(new Set(["api.weather.gov", "apps.fema.gov", "earthquake.usgs.gov", "www.seismicportal.eu", "www.tsunami.gov", "services.swpc.noaa.gov", "kp.gfz.de", "api.energy-charts.info", "nasstatus.faa.gov", "opendata.ndw.nu", "www.cisa.gov", "raw.githubusercontent.com", "cert-portal.siemens.com", "psirt.abb.com", "www.cert.se", "cert.cyber.gouv.fr", "www.ncsc.gov.uk", "cert.gov.ua", "www.jpcert.or.jp"]));
     for (const exchange of net.exchanges) {
       expect(exchange.headers["user-agent"]).toBe(USER_AGENT_NAME);
       const text = JSON.stringify(exchange);
