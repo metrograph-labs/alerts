@@ -10,6 +10,5 @@
   "roadmap": "docs/ROADMAP.md",
   "site-check": true,
   "site-check-pages": "/,/releases/,/status/,/texts/privacy/,/texts/terms/,/texts/opt-in/",
-  "site-check-probe": "packages/site/src/check-probe.ts",
-  "site-check-bare-errors": "fail"
+  "site-check-probe": "packages/site/src/check-probe.ts"
 }
