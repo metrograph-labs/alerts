@@ -1,0 +1,31 @@
+# The start gate (AL-102): the start of the runtime fits in a small host. The shared workflow of the capacity repository
+# measures the start case of its limits file at the head of each pull request, in 5 runs on 5 runners. It fails when a
+# run passes a ceiling, when a child does not fit the target, and when the records cannot decide: a no read is not a pass.
+# The limits are the worst value of 5 or more CI runs plus their spread. They live in the capacity repository.
+#
+# The uses line and the input capacity name the same commit, thus the code and the limits match. A change of the limits
+# is a new commit of capacity, and a pull request here that moves both pins.
+name: Start gate
+
+on:
+  pull_request:
+    paths:
+      - packages/**
+      - pnpm-lock.yaml
+      - .github/workflows/start-gate.yml
+  # A person starts a run of the head of a branch with gh workflow run start-gate.yml --ref <branch>.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: start-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  start-gate:
+    uses: metrograph-labs/capacity/.github/workflows/start-gate.yml@7bf8caada6cc08a57f482d6738b34a0de7858ae1
+    with:
+      commit: ${{ github.event.pull_request.head.sha || github.sha }}
+      capacity: 7bf8caada6cc08a57f482d6738b34a0de7858ae1
