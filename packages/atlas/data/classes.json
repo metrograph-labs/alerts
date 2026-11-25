@@ -3175,7 +3175,7 @@
       "CISA sectors: Transportation Systems > Maritime",
       "FEMA Lifelines: Transportation > Maritime"
     ],
-    "gap": "No live source. Rounds 24, 31 and 37: the NGA MSI API returned 503. Round 37: the MDAT-GoG site had an expired certificate, and recaap-incidents is later.",
+    "gap": "No live source. Rounds 24, 31 and 37: the NGA MSI API returned 503. Round 37: the MDAT-GoG site had an expired certificate, and recaap-incidents is later. Round 39: the NGA MSI API gave a block page, and the MARAD advisories page returned 403.",
     "round": 1
   },
   {
@@ -3272,7 +3272,7 @@
       "EM-DAT: Technological > Transport > Air",
       "UNDRR-ISC HIPs 2025: TL04 transport accidents"
     ],
-    "gap": "No live source. Round 24: the NTSB API returned 502, and CAROL gives its files only from a search page. ASN returned 403 in round 1.",
+    "gap": "One live source, aaib-deployments-govuk, for the United Kingdom only. Round 24: the NTSB API returned 502. Round 39: TSB Canada returned 403, and the FAA preliminary notices are only a dashboard.",
     "round": 1
   },
   {
@@ -3351,7 +3351,7 @@
       "FEMA Lifelines: Transportation > Railway",
       "UNDRR-ISC HIPs 2025: TL04 transport accidents"
     ],
-    "gap": "Both are records after the fact, not live alerts.",
+    "gap": "Both are records after the fact, not live alerts. Round 39: the RAIB notices come 19 to 36 days after the event, and TSB Canada returned 403.",
     "round": 1
   },
   {
