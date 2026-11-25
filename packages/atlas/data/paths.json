@@ -3166,5 +3166,11 @@
     "name": "api.io.canada.ca",
     "kind": "host",
     "note": "The host of the news API of the Government of Canada, the releases of gc-news-phac."
+  },
+  {
+    "id": "api.scottishwater.co.uk",
+    "name": "api.scottishwater.co.uk",
+    "kind": "host",
+    "note": "The host of the API of Scottish Water, the overflow data of scottish-water-overflows."
   }
 ]
