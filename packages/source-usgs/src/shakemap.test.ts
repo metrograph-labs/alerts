@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { FELT_INTENSITY } from "@mark1russell7/alerts-quake";
-import { locatePoint } from "@mark1russell7/geo";
+import { locatePoint, type MultiPolygon } from "@mark1russell7/geo";
 import { describe, expect, it } from "vitest";
 import { intensityGridOf, readShakeContours, SHAKEMAP_GRID, shakeContours, shakeProductOf, type ShakeContours } from "./shakemap.ts";
 
@@ -11,10 +11,10 @@ const COVERAGE = JSON.parse(readFileSync(new URL("../fixtures/shakemap-us6000ude
 };
 const EPICENTER = { lon: -104.8395, lat: 36.9498 };
 
-const regionOf = (contours: ShakeContours, from: number) => {
+const regionOf = (contours: ShakeContours, from: number): MultiPolygon => {
   const band = contours.bands.find((each) => each.from === from);
   if (band === undefined) throw new Error(`no band ${from}`);
-  return { type: "MultiPolygon" as const, coordinates: band.polygons.map((rings) => rings.map((ring) => ring.map(([lon, lat]) => [lon, lat]))) };
+  return { type: "MultiPolygon" as const, coordinates: band.polygons.map((rings) => rings.map((ring) => ring.map(([lon, lat]): [number, number] => [lon, lat]))) };
 };
 
 describe("shakeProductOf", () => {
