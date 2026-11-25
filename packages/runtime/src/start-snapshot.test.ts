@@ -465,8 +465,8 @@ describe("the context key of a fold (AL-169)", () => {
 
   it("reads no part of the log, and starts with the fold version", () => {
     const context = { sources: [], retention: {} };
-    expect(contextKey(context)).toBe("3:7921159f7f68953ad57bbb40c564d533dd3118f51c812cd953fb82b4dd12c27b");
-    expect(contextKey(context).startsWith(`${String(FOLD_VERSION)}:`)).toBe(true);
+    // The hash is pinned. The version comes from FOLD_VERSION, thus a new version of the fold does not change this test.
+    expect(contextKey(context)).toBe(`${String(FOLD_VERSION)}:7921159f7f68953ad57bbb40c564d533dd3118f51c812cd953fb82b4dd12c27b`);
   });
 
   it("changes when the snapshot key changes on the same log", () => {
