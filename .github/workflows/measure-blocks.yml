@@ -8,6 +8,8 @@
 # liveness probe has a time-out of 2000 ms. The wall time of a part also has the waits for the disk and the runner, and
 # the gate does not count them. Runs 45022368162 and 45024642861 had parts of 164.7 ms and 276.4 ms with 150 ms of CPU time in each write.
 # In the record 45025694491, the worst part had 7.9 ms to 13.5 ms of CPU time. Thus the limit is 13.5 + 5.6, rounded up to 20 ms.
+# The gate counts the CPU time of a part apart from the pauses of the garbage collector in it (AL-174). On 2026-11-24 one
+# pause gave single parts of 50 to 83 ms, and each rerun passed. The limit stays 20 ms: the work is never more than the CPU time.
 # A study of the start on a small cloud machine is outside this workflow.
 # This file is a gate with paths (CI.md): the job changes gives the match, and the job Measure blocks OK gives the result.
 name: Measure blocks
