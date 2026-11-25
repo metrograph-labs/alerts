@@ -55,8 +55,16 @@ export function geomagneticLevel(kp: number): 0 | ScaleLevel["level"] | undefine
 
 /** This function gives the text of a value of the index Kp with its third, for example `5-`, `5` or `5+`. A value out of range gives `undefined`. */
 export function kpText(kp: number): string | undefined {
-  if (!Number.isFinite(kp) || kp < 0 || kp > KP_MAX) return undefined;
-  const thirds = Math.round(kp * 3);
+  return kp > KP_MAX ? undefined : thirdsText(kp);
+}
+
+/**
+ * This function gives the text of a value with its third, as `kpText` does, but with no upper limit. The indices Hp30
+ * and Hp60 of GFZ have no upper limit: `11.333` is 11+. A value below 0, or a value that is not a finite number, gives `undefined`.
+ */
+export function thirdsText(value: number): string | undefined {
+  if (!Number.isFinite(value) || value < 0) return undefined;
+  const thirds = Math.round(value * 3);
   const whole = Math.round(thirds / 3);
   const rest = thirds - whole * 3;
   return `${whole}${rest < 0 ? "-" : rest > 0 ? "+" : ""}`;
