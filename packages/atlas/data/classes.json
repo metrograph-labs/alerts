@@ -138,7 +138,7 @@
     "references": [
       "No hazard list names this class."
     ],
-    "gap": "Find Case Law has Atom feeds, but its terms put computational analysis outside the open licence. CourtListener was not read.",
+    "gap": "No live source. Find Case Law forbids computational analysis in its licence. Round 27: the API and the terms page of CourtListener refuse a plain request.",
     "round": 1
   },
   {
@@ -440,7 +440,7 @@
       "CISA sectors: Water and Wastewater Systems",
       "CISA sectors: Energy"
     ],
-    "gap": "The CISA advisories are the only live source. The current items of the CERT-UA, CCCS and NCSC UK feeds had no attack on the control systems of a utility. EuRepoC is later.",
+    "gap": "The CISA joint advisories are the only live source, and few of them tell of an attack on a utility. The current items of the CERT-UA, CCCS and NCSC UK feeds had no such attack. EuRepoC is later.",
     "round": 19
   },
   {
@@ -678,7 +678,7 @@
       "FEMA lifelines: Water Systems > Potable Water Infrastructure; Food, Hydration, Shelter > Hydration",
       "UNDRR-ISC HIPs 2025: TL0210 Water Supply Failure"
     ],
-    "gap": "No national feed. Only 13 US states publish advisories in an accessible form and only West Virginia was described with an API (Nicholas Institute analysis). Utilities post notices locally.",
+    "gap": null,
     "round": 1
   },
   {
@@ -694,7 +694,7 @@
     "references": [
       "UNDRR-ISC HIPs 2025: BI0603 Harmful Algal Blooms, CH0605 Marine Toxins"
     ],
-    "gap": "Round 1 found 0 adopted or planned sources with no risk. epa-cyan-api is later, noaa-hab-forecasts is later: see the reason of each.",
+    "gap": "One source: ca-fhab-reports, for California. epa-cyan-api and noaa-hab-forecasts are later: see the reason of each.",
     "round": 1
   },
   {
@@ -1080,7 +1080,7 @@
       "CISA sectors: Food and Agriculture",
       "FEMA lifelines: Food, Hydration, Shelter > Agriculture"
     ],
-    "gap": "Round 1 found 0 adopted or planned sources with no risk. aphis-hpai is later, woah-wahis is later: see the reason of each.",
+    "gap": "One source: defra-avian-influenza-zones, for England. aphis-hpai is later, woah-wahis is later: see the reason of each.",
     "round": 1
   },
   {
@@ -1232,7 +1232,7 @@
     "references": [
       "None of the lists names it. Found by search for early health signals."
     ],
-    "gap": "Round 1 found 0 adopted or planned sources with no risk. cdc-nwss is later, wastewaterscan is later: see the reason of each.",
+    "gap": "One source: rivm-wastewater-sars2, for the Netherlands. Round 26: the trend file of Health Infobase (Canada) has no date, so it is later. cdc-nwss and wastewaterscan are later.",
     "round": 1
   },
   {
@@ -1484,7 +1484,7 @@
       "FEMA Lifelines: Energy > Power Grid",
       "EM-DAT: Technological > Miscellaneous"
     ],
-    "gap": "Round 3 plans ODIN (odin-ornl): a free public API of the active outages by county, from 159 utilities. No second live source is found. The map of each utility has the same origin, and PowerOutage.us returned 403. EAGLE-I gives only a historic release each year (eagle-i-history).",
+    "gap": null,
     "round": 1
   },
   {
@@ -1631,7 +1631,7 @@
     "references": [
       "No reference list names this class. Found by the search for missing classes."
     ],
-    "gap": "IERS Bulletin C is later, because no terms page was found.",
+    "gap": "One source: iana-tz, the leap second list. Its data comes from IERS Bulletin C (iers-bulletin-c), so a second source needs a different origin.",
     "round": 1
   },
   {
@@ -2911,7 +2911,7 @@
       "CISA sectors: Food and Agriculture",
       "FEMA Lifelines: Food"
     ],
-    "gap": "Round 1 found 1 adopted or planned source with no risk: canada-recalls. fsis-recall-api is later, openfda-enforcement is later: see the reason of each.",
+    "gap": null,
     "round": 1
   },
   {
@@ -3098,7 +3098,7 @@
       "Crisis24: crime risk",
       "Riskline: crime"
     ],
-    "gap": "The police.uk API is later, because its terms are not clear. No other source was found.",
+    "gap": "One source: chicago-crimes, for one city. Round 26: the Los Angeles dataset stops in 2024-12, and the dataset of one more large city comes each quarter. The police.uk API is later.",
     "round": 1
   },
   {
@@ -3397,7 +3397,7 @@
       "CAP 1.2: Transport",
       "FEMA Lifelines: Transportation > Maritime"
     ],
-    "gap": "The Digitraffic faults of aids to navigation have a risk: they are a partial fit. NGA MSI returned 503 in round 1.",
+    "gap": "One source: dma-niord-warnings, for Danish waters. The Digitraffic faults of aids to navigation are a partial fit. NGA MSI returned 503, and the Portuguese OGC API did not answer.",
     "round": 1
   },
   {

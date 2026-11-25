@@ -3680,7 +3680,7 @@
     "cost": "free",
     "delay": "unknown",
     "history": "The feed held 40 items.",
-    "rateLimit": "unknown",
+    "rateLimit": "No published limit. robots.txt disallows only the PDF, archive, script and font folders. The adapter reads the feed each hour.",
     "calibration": null,
     "coverage": "ANSSI threat and incident reports (CERTFR-yyyy-CTI ids), mostly in French, some in English.",
     "origins": [
@@ -3693,9 +3693,9 @@
       "topic"
     ],
     "risks": [],
-    "decision": "plan",
-    "adapter": null,
-    "reason": "Campaign reports of the French agency. Other feeds (/alerte/feed/, /avis/feed/, /ioc/feed/, /feed/scada/) exist, and the JSON API covers alertes and avis.",
+    "decision": "adopt",
+    "adapter": "@mark1russell7/alerts-source-cert-feeds",
+    "reason": "Campaign reports of the French agency. Each item gives one report of a campaign. The other feeds (/alerte/feed/, /avis/feed/, /ioc/feed/, /feed/scada/) are later rows of the same adapter.",
     "evidence": [
       "https://cert.cyber.gouv.fr/cti/feed/",
       "https://cert.cyber.gouv.fr/flux-rss/"
@@ -3890,7 +3890,7 @@
       "cyber.vulnerability.published",
       "cyber.campaign"
     ],
-    "url": "https://www.cert.se/feed.rss",
+    "url": "https://www.cert.se/feed/rss.xml",
     "access": "feed",
     "auth": "none",
     "terms": {
@@ -3901,8 +3901,8 @@
     },
     "cost": "free",
     "delay": "unknown",
-    "history": "The feed held 10 items.",
-    "rateLimit": "unknown",
+    "history": "The feed held 10 items from 2026-11-09 to 2026-11-24, with a weekly letter.",
+    "rateLimit": "No published limit. The adapter reads the feed each hour with an ETag.",
     "calibration": null,
     "coverage": "CERT-SE news on critical flaws and threats for Sweden, in Swedish. Few items name CVE ids.",
     "origins": [
@@ -3915,9 +3915,9 @@
       "topic"
     ],
     "risks": [],
-    "decision": "plan",
-    "adapter": null,
-    "reason": "Low volume national alerts on critical flaws. CERT-SE moved to the NCSC at FRA on 1 July 2026.",
+    "decision": "adopt",
+    "adapter": "@mark1russell7/alerts-source-cert-feeds",
+    "reason": "Low volume national alerts on critical flaws and campaigns, in Swedish. A weekly letter gives no report. CERT-SE moved to the NCSC at FRA on 1 July 2026.",
     "evidence": [
       "https://www.cert.se/feed.rss",
       "https://www.cert.se/om-cert-se"
@@ -3945,8 +3945,8 @@
     },
     "cost": "free",
     "delay": "unknown",
-    "history": "The feed held 9 items from February to September 2026.",
-    "rateLimit": "unknown",
+    "history": "The gaps between items were up to 55 days in 2026. The newest item had the date 2026-09-30.",
+    "rateLimit": "No published limit. The adapter reads the feed each hour.",
     "calibration": null,
     "coverage": "CERT-UA reports on campaigns of tracked groups (UAC ids, APT28, Sandworm), in Ukrainian.",
     "origins": [
@@ -3959,8 +3959,8 @@
       "topic"
     ],
     "risks": [],
-    "decision": "plan",
-    "adapter": null,
+    "decision": "adopt",
+    "adapter": "@mark1russell7/alerts-source-cert-feeds",
     "reason": "Primary campaign reports from a CERT under active attack, with group ids. Low volume.",
     "evidence": [
       "https://cert.gov.ua/api/articles/rss",
@@ -4427,8 +4427,8 @@
     },
     "cost": "free",
     "delay": "unknown",
-    "history": "unknown",
-    "rateLimit": "unknown",
+    "history": "The feed held 30 items from 2026-11-10 to 2026-11-24: 22 ICS advisories and 8 alerts.",
+    "rateLimit": "No published limit. robots.txt allows each agent but one. The adapter reads the feed each 30 minutes with an ETag.",
     "calibration": null,
     "coverage": "Alerts, cybersecurity advisories, malware analysis reports, ICS and ICS medical advisories.",
     "origins": [
@@ -4438,11 +4438,14 @@
       "www.cisa.gov",
       "cdn:akamai"
     ],
-    "subjectIds": null,
+    "subjectIds": [
+      "topic",
+      "cve"
+    ],
     "risks": [],
-    "decision": "plan",
-    "adapter": null,
-    "reason": "The primary US government channel for cyber advisories, as RSS.",
+    "decision": "adopt",
+    "adapter": "@mark1russell7/alerts-source-cert-feeds",
+    "reason": "The US government channel for cyber advisories. The link and the title of each item give its kind, and the text gives its CVE ids.",
     "evidence": [
       "https://www.cisa.gov/about/contact-us/subscribe-updates-cisa",
       "https://www.cisa.gov/news-events/cybersecurity-advisories"
@@ -5246,7 +5249,7 @@
       "url": null,
       "automated": "unclear",
       "redistribution": "unclear",
-      "note": "The page redirected to wiki.free.law; not read."
+      "note": "Round 27: the terms page gave 403 to a plain request. The search API gave 405 with a page of human verification."
     },
     "cost": "unknown",
     "delay": "unknown",
@@ -5265,8 +5268,11 @@
     "risks": [],
     "decision": "later",
     "adapter": null,
-    "reason": "Known open court data; facts for round 2.",
-    "evidence": [],
+    "reason": "Later: the API and the terms page refuse a plain request, and the round tries no other route. The API documents a token.",
+    "evidence": [
+      "https://www.courtlistener.com/api/rest/v4/search/?type=o&order_by=dateFiled%20desc",
+      "https://www.courtlistener.com/terms/"
+    ],
     "round": 1
   },
   {
@@ -8253,7 +8259,9 @@
   {
     "id": "faa-nas-status",
     "name": "FAA NAS Status airport status XML",
-    "classes": ["transport.air.disruption"],
+    "classes": [
+      "transport.air.disruption"
+    ],
     "dimensions": [
       "aviation-delays"
     ],
@@ -10891,37 +10899,39 @@
   },
   {
     "id": "iana-tz",
-    "name": "IANA time zone database releases",
+    "name": "IANA time zone database: the leap second list and the data releases",
     "classes": [
       "infra.timekeeping"
     ],
-    "url": "https://www.iana.org/time-zones",
+    "url": "https://data.iana.org/time-zones/data/leap-seconds.list",
     "access": "file",
     "auth": "none",
     "terms": {
-      "url": null,
-      "automated": "unclear",
-      "redistribution": "unclear",
-      "note": "Updated periodically; latest 2026f on 2026-10-27. Mailing list not named on the page."
+      "url": "https://data.iana.org/time-zones/tzdb/LICENSE",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The LICENSE file puts the tz code and data in the public domain. The leap second list also says so."
     },
     "cost": "free",
-    "delay": "on release",
-    "history": "unknown",
+    "delay": "One read on 2026-11-25 gave a file changed on 2026-10-28, from IERS Bulletin C. The list states its own expiry date: 2027-06-28.",
+    "history": "The list holds the 28 offsets since 1972.",
     "rateLimit": "unknown",
     "calibration": null,
-    "coverage": "World time zone rules.",
+    "coverage": "Each leap second since 1972, the date of the last change and the expiry date of the list. The data folder also holds the time zone rules of each release.",
     "origins": [
       "iana"
     ],
     "path": [
-      "www.iana.org"
+      "data.iana.org"
     ],
     "subjectIds": null,
     "risks": [],
-    "decision": "later",
+    "decision": "plan",
     "adapter": null,
-    "reason": "Low volume, high impact for schedules.",
+    "reason": "A public-domain list in a fixed text format, with no key. A new leap second or a list near its expiry date changes the schedules of the systems that keep time.",
     "evidence": [
+      "https://data.iana.org/time-zones/data/leap-seconds.list",
+      "https://data.iana.org/time-zones/tzdb/LICENSE",
       "https://www.iana.org/time-zones"
     ],
     "round": 1
@@ -12164,7 +12174,7 @@
     "cost": "free",
     "delay": "unknown",
     "history": "The feed held 6 items.",
-    "rateLimit": "unknown",
+    "rateLimit": "No published limit. The adapter reads the feed each hour.",
     "calibration": null,
     "coverage": "JPCERT/CC security alerts in English for major vendor updates, RSS 1.0.",
     "origins": [
@@ -12178,9 +12188,9 @@
       "topic"
     ],
     "risks": [],
-    "decision": "plan",
-    "adapter": null,
-    "reason": "Low volume alerts from the Japanese national CERT, in English. JPCERT/CC is a CNA root.",
+    "decision": "adopt",
+    "adapter": "@mark1russell7/alerts-source-cert-feeds",
+    "reason": "Low volume alerts from the Japanese national CERT, in English. JPCERT/CC is a CNA root. The feed reader of the system reads RSS 1.0 since this adapter.",
     "evidence": [
       "https://www.jpcert.or.jp/english/rss/jpcert-en.rdf"
     ],
@@ -14176,11 +14186,13 @@
   },
   {
     "id": "ncsc-uk-rss",
-    "name": "NCSC UK RSS feeds (threat reports, news)",
+    "name": "NCSC UK news feed (RSS)",
     "classes": [
-      "cyber.campaign"
+      "cyber.campaign",
+      "cyber.vulnerability.exploited",
+      "cyber.vulnerability.published"
     ],
-    "url": "https://www.ncsc.gov.uk/information/rss-feeds",
+    "url": "https://www.ncsc.gov.uk/api/1/services/v1/news-rss-feed.xml",
     "access": "feed",
     "auth": "none",
     "terms": {
@@ -14191,10 +14203,10 @@
     },
     "cost": "free",
     "delay": "unknown",
-    "history": "The all-items feed held 20 items over approximately 12 weeks.",
-    "rateLimit": "unknown",
+    "history": "The news feed held 20 items from 2026-04-22 to 2026-11-11. The all-items feed is mostly blog posts.",
+    "rateLimit": "No published limit. The adapter reads the news feed each hour.",
     "calibration": null,
-    "coverage": "NCSC UK threat reports, news, blog posts and guidance. Feeds: report-rss-feed.xml, news-rss-feed.xml and all-rss-feed.xml.",
+    "coverage": "NCSC UK news: threat alerts, joint advisories and exploited flaws. The adapter reads news-rss-feed.xml. An item that no rule matches gives no report.",
     "origins": [
       "ncsc-uk"
     ],
@@ -14203,17 +14215,19 @@
       "cdn:cloudflare"
     ],
     "subjectIds": [
-      "topic"
+      "topic",
+      "cve"
     ],
     "risks": [],
-    "decision": "plan",
-    "adapter": null,
-    "reason": "The report and news feeds carry UK government threat alerts and joint advisories. OGL v3.0.",
+    "decision": "adopt",
+    "adapter": "@mark1russell7/alerts-source-cert-feeds",
+    "reason": "The news feed carries UK government threat alerts and joint advisories. The title of each item gives its kind. OGL v3.0.",
     "evidence": [
       "https://www.ncsc.gov.uk/information/rss-feeds",
       "https://www.ncsc.gov.uk/api/1/services/v1/all-rss-feed.xml",
       "https://www.ncsc.gov.uk/section/about-this-website/terms-and-conditions",
-      "https://www.ncsc.gov.uk/section/keep-up-to-date/rss-feeds"
+      "https://www.ncsc.gov.uk/section/keep-up-to-date/rss-feeds",
+      "https://www.ncsc.gov.uk/api/1/services/v1/news-rss-feed.xml"
     ],
     "round": 15
   },
@@ -23805,5 +23819,381 @@
     "risks": [],
     "adapter": null,
     "round": 22
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "round": 25,
+    "id": "dma-niord-warnings",
+    "name": "Danish Maritime Authority navigational warnings and notices (Niord REST, JSON)",
+    "classes": [
+      "transport.sea.navigational-warning"
+    ],
+    "url": "https://niord.dma.dk/rest/public/v1/messages?lang=en",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.dma.dk/safety-at-sea/navigational-information/download-data",
+      "automated": "allowed",
+      "redistribution": "unclear",
+      "note": "The download page of the DMA names the Niord REST service. The page of its conditions returned 404 on 2026-11-25. A search snippet tells of credit to the DMA."
+    },
+    "delay": "The newest warning of one read on 2026-11-25 was about 1 hour old.",
+    "history": "unknown (the answer holds the messages in force)",
+    "rateLimit": "unknown",
+    "coverage": "Danish waters: coastal and local navigational warnings, firing warnings and notices to mariners, each with GeoJSON. On 2026-11-25 the answer had 209 messages, 37 of them warnings, and the newest was 1 hour old.",
+    "origins": [
+      "dma"
+    ],
+    "path": [
+      "niord.dma.dk"
+    ],
+    "reason": "A live list of the warnings in force, with a shape for each, and no key. Niord is open-source software, so other authorities can publish the same form.",
+    "evidence": [
+      "https://niord.dma.dk/rest/public/v1/messages?lang=en",
+      "https://admin.dma.dk/safety-at-sea/navigational-information/download-data"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "round": 25,
+    "id": "alaska-dec-boil-water",
+    "name": "Alaska DEC open boil water and do not drink notices (ArcGIS, JSON)",
+    "classes": [
+      "env.water.drinking-advisory"
+    ],
+    "url": "https://dec.alaska.gov/arcgis/rest/services/EH/BWN_DND/FeatureServer/0",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The service names the Drinking Water Program of the Alaska DEC as its owner. No terms page was found."
+    },
+    "delay": "unknown (the service says that it shows each notice after its entry in SDWIS)",
+    "history": "none (only the notices in force)",
+    "rateLimit": "2,000 records for each query",
+    "coverage": "Alaska: each public water system with an open boil water or do not drink notice, with its issue date, population and point.",
+    "origins": [
+      "alaska-dec"
+    ],
+    "path": [
+      "dec.alaska.gov"
+    ],
+    "reason": "A state list of the notices in force, with no key. The layer also has the contact fields of the staff, so an adapter asks only for the fields of the notice.",
+    "evidence": [
+      "https://dec.alaska.gov/arcgis/rest/services/EH/BWN_DND/FeatureServer?f=json"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "round": 25,
+    "id": "nl-boil-water-advisories",
+    "name": "Newfoundland and Labrador boil water advisories (ArcGIS, JSON)",
+    "classes": [
+      "env.water.drinking-advisory"
+    ],
+    "url": "https://maps.gov.nl.ca/gsdw/rest/services/water/BoilAdvisories/FeatureServer/0",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The service names the Water Resources Management Division of the province. No terms page was found."
+    },
+    "delay": "unknown",
+    "history": "none (only the advisories in force)",
+    "rateLimit": "1,000 records for each query",
+    "coverage": "Newfoundland and Labrador, Canada: each boil water advisory in force, with the community, the population, the issue date and the reason.",
+    "origins": [
+      "nl-water-resources"
+    ],
+    "path": [
+      "maps.gov.nl.ca"
+    ],
+    "reason": "A provincial list of the advisories in force, with no key and a reason code for each. It gives the class a second source, outside the US.",
+    "evidence": [
+      "https://maps.gov.nl.ca/gsdw/rest/services/water/BoilAdvisories/FeatureServer?f=json"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "round": 25,
+    "id": "ca-fhab-reports",
+    "name": "California freshwater harmful algal bloom reports (CKAN datastore, JSON)",
+    "classes": [
+      "env.water.harmful-algal-bloom"
+    ],
+    "url": "https://data.ca.gov/api/3/action/datastore_search?resource_id=c6a36b91-ad38-4611-8750-87ee99e497dd",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.ca.gov/dataset/surface-water-freshwater-harmful-algal-blooms",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The dataset record gives the licence Other (Public Domain)."
+    },
+    "delay": "Days: the newest report of the read on 2026-11-25 was created on 2026-11-23.",
+    "history": "3,744 records, the total of the datastore on 2026-11-25.",
+    "rateLimit": "unknown",
+    "coverage": "California: each report of a freshwater bloom, from the public and from staff, with the water body, the county, a point and the reported advisory types. On 2026-11-25 the datastore had 3,744 records, and the newest was from 2026-11-23.",
+    "origins": [
+      "ca-water-board"
+    ],
+    "path": [
+      "data.ca.gov"
+    ],
+    "reason": "A public-domain list of bloom reports with points, with no key. A public report is not an advisory until staff review it, so an adapter uses the case and advisory fields.",
+    "evidence": [
+      "https://data.ca.gov/api/3/action/package_show?id=surface-water-freshwater-harmful-algal-blooms"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 26,
+    "decision": "plan",
+    "id": "fsa-uk-food-alerts",
+    "name": "Food Standards Agency food alerts (UK, JSON API)",
+    "classes": [
+      "safety.recall",
+      "safety.recall.food"
+    ],
+    "url": "https://data.food.gov.uk/food-alerts/id?_sort=-created&_limit=100",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.food.gov.uk/food-alerts/ui/reference",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The metadata of each answer names the Open Government Licence v3.0."
+    },
+    "delay": "One read on 2026-11-25 gave 20 alerts. The newest was from the same day.",
+    "history": "The API holds the alerts since 2018.",
+    "rateLimit": "unknown",
+    "coverage": "The product recalls and the allergy alerts of the United Kingdom. Each alert has its type, its reason and its products. The API also gives CSV and RDF.",
+    "origins": [
+      "fsa-uk"
+    ],
+    "path": [
+      "data.food.gov.uk"
+    ],
+    "reason": "A national authority gives its food recalls as JSON under an open licence, with no key. Some recalls are for Salmonella, Listeria or other pathogens.",
+    "evidence": [
+      "https://data.food.gov.uk/food-alerts/id?_sort=-created&_limit=20",
+      "https://data.food.gov.uk/food-alerts/ui/reference"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 26,
+    "decision": "plan",
+    "id": "ukpn-national-energy-outage",
+    "name": "UK Power Networks power cuts (Opendatasoft API)",
+    "classes": [
+      "infra.power.outage"
+    ],
+    "url": "https://ukpowernetworks.opendatasoft.com/api/explore/v2.1/catalog/datasets/ukpn-national-energy-outage/records?limit=100",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://ukpowernetworks.opendatasoft.com/explore/dataset/ukpn-national-energy-outage/information/",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The metadata of the dataset gives the licence CC BY 4.0."
+    },
+    "delay": "One read on 2026-11-25 gave 117 records with an as_at_date of 13:31 UTC. The dataset changed at 13:36 UTC.",
+    "history": "unknown (the dataset holds the open and the recent power cuts)",
+    "rateLimit": "unknown",
+    "coverage": "The planned and unplanned power cuts of three licence areas of the United Kingdom: East, London and South East. Each record has a point, its postcode districts, a planned flag and an estimated time of restoration.",
+    "origins": [
+      "ukpn"
+    ],
+    "path": [
+      "ukpowernetworks.opendatasoft.com"
+    ],
+    "reason": "A distribution operator gives its live power cuts under an open licence, with no key. Other operators also publish on Opendatasoft, so one adapter can read more of them.",
+    "evidence": [
+      "https://ukpowernetworks.opendatasoft.com/api/explore/v2.1/catalog/datasets/ukpn-national-energy-outage/records?limit=5",
+      "https://ukpowernetworks.opendatasoft.com/api/explore/v2.1/catalog/datasets/ukpn-national-energy-outage"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 26,
+    "decision": "plan",
+    "id": "rivm-wastewater-sars2",
+    "name": "RIVM SARS-CoV-2 in wastewater (Netherlands, CSV)",
+    "classes": [
+      "health.wastewater-signal"
+    ],
+    "url": "https://data.rivm.nl/data/covid-19/COVID-19_rioolwaterdata.csv",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.rivm.nl/",
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The landing page shows no licence text. The round did not read the licence of the dataset."
+    },
+    "delay": "One read on 2026-11-25 had the report date 2026-11-18 and the newest measurement of 2026-11-12.",
+    "history": "The file holds the measurements since 2020-03-30.",
+    "rateLimit": "unknown",
+    "coverage": "The virus RNA flow for each 100,000 people at each treatment plant of the Netherlands. The file had 182,181 rows.",
+    "origins": [
+      "rivm"
+    ],
+    "path": [
+      "data.rivm.nl"
+    ],
+    "reason": "A national institute gives the wastewater signal of the whole country as one file, with no key. The signal comes each week.",
+    "evidence": [
+      "https://data.rivm.nl/data/covid-19/COVID-19_rioolwaterdata.csv"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 26,
+    "decision": "later",
+    "id": "canada-wastewater-trend",
+    "name": "Health Infobase wastewater trend (Canada, CSV)",
+    "classes": [
+      "health.wastewater-signal"
+    ],
+    "url": "https://health-infobase.canada.ca/src/data/covidLive/wastewater/covid19-wastewater-trend.csv",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://health-infobase.canada.ca/covid-19/wastewater/",
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The round did not read a licence page. Federal open data often uses the Open Government Licence - Canada."
+    },
+    "delay": "One read on 2026-11-25 gave 60 rows. The file has no date column, so the read cannot tell the age of the data.",
+    "history": "unknown",
+    "rateLimit": "unknown",
+    "coverage": "The latest level and trend of the virus in wastewater at 60 sites of the provinces of Canada.",
+    "origins": [
+      "phac"
+    ],
+    "path": [
+      "health-infobase.canada.ca"
+    ],
+    "reason": "Later: the file has no date, so an adapter cannot tell a fresh trend from an old trend. A second file of the same page possibly has the dates.",
+    "evidence": [
+      "https://health-infobase.canada.ca/covid-19/wastewater/",
+      "https://health-infobase.canada.ca/src/data/covidLive/wastewater/covid19-wastewater-trend.csv"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 26,
+    "decision": "plan",
+    "id": "chicago-crimes",
+    "name": "City of Chicago crimes (Socrata API)",
+    "classes": [
+      "security.crime"
+    ],
+    "url": "https://data.cityofchicago.org/resource/ijzp-q8t2.json?$order=date%20DESC&$limit=100",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.cityofchicago.org/api/views/ijzp-q8t2",
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The licence field of the dataset says See Terms of Use. The round did not read the terms of the city."
+    },
+    "delay": "One read on 2026-11-25 had the newest incident of 2026-11-17. The dataset changed on 2026-11-24, so the delay is approximately 7 days.",
+    "history": "The dataset holds the incidents since 2001.",
+    "rateLimit": "Socrata limits the requests with no app token.",
+    "coverage": "The reported crimes of Chicago, with the type, the block and a point for each incident. It changes each day.",
+    "origins": [
+      "chicago-pd"
+    ],
+    "path": [
+      "data.cityofchicago.org"
+    ],
+    "reason": "A city gives its crimes each day, with no key. Many cities use the same Socrata API, so one adapter can read more of them.",
+    "evidence": [
+      "https://data.cityofchicago.org/resource/ijzp-q8t2.json",
+      "https://data.cityofchicago.org/api/views/ijzp-q8t2.json"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 27,
+    "decision": "plan",
+    "id": "defra-avian-influenza-zones",
+    "name": "Bird flu cases and disease control zones in England (GOV.UK content API)",
+    "classes": [
+      "health.animal-disease"
+    ],
+    "url": "https://www.gov.uk/api/content/guidance/avian-influenza-bird-flu-cases-and-disease-control-zones-in-england",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.gov.uk/help/terms-conditions",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The content of GOV.UK is under the Open Government Licence v3.0. The atlas already reads other GOV.UK content API pages."
+    },
+    "delay": "One read on 2026-11-25 gave the last change on 2026-11-13. The page has 307 dated changes.",
+    "history": "The change history of the page holds each change, with a note.",
+    "rateLimit": "unknown",
+    "coverage": "The confirmed cases of bird flu in England, the control zones around them and the housing orders. Each change has a time and a note.",
+    "origins": [
+      "apha"
+    ],
+    "path": [
+      "www.gov.uk"
+    ],
+    "reason": "The authority of England gives its bird flu cases as JSON with a dated change history, under an open licence and with no key.",
+    "evidence": [
+      "https://www.gov.uk/api/content/guidance/avian-influenza-bird-flu-cases-and-disease-control-zones-in-england"
+    ]
   }
 ]

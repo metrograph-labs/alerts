@@ -93,7 +93,7 @@ describe("createAwsFetch", () => {
     expect(await fetch()).toEqual({ ok: false, failure: { kind: "network", message: "truncated or malformed body: https://status.aws.amazon.com/rss/all.rss" } });
     expect(await fetch()).toEqual({
       ok: false,
-      failure: { kind: "server", message: "the answer is not the RSS feed of the AWS Health Dashboard (the root element is html, not rss or an Atom feed): https://status.aws.amazon.com/rss/all.rss" },
+      failure: { kind: "server", message: "the answer is not the RSS feed of the AWS Health Dashboard (the root element is html, not rss, rdf:RDF or an Atom feed): https://status.aws.amazon.com/rss/all.rss" },
     });
     expect(await fetch()).toMatchObject({ ok: true });
     expect(sent.map((headers) => headers["if-none-match"])).toEqual([undefined, undefined, undefined]);

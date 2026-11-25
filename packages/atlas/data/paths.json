@@ -2304,12 +2304,6 @@
     "note": "The host of the feed of honeywell-product-security."
   },
   {
-    "id": "www.iana.org",
-    "name": "www.iana.org",
-    "kind": "host",
-    "note": "The host of the feed of iana-tz."
-  },
-  {
     "id": "www.ibm.com",
     "name": "www.ibm.com",
     "kind": "host",
@@ -2806,5 +2800,65 @@
     "name": "hacker-news.firebaseio.com",
     "kind": "host",
     "note": "The host of the API of hacker-news-api."
+  },
+  {
+    "id": "niord.dma.dk",
+    "name": "niord.dma.dk",
+    "kind": "host",
+    "note": "The host of the feed of dma-niord-warnings."
+  },
+  {
+    "id": "dec.alaska.gov",
+    "name": "dec.alaska.gov",
+    "kind": "host",
+    "note": "The host of the feed of alaska-dec-boil-water."
+  },
+  {
+    "id": "maps.gov.nl.ca",
+    "name": "maps.gov.nl.ca",
+    "kind": "host",
+    "note": "The host of the feed of nl-boil-water-advisories."
+  },
+  {
+    "id": "data.ca.gov",
+    "name": "data.ca.gov",
+    "kind": "host",
+    "note": "The host of the feed of ca-fhab-reports."
+  },
+  {
+    "id": "data.food.gov.uk",
+    "name": "data.food.gov.uk",
+    "kind": "host",
+    "note": "The host of the feed of fsa-uk-food-alerts."
+  },
+  {
+    "id": "ukpowernetworks.opendatasoft.com",
+    "name": "ukpowernetworks.opendatasoft.com",
+    "kind": "host",
+    "note": "The host of the feed of ukpn-national-energy-outage."
+  },
+  {
+    "id": "data.rivm.nl",
+    "name": "data.rivm.nl",
+    "kind": "host",
+    "note": "The host of the feed of rivm-wastewater-sars2."
+  },
+  {
+    "id": "health-infobase.canada.ca",
+    "name": "health-infobase.canada.ca",
+    "kind": "host",
+    "note": "The host of the feed of canada-wastewater-trend."
+  },
+  {
+    "id": "data.cityofchicago.org",
+    "name": "data.cityofchicago.org",
+    "kind": "host",
+    "note": "The host of the feed of chicago-crimes."
+  },
+  {
+    "id": "data.iana.org",
+    "name": "data.iana.org",
+    "kind": "host",
+    "note": "The host of the data files of iana-tz."
   }
 ]
