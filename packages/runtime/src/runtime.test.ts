@@ -330,7 +330,7 @@ describe("a restart from the snapshot of the start (AL-105)", () => {
     }
   });
 
-  it("upgrades a snapshot of the old fold, and folds the whole log when a loop event is in the snapshot (AL-153)", async () => {
+  it("folds the whole log for a snapshot of an old fold with no upgrade to the fold of FOLD_VERSION (AL-153, AL-172)", async () => {
     const seed = SEEDS[0]!;
     // A snapshot of the fold after 20 passes, written again as a snapshot of version 1: the rows of version 2 less the rows of the blocks.
     const oldSnapshot = async (place: string, loop: boolean): Promise<{ readonly log: RuntimeLog; readonly store: ReturnType<typeof openFoldSnapshot>; readonly head: number }> => {
@@ -360,21 +360,21 @@ describe("a restart from the snapshot of the start (AL-105)", () => {
       return openRuntime({ log, clock, sources: [worldSource(API, MINUTE, seed, warningsOf(seed), clock)], watch: () => ({ places: [KANSAS], kinds: ["met"] }), view: VIEW, run: "run-1", startSnapshot: store });
     };
 
-    // No loop event: the start reads the old snapshot with its upgrade, and it gets the state of the fold of the whole log.
-    let { log, store, head } = await oldSnapshot(folder(), false);
+    // No loop event: the upgrade of version 1 gave version 2, and version 3 has no upgrade. Thus the start folds the whole log.
+    let { log, store } = await oldSnapshot(folder(), false);
     try {
-      const upgraded = reopen(log, store);
-      expect(upgraded.start).toEqual({ events: expect.any(Number), snapshot: { seq: head, id: expect.any(String) }, upgraded: 1 });
-      expect(upgraded.start.events).toBeLessThan([...log.read(FOLD_TYPES)].length);
-      expect(upgraded.state()).toEqual(rebuild(log.read(FOLD_TYPES), upgraded.config));
-      await upgraded.close();
+      const count = [...log.read(FOLD_TYPES)].length;
+      const whole = reopen(log, store);
+      expect(whole.start).toEqual({ events: count });
+      expect(whole.state()).toEqual(rebuild(log.read(FOLD_TYPES), whole.config));
+      await whole.close();
     } finally {
       log.close();
       store.close();
     }
 
     // A loop event at or before the mark: the old fold did not read it, thus the upgrade is not exact, and the start folds the whole log.
-    ({ log, store, head } = await oldSnapshot(folder(), true));
+    ({ log, store } = await oldSnapshot(folder(), true));
     try {
       const count = [...log.read(FOLD_TYPES)].length;
       const whole = reopen(log, store);
