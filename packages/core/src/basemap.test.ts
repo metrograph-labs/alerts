@@ -63,11 +63,19 @@ describe("basemapToleranceKm", () => {
     expect(basemapToleranceKm(regions)).toBeCloseTo(0.5839, 4);
   });
 
-  it("gives no tolerance with no polygon, with no extent, or across the antimeridian", () => {
+  it("gives no tolerance with no polygon or with no extent", () => {
     expect(basemapToleranceKm([])).toBeUndefined();
     expect(basemapToleranceKm([{ code: { system: "ugc", code: "C" }, name: "C", shapes: [{ type: "circle", center: [0, 0], radiusKm: 1 }] }])).toBeUndefined();
     expect(basemapToleranceKm([region("A", [[1, 1], [1, 1], [1, 1], [1, 1]])])).toBeUndefined();
-    expect(basemapToleranceKm([region("A", box(-179, 51, -170, 52)), region("B", box(170, 51, 179, 52))])).toBeUndefined();
+  });
+
+  // The page fits with no rotation. Thus regions on the two sides of the antimeridian fill its full width (AL-176).
+  it("fits regions on the two sides of the antimeridian across the full span of their longitudes", () => {
+    const tolerance = basemapToleranceKm([region("A", box(-179, 51, -170, 52)), region("B", box(170, 51, 179, 52))]);
+    // 358 degrees of longitude in 952 units, at the cosine of 52 degrees: 0.6157.
+    const unit = (EARTH_MEAN_RADIUS_KM * Math.cos((52 * Math.PI) / 180) * ((358 * Math.PI) / 180)) / 952;
+    expect(tolerance).toBeCloseTo(unit / 2, 9);
+    expect(tolerance!).toBeGreaterThan(basemapToleranceKm([region("A", box(-179, 51, -170, 52))])!);
   });
 });
 
