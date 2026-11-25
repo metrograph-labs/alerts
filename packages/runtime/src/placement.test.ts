@@ -9,7 +9,10 @@ import {
   readBase,
   readJoint,
   assumedInputs,
+  azureSizesFor,
   choiceCount,
+  computeMeter,
+  countryFragment,
   distinctRows,
   fixedSlotId,
   fragmentInput,
@@ -28,6 +31,7 @@ import {
   type PlacementBase,
   type PlacementChances,
   type PlacementInput,
+  windowsOffer,
 } from "./placement.ts";
 
 // Each provider, region, price and chance of this file is made up. The names are neutral.
@@ -42,6 +46,7 @@ interface OfferSpec {
   readonly memory?: string;
   readonly term?: "on-demand" | "spot";
   readonly currency?: string;
+  readonly country?: string;
 }
 
 function offer(spec: OfferSpec): MeteredObservation {
@@ -54,7 +59,7 @@ function offer(spec: OfferSpec): MeteredObservation {
       source: spec.provider,
       sourceId: `${spec.plan}/${spec.region}/${term}`,
       title: `${spec.provider} ${spec.plan}`,
-      location: { provider: spec.provider, region: spec.region },
+      location: { provider: spec.provider, region: spec.region, ...(spec.country === undefined ? {} : { country: spec.country }) },
       term: { kind: term },
       specs: [{ name: "memory", value: spec.memory ?? "2048 MiB" }],
     },
@@ -124,6 +129,50 @@ describe("the offers of a placement", () => {
     expect(() => placementLayer(input([], { chances: bad }))).toThrow(RangeError);
     const blank = { ...CHANCES, region: { works: 0.9, kind: "assumed" as const, source: " " } };
     expect(() => placementLayer(input([], { chances: blank }))).toThrow(RangeError);
+  });
+});
+
+// An offer in the form of the Azure parser: its one meter of hours has the name of its size, and the specs name the product.
+function sized(product: string, size: string, hourly: number, meters: readonly string[] = [size]): MeteredObservation {
+  const base = offer({ provider: "provider-c", region: "region-c", plan: size, hourly, memory: "1 GiB" });
+  return {
+    offer: { ...base.offer, specs: [...base.offer.specs, { name: "productName", value: product }] },
+    reading: { ...base.reading, meters: meters.map((name) => ({ name, tiers: [{ from: { value: 0, unit: "h" }, unitPrice: { value: hourly, unit: canonicalUnit("USD/h") } }] })) },
+  };
+}
+
+describe("the offers of virtual machines (AL-146)", () => {
+  it("uses the one meter of hours of an offer with no compute meter", () => {
+    const machine = sized("Machines Series X", "X1", 0.02);
+    expect(computeMeter(machine)).toBe("X1");
+    expect(monthCost(machine)?.value).toBeCloseTo(14.6, 9);
+    expect(computeMeter(offer({ provider: "provider-a", region: "europe-west1", plan: "p1", hourly: 0.01 }))).toBe("compute");
+  });
+
+  it("gives no compute meter to an offer with two meters of hours", () => {
+    const two = sized("Machines Series X", "X1", 0.02, ["X1", "X1 extra"]);
+    expect(computeMeter(two)).toBeUndefined();
+    expect(monthCost(two)).toBeUndefined();
+  });
+
+  it("puts an offer with one meter of hours into the layer", () => {
+    const build = placementLayer(input([sized("Machines Series X", "X1", 0.02)]));
+    expect(build.skipped.meter).toBe(0);
+    expect(build.layer.slots[0]?.candidates.map((candidate) => candidate.key)).toEqual(["provider-c/region-c"]);
+  });
+
+  it("tells a Windows offer by its product name", () => {
+    expect(windowsOffer(sized("Machines Series X Windows", "X1", 0.03))).toBe(true);
+    expect(windowsOffer(sized("Machines Series X", "X1", 0.02))).toBe(false);
+    expect(windowsOffer(offer({ provider: "provider-a", region: "europe-west1", plan: "p1", hourly: 0.01 }))).toBe(false);
+  });
+
+  it("gives the smallest sizes with enough memory, by vCPUs, then memory, then name", () => {
+    const table = { Big: [4, 16], Small: [1, 1], Half: [1, 0.5], Wide: [2, 1], Tall: [1, 4], Also: [1, 4] } as const;
+    expect(azureSizesFor(table, 1024, 3)).toEqual(["Small", "Also", "Tall"]);
+    expect(azureSizesFor(table, 4096, 10)).toEqual(["Also", "Tall", "Big"]);
+    expect(azureSizesFor(table, 1024, 0)).toEqual([]);
+    expect(() => azureSizesFor(table, 1024, 1.5)).toThrow(RangeError);
   });
 });
 
@@ -304,6 +353,65 @@ describe("the live copies", () => {
     expect(() => placementLayer(input(offers, { fixed }))).toThrow(RangeError);
     expect(() => placementLayer(input(offers, { chances, fixed: [fixed[1]!, fixed[1]!] }))).toThrow(RangeError);
     expect(() => fragmentInput(CHANCES, siteFragment("home"))).toThrow(RangeError);
+  });
+});
+
+describe("the country of each copy (AL-146)", () => {
+  // Three offers of one cost: provider-a and provider-b in one country, provider-c in a second country.
+  const offers = [
+    offer({ provider: "provider-a", region: "region-1", plan: "small", hourly: 0.01, country: "NL" }),
+    offer({ provider: "provider-b", region: "region-1", plan: "small", hourly: 0.01, country: "NL" }),
+    offer({ provider: "provider-c", region: "region-1", plan: "small", hourly: 0.01, country: "DE" }),
+  ];
+  const chances: PlacementChances = { ...CHANCES, country: { works: 0.995, kind: "assumed", source: "a test input" } };
+  const sharedIds = (build: ReturnType<typeof placementLayer>): readonly string[] => (build.layer.shared ?? []).map((each) => each.id);
+
+  it("adds no country fragment without a country input", () => {
+    const build = placementLayer(input(offers));
+    expect(sharedIds(build).some((id) => id.startsWith("country:"))).toBe(false);
+    expect(build.unplaced).toEqual([]);
+  });
+
+  it("puts the fragment of its country in each candidate, with the country input", () => {
+    const build = placementLayer(input(offers, { chances }));
+    expect(sharedIds(build)).toEqual(expect.arrayContaining([countryFragment("NL"), countryFragment("DE")]));
+    const uses = build.layer.slots[0]?.candidates.find((candidate) => candidate.key === "provider-c/region-1")?.uses;
+    expect(uses).toContain(countryFragment("DE"));
+    expect(fragmentInput(chances, countryFragment("DE"))).toBe(chances.country);
+    expect(checkPlacement(build.layer, build.base).filter((fault) => fault.level === "error")).toEqual([]);
+  });
+
+  it("gives two copies in two countries a larger chance than two copies in one country at the same cost", () => {
+    const rows = distinctRows(planCopies(placementLayer(input(offers, { chances })), TODAY).front);
+    const two = rows.filter((row) => Object.values(row.choice).every((value) => value !== null));
+    expect(two.length).toBeGreaterThan(0);
+    expect(two.every((row) => Object.values(row.choice).some((value) => value?.startsWith("provider-c/") === true))).toBe(true);
+  });
+
+  it("gives a live copy at a provider the country of the offers of its region, and a site the country of its name", () => {
+    const fixed: readonly FixedCopy[] = [
+      { kind: "site", site: "home", country: "DE" },
+      { kind: "cloud", provider: "provider-a", region: "region-1" },
+    ];
+    const build = placementLayer(input(offers, { chances: { ...chances, site: { works: 0.99, kind: "assumed", source: "a test input" } }, fixed, copies: 1 }));
+    expect(build.layer.slots[0]?.candidates[0]?.uses).toContain(countryFragment("DE"));
+    expect(build.layer.slots[1]?.candidates[0]?.uses).toContain(countryFragment("NL"));
+    expect(build.unplaced).toEqual([]);
+  });
+
+  it("lists each copy and candidate with no known country", () => {
+    const more = [...offers, offer({ provider: "provider-d", region: "region-2", plan: "small", hourly: 0.01 })];
+    const fixed: readonly FixedCopy[] = [{ kind: "cloud", provider: "provider-e", region: "region-3" }];
+    const build = placementLayer(input(more, { chances, fixed, copies: 1 }));
+    expect(build.unplaced).toEqual(["provider-d/region-2", "provider-e/region-3"]);
+    const uses = build.layer.slots[1]?.candidates.find((candidate) => candidate.key === "provider-d/region-2")?.uses ?? [];
+    expect(uses.some((id) => id.startsWith("country:"))).toBe(false);
+  });
+
+  it("refuses a country that is not two capital letters, and a country fragment with no input", () => {
+    const bad: readonly FixedCopy[] = [{ kind: "cloud", provider: "provider-a", region: "region-1", country: "nl" }];
+    expect(() => placementLayer(input(offers, { chances, fixed: bad }))).toThrow(RangeError);
+    expect(() => fragmentInput(CHANCES, countryFragment("NL"))).toThrow(RangeError);
   });
 });
 

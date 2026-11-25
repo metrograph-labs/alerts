@@ -1819,5 +1819,65 @@
       "members": 1757,
       "cause": "Round 36 adds 4 planned sources and 4 later sources. Five classes get a second source, so the gaps go from 72 to 67. No layer of the cover changes."
     }
+  },
+  {
+    "round": 37,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took the classes with a gap and ranked them by their value to a person at home. Life safety came first, then health, property and travel. It looked for official open data in general formats: JSON APIs, CSV files and ArcGIS layers. It read the terms and the robots.txt of each candidate. One fetch went to each URL, with the user agent alerts-atlas-research/1.0. A source that needs an account, a key or a token, or whose terms forbid commercial use, did not close a gap (AL-195).",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The documentation of the Fireball API of JPL: https://ssd-api.jpl.nasa.gov/doc/fireball.html",
+      "The bolide site of NASA: https://neo-bolide.ndc.nasa.gov/",
+      "The metadata of the temporary street closures of San Francisco: https://data.sfgov.org/api/views/8x25-yybr.json",
+      "The Slack Status API: https://docs.slack.dev/reference/slack-status-api",
+      "The pipeline incident data of the CER: https://open.canada.ca/data/en/dataset/7dffedc4-23fa-440c-a36d-adf5a6cc09f1",
+      "The subsidence incident reports of Florida: https://ca.dep.state.fl.us/arcgis/rest/services/OpenData/FGS_SUBSIDENCE/MapServer/0",
+      "The power outages layer of Cal OES: https://services.arcgis.com/BLN4oKB0N1YSgvY8/arcgis/rest/services/Power_Outages_(View)/FeatureServer",
+      "The site of ReCAAP ISC: https://www.recaap.org/",
+      "The elections API of Democracy Club: https://elections.democracyclub.org.uk/api/"
+    ],
+    "queries": [
+      "Florida Subsidence Incident Reports open data ArcGIS FeatureServer Florida Geological Survey",
+      "sinkhole reports open data API recent incidents state geological survey download (Pennsylvania OR Missouri OR Kentucky OR Texas) sinkhole report database",
+      "open.canada.ca pipeline incidents data Canada Energy Regulator Open Government Licence",
+      "TSB Transportation Safety Board pipeline occurrence data download csv open data monthly",
+      "Alberta Energy Regulator compliance dashboard incidents data download pipeline incident open data licence",
+      "Public Safety Power Shutoff open data GIS layer current PSPS events ArcGIS FeatureServer utility",
+      "data.sfgov.org Temporary Street Closures special events dataset API",
+      "NATO Shipping Centre maritime security alerts piracy RSS feed shipping.nato.int",
+      "IRS RSS feeds news releases \"tax relief\" disaster feed URL irs.gov rss"
+    ],
+    "notes": [
+      "jpl-fireball-api moves to plan, and nasa-glm-bolides is new. Thus geo.fireball has 2 sources from 2 origins. Both tell of a fireball after the fact, because a fireball ends in seconds.",
+      "sfmta-street-closures is new. With ticketmaster-discovery-api, civic.planned-event has 2 sources from 2 origins. The street closures need no key.",
+      "slack-status-api and google-workspace-status are new. With statuspage-public-api, infra.saas.outage has 3 sources. Neither new source goes through Statuspage.",
+      "cer-pipeline-incidents, fgs-subsidence-reports and democracy-club-elections are new. Each gives the first source of its class, so each of these gaps stays.",
+      "caloes-power-outages is later. Its read had no PSPS cause, it states no licence, and it copies the outage maps of the utilities.",
+      "recaap-incidents is later, because it gives PDF lists only. The NGA ASAM API gave 503, and the MDAT-GoG site had an expired certificate. The round did not go around these errors.",
+      "The PHMSA pages gave 403 again. The CFTC and FINRA gave no feed of investor alerts, and the robots.txt of the CFTC limits the use of its content.",
+      "Three records name persons: the GLM events, the street closures and the subsidence reports. The round read only the counts and the field names of these records."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 64,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 34,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 37 adds 7 planned sources and 2 later sources, and moves 1 later source to plan. Three classes get a second source, so the gaps go from 67 to 64. No layer of the cover changes."
+    }
   }
 ]
