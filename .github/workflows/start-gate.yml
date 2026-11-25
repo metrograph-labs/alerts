@@ -1,0 +1,59 @@
+# The start gate (AL-102): the start of the runtime fits in a small host. The shared workflow of the capacity repository
+# measures the start case of its limits file at the head of each pull request, in 5 runs on 5 runners. It fails when a
+# run passes a ceiling, when a child does not fit the target, and when the records cannot decide: a no read is not a pass.
+# The limits are the worst value of 5 or more CI runs plus their spread. They live in the capacity repository.
+#
+# The uses line and the input capacity name the same commit, thus the code and the limits match. A change of the limits
+# is a new commit of capacity, and a pull request here that moves both pins.
+name: Start gate
+
+# This file is a gate with paths (CI.md): the job changes gives the match, and the job Start gate OK gives the result.
+on:
+  pull_request:
+  # A person starts a run of the head of a branch with gh workflow run start-gate.yml --ref <branch>.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: start-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    outputs:
+      match: ${{ steps.changes.outputs.match }}
+    steps:
+      - id: changes
+        uses: mark1russell7/template/.github/actions/changes@9663f978520a3cd55fe3d5823edb673753d0025a # main
+        with:
+          paths: |
+            packages/**
+            pnpm-lock.yaml
+            capacity-app.json
+            .github/workflows/start-gate.yml
+
+  start-gate:
+    needs: changes
+    if: needs.changes.outputs.match == 'true'
+    uses: metrograph-labs/capacity/.github/workflows/start-gate.yml@0c6325bf98b1c9b71d989fd1b74ceeb73cc6cccd
+    with:
+      commit: ${{ github.event.pull_request.head.sha || github.sha }}
+      capacity: 0c6325bf98b1c9b71d989fd1b74ceeb73cc6cccd
+
+  summary:
+    name: Start gate OK
+    if: ${{ !cancelled() }}
+    needs: [changes, start-gate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - uses: mark1russell7/template/.github/actions/gate-summary@9663f978520a3cd55fe3d5823edb673753d0025a # main
+        with:
+          needs: ${{ toJSON(needs) }}

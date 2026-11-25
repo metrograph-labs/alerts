@@ -1413,7 +1413,7 @@
     "id": "provider:arcgis-online",
     "name": "ArcGIS Online of Esri",
     "kind": "provider",
-    "note": "The NIFC open data site is an ArcGIS Hub site of Esri."
+    "note": "The NIFC open data site is an ArcGIS Hub site of Esri. The layers of redcross-open-shelters and njdep-hab-sampling are on ArcGIS Online."
   },
   {
     "id": "provider:atlassian-statuspage",
@@ -1806,10 +1806,10 @@
     "note": "Each transit agency publishes its own feed."
   },
   {
-    "id": "travel.state.gov",
-    "name": "travel.state.gov",
+    "id": "cadataapi.state.gov",
+    "name": "cadataapi.state.gov",
     "kind": "host",
-    "note": "The host of the feed of state-dept-advisories."
+    "note": "The host of the travel advisory API of the State Department, the feed of state-dept-advisories."
   },
   {
     "id": "trust.okta.com",
@@ -2908,5 +2908,245 @@
     "name": "msss.gouv.qc.ca",
     "kind": "host",
     "note": "The host of the feed of quebec-msss-emergency-rooms. The name with www sends a redirect to it."
+  },
+  {
+    "id": "services.arcgis.com",
+    "name": "services.arcgis.com",
+    "kind": "host",
+    "note": "A host of ArcGIS Online of Esri. The host of the feeds of redcross-open-shelters and caloes-power-outages."
+  },
+  {
+    "id": "services1.arcgis.com",
+    "name": "services1.arcgis.com",
+    "kind": "host",
+    "note": "A host of ArcGIS Online of Esri. The host of the feed of njdep-hab-sampling."
+  },
+  {
+    "id": "asrv.avinor.no",
+    "name": "asrv.avinor.no",
+    "kind": "host",
+    "note": "The host of the feed of avinor-flight-data. The old name flydata.avinor.no sends a redirect to the documentation page."
+  },
+  {
+    "id": "data.elexon.co.uk",
+    "name": "data.elexon.co.uk",
+    "kind": "host",
+    "note": "The host of the Insights API of Elexon, the feed of elexon-bmrs-syswarn."
+  },
+  {
+    "id": "apps.fs.usda.gov",
+    "name": "apps.fs.usda.gov",
+    "kind": "host",
+    "note": "The host of the map services of the Forest Service, the feed of usfs-recreation-status."
+  },
+  {
+    "id": "www.sidc.be",
+    "name": "www.sidc.be",
+    "kind": "host",
+    "note": "The host of the product archive of the SIDC, the feed of sidc-product-archive."
+  },
+  {
+    "id": "www.rfs.nsw.gov.au",
+    "name": "www.rfs.nsw.gov.au",
+    "kind": "host",
+    "note": "The host of the feed of nsw-rfs-fire-bans."
+  },
+  {
+    "id": "bcparks.api.gov.bc.ca",
+    "name": "bcparks.api.gov.bc.ca",
+    "kind": "host",
+    "note": "The host of the BC Parks API, the feed of bc-parks-advisories."
+  },
+  {
+    "id": "api.beachwatch.nsw.gov.au",
+    "name": "api.beachwatch.nsw.gov.au",
+    "kind": "host",
+    "note": "The host of the feed of nsw-beachwatch."
+  },
+  {
+    "id": "cd.epic.epd.gov.hk",
+    "name": "cd.epic.epd.gov.hk",
+    "kind": "host",
+    "note": "The host of the feed of hk-epd-beach-grading."
+  },
+  {
+    "id": "ckan0.cf.opendata.inter.prod-toronto.ca",
+    "name": "ckan0.cf.opendata.inter.prod-toronto.ca",
+    "kind": "host",
+    "note": "The host of the CKAN API of the open data portal of Toronto, the feed of toronto-beach-water-quality."
+  },
+  {
+    "id": "api.tfl.gov.uk",
+    "name": "api.tfl.gov.uk",
+    "kind": "host",
+    "note": "The host of the Unified API of TfL, the feed of tfl-unified-api."
+  },
+  {
+    "id": "api01.nve.no",
+    "name": "api01.nve.no",
+    "kind": "host",
+    "note": "The host of the landslide warning API of NVE, the feed of nve-landslide-warnings."
+  },
+  {
+    "id": "data.weather.gov.hk",
+    "name": "data.weather.gov.hk",
+    "kind": "host",
+    "note": "The host of the open data API of the Hong Kong Observatory, the feed of hko-warning-summary."
+  },
+  {
+    "id": "donnees.roulez-eco.fr",
+    "name": "donnees.roulez-eco.fr",
+    "kind": "host",
+    "note": "The host of the files of the French fuel prices, the feed of prix-carburants-fr."
+  },
+  {
+    "id": "services9.arcgis.com",
+    "name": "services9.arcgis.com",
+    "kind": "host",
+    "note": "A host of the feature layers of ArcGIS Online, the feed of losco-active-spills."
+  },
+  {
+    "id": "gis.ecdc.europa.eu",
+    "name": "gis.ecdc.europa.eu",
+    "kind": "host",
+    "note": "The host of the map services of the ECDC, the feed of ecdc-wnv-animal-outbreaks."
+  },
+  {
+    "id": "www.health.nsw.gov.au",
+    "name": "www.health.nsw.gov.au",
+    "kind": "host",
+    "note": "The host of the site of NSW Health, the page of nsw-health-drug-warnings."
+  },
+  {
+    "id": "api.fbi.gov",
+    "name": "api.fbi.gov",
+    "kind": "host",
+    "note": "The host of the Wanted API of the FBI, the feed of fbi-wanted-api."
+  },
+  {
+    "id": "www.police.gov.hk",
+    "name": "www.police.gov.hk",
+    "kind": "host",
+    "note": "The host of the site of the Hong Kong Police Force, the feed of hkpf-missing-persons."
+  },
+  {
+    "id": "www.esd.wsd.gov.hk",
+    "name": "www.esd.wsd.gov.hk",
+    "kind": "host",
+    "note": "The host of the open data files of the Water Supplies Department of Hong Kong, the feed of hk-wsd-water-suspensions."
+  },
+  {
+    "id": "web.water.gov.tw",
+    "name": "web.water.gov.tw",
+    "kind": "host",
+    "note": "The host of the open data files of Taiwan Water Corporation, the feed of taiwan-water-outages."
+  },
+  {
+    "id": "ws-public.interpol.int",
+    "name": "ws-public.interpol.int",
+    "kind": "host",
+    "note": "The host of the public notices API of INTERPOL, the feed of interpol-yellow-notices."
+  },
+  {
+    "id": "api.politie.nl",
+    "name": "api.politie.nl",
+    "kind": "host",
+    "note": "The host of the open data API of the police of the Netherlands, the feed of politie-missing-persons."
+  },
+  {
+    "id": "warnung.bund.de",
+    "name": "warnung.bund.de",
+    "kind": "host",
+    "note": "The host of the NINA API of the BBK, the feed of bbk-nina-api."
+  },
+  {
+    "id": "rss.naad-adna.pelmorex.com",
+    "name": "rss.naad-adna.pelmorex.com",
+    "kind": "host",
+    "note": "The host of the Atom feed of the NAAD System, the feed of naad-alerts."
+  },
+  {
+    "id": "agricultural-production-hotspots.ec.europa.eu",
+    "name": "agricultural-production-hotspots.ec.europa.eu",
+    "kind": "host",
+    "note": "The host of the ASAP files of the JRC, the file of jrc-asap-hotspots."
+  },
+  {
+    "id": "tfr.faa.gov",
+    "name": "tfr.faa.gov",
+    "kind": "host",
+    "note": "The host of the TFR list of the FAA, the feed of faa-tfr-list."
+  },
+  {
+    "id": "plan.navcanada.ca",
+    "name": "plan.navcanada.ca",
+    "kind": "host",
+    "note": "The host of the flight planning site of NAV CANADA, the API of nav-canada-notam."
+  },
+  {
+    "id": "portal.data.nsw.gov.au",
+    "name": "portal.data.nsw.gov.au",
+    "kind": "host",
+    "note": "The host of the ArcGIS services of the NSW Government, the layer of nsw-school-closures."
+  },
+  {
+    "id": "alerts.ncdr.nat.gov.tw",
+    "name": "alerts.ncdr.nat.gov.tw",
+    "kind": "host",
+    "note": "The host of the CAP platform of the NCDR of Taiwan, the feed of dgpa-closures."
+  },
+  {
+    "id": "wvde.state.wv.us",
+    "name": "wvde.state.wv.us",
+    "kind": "host",
+    "note": "The host of the site of the West Virginia Department of Education, the page of wvde-closings."
+  },
+  {
+    "id": "neo-bolide.ndc.nasa.gov",
+    "name": "neo-bolide.ndc.nasa.gov",
+    "kind": "host",
+    "note": "The host of the bolide site of NASA, the API of nasa-glm-bolides."
+  },
+  {
+    "id": "data.sf.gov",
+    "name": "data.sf.gov",
+    "kind": "host",
+    "note": "The host of the open data portal of San Francisco, the API of sfmta-street-closures. data.sfgov.org sends its requests to this host."
+  },
+  {
+    "id": "slack-status.com",
+    "name": "slack-status.com",
+    "kind": "host",
+    "note": "The host of the status site of Slack, the API of slack-status-api."
+  },
+  {
+    "id": "www.google.com",
+    "name": "www.google.com",
+    "kind": "host",
+    "note": "The host of the Google Workspace Status Dashboard, the file of google-workspace-status."
+  },
+  {
+    "id": "www.cer-rec.gc.ca",
+    "name": "www.cer-rec.gc.ca",
+    "kind": "host",
+    "note": "The host of the site of the CER, the file of cer-pipeline-incidents."
+  },
+  {
+    "id": "ca.dep.state.fl.us",
+    "name": "ca.dep.state.fl.us",
+    "kind": "host",
+    "note": "The host of the ArcGIS services of the FDEP, the layer of fgs-subsidence-reports."
+  },
+  {
+    "id": "www.recaap.org",
+    "name": "www.recaap.org",
+    "kind": "host",
+    "note": "The host of the site of ReCAAP ISC, the files of recaap-incidents."
+  },
+  {
+    "id": "elections.democracyclub.org.uk",
+    "name": "elections.democracyclub.org.uk",
+    "kind": "host",
+    "note": "The host of the elections API of Democracy Club, the API of democracy-club-elections."
   }
 ]

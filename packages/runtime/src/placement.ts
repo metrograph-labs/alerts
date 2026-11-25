@@ -348,11 +348,49 @@ export function memoryMiB(observation: MeteredObservation): number | undefined {
   return match[2] === "GiB" ? value * 1024 : value;
 }
 
+/**
+ * This function gives the ARM SKU names of the `count` smallest sizes of a table of Azure sizes with at least
+ * `minMemoryMiB` of memory. The order is the count of vCPUs, then the memory, then the name. The price API of Azure
+ * filters one size in each read, thus a placement reads only the sizes that are most probably the cheapest.
+ *
+ * @throws RangeError when the count is not a whole number of 0 or more.
+ */
+export function azureSizesFor(table: Readonly<Record<string, readonly [vcpu: number, memoryGiB: number]>>, minMemoryMiB: number, count: number): string[] {
+  if (!Number.isInteger(count) || count < 0) throw new RangeError("The count of sizes is not a whole number of 0 or more.");
+  return Object.entries(table)
+    .filter(([, [, memoryGiB]]) => memoryGiB * 1024 >= minMemoryMiB)
+    .sort(([nameA, [vcpuA, memoryA]], [nameB, [vcpuB, memoryB]]) => vcpuA - vcpuB || memoryA - memoryB || (nameA < nameB ? -1 : nameA > nameB ? 1 : 0))
+    .slice(0, count)
+    .map(([name]) => name);
+}
+
+/**
+ * This function tells if an offer is a Windows machine: its spec `productName` has the word `Windows`. The Azure price
+ * API gives a Windows row and a Linux row for each size, and a copy runs on Linux.
+ */
+export function windowsOffer(observation: MeteredObservation): boolean {
+  const product = observation.offer.specs.find((item) => item.name === "productName")?.value;
+  return product !== undefined && /\bWindows\b/u.test(product);
+}
+
+/**
+ * This function gives the name of the compute meter of an offer, or `undefined`. A plan offer has the meter
+ * `COMPUTE_METER`. Another offer, for example a virtual machine of Azure, names its meter by its size. Thus an offer
+ * with no meter `COMPUTE_METER` uses its one meter in hours. An offer with two or more meters in hours has no compute meter.
+ */
+export function computeMeter(observation: MeteredObservation): string | undefined {
+  const { meters } = observation.reading;
+  if (meters.some((meter) => meter.name === COMPUTE_METER)) return COMPUTE_METER;
+  const hours = meters.filter((meter) => meter.tiers.length > 0 && meter.tiers.every((tier) => tier.from.unit === "h"));
+  return hours.length === 1 ? hours[0]?.name : undefined;
+}
+
 /** This function gives the cost of a month of an offer with `HOURS_OF_MONTH` hours of use, or `undefined` when the offer has no compute meter. */
 export function monthCost(observation: MeteredObservation): { readonly value: number; readonly currency: string } | undefined {
-  if (!observation.reading.meters.some((meter) => meter.name === COMPUTE_METER)) return undefined;
+  const meter = computeMeter(observation);
+  if (meter === undefined) return undefined;
   try {
-    const total = meteredCost(observation, { [COMPUTE_METER]: { value: HOURS_OF_MONTH, unit: "h" } }).total;
+    const total = meteredCost(observation, { [meter]: { value: HOURS_OF_MONTH, unit: "h" } }).total;
     return { value: total.value, currency: total.unit };
   } catch (error) {
     if (error instanceof RangeError) return undefined;

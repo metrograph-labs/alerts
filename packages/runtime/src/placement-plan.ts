@@ -1,9 +1,10 @@
 /**
  * This file gives the front of the placement of the copies from the live offers (AL-53, `placement.ts`). It reads the
- * plan list of each provider record of `@mark1russell7/market-sources`, and the incident history of the status page of
- * each provider. It reads no other source and opens no account.
+ * plan list of each provider record of `@mark1russell7/market-sources` and the Azure prices of some sizes of virtual
+ * machine. It also reads the incident history of the status page of each provider. It reads no other source and opens
+ * no account.
  *
- * `node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--site-log <site=file,site=file>] [--base <file>] [--joint <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>]`
+ * `node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--site-log <site=file,site=file>] [--base <file>] [--joint <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>] [--azure-sizes <n>]`
  *
  * - `--min-memory-mib` is the least memory of a host of a copy, in MiB.
  * - The three `--assume-*` values are assumed chance inputs, from 0 to 1, for each provider, region and host. The script
@@ -31,6 +32,8 @@
  * - `--spend` names the spend entry of `config.json` that gives the limit of cost of a month (`monthlyUsd`). Without
  *   it, or without that entry, the front has no limit of cost.
  * - `--terms` gives the price terms that fit. The default is `on-demand`.
+ * - `--azure-sizes` is the count of Azure sizes to read (`azureSizesFor` of `placement.ts`). The default is
+ *   `AZURE_SIZES` (8). The value 0 reads no Azure price. The script keeps only the Linux offers.
  *
  * It prints the front, and writes it to the file `placement-front.json` in the private folder with the mode 0o600.
  * The environment gives `ALERTS_HOME`, as for `main.ts`. The exit code is 0 for a front, 1 for a failed read and 2
@@ -39,11 +42,12 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { MeteredObservation, PriceTerm } from "@mark1russell7/market";
-import { createPlanClient, PLAN_PROVIDERS } from "@mark1russell7/market-sources";
+import { AZURE_SOURCE, AZURE_VM_SIZE_TABLE, createAzureClient, createPlanClient, PLAN_PROVIDERS } from "@mark1russell7/market-sources";
 import { countOf, errorMessage } from "@mark1russell7/text";
 import { writeFileAtomic } from "@procedures/fs/files";
 import { fetchTransport } from "polite-crawler/api";
 import { HostScheduler, realClock } from "polite-crawler/politeness";
+import { createPrinter } from "@mark1russell7/text/print";
 import { alertsHome, configPath } from "./config.ts";
 import {
   DEFAULT_WINDOW_DAYS,
@@ -63,6 +67,7 @@ import {
 } from "./placement-chances.ts";
 import {
   assumedInputs,
+  azureSizesFor,
   distinctRows,
   FRONT_FILE,
   FRONT_FORMAT,
@@ -77,19 +82,26 @@ import {
   placementLayer,
   planCopies,
   spendLimitOf,
+  windowsOffer,
   type ChanceInput,
   type PlacementBuild,
   type PlacementChances,
 } from "./placement.ts";
 
+// The output of this command for a person goes through one printer, which removes the shapes of tokens (no raw console).
+const print = createPrinter({ out: process.stdout, err: process.stderr });
+
 const USAGE =
-  "The command is: node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--site-log <site=file,site=file>] [--base <file>] [--joint <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>]";
+  "The command is: node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--site-log <site=file,site=file>] [--base <file>] [--joint <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>] [--azure-sizes <n>]";
 
 /** The User-Agent of each request. It names no person and no project. */
 const USER_AGENT = "alerts-placement";
 
 /** The count of choices of each level of the front that the output shows. The file has each choice. */
 const SHOWN = 3;
+
+/** The default count of Azure sizes that a placement reads. Each size is one read of 6 seconds or more. */
+const AZURE_SIZES = 8;
 
 const TERM_KINDS: readonly PriceTerm["kind"][] = ["on-demand", "spot", "committed"];
 
@@ -104,6 +116,7 @@ interface Command {
   readonly spend: string | undefined;
   readonly terms: readonly PriceTerm["kind"][];
   readonly windowDays: number;
+  readonly azureSizes: number;
 }
 
 // The command, or a problem of the command.
@@ -115,7 +128,7 @@ function command(args: readonly string[]): Command | string {
     if (name === undefined || !name.startsWith("--") || value === undefined || value.startsWith("--")) return `The argument ${String(name)} has no value.`;
     values.set(name.slice(2), value);
   }
-  const known = new Set(["min-memory-mib", "assume-provider", "assume-region", "assume-host", "assume-site", "fixed", "site-log", "base", "joint", "copies", "spend", "terms", "window-days"]);
+  const known = new Set(["min-memory-mib", "assume-provider", "assume-region", "assume-host", "assume-site", "fixed", "site-log", "base", "joint", "copies", "spend", "terms", "window-days", "azure-sizes"]);
   const other = [...values.keys()].find((name) => !known.has(name));
   if (other !== undefined) return `The option --${other} is not known.`;
   const memory = Number(values.get("min-memory-mib"));
@@ -124,6 +137,8 @@ function command(args: readonly string[]): Command | string {
   if (!Number.isInteger(copies) || copies < 1) return "The option --copies needs a whole number of 1 or more.";
   const windowDays = Number(values.get("window-days") ?? String(DEFAULT_WINDOW_DAYS));
   if (!Number.isInteger(windowDays) || windowDays < 1) return "The option --window-days needs a whole number of 1 or more.";
+  const azureSizes = Number(values.get("azure-sizes") ?? String(AZURE_SIZES));
+  if (!Number.isInteger(azureSizes) || azureSizes < 0) return "The option --azure-sizes needs a whole number of 0 or more.";
   const assumed = (name: string): ChanceInput | string => {
     const text = values.get(`assume-${name}`);
     const works = Number(text);
@@ -156,7 +171,7 @@ function command(args: readonly string[]): Command | string {
   const bad = terms.find((term) => !TERM_KINDS.some((kind) => kind === term));
   if (bad !== undefined) return `The price term ${bad} is not on-demand, spot or committed.`;
   const chances: PlacementChances = { provider, region, host, ...(site === undefined ? {} : { site }) };
-  return { minMemoryMiB: memory, chances, copies, fixed, base: values.get("base"), joint: values.get("joint"), siteLogs, spend: values.get("spend"), terms: terms as PriceTerm["kind"][], windowDays };
+  return { minMemoryMiB: memory, chances, copies, fixed, base: values.get("base"), joint: values.get("joint"), siteLogs, spend: values.get("spend"), terms: terms as PriceTerm["kind"][], windowDays, azureSizes };
 }
 
 // The front of a build: its search, its levels and the assumed fragments of each row. It prints each level.
@@ -167,12 +182,12 @@ function frontOf(build: PlacementBuild, chances: PlacementChances, today: string
   const fixed = new Set(build.fixed);
   const candidates = build.layer.slots.find((slot) => !fixed.has(slot.id))?.candidates.length ?? 0;
   const keysOf = (row: (typeof rows)[number]): string => Object.values(row.choice).filter((value): value is string => value !== null).join(" + ");
-  console.log(`${title}: ${countOf(candidates, "candidate")} for each slot. The search is ${plan.method}. The front has ${countOf(rows.length, "choice")} in ${countOf(levels.length, "level")}.`);
+  print.line(`${title}: ${countOf(candidates, "candidate")} for each slot. The search is ${plan.method}. The front has ${countOf(rows.length, "choice")} in ${countOf(levels.length, "level")}.`);
   for (const level of levels) {
     const shown = level.rows.slice(0, SHOWN).map(keysOf).join(", ");
     const more = level.rows.length > SHOWN ? ` and ${String(level.rows.length - SHOWN)} more` : "";
     const assumed = level.rows.filter((row) => assumedInputs(build.layer, chances, row).length > 0).length;
-    console.log(`- ${level.cost.toFixed(2)} USD a month, chance ${level.chance.toFixed(9)}, ${countOf(level.rows.length, "choice")} (${String(assumed)} with an assumed input): ${shown}${more}`);
+    print.line(`- ${level.cost.toFixed(2)} USD a month, chance ${level.chance.toFixed(9)}, ${countOf(level.rows.length, "choice")} (${String(assumed)} with an assumed input): ${shown}${more}`);
   }
   return {
     candidates,
@@ -212,28 +227,28 @@ async function readConfig(path: string): Promise<unknown> {
 const parsed = command(process.argv.slice(2));
 
 if (typeof parsed === "string") {
-  console.error(`${parsed}\n${USAGE}`);
+  print.error(`${parsed}\n${USAGE}`);
   process.exitCode = 2;
 } else {
   const home = alertsHome(process.env, process.cwd());
   const costLimit = parsed.spend === undefined ? undefined : spendLimitOf(await readConfig(configPath(process.env, process.cwd())), parsed.spend);
   const baseRead = parsed.base === undefined ? undefined : readBase(await readConfig(parsed.base));
   if (typeof baseRead === "string") {
-    console.error(`The base file has a problem: ${baseRead}`);
+    print.error(`The base file has a problem: ${baseRead}`);
     process.exit(2);
   }
   const joint = parsed.joint === undefined ? undefined : readJoint(await readConfig(parsed.joint));
   if (typeof joint === "string") {
-    console.error(`The joint file has a problem: ${joint}`);
+    print.error(`The joint file has a problem: ${joint}`);
     process.exit(2);
   }
   if (joint !== undefined && joint.works.length !== parsed.fixed.length) {
-    console.error("The joint file needs one input for each copy of --fixed, in the same order.");
+    print.error("The joint file needs one input for each copy of --fixed, in the same order.");
     process.exit(2);
   }
-  if (parsed.spend === undefined) console.log("No spend entry is named. The front has no limit of cost.");
-  else if (costLimit === undefined) console.log(`The configuration has no valid spend entry ${parsed.spend}. The front has no limit of cost.`);
-  const scheduler = new HostScheduler(realClock, PLAN_PROVIDERS.length);
+  if (parsed.spend === undefined) print.line("No spend entry is named. The front has no limit of cost.");
+  else if (costLimit === undefined) print.line(`The configuration has no valid spend entry ${parsed.spend}. The front has no limit of cost.`);
+  const scheduler = new HostScheduler(realClock, PLAN_PROVIDERS.length + 1);
   const client = createPlanClient({ transport: fetchTransport({ userAgent: USER_AGENT }), pace: { scheduler, now: () => Date.now() } });
   const offers: MeteredObservation[] = [];
   const reads: { readonly source: string; readonly offers: number; readonly notes: number; readonly problems: readonly string[] }[] = [];
@@ -248,9 +263,26 @@ if (typeof parsed === "string") {
       reads.push({ source: provider.source, offers: 0, notes: 0, problems: [errorMessage(error)] });
     }
   }
+  // The Azure prices of the smallest sizes that meet the memory need, one read for each size. Only the Linux offers count.
+  const azure = createAzureClient({ transport: fetchTransport({ userAgent: USER_AGENT }), pace: { scheduler, now: () => Date.now() } });
+  const sizes = azureSizesFor(AZURE_VM_SIZE_TABLE, parsed.minMemoryMiB, parsed.azureSizes);
+  if (sizes.length > 0) print.line(`The Azure sizes: ${sizes.join(", ")}.`);
+  for (const size of sizes) {
+    const source = `${AZURE_SOURCE} ${size}`;
+    try {
+      const result = await azure.prices({ serviceName: "Virtual Machines", priceType: "Consumption", armSkuName: size });
+      if (result.ok) {
+        const linux = result.observations.filter((observation) => !windowsOffer(observation));
+        offers.push(...linux);
+        reads.push({ source, offers: linux.length, notes: result.notes.length, problems: [] });
+      } else reads.push({ source, offers: 0, notes: 0, problems: result.problems });
+    } catch (error) {
+      reads.push({ source, offers: 0, notes: 0, problems: [errorMessage(error)] });
+    }
+  }
   for (const read of reads) {
     const tail = read.problems.length === 0 ? `${countOf(read.offers, "offer")}, ${countOf(read.notes, "note")}` : `failed: ${read.problems.join(" ")}`;
-    console.log(`The source ${read.source}: ${tail}.`);
+    print.line(`The source ${read.source}: ${tail}.`);
   }
   const clouds = parsed.fixed.flatMap((copy) => (copy.kind === "cloud" ? [copy] : []));
   const providers = new Set([...offers.map((offer) => offer.offer.location.provider), ...clouds.map((copy) => copy.provider)]);
@@ -273,19 +305,19 @@ if (typeof parsed === "string") {
   }
   const known = new Set([...HISTORY_SOURCES, ...HISTORY_GAPS].map((each) => each.provider));
   for (const provider of [...providers].filter((each) => !known.has(each)).sort()) gaps.push({ provider, reason: "No status page history of this provider is known." });
-  console.log(`The status page histories gave ${countOf(measures.length, "measured input")}. The other fragments and the hosts use the assumed inputs.`);
+  print.line(`The status page histories gave ${countOf(measures.length, "measured input")}. The other fragments and the hosts use the assumed inputs.`);
   // Each chance of the base that names a status page gets a measured input, with the same pace as the providers.
   const baseMeasure = baseRead === undefined ? undefined : await measureBase(baseRead, { scheduler, now: () => Date.now() }, measureTransport, readAt, parsed.windowDays);
   // Each chance of the base that names a channel gets a measured input from the calls in the site logs (AL-147).
   const callMeasure = baseMeasure === undefined ? undefined : measureBaseCalls(baseMeasure.base, (channel) => parsed.siteLogs.flatMap((log) => callsOrNone(log.path, channel)), readAt);
   const base: PlacementBase | undefined = callMeasure?.base;
-  if (base === undefined) console.log("No base is named. The front leaves out the needs that all copies share.");
+  if (base === undefined) print.line("No base is named. The front leaves out the needs that all copies share.");
   else {
-    for (const line of [...(baseMeasure?.lines ?? []), ...(callMeasure?.lines ?? [])]) console.log(line);
+    for (const line of [...(baseMeasure?.lines ?? []), ...(callMeasure?.lines ?? [])]) print.line(line);
     const open = baseAssumed(base);
-    console.log(`The base has ${countOf(base.stack.parts.length, "part")} and ${countOf((base.chances ?? []).length, "chance input")}.`);
-    console.log(`Shared needs with an assumed input: ${open.assumed.length === 0 ? "none" : open.assumed.join(", ")}.`);
-    console.log(`Shared needs with no input, thus a chance of 1: ${open.missing.length === 0 ? "none" : open.missing.join(", ")}.`);
+    print.line(`The base has ${countOf(base.stack.parts.length, "part")} and ${countOf((base.chances ?? []).length, "chance input")}.`);
+    print.line(`Shared needs with an assumed input: ${open.assumed.length === 0 ? "none" : open.assumed.join(", ")}.`);
+    print.line(`Shared needs with no input, thus a chance of 1: ${open.missing.length === 0 ? "none" : open.missing.join(", ")}.`);
   }
   for (const log of parsed.siteLogs) {
     let site: ReturnType<typeof measureSite>;
@@ -296,31 +328,31 @@ if (typeof parsed === "string") {
     }
     if (site.ok) {
       measures.push(site.measure);
-      console.log(`The site ${log.site} has a measured input: ${site.measure.input.source}.`);
-    } else console.log(`The site ${log.site} keeps the assumed input: ${site.reason}`);
+      print.line(`The site ${log.site} has a measured input: ${site.measure.input.source}.`);
+    } else print.line(`The site ${log.site} keeps the assumed input: ${site.reason}`);
   }
   const chances = withMeasures({ ...parsed.chances, ...(joint === undefined ? {} : { joint }) }, measures);
   const fit = jointFit(chances);
-  if (fit === undefined) console.log("No joint measure is named. The front counts the live copies as independent copies.");
-  else console.log(`The common cause of the live copies works with the chance ${fit.common.works.toFixed(6)} (${fit.common.kind}). Each copy needs it.`);
-  for (const gap of gaps) console.log(`The provider ${gap.provider} keeps the assumed inputs: ${gap.reason}`);
+  if (fit === undefined) print.line("No joint measure is named. The front counts the live copies as independent copies.");
+  else print.line(`The common cause of the live copies works with the chance ${fit.common.works.toFixed(6)} (${fit.common.kind}). Each copy needs it.`);
+  for (const gap of gaps) print.line(`The provider ${gap.provider} keeps the assumed inputs: ${gap.reason}`);
   if (offers.length === 0) {
-    console.error("No source gave an offer. The script writes no front.");
+    print.error("No source gave an offer. The script writes no front.");
     process.exitCode = 1;
   } else {
     const at = new Date();
     const today = at.toISOString().slice(0, 10);
     const build = placementLayer({ offers, needs: { minMemoryMiB: parsed.minMemoryMiB, terms: parsed.terms, currency: "USD" }, chances, copies: parsed.copies, fixed: parsed.fixed, costLimit, base });
-    if (parsed.fixed.length > 0) console.log(`Fixed slots with no cost: ${countOf(parsed.fixed.length, "live copy", "live copies")}. The first level of the front with the cost 0 is no new copy.`);
+    if (parsed.fixed.length > 0) print.line(`Fixed slots with no cost: ${countOf(parsed.fixed.length, "live copy", "live copies")}. The first level of the front with the cost 0 is no new copy.`);
     const measuredIds = new Set(measures.map((measure) => measure.input.id));
     const shared = build.layer.shared ?? [];
     const measuredShared = shared.filter((shared) => measuredIds.has(shared.id)).length;
-    console.log(`The layer has ${countOf(shared.length, "shared fragment")}: ${String(measuredShared)} with a measured input, ${String(shared.length - measuredShared)} with an assumed input.`);
-    console.log(`The host input is ${chances.host.kind} for each row.`);
+    print.line(`The layer has ${countOf(shared.length, "shared fragment")}: ${String(measuredShared)} with a measured input, ${String(shared.length - measuredShared)} with an assumed input.`);
+    print.line(`The host input is ${chances.host.kind} for each row.`);
     const full = frontOf(build, chances, today, "The full front");
     const onlyMeasured = measuredBuild(build, chances);
     const measured = onlyMeasured === undefined ? null : frontOf(onlyMeasured, chances, today, "The front of measured inputs");
-    if (measured === null) console.log("No candidate has measured inputs only. The file has no front of measured inputs.");
+    if (measured === null) print.line("No candidate has measured inputs only. The file has no front of measured inputs.");
     const front = {
       format: FRONT_FORMAT,
       at: at.toISOString(),
@@ -346,6 +378,6 @@ if (typeof parsed === "string") {
     };
     const path = join(home, FRONT_FILE);
     await writeFileAtomic(path, `${JSON.stringify(front, null, 2)}\n`, { mode: 0o600 });
-    console.log(`The front is in the file ${FRONT_FILE} of the private folder.`);
+    print.line(`The front is in the file ${FRONT_FILE} of the private folder.`);
   }
 }

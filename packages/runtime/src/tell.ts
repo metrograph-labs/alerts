@@ -16,9 +16,13 @@ import { readFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { tellConfigSchema } from "@mark1russell7/alerts";
 import { errorMessage } from "@mark1russell7/text";
+import { createPrinter } from "@mark1russell7/text/print";
 import { alertsHome, configPath, readText } from "./config.ts";
 import { readTellToken, TELL_CALL_LIMIT, TELL_TOKEN_FILE, tellCall } from "./tell-intake.ts";
 import { tellEventSchema, type TellEvent } from "./tell-message.ts";
+
+// The output of this command for a person goes through one printer, which removes the shapes of tokens (no raw console).
+const print = createPrinter({ out: process.stdout, err: process.stderr });
 
 const USAGE =
   "The command is: node src/tell.ts --class <needs-you|done-you-asked|live> --item <item> --message <text> [--title <title>] [--url <link>] [--to <person>]... [--urgent]";
@@ -62,47 +66,47 @@ function command(args: readonly string[]): { readonly event: TellEvent } | { rea
 async function tell(event: TellEvent): Promise<number> {
   const file = await readText(() => readFile(configPath(process.env, process.cwd()), "utf8"));
   if (!("text" in file)) {
-    console.error(`The file config.json cannot be read (${file.code}).`);
+    print.error(`The file config.json cannot be read (${file.code}).`);
     return 1;
   }
   let entry: unknown;
   try {
     entry = (JSON.parse(file.text) as { tell?: unknown }).tell;
   } catch {
-    console.error("The file config.json is not JSON. Start `node src/check.ts` to see the problem.");
+    print.error("The file config.json is not JSON. Start `node src/check.ts` to see the problem.");
     return 1;
   }
   if (entry === undefined) {
-    console.error("The file config.json has no entry tell. Thus the runtime has no intake.");
+    print.error("The file config.json has no entry tell. Thus the runtime has no intake.");
     return 1;
   }
   const config = tellConfigSchema.safeParse(entry);
   if (!config.success) {
-    console.error("The entry tell of config.json has a problem. Start `node src/check.ts` to see it.");
+    print.error("The entry tell of config.json has a problem. Start `node src/check.ts` to see it.");
     return 1;
   }
   const token = await readTellToken(alertsHome(process.env, process.cwd()));
   if (token === undefined) {
-    console.error(`The file ${TELL_TOKEN_FILE} is absent. The runtime makes it at its first start with the entry tell.`);
+    print.error(`The file ${TELL_TOKEN_FILE} is absent. The runtime makes it at its first start with the entry tell.`);
     return 1;
   }
   const call = tellCall({ port: config.data.port, token });
   const receipt = (await call(event, AbortSignal.timeout(TELL_CALL_LIMIT + 1_000))) as { persons?: number; link?: string };
   const persons = receipt.persons === 1 ? "1 person" : `${String(receipt.persons ?? 0)} people`;
-  console.log(`The runtime took the message for ${persons}${receipt.link === "phone" ? ", with the phone form of the link" : ""}.`);
+  print.line(`The runtime took the message for ${persons}${receipt.link === "phone" ? ", with the phone form of the link" : ""}.`);
   return 0;
 }
 
 const parsed = command(process.argv.slice(2));
 if ("problem" in parsed) {
-  console.error(`${parsed.problem}\n${USAGE}`);
+  print.error(`${parsed.problem}\n${USAGE}`);
   process.exitCode = 2;
 } else {
   try {
     process.exitCode = await tell(parsed.event);
   } catch (error) {
     // The intake gives the reason of a refusal. The message holds no person and no token.
-    console.error(`The runtime did not take the message: ${errorMessage(error)}`);
+    print.error(`The runtime did not take the message: ${errorMessage(error)}`);
     process.exitCode = 1;
   }
 }

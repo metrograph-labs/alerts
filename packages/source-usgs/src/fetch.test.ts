@@ -1,11 +1,12 @@
 import { readFileSync } from "node:fs";
-import type { FetchOutcome, PlaceId, Watch } from "@mark1russell7/alerts";
+import type { FetchOutcome, Observation, PlaceId, Watch } from "@mark1russell7/alerts";
 import fc from "fast-check";
 import type { Exchange, Reply, Transport } from "polite-crawler/api";
 import { HostScheduler } from "polite-crawler/politeness";
 import { describe, expect, it } from "vitest";
-import { createUsgsFetch, eventBody, eventFields, FEED_PATH, isFeedEvent, readAnswer } from "./fetch.ts";
-import { EVENT_FIELDS } from "./map.ts";
+import { createUsgsFetch, detailPath, eventBody, eventFields, FEED_PATH, isFeedEvent, readAnswer, SHAKEMAP_READS, SHAKEMAP_RETRY_MS, shakeEvents, USGS_BASE_URL } from "./fetch.ts";
+import { EVENT_FIELDS, mapObservation } from "./map.ts";
+import { readShakeContours, shakeProductOf } from "./shakemap.ts";
 
 /** The real feed of the USGS: the 48 earthquakes of magnitude 2.5 or more of one day. */
 const FEED = readFileSync(new URL("../fixtures/feed-2.5_day-20261116T0327Z.geojson", import.meta.url), "utf8");
@@ -43,6 +44,9 @@ const json = (body: string, status = 200, headers: Record<string, string> = {}):
 });
 /** The answer 304 of a conditional GET: no body. */
 const NOT_MODIFIED: Reply = { status: 304, statusText: "Not Modified", headers: { "last-modified": LAST_MODIFIED }, body: "" };
+
+/** This function gives the requests for the feed. The felt events of the feed also give requests for their ShakeMap. */
+const feedRequests = (sent: readonly Exchange[]): Exchange[] => sent.filter((exchange) => exchange.url === URL_OF_FEED);
 
 /** This function makes a fetch whose transport gives the replies in turn, and then the last reply again. */
 const fetchWith = (replies: readonly Reply[]) => {
@@ -151,7 +155,9 @@ describe("createUsgsFetch", () => {
   it("asks for the whole feed with no place in the request", async () => {
     const { fetch, sent } = fetchWith([json(FEED, 200, { "last-modified": LAST_MODIFIED })]);
     const outcome = await fetch({ watch: WATCH });
-    expect(sent.map((exchange) => exchange.url)).toEqual([URL_OF_FEED]);
+    expect(feedRequests(sent)).toHaveLength(1);
+    // Each other request reads the detail of a felt event, by its id. No request names a place of the watch.
+    expect(sent.filter((exchange) => exchange.url !== URL_OF_FEED).every((exchange) => exchange.url.startsWith(`${BASE}/earthquakes/feed/v1.0/detail/`))).toBe(true);
     expect(sent[0]?.headers).toMatchObject({ accept: "application/geo+json, application/json", "user-agent": "alerts-tests" });
     expect(outcome).toMatchObject({ ok: true, complete: true, asOf: GENERATED });
     expect(outcome.ok && outcome.cursor).toBeUndefined();
@@ -162,7 +168,7 @@ describe("createUsgsFetch", () => {
     const { fetch, sent } = fetchWith([json(FEED, 200, { "last-modified": LAST_MODIFIED }), NOT_MODIFIED]);
     const one = await fetch({ watch: WATCH });
     const two = await fetch({ watch: WATCH });
-    expect(sent.map((exchange) => exchange.headers["if-modified-since"])).toEqual([undefined, LAST_MODIFIED]);
+    expect(feedRequests(sent).map((exchange) => exchange.headers["if-modified-since"])).toEqual([undefined, LAST_MODIFIED]);
     expect(two).toEqual(one);
   });
 
@@ -180,15 +186,116 @@ describe("createUsgsFetch", () => {
     const { fetch, sent } = fetchWith([NOT_MODIFIED]);
     expect(failureOf(await fetch({ watch: WATCH }))).toEqual({ kind: "network", message: `a 304 answer with no earlier full answer: ${URL_OF_FEED}` });
     await fetch({ watch: WATCH });
-    expect(sent.map((exchange) => exchange.headers["if-modified-since"])).toEqual([undefined, undefined]);
+    expect(feedRequests(sent).map((exchange) => exchange.headers["if-modified-since"])).toEqual([undefined, undefined]);
   });
 
   it("fails for a cut body, sends no condition after it, and fails for an answer that is not 2xx", async () => {
     const { fetch, sent } = fetchWith([json(FEED.slice(0, 500), 200, { "last-modified": LAST_MODIFIED }), json(FEED)]);
     expect(failureOf(await fetch({ watch: WATCH }))).toMatchObject({ kind: "network", message: expect.stringContaining("truncated") as string });
     expect((await fetch({ watch: WATCH })).ok).toBe(true);
-    expect(sent.map((exchange) => exchange.headers["if-modified-since"])).toEqual([undefined, undefined]);
+    expect(feedRequests(sent).map((exchange) => exchange.headers["if-modified-since"])).toEqual([undefined, undefined]);
     const down = await fetchWith([json("{}", 503)]).fetch({ watch: WATCH });
     expect(down.ok).toBe(false);
+  });
+});
+
+describe("the ShakeMap of a felt event", () => {
+  /** The real detail of the M4.1 event `us6000ude6`, and the real low-resolution grid of its ShakeMap. */
+  const DETAIL_TEXT = readFileSync(new URL("../fixtures/detail-us6000ude6.geojson", import.meta.url), "utf8");
+  const GRID_TEXT = readFileSync(new URL("../fixtures/shakemap-us6000ude6-mmi-low.covjson", import.meta.url), "utf8");
+  const DETAIL = JSON.parse(DETAIL_TEXT) as Record<string, unknown> & { properties: Record<string, unknown> };
+  const GRID_URL = shakeProductOf(DETAIL)?.gridUrl ?? "";
+  /** The event as the feed gives it: the detail with no products, with a time of change and an id. */
+  const eventOf = (updated: number, id = "us6000ude6"): Record<string, unknown> => {
+    const { products: _products, ...properties } = DETAIL.properties;
+    return { ...DETAIL, id, properties: { ...properties, updated, ids: `,${id},` } };
+  };
+  const DETAIL_URL = (id: string): string => `${USGS_BASE_URL}${detailPath(id)}`;
+
+  /** This function makes a fetch whose transport answers by the URL. The test can change the feed and the answer of the detail. */
+  const routed = () => {
+    const sent: string[] = [];
+    let feed = feedOf([eventOf(1)]);
+    let detail: Reply = json(DETAIL_TEXT);
+    const transport: Transport = async (exchange) => {
+      sent.push(exchange.url);
+      if (exchange.url === `${USGS_BASE_URL}${FEED_PATH}`) return json(feed);
+      if (exchange.url.startsWith(`${USGS_BASE_URL}/earthquakes/feed/v1.0/detail/`)) return detail;
+      if (exchange.url === GRID_URL) return json(GRID_TEXT);
+      return json("{}", 404);
+    };
+    let time = START;
+    const clock = { now: () => time, sleep: async (ms: number) => void (time += ms) };
+    const fetch = createUsgsFetch({ pace: { scheduler: new HostScheduler(clock, 1), now: clock.now }, transport, userAgent: "alerts-tests", minIntervalMs: 0, timeoutMs: 1000 });
+    const observe = async (): Promise<Observation> => {
+      const outcome = await fetch({ watch: WATCH });
+      const [observation] = outcome.ok ? outcome.observations : [];
+      if (observation === undefined) throw new Error("the fetch gave no observation");
+      return observation;
+    };
+    const bodyOf = async (): Promise<Record<string, unknown>> => JSON.parse((await observe()).body) as Record<string, unknown>;
+    return {
+      sent,
+      observe,
+      bodyOf,
+      setFeed: (events: readonly unknown[]) => void (feed = feedOf(events)),
+      setDetail: (reply: Reply) => void (detail = reply),
+      advance: (ms: number) => void (time += ms),
+    };
+  };
+
+  it("reads the detail and the grid of a felt event, and puts the region of each band in the body", async () => {
+    const usgs = routed();
+    const observation = await usgs.observe();
+    const body = JSON.parse(observation.body) as Record<string, unknown>;
+    expect(usgs.sent).toEqual([`${USGS_BASE_URL}${FEED_PATH}`, DETAIL_URL("us6000ude6"), GRID_URL]);
+    expect(readShakeContours(body["shakemap"])?.version).toBe("1795616312537");
+    const { reports, problems } = mapObservation(observation);
+    expect(problems).toEqual([]);
+    expect(reports.map((report) => [report.severity, report.areas[0]?.type, report.parameters["bandShape"]])).toEqual([["minor", "polygon", ["shakemap"]]]);
+    expect(reports[0]?.parameters["shakemapVersion"]).toEqual(["1795616312537"]);
+  });
+
+  it("reads the detail again only after a change of the event, and the grid only for a new version", async () => {
+    const usgs = routed();
+    const first = await usgs.bodyOf();
+    await usgs.bodyOf();
+    expect(usgs.sent).toHaveLength(4);
+    usgs.setFeed([eventOf(2)]);
+    expect(await usgs.bodyOf()).toEqual(first);
+    // The detail gives the same version, so the fetch reads no grid.
+    expect(usgs.sent.slice(4)).toEqual([`${USGS_BASE_URL}${FEED_PATH}`, DETAIL_URL("us6000ude6")]);
+  });
+
+  it("reads at most SHAKEMAP_READS events in one fetch, and the others in the next fetches", async () => {
+    const usgs = routed();
+    const ids = ["us6000ude6", "us6000ude7", "us6000ude8"];
+    usgs.setFeed(ids.map((id) => eventOf(1, id)));
+    await usgs.bodyOf();
+    const details = () => usgs.sent.filter((url) => url.includes("/detail/"));
+    expect(details()).toHaveLength(SHAKEMAP_READS);
+    await usgs.bodyOf();
+    expect(details()).toEqual(ids.map(DETAIL_URL));
+  });
+
+  it("keeps the discs after a failure, and reads again after SHAKEMAP_RETRY_MS", async () => {
+    const usgs = routed();
+    usgs.setDetail(json("{}", 503));
+    expect((await usgs.bodyOf())["shakemap"]).toBeUndefined();
+    usgs.setDetail(json(DETAIL_TEXT));
+    await usgs.bodyOf();
+    expect(usgs.sent.filter((url) => url.includes("/detail/"))).toHaveLength(1);
+    usgs.advance(SHAKEMAP_RETRY_MS);
+    expect((await usgs.bodyOf())["shakemap"]).toBeDefined();
+  });
+
+  it("asks for no ShakeMap of an event below the felt level or with no product", async () => {
+    const usgs = routed();
+    const event = eventOf(1);
+    const properties = event["properties"] as Record<string, unknown>;
+    usgs.setFeed([{ ...event, properties: { ...properties, mmi: 2.9 } }, { ...event, id: "us6000ude9", properties: { ...properties, types: ",origin," } }]);
+    await usgs.bodyOf();
+    expect(usgs.sent).toEqual([`${USGS_BASE_URL}${FEED_PATH}`]);
+    expect(shakeEvents("{")).toEqual([]);
   });
 });

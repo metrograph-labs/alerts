@@ -794,8 +794,8 @@ importers:
         specifier: ^0.3.2
         version: 0.3.2
       '@mark1russell7/market-sources':
-        specifier: ^0.3.10
-        version: 0.3.10(@opentelemetry/api@1.10.0)(ws@8.23.0)
+        specifier: ^0.5.5
+        version: 0.5.5(@opentelemetry/api@1.10.0)(ws@8.23.0)
       '@mark1russell7/optional':
         specifier: ^1.5.0
         version: 1.5.0
@@ -830,8 +830,8 @@ importers:
         specifier: ^0.1.8
         version: 0.1.8
       '@mark1russell7/text':
-        specifier: ^0.0.18
-        version: 0.0.18
+        specifier: ^0.0.19
+        version: 0.0.19
       '@opentelemetry/api':
         specifier: ^1.10.0
         version: 1.10.0
@@ -2063,6 +2063,9 @@ importers:
       '@mark1russell7/alerts-quake':
         specifier: workspace:*
         version: link:../quake
+      '@mark1russell7/geo':
+        specifier: ^0.5.15
+        version: 0.5.15
       '@mark1russell7/optional':
         specifier: ^1.5.0
         version: 1.5.0
@@ -2645,8 +2648,16 @@ packages:
     resolution: {integrity: sha512-Z5FIUCzFSGS6GB6iSvZmfzJshpKPpOoteXxPQSDpcfVDa+XYJ2dJwaz+Zq1SrCO8VyBJX4oa4dNVSr5nO2EC2Q==}
     engines: {node: '>=22.12'}
 
+  '@mark1russell7/geo@0.5.15':
+    resolution: {integrity: sha512-Lc2gRjjsgGoj9Wp+o3lvBBU2bDI8b5+nCMSFwWziNU4+RKahkWNtLybhQ+oE6cUm4t61dUOq9BJNeGOkE6wOaQ==}
+    engines: {node: '>=22.12'}
+
   '@mark1russell7/guidebook@0.1.1':
     resolution: {integrity: sha512-DTENTIjb1CiMoONeBqmvbWO9MeFxGAF8bPjfSFg7AMf8dcdTiIMAKtFcr4aPMf8DS/bml+3UzwtmPQqbDVSRpQ==}
+    engines: {node: '>=22.12'}
+
+  '@mark1russell7/guidebook@0.5.2':
+    resolution: {integrity: sha512-s/jo9l4FWYX8JlFoQv9bMyipisrtUaYRLNmp5zzAXUy/lwtVskO9TwCX/qhpypx99Rhveo0+APzebHVo4onE/w==}
     engines: {node: '>=22.12'}
 
   '@mark1russell7/interval@0.1.0':
@@ -2668,8 +2679,12 @@ packages:
     resolution: {integrity: sha512-1ERbIJoHmYNBWg4Wdv1Nxseec/FuKO+YU8yHJ87U4NpbVNBK6ffngMufjTVTZ0NmpwgcSJkv3TdpPHawVWHiiQ==}
     engines: {node: '>=22.12'}
 
-  '@mark1russell7/market-sources@0.3.10':
-    resolution: {integrity: sha512-/IJoNzLrxPSIJNnbo1hZTGlP5RwynocAV/aNMeAY3+sR0Rc7rWtci9/FrYdu6oLwFuBdRZ5KJwmVNLyUZY8ihA==}
+  '@mark1russell7/market-sources@0.5.5':
+    resolution: {integrity: sha512-sZr2dOhwKG0duT0tAqRZUAdoNb6CayK5fKr1SVmN4YMwPPSPf4DCG1VBPPtLf7/Vkvit7wA2Y3LJHM5uEsMJPA==}
+    engines: {node: '>=22'}
+
+  '@mark1russell7/market@0.11.0':
+    resolution: {integrity: sha512-GxsYt6ubXkKto3eYWTJXoX8X9CxKiggc5OswGofGWZTCb6Zh0AO/fCXn5rhGNb4wqGAxyUEpJEZtdphPwIsmyg==}
     engines: {node: '>=22'}
 
   '@mark1russell7/market@0.3.2':
@@ -3002,6 +3017,10 @@ packages:
 
   '@mark1russell7/text@0.0.18':
     resolution: {integrity: sha512-sIOsTkBOhWLSDyE4qKyiokUT84NPJgPuhLPDyh2Y+mjGnNbGhF9Q6dt9NnSBtSW8C1D0rZfx8fPJ53g0gQGWfQ==}
+    engines: {node: '>=22.12'}
+
+  '@mark1russell7/text@0.0.19':
+    resolution: {integrity: sha512-pPJV318wzfEcsnnzlqVu+OBp/o9VLKWsAo1Wkf4rNaerOjgINDo+vErhmtPVQw6BzcVmGn4brXmMLcosCT9sAw==}
     engines: {node: '>=22.12'}
 
   '@mark1russell7/text@0.0.6':
@@ -5233,7 +5252,16 @@ snapshots:
       '@mark1russell7/optional': 1.5.0
       '@mark1russell7/predicates': 0.1.5
 
+  '@mark1russell7/geo@0.5.15':
+    dependencies:
+      '@mark1russell7/optional': 1.5.0
+      '@mark1russell7/predicates': 0.1.5
+
   '@mark1russell7/guidebook@0.1.1': {}
+
+  '@mark1russell7/guidebook@0.5.2':
+    dependencies:
+      '@mark1russell7/text': 0.0.18
 
   '@mark1russell7/interval@0.1.0': {}
 
@@ -5254,10 +5282,10 @@ snapshots:
     transitivePeerDependencies:
       - zod
 
-  '@mark1russell7/market-sources@0.3.10(@opentelemetry/api@1.10.0)(ws@8.23.0)':
+  '@mark1russell7/market-sources@0.5.5(@opentelemetry/api@1.10.0)(ws@8.23.0)':
     dependencies:
-      '@mark1russell7/market': 0.3.2
-      '@mark1russell7/quantity': 0.4.4(zod@4.6.7)
+      '@mark1russell7/market': 0.11.0
+      '@mark1russell7/quantity': 0.4.8(zod@4.6.7)
       '@mark1russell7/text': 0.0.16
       polite-crawler: 0.7.12(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
       zod: 4.6.7
@@ -5273,6 +5301,17 @@ snapshots:
       - pg
       - playwright-core
       - ws
+
+  '@mark1russell7/market@0.11.0':
+    dependencies:
+      '@mark1russell7/guidebook': 0.5.2
+      '@mark1russell7/optional': 1.5.0
+      '@mark1russell7/quantity': 0.4.8(zod@4.6.7)
+      '@mark1russell7/strategy-search': 0.1.2
+      '@mark1russell7/strategy-space': 0.1.1
+      '@mark1russell7/vex': 0.19.1(zod@4.6.7)
+      '@mark1russell7/vex-domains': 0.19.1(zod@4.6.7)
+      zod: 4.6.7
 
   '@mark1russell7/market@0.3.2':
     dependencies:
@@ -5525,6 +5564,8 @@ snapshots:
   '@mark1russell7/text@0.0.17': {}
 
   '@mark1russell7/text@0.0.18': {}
+
+  '@mark1russell7/text@0.0.19': {}
 
   '@mark1russell7/text@0.0.6': {}
 

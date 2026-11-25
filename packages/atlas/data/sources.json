@@ -391,12 +391,12 @@
     "access": "api",
     "auth": "account",
     "terms": {
-      "url": "https://acleddata.com/terms-and-conditions",
-      "automated": "unclear",
-      "redistribution": "unclear",
-      "note": "OAuth named for one guide. Terms page not opened."
+      "url": "https://acleddata.com/eula",
+      "automated": "limited",
+      "redistribution": "limited",
+      "note": "The EULA grants a royalty-free licence for non-commercial use, also internal use. Automated access goes only through the API, within its rate limits. The EULA forbids the scraping of the site. A published work must be transformative. The EULA also limits the use of the data with AI and machine learning systems."
     },
-    "cost": "unknown",
+    "cost": "free",
     "delay": "unknown",
     "history": "unknown",
     "rateLimit": "unknown",
@@ -410,13 +410,17 @@
     ],
     "subjectIds": null,
     "risks": [],
-    "decision": "later",
+    "decision": "plan",
     "adapter": null,
-    "reason": "Curated conflict and protest events; terms decide use. The decision is later because the cost is unknown.",
+    "reason": "Researchers code each event of political violence and each protest, with its place and its date. The API needs an account with OAuth. A read with no account gave 403. A personal receiver is a non-commercial use.",
     "evidence": [
-      "https://acleddata.com/acled-api-documentation"
+      "https://acleddata.com/acled-api-documentation",
+      "https://acleddata.com/terms-and-conditions",
+      "https://acleddata.com/eula",
+      "https://acleddata.com/api/acled/read?limit=1",
+      "https://acleddata.com/robots.txt"
     ],
-    "round": 1
+    "round": 35
   },
   {
     "id": "acn-csirt-italia-rss",
@@ -644,12 +648,12 @@
     "terms": {
       "url": "https://www.aemo.com.au/privacy-and-legal-notices/copyright-permissions",
       "automated": "unclear",
-      "redistribution": "unclear",
-      "note": "The copyright permissions page returned 403 to the fetch tool. The terms were not read."
+      "redistribution": "allowed",
+      "note": "The copyright permissions give anyone a general permission to use AEMO Material for any purpose, with an accurate attribution to AEMO. They tell nothing of automated reading. nemweb.com.au has no robots.txt: the address sends a redirect to a page of the AEMO site. The robots.txt of the AEMO site blocks its own pages of market notices, not NEMweb."
     },
     "cost": "free",
-    "delay": "The directory read at 00:25 UTC on 2026-11-22 had a notice from 04:06 AM on 22 November 2026 (market time).",
-    "history": "The current directory held 1,196 notice files.",
+    "delay": "Minutes: the directory read at 18:08 UTC on 2026-11-25 had notice 146659, created at 21:03 market time (11:03 UTC) on the same day.",
+    "history": "The current directory held 1,267 notice files on 2026-11-25.",
     "rateLimit": "unknown",
     "calibration": null,
     "coverage": "National Electricity Market of Australia (Queensland, New South Wales, Victoria, South Australia, Tasmania).",
@@ -661,14 +665,16 @@
     ],
     "subjectIds": null,
     "risks": [],
-    "decision": "later",
+    "decision": "plan",
     "adapter": null,
-    "reason": "Plain text notices of the market operator with a type field. A sample of 40 had contingency reclassifications for lightning, residue and price notices, but no reserve notice. The terms are unread.",
+    "reason": "The market operator gives each notice as a plain text file with a type field, with no key. A reserve notice of an actual LOR3 tells of load shedding in a region of the market. The terms permit each use with attribution.",
     "evidence": [
       "https://nemweb.com.au/Reports/Current/Market_Notice/",
-      "https://www.aemo.com.au/privacy-and-legal-notices/copyright-permissions"
+      "https://nemweb.com.au/Reports/Current/Market_Notice/NEMITWEB1_MKTNOTICE_20261125.R146659",
+      "https://www.aemo.com.au/privacy-and-legal-notices/copyright-permissions",
+      "https://www.aemo.com.au/robots.txt"
     ],
-    "round": 18
+    "round": 33
   },
   {
     "id": "afir-access-points",
@@ -1384,7 +1390,7 @@
       "url": null,
       "automated": "unclear",
       "redistribution": "unclear",
-      "note": "No download seen on the index page; subpages per category."
+      "note": "No download seen on the index page; subpages per category. Round 32: the page of the commercial and backyard flocks gave 403 with Access Denied."
     },
     "cost": "free",
     "delay": "unknown",
@@ -1404,9 +1410,10 @@
     "adapter": null,
     "reason": "The official US record of avian influenza detections by county. The decision is later because a page source needs terms that let automated reading.",
     "evidence": [
-      "https://www.aphis.usda.gov/livestock-poultry-disease/avian/avian-influenza/hpai-detections"
+      "https://www.aphis.usda.gov/livestock-poultry-disease/avian/avian-influenza/hpai-detections",
+      "https://www.aphis.usda.gov/livestock-poultry-disease/avian/avian-influenza/hpai-detections/commercial-backyard-flocks"
     ],
-    "round": 1
+    "round": 32
   },
   {
     "id": "apple-security-releases",
@@ -12252,25 +12259,25 @@
   },
   {
     "id": "jpl-fireball-api",
-    "name": "NASA/JPL Fireball Data API",
+    "name": "NASA/JPL Fireball Data API (CNEOS, JSON)",
     "classes": [
       "geo.fireball"
     ],
-    "url": "https://ssd-api.jpl.nasa.gov/doc/fireball.html",
+    "url": "https://ssd-api.jpl.nasa.gov/fireball.api",
     "access": "api",
     "auth": "none",
     "terms": {
       "url": null,
       "automated": "allowed",
       "redistribution": "unclear",
-      "note": "A public JSON API. No usage terms on the page."
+      "note": "The documentation page shows the use of the API and has no terms of use. ssd-api.jpl.nasa.gov has no robots.txt. NASA made the data, so the data are a work of the US government."
     },
     "cost": "free",
-    "delay": "unknown",
-    "history": "unknown",
+    "delay": "Weeks: on 2026-11-25 the newest record was from 2026-10-04.",
+    "history": "All the records of the CNEOS fireball database. The read of 2026-11-25 asked for the newest 5 records only.",
     "rateLimit": "unknown",
     "calibration": null,
-    "coverage": "World fireballs and airbursts with location, altitude and energy.",
+    "coverage": "World fireballs and airbursts that US government sensors detect, with the time, the place, the altitude, the speed and the energy.",
     "origins": [
       "nasa-jpl"
     ],
@@ -12279,13 +12286,15 @@
     ],
     "subjectIds": null,
     "risks": [],
-    "decision": "later",
+    "decision": "plan",
     "adapter": null,
-    "reason": "After-the-fact records; useful to explain a boom or flash, not to warn.",
+    "reason": "A fireball ends in seconds, so each source of the class tells of it after the fact. The record explains a boom or a flash that persons near the place saw or heard. Round 37 found a second source, nasa-glm-bolides.",
     "evidence": [
-      "https://ssd-api.jpl.nasa.gov/doc/fireball.html"
+      "https://ssd-api.jpl.nasa.gov/doc/fireball.html",
+      "https://ssd-api.jpl.nasa.gov/fireball.api?limit=5",
+      "https://ssd-api.jpl.nasa.gov/robots.txt"
     ],
-    "round": 1
+    "round": 37
   },
   {
     "id": "jpl-sentry-api",
@@ -16732,21 +16741,21 @@
   },
   {
     "id": "opm-status",
-    "name": "OPM operating status (Washington DC area)",
+    "name": "OPM operating status (Washington DC area, JSON)",
     "classes": [
       "civic.government-operating-status"
     ],
-    "url": "https://www.opm.gov/policy-data-oversight/snow-dismissal-procedures/current-status/",
-    "access": "page",
+    "url": "https://www.opm.gov/json/operatingstatus.json",
+    "access": "api",
     "auth": "none",
     "terms": {
       "url": null,
       "automated": "unclear",
       "redistribution": "unclear",
-      "note": "No API, feed or email named. The app sends no push notifications."
+      "note": "The robots.txt of www.opm.gov does not block the JSON path. The round found no terms of use for the JSON."
     },
     "cost": "free",
-    "delay": "unknown",
+    "delay": "Minutes: the read of 2026-11-25 gave the status Open for that date, with the time of the post.",
     "history": "unknown",
     "rateLimit": "unknown",
     "calibration": null,
@@ -16759,13 +16768,15 @@
     ],
     "subjectIds": null,
     "risks": [],
-    "decision": "later",
+    "decision": "plan",
     "adapter": null,
-    "reason": "Narrow coverage, page only.",
+    "reason": "The JSON gives the operating status of the federal offices of the DC area with its type and its date, with no key. The coverage is narrow.",
     "evidence": [
-      "https://www.opm.gov/policy-data-oversight/snow-dismissal-procedures/current-status/"
+      "https://www.opm.gov/policy-data-oversight/snow-dismissal-procedures/current-status/",
+      "https://www.opm.gov/json/operatingstatus.json",
+      "https://www.opm.gov/robots.txt"
     ],
-    "round": 1
+    "round": 35
   },
   {
     "id": "oracle-linux-oval",
@@ -17910,36 +17921,39 @@
     "dimensions": [
       "fuel-prices"
     ],
-    "url": "https://www.prix-carburants.gouv.fr/rubrique/opendata/",
+    "url": "https://donnees.roulez-eco.fr/opendata/instantane_ruptures",
     "access": "file",
     "auth": "none",
     "terms": {
       "url": "https://www.prix-carburants.gouv.fr/rubrique/opendata/",
       "automated": "unclear",
       "redistribution": "allowed",
-      "note": "Licence Ouverte."
+      "note": "The open data page gives the data under the Licence Ouverte (etalab-2.0) and names the download addresses. It tells nothing of automated reading. donnees.roulez-eco.fr has no robots.txt. The robots.txt of data.economie.gouv.fr blocks its API path, so an adapter reads the file of roulez-eco."
     },
     "cost": "free",
-    "delay": "about 10 minutes",
+    "delay": "Minutes: the file updates each 10 minutes. The file read at 18:31 UTC on 2026-11-25 had a temporary stock-out that started at 19:30 Paris time (18:30 UTC).",
     "history": "yes (yearly archives since 2007)",
     "rateLimit": "unknown",
     "calibration": null,
-    "coverage": "France, all stations",
+    "coverage": "France: 9,828 stations in the file read on 2026-11-25. The file had 23,066 stock-out records, and 2,646 of them were temporary. 742 temporary stock-outs started in November 2026.",
     "origins": [
       "prix-carburants"
     ],
     "path": [
-      "unknown"
+      "donnees.roulez-eco.fr"
     ],
     "subjectIds": null,
     "risks": [],
-    "decision": "later",
+    "decision": "plan",
     "adapter": null,
-    "reason": "Fuel prices and stock outages at each French station under the Licence Ouverte. Stock outages are a strong signal of a supply shock.",
+    "reason": "Each station gives its prices and each fuel that it does not have, with the start and the type of the stock-out. Many new temporary stock-outs in one area tell of a supply shock. The file needs no key.",
     "evidence": [
-      "https://www.prix-carburants.gouv.fr/rubrique/opendata/"
+      "https://www.prix-carburants.gouv.fr/rubrique/opendata/",
+      "https://donnees.roulez-eco.fr/opendata/instantane_ruptures",
+      "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?limit=1&where=carburants_indisponibles%20is%20not%20null",
+      "https://data.economie.gouv.fr/robots.txt"
     ],
-    "round": 10
+    "round": 34
   },
   {
     "id": "project-zero-0day-itw",
@@ -20432,38 +20446,43 @@
   },
   {
     "id": "state-dept-advisories",
-    "name": "US State Department travel advisories",
+    "name": "US State Department travel advisories (JSON API)",
     "classes": [
-      "security.travel-advisory"
+      "security.travel-advisory",
+      "security.kidnap"
     ],
-    "url": "https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories.html",
-    "access": "page",
+    "url": "https://cadataapi.state.gov/api/TravelAdvisories",
+    "access": "api",
     "auth": "none",
     "terms": {
       "url": null,
       "automated": "unclear",
       "redistribution": "unclear",
-      "note": "The page returned 403."
+      "note": "The copyright page of state.gov gave 403, so the round did not read it. Section 105 of title 17 of the US Code gives no copyright to a work of the US government. cadataapi.state.gov has no robots.txt."
     },
     "cost": "free",
-    "delay": "unknown",
-    "history": "unknown",
+    "delay": "Days: the read of 2026-11-25 gave 218 advisories, and the newest update was on 2026-11-23.",
+    "history": "The JSON gives the publication time and the last update of each advisory.",
     "rateLimit": "unknown",
     "calibration": null,
-    "coverage": "World.",
+    "coverage": "World: the level of each country from 1 to 4, with its risks. In the read of 2026-11-25, 36 advisories named kidnapping as a risk.",
     "origins": [
       "us-state-department"
     ],
     "path": [
-      "travel.state.gov"
+      "cadataapi.state.gov"
     ],
     "subjectIds": null,
     "risks": [],
-    "decision": "later",
+    "decision": "plan",
     "adapter": null,
-    "reason": "Official US levels; access not confirmed.",
-    "evidence": [],
-    "round": 1
+    "reason": "The JSON gives each travel advisory with its level, its risks and its update time, with no key. A new risk of kidnapping or a new level 4 is a signal.",
+    "evidence": [
+      "https://cadataapi.state.gov/api/TravelAdvisories",
+      "https://cadataapi.state.gov/robots.txt",
+      "https://www.state.gov/copyright-information"
+    ],
+    "round": 35
   },
   {
     "id": "statusgator",
@@ -24632,6 +24651,1620 @@
     "reason": "A possible second origin of overflows, apart from the companies of England. The documentation page gave 403, and the API host from search results has no DNS record.",
     "evidence": [
       "https://www.scottishwater.co.uk/Help-and-Resources/Open-Data/Overflow-Map-Data"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 32,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "redcross-open-shelters",
+    "name": "American Red Cross: the open shelters of its National Shelter System (ArcGIS feature layer view)",
+    "classes": [
+      "rescue.shelter-open"
+    ],
+    "url": "https://services.arcgis.com/pGfbNJoYypmNq86F/arcgis/rest/services/Shelters_Prod_EA_view/FeatureServer/0",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.arcgis.com/home/item.html?id=bc4f03b7ec3e4c8d86c3e2ebcd92e047",
+      "automated": "unclear",
+      "redistribution": "limited",
+      "note": "The licence of the item gives the data for situational awareness and for maps and applications of shelters, with the Red Cross as the source. It does not give unrestricted redistribution, commercial use or changes. It tells nothing of automated reading."
+    },
+    "delay": "The item gives an update each 60 seconds. One read at 17:04 UTC on 2026-11-25 gave a last change of the data at 06:55 UTC on the same day.",
+    "history": "None: the layer holds only the shelters that are open now.",
+    "coverage": "The US states and territories: each open shelter of the Red Cross with its name, its place, its status, its type and its pet type. On 2026-11-25 the layer had 2 open emergency shelters.",
+    "origins": [
+      "american-red-cross"
+    ],
+    "path": [
+      "services.arcgis.com",
+      "provider:arcgis-online"
+    ],
+    "reason": "Open JSON queries with no key, from the shelter system of the Red Cross. FEMA also shows Red Cross shelters, but this path and this issuer are apart from FEMA.",
+    "evidence": [
+      "https://www.arcgis.com/sharing/rest/search?q=%22open%20shelters%22%20type%3A%22Feature%20Service%22&num=50&f=json",
+      "https://services.arcgis.com/pGfbNJoYypmNq86F/arcgis/rest/services/Shelters_Prod_EA_view/FeatureServer/0?f=json",
+      "https://services.arcgis.com/pGfbNJoYypmNq86F/arcgis/rest/services/Shelters_Prod_EA_view/FeatureServer/0/query?where=1%3D1&outFields=active_state,active_site_status,active_site_type&returnGeometry=false&f=json"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 32,
+    "decision": "plan",
+    "rateLimit": "The page tells users to read each 3 minutes at most, and to keep a copy in their own service.",
+    "id": "avinor-flight-data",
+    "name": "Avinor: the flights and their status at the airports of Norway (XML feed)",
+    "classes": [
+      "transport.air.disruption"
+    ],
+    "url": "https://asrv.avinor.no/XmlFeed/v1.0",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://partner.avinor.no/en/services/flight-data/",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The terms of use set no limit on the use of the data, if the use obeys the law of Norway. Avinor can stop the access of a user who harms its reputation. The page tells users to read the feed each 3 minutes."
+    },
+    "delay": "Minutes: one read at 17:05 UTC on 2026-11-25 gave a lastUpdate of the same second. Each flight has a status code and a status time.",
+    "history": "The feed gives the flights from some hours before to some hours after the time of the read, with the parameters TimeFrom and TimeTo.",
+    "coverage": "The 43 airports of Avinor in Norway, with no private airport. One read for Oslo had 179 flights: 1 cancelled, 122 with a new time, 30 departed and 25 arrived.",
+    "origins": [
+      "avinor"
+    ],
+    "path": [
+      "asrv.avinor.no"
+    ],
+    "reason": "The operator of the airports of Norway gives the status of each flight with no key and with open terms. An adapter counts the cancelled and the late flights of each airport.",
+    "evidence": [
+      "https://partner.avinor.no/en/services/flight-data/",
+      "https://asrv.avinor.no/XmlFeed/v1.0?TimeFrom=1&TimeTo=7&airport=OSL"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 32,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "njdep-hab-sampling",
+    "name": "NJDEP: the samples and advisory tiers of harmful algal blooms in New Jersey (ArcGIS feature layer)",
+    "classes": [
+      "env.water.harmful-algal-bloom"
+    ],
+    "url": "https://services1.arcgis.com/QWdNfRs7lkPq4g4Q/arcgis/rest/services/NJDEP_Production_HAB_Sampling_2021_public/FeatureServer/0",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.arcgis.com/home/item.html?id=a84a0473c7d94ce89fea7b5cb6cd46f6",
+      "automated": "unclear",
+      "redistribution": "limited",
+      "note": "The Data Distribution Agreement of NJDEP is in the licence of the item. A copy keeps all the metadata, and a product credits NJDEP GIS with its disclaimer. It tells nothing of automated reading."
+    },
+    "delay": "Days: one read on 2026-11-25 gave a last change of the data at 13:00 UTC on the same day, and the newest site visit on 2026-11-12.",
+    "history": "2,329 records on 2026-11-25, with samples from the years before.",
+    "coverage": "New Jersey: each sample of a fresh water body after a report of a bloom, with the cell count, the toxins, the county and the advisory tier. The layer also has fields with the names of staff, and an adapter does not read them.",
+    "origins": [
+      "njdep"
+    ],
+    "path": [
+      "services1.arcgis.com",
+      "provider:arcgis-online"
+    ],
+    "reason": "Open JSON queries with no key, from a state apart from California. Each record has an advisory tier, so an adapter makes a report of each advisory.",
+    "evidence": [
+      "https://www.arcgis.com/sharing/rest/search?q=%22harmful%20algal%22%20advisory%20type%3A%22Feature%20Service%22&num=60&sortField=modified&sortOrder=desc&f=json",
+      "https://services1.arcgis.com/QWdNfRs7lkPq4g4Q/arcgis/rest/services/NJDEP_Production_HAB_Sampling_2021_public/FeatureServer/0?f=json",
+      "https://services1.arcgis.com/QWdNfRs7lkPq4g4Q/arcgis/rest/services/NJDEP_Production_HAB_Sampling_2021_public/FeatureServer/0/query?where=1%3D1&returnCountOnly=true&f=json"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 32,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "elexon-bmrs-syswarn",
+    "name": "Elexon BMRS: the system warnings of NESO for Great Britain (SYSWARN, JSON)",
+    "classes": [
+      "infra.power.grid-emergency"
+    ],
+    "url": "https://data.elexon.co.uk/bmrs/api/v1/datasets/SYSWARN",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The licence of the BMRS open data lets each user copy, publish, adapt and use the data, also for commercial use, with the attribution statement of Elexon. It tells nothing of automated reading. The API needs no key."
+    },
+    "delay": "Minutes: one read at 17:07 UTC on 2026-11-25 gave a warning published at 14:39 UTC on the same day.",
+    "history": "The dataset query takes a range of publish times. The range from 2026-05-01 gave 355 warnings.",
+    "coverage": "Great Britain: the warnings of the electricity control centre of NESO. From 2026-05-01 to 2026-11-25 they had 32 Electricity Margin Notices and 5 negative reserve margin warnings.",
+    "origins": [
+      "neso"
+    ],
+    "path": [
+      "data.elexon.co.uk"
+    ],
+    "reason": "An Electricity Margin Notice tells of a low margin of the grid, the same kind as a conservation appeal of ERCOT. The warnings are open JSON with no key, from an origin apart from ERCOT.",
+    "evidence": [
+      "https://data.elexon.co.uk/bmrs/api/v1/system/warnings?format=json",
+      "https://data.elexon.co.uk/bmrs/api/v1/datasets/SYSWARN?publishDateTimeFrom=2026-05-01T00:00:00Z&publishDateTimeTo=2026-11-25T18:00:00Z&format=json",
+      "https://www.elexon.co.uk/bsc/data/balancing-mechanism-reporting-agent/copyright-licence-bmrs-data/"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 32,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "usfs-recreation-status",
+    "name": "USDA Forest Service: the open status of the recreation sites (EDW map service)",
+    "classes": [
+      "safety.public-lands-closure"
+    ],
+    "url": "https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_RecreationOpportunities_01/MapServer/0",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The service description gives no warranty and tells users to verify the limits of the data. It gives no licence. The data are works of the US government."
+    },
+    "delay": "unknown: the records have no time of change.",
+    "history": "None: each site has its status now.",
+    "coverage": "The recreation sites of the national forests of the US. On 2026-11-25 the layer had 5,939 open sites, 2,694 closed sites and 305 temporarily closed sites.",
+    "origins": [
+      "usda-fs"
+    ],
+    "path": [
+      "apps.fs.usda.gov"
+    ],
+    "reason": "The field openstatus has no time and no cause. A closure for the winter and a closure for a hazard have the same value, so a report needs more data.",
+    "evidence": [
+      "https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_RecreationOpportunities_01/MapServer?f=json",
+      "https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_RecreationOpportunities_01/MapServer/0?f=json"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 32,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "sidc-product-archive",
+    "name": "SIDC (RWC-Belgium): the latest message of each alert product (plain text archive)",
+    "classes": [
+      "geo.space-weather",
+      "geo.space-weather.radio-blackout"
+    ],
+    "url": "https://www.sidc.be/spaceweatherservices/managed/services/archive/product/flaremail",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.astro.oma.be/en/information/data-policy/",
+      "automated": "unclear",
+      "redistribution": "limited",
+      "note": "The data policy of the Royal Observatory of Belgium permits private, educational or scientific use only. A commercial use needs the written consent of the director general."
+    },
+    "delay": "One read on 2026-11-25 gave a flare alert of 2026-10-10 and a Presto message of 2026-11-01.",
+    "history": "None: each address gives only the latest message of its product.",
+    "coverage": "The Sun and the space near the Earth. The flare alert tells of a large flare in the X-ray data of the GOES satellites of NOAA.",
+    "origins": [
+      "sidc"
+    ],
+    "path": [
+      "www.sidc.be"
+    ],
+    "reason": "The archive gives the alerts with no account and no email. But the flare alert reads the GOES data of NOAA, and the data policy limits the use, as the policy of BoM does.",
+    "evidence": [
+      "https://www.sidc.be/spaceweatherservices/managed/services/archive/product/flaremail",
+      "https://www.sidc.be/spaceweatherservices/managed/services/archive/product/presto/",
+      "https://www.astro.oma.be/en/information/data-policy/"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 33,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "nsw-rfs-fire-bans",
+    "name": "NSW Rural Fire Service: the fire danger ratings and total fire bans of each fire weather district (XML feed)",
+    "classes": [
+      "fire.burn-ban"
+    ],
+    "url": "https://www.rfs.nsw.gov.au/feeds/fdrToban.xml",
+    "access": "feed",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.rfs.nsw.gov.au/news-and-media/stay-up-to-date/feeds",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The feeds page gives the material under CC BY 4.0, with a set attribution. The RFS supports the redistribution of its warnings by applications. The robots.txt does not block the feeds."
+    },
+    "delay": "Hours: the feed gives the ban of today and of tomorrow for each district. The bans come with the fire danger ratings of the Bureau of Meteorology.",
+    "history": "None: the feed gives only today and tomorrow.",
+    "coverage": "New South Wales: 21 fire weather districts with their councils. One read at 18:09 UTC on 2026-11-25 had no ban today.",
+    "origins": [
+      "nsw-rfs"
+    ],
+    "path": [
+      "www.rfs.nsw.gov.au"
+    ],
+    "reason": "A total fire ban is a ban on open fires in a district. The fire service of the state gives the ban of each district as open XML with no key.",
+    "evidence": [
+      "https://www.rfs.nsw.gov.au/news-and-media/stay-up-to-date/feeds",
+      "https://www.rfs.nsw.gov.au/feeds/fdrToban.xml",
+      "https://www.rfs.nsw.gov.au/robots.txt"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 33,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "bc-parks-advisories",
+    "name": "BC Parks API: the public advisories and the fire bans of the provincial parks of British Columbia (JSON)",
+    "classes": [
+      "safety.public-lands-closure",
+      "safety.wildlife",
+      "fire.burn-ban"
+    ],
+    "url": "https://bcparks.api.gov.bc.ca/api/public-advisories",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www2.gov.bc.ca/gov/content/data/policy-standards/data-policies/open-data/open-government-licence-bc",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The catalog record gives the data under the Open Government Licence - British Columbia: copy, publish, adapt and commercial use, with attribution. The API Terms of Use of the record gave 404, so automated reading is not read."
+    },
+    "delay": "Minutes to days: the newest advisory on 2026-11-25 had an advisory date of 2026-11-23.",
+    "history": "Each published advisory with its dates. On 2026-11-25 the API had 501 published advisories.",
+    "coverage": "British Columbia: the provincial parks, conservation areas and ecological reserves. The event types include park closure, trail closure, wildlife, campfires and wildfire. The endpoint fire-ban-prohibitions had 6 records.",
+    "origins": [
+      "bc-parks",
+      "bc-wildfire-service"
+    ],
+    "path": [
+      "bcparks.api.gov.bc.ca"
+    ],
+    "reason": "Each advisory has an event type, an access status, an urgency and the protected areas. Thus an adapter makes a report of each closure, wildlife danger and fire ban. The API needs no key.",
+    "evidence": [
+      "https://catalogue.data.gov.bc.ca/api/3/action/package_search?q=parks%20advisories",
+      "https://raw.githubusercontent.com/bcgov/bcparks.ca/main/infrastructure/kong/public-documentation.json",
+      "https://bcparks.api.gov.bc.ca/api/public-advisories?pagination%5BpageSize%5D=3&sort=advisoryDate%3Adesc",
+      "https://bcparks.api.gov.bc.ca/api/event-types?pagination%5BpageSize%5D=100",
+      "https://bcparks.api.gov.bc.ca/api/fire-ban-prohibitions?pagination%5BpageSize%5D=5",
+      "https://www2.gov.bc.ca/gov/content/data/policy-standards/data-policies/open-data/open-government-licence-bc"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 33,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "nsw-beachwatch",
+    "name": "Beachwatch NSW: the pollution forecast and the latest result of each swimming site (GeoJSON)",
+    "classes": [
+      "env.water.beach-advisory"
+    ],
+    "url": "https://api.beachwatch.nsw.gov.au/public/sites/geojson",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.nsw.gov.au/data/api/3/action/package_search?q=beachwatch&rows=5",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The record of Beachwatch on Data.NSW gives the licence CC BY. The API has no documentation page and no robots.txt. Nothing tells of automated reading."
+    },
+    "delay": "Hours: the forecast of a site comes each day, and one read on 2026-11-25 had a forecast time of 02:30 UTC on the same day.",
+    "history": "None: each site has its forecast now and its latest sample.",
+    "coverage": "New South Wales: 246 swimming sites on 2026-11-25. 135 had pollution unlikely, 24 possible and 1 likely. 86 had no forecast.",
+    "origins": [
+      "nsw-beachwatch"
+    ],
+    "path": [
+      "api.beachwatch.nsw.gov.au"
+    ],
+    "reason": "The state program of beach water quality gives a pollution forecast for each site as open GeoJSON with no key. A forecast of likely pollution tells people not to swim.",
+    "evidence": [
+      "https://api.beachwatch.nsw.gov.au/public/sites/geojson",
+      "https://data.nsw.gov.au/data/api/3/action/package_search?q=beachwatch&rows=5"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 33,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "hk-epd-beach-grading",
+    "name": "EPD of Hong Kong: the water quality grade of each beach (RSS feed)",
+    "classes": [
+      "env.water.beach-advisory"
+    ],
+    "url": "https://cd.epic.epd.gov.hk/beachpsi/en/beach2.rss",
+    "access": "feed",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.gov.hk/en/terms-and-conditions",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The terms of DATA.GOV.HK let each user download, distribute and reproduce the data, also for commercial use, with acknowledgement of the source. The feed itself has the line Copyright EPD All rights reserved. The terms tell nothing of automated reading."
+    },
+    "delay": "Days: the dataset tells of a post within 48 hours after a sample. The feed read on 2026-11-25 had a build time of 09:56 Hong Kong time on the same day.",
+    "history": "None: each beach has its latest grade. Files of each year hold the history.",
+    "coverage": "Hong Kong: the gazetted beaches. On 2026-11-25, out of season, the feed had 11 beaches: 7 with grade 1 and 4 with grade 2.",
+    "origins": [
+      "hk-epd"
+    ],
+    "path": [
+      "cd.epic.epd.gov.hk"
+    ],
+    "reason": "The environment department of Hong Kong gives a grade from 1 to 4 for each beach in a feed with no key. A grade of 3 or 4 tells of water that is not suitable for swimming.",
+    "evidence": [
+      "https://data.gov.hk/en-data/api/3/action/package_search?q=beach%20water%20quality&rows=8",
+      "https://cd.epic.epd.gov.hk/beachpsi/en/beach2.rss",
+      "https://data.gov.hk/en/terms-and-conditions"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 33,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "toronto-beach-water-quality",
+    "name": "City of Toronto: the E. coli samples of its beaches (CKAN datastore)",
+    "classes": [
+      "env.water.beach-advisory"
+    ],
+    "url": "https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/package_show?id=toronto-beaches-water-quality",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/package_show?id=toronto-beaches-water-quality",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The record of the dataset gives the Open Government Licence - Toronto. The round did not open the licence page or the robots.txt."
+    },
+    "delay": "Days: the newest sample on 2026-11-25 was from 2026-09-16, at the end of the season.",
+    "history": "102,534 samples on 2026-11-25.",
+    "coverage": "Toronto: the supervised public beaches, from June to September only.",
+    "origins": [
+      "toronto-public-health"
+    ],
+    "path": [
+      "ckan0.cf.opendata.inter.prod-toronto.ca"
+    ],
+    "reason": "The records give E. coli counts, not the advisory of Toronto Public Health. The data comes only in the summer season.",
+    "evidence": [
+      "https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/package_show?id=toronto-beaches-water-quality",
+      "https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/datastore_search?resource_id=8102bd4c-83cd-4354-9788-eecc0c7a09b4&limit=2&sort=collectionDate%20desc"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 33,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "ea-bathing-water-quality",
+    "name": "Environment Agency: the bathing water quality and the pollution risk forecasts of England (linked data API)",
+    "classes": [
+      "env.water.beach-advisory"
+    ],
+    "url": "https://environment.data.gov.uk/bwq/profiles/help-api.html",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "forbidden",
+      "redistribution": "unclear",
+      "note": "The robots.txt of environment.data.gov.uk blocks the paths /doc/ and /data/ for each agent. Its comment names the Bathing Water Quality API. The help page of the API gave 429."
+    },
+    "delay": "unknown",
+    "history": "unknown",
+    "coverage": "England: the designated bathing waters, with a daily pollution risk forecast in the season.",
+    "origins": [
+      "environment-agency-england"
+    ],
+    "path": [
+      "environment.data.gov.uk"
+    ],
+    "reason": "The robots.txt blocks the data paths of the API, and the help page gave 429. The round did not read the API.",
+    "evidence": [
+      "https://environment.data.gov.uk/robots.txt",
+      "https://environment.data.gov.uk/bwq/profiles/help-api.html"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 33,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "tfl-unified-api",
+    "name": "Transport for London: the status and the disruptions of each line (Unified API)",
+    "classes": [
+      "transport.transit.service-alert"
+    ],
+    "url": "https://api.tfl.gov.uk/Line/Mode/tube,overground,elizabeth-line,dlr/Status",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://tfl.gov.uk/corporate/terms-and-conditions/transport-data-service",
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The terms page of the transport data service gave 403, so the round read no terms. The API host has no robots.txt."
+    },
+    "delay": "Minutes: one read at 18:12 UTC on 2026-11-25 gave a status for each of 19 lines, with delays on 4 lines.",
+    "history": "None: each line has its status now.",
+    "coverage": "London: the Underground, the Overground, the Elizabeth line and the DLR.",
+    "origins": [
+      "tfl"
+    ],
+    "path": [
+      "api.tfl.gov.uk"
+    ],
+    "reason": "The API answered with no key, and TfL does not publish GTFS Realtime. But the terms page gave 403, so the terms are not read.",
+    "evidence": [
+      "https://api.tfl.gov.uk/Line/Mode/tube,overground,elizabeth-line,dlr/Status",
+      "https://tfl.gov.uk/corporate/terms-and-conditions/transport-data-service"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 34,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "nve-landslide-warnings",
+    "name": "NVE: the landslide warnings of Norway for each county and municipality (Jordskredvarsling API, JSON)",
+    "classes": [
+      "geo.landslide",
+      "geo.debris-flow"
+    ],
+    "url": "https://api01.nve.no/hydrology/forecast/landslide/v1.0.10/api/Warning/2",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://api.nve.no/doc/jordskredvarsling/",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The API page tells that the warning data is free for use. A user names the landslide warning service of Norway and varsom.no as the source. The page asks users to show all the data of a warning. api01.nve.no has no robots.txt."
+    },
+    "delay": "Hours: NVE gives a warning each day for today, tomorrow and the day after tomorrow. One read at 18:29 UTC on 2026-11-25 had no warning above level 1.",
+    "history": "The API gives the warnings of each date range from a start date to an end date.",
+    "coverage": "Norway: each county and municipality. The warnings tell of landslides, slush flows and debris flows, with an activity level from 1 to 4.",
+    "origins": [
+      "nve"
+    ],
+    "path": [
+      "api01.nve.no"
+    ],
+    "reason": "The water and energy directorate of Norway gives each landslide warning with its level and its municipalities as JSON with no key. The warnings include debris flows.",
+    "evidence": [
+      "https://api.nve.no/doc/jordskredvarsling/",
+      "https://api01.nve.no/hydrology/forecast/landslide/v1.0.10/api/Warning/2",
+      "https://api01.nve.no/robots.txt"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 34,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "hko-warning-summary",
+    "name": "Hong Kong Observatory: the summary of the weather warnings in force, with the landslip warning (open data API, JSON)",
+    "classes": [
+      "geo.landslide"
+    ],
+    "url": "https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=warnsum&lang=en",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.gov.hk/en/terms-and-conditions",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "DATA.GOV.HK lists this dataset of the Observatory. Its terms let each user download, distribute and reproduce the data, also for commercial use, with acknowledgement of the source. The terms tell nothing of automated reading. The robots.txt address sent a redirect, and the round did not follow it."
+    },
+    "delay": "Minutes: the dataset updates when a warning changes. One read at 18:28 UTC on 2026-11-25 gave an empty object, because no warning was in force.",
+    "history": "None: the summary gives the warnings in force now.",
+    "coverage": "Hong Kong. The summary also gives the tropical cyclone signals and the rainstorm, thunderstorm, fire danger, heat, cold, frost, monsoon, flooding and tsunami warnings.",
+    "origins": [
+      "hko"
+    ],
+    "path": [
+      "data.weather.gov.hk"
+    ],
+    "reason": "The Observatory issues the landslip warning when heavy rain makes many landslips likely. The summary gives the code of each warning in force with no key. The code WL is the landslip warning.",
+    "evidence": [
+      "https://data.gov.hk/en-data/api/3/action/package_search?q=weather%20warning%20summary&rows=5",
+      "https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=warnsum&lang=en",
+      "https://data.gov.hk/en/terms-and-conditions"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 34,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "losco-active-spills",
+    "name": "LOSCO: the active spill response records of Louisiana (ArcGIS feature layer)",
+    "classes": [
+      "env.spill"
+    ],
+    "url": "https://services9.arcgis.com/aWvO9aHtYLYMBTua/arcgis/rest/services/Active_LOSCO_Spill_Response_Records/FeatureServer/0",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The item on ArcGIS Online gives no licence and no terms of use. Its disclaimer tells that the data is for general information only."
+    },
+    "delay": "Days: the newest record on 2026-11-25 had an incident date of 2026-10-28.",
+    "history": "None: the layer holds only the spills with an active response.",
+    "coverage": "Louisiana and its waters: oil and other spills, with the product, the source, the estimated volume and the response status.",
+    "origins": [
+      "losco"
+    ],
+    "path": [
+      "services9.arcgis.com",
+      "provider:arcgis-online"
+    ],
+    "reason": "The layer gives the active spills of the oil spill office of Louisiana with no key. But the item gives no licence, so the terms of use are not known.",
+    "evidence": [
+      "https://www.arcgis.com/sharing/rest/search?q=spill%20incidents%20type%3A%22Feature%20Service%22&sortField=modified&sortOrder=desc&num=40&f=json",
+      "https://www.arcgis.com/home/item.html?id=e5125b7bbab644bba99960f197b8feb0"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 34,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "ecdc-wnv-animal-outbreaks",
+    "name": "ECDC: the outbreaks of West Nile virus among birds and equids in Europe (ArcGIS layer)",
+    "classes": [
+      "health.animal-disease"
+    ],
+    "url": "https://gis.ecdc.europa.eu/public/rest/services/WNV/WNF_Animal2/FeatureServer/2",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The layer gives no licence text, and the round did not read the terms of the ECDC."
+    },
+    "delay": "unknown",
+    "history": "unknown",
+    "coverage": "The EU and the EEA: the outbreaks among birds and equids in each region, in the season of West Nile virus.",
+    "origins": [
+      "ecdc"
+    ],
+    "path": [
+      "gis.ecdc.europa.eu"
+    ],
+    "reason": "The metadata of the layer answered, but each query of its records failed with error 400. The folder AvianInfluenza of the same server needs a token.",
+    "evidence": [
+      "https://gis.ecdc.europa.eu/public/rest/services?f=json",
+      "https://gis.ecdc.europa.eu/public/rest/services/WNV/WNF_Animal2/FeatureServer/2?f=json"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 34,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "nsw-health-drug-warnings",
+    "name": "NSW Health: the public drug warnings of New South Wales (web page)",
+    "classes": [
+      "health.drug-supply-threat"
+    ],
+    "url": "https://www.health.nsw.gov.au/aod/public-drug-alerts/Pages/default.aspx",
+    "access": "page",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The robots.txt blocks the paths of _layouts, and each RSS feed of the site has such a path. The RSS page of the site lists no feed of drug warnings."
+    },
+    "delay": "unknown",
+    "history": "The site gives a page of the warnings of each year.",
+    "coverage": "New South Wales: dangerous substances in the drug supply, for example nitazenes in heroin or in pills.",
+    "origins": [
+      "nsw-health"
+    ],
+    "path": [
+      "www.health.nsw.gov.au"
+    ],
+    "reason": "The warnings come only on a page with no feed, and no terms let automated reading of a page.",
+    "evidence": [
+      "https://www.health.nsw.gov.au/aod/public-drug-alerts/Pages/default.aspx",
+      "https://www.health.nsw.gov.au/Pages/rss.aspx",
+      "https://www.health.nsw.gov.au/robots.txt"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 35,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "fbi-wanted-api",
+    "name": "FBI: the posters of missing persons and kidnappings (Wanted API, JSON)",
+    "classes": [
+      "security.missing-person",
+      "security.kidnap"
+    ],
+    "url": "https://api.fbi.gov/wanted/v1/list?poster_classification=missing",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.justice.gov/legalpolicies",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The API page of the FBI links the legal policies of the Department of Justice. They tell that the information on its websites is in the public domain, unless a page tells otherwise. The robots.txt of www.fbi.gov blocks no path for each agent. api.fbi.gov has no robots.txt."
+    },
+    "delay": "Days: the FBI adds a poster when it opens a case. The first poster of the read of 2026-11-25 had a change on 2026-11-24.",
+    "history": "The list holds each active poster with its publication date.",
+    "coverage": "The United States and other countries: 142 posters of the class missing in the read of 2026-11-25. The subjects of a poster name the kidnapping and missing person cases.",
+    "origins": [
+      "fbi"
+    ],
+    "path": [
+      "api.fbi.gov"
+    ],
+    "reason": "The FBI gives each poster of a missing person or a kidnapping as JSON with no key. A new poster near a place is a signal. An adapter keeps the case, its dates and its place, not the personal details.",
+    "evidence": [
+      "https://www.fbi.gov/wanted/api",
+      "https://api.fbi.gov/wanted/v1/list?poster_classification=missing&pageSize=1",
+      "https://www.fbi.gov/robots.txt",
+      "https://www.justice.gov/legalpolicies"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 35,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "hkpf-missing-persons",
+    "name": "Hong Kong Police Force: the appeals for missing persons (XML)",
+    "classes": [
+      "security.missing-person"
+    ],
+    "url": "https://www.police.gov.hk/info/appeals_public/missing_persons/mp.php?lang=en",
+    "access": "feed",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.gov.hk/en/terms-and-conditions",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "DATA.GOV.HK lists this dataset of the police. Its terms let each user download, distribute and reproduce the data, also for commercial use, with acknowledgement of the source. The terms tell nothing of automated reading. www.police.gov.hk has no robots.txt."
+    },
+    "delay": "Hours to days: the police change the file when a case changes. The read of 2026-11-25 had 39 cases.",
+    "history": "None: the file holds the open appeals.",
+    "coverage": "Hong Kong: each open appeal for a missing person, with the dates and the police region of the case.",
+    "origins": [
+      "hkpf"
+    ],
+    "path": [
+      "www.police.gov.hk"
+    ],
+    "reason": "The police give each open appeal for a missing person in one XML file with no key. Each record names a person and has a photo, so an adapter keeps only the case number, the dates and the region.",
+    "evidence": [
+      "https://data.gov.hk/en-data/api/3/action/package_show?id=hk-hkpf-mp-missing-persons",
+      "https://www.police.gov.hk/info/appeals_public/missing_persons/mp.php?lang=en",
+      "https://data.gov.hk/en/terms-and-conditions"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 35,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "hk-wsd-water-suspensions",
+    "name": "Water Supplies Department of Hong Kong: the temporary water suspension notices (CSV)",
+    "classes": [
+      "infra.water.outage"
+    ],
+    "url": "https://www.esd.wsd.gov.hk/wsms_open_data/WSMS_OPEN_DATA(all).csv",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.gov.hk/en/terms-and-conditions",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "DATA.GOV.HK lists this dataset of the department. Its terms let each user download, distribute and reproduce the data, also for commercial use, with acknowledgement of the source. The terms tell nothing of automated reading. The robots.txt of www.esd.wsd.gov.hk blocks no path."
+    },
+    "delay": "Minutes to hours: the file gives the start and the status of each emergency suspension. The read of 2026-11-25 had 9 suspensions in progress.",
+    "history": "The file holds the recent and the planned notices. In the read of 2026-11-25, the start dates went from 2026-11-23 to 2026-12-03.",
+    "coverage": "Hong Kong, each district: 175 notices in the read of 2026-11-25. 138 were emergency suspensions and 37 were planned, of fresh water or of salt water for flushing.",
+    "origins": [
+      "hk-wsd"
+    ],
+    "path": [
+      "www.esd.wsd.gov.hk"
+    ],
+    "reason": "The department gives each emergency and planned water suspension with its district, its area, its cause and its status in one CSV file with no key.",
+    "evidence": [
+      "https://data.gov.hk/en-data/api/3/action/package_search?q=water%20supply%20suspension&rows=5",
+      "https://www.esd.wsd.gov.hk/wsms_open_data/WSMS_OPEN_DATA(all).csv",
+      "https://www.esd.wsd.gov.hk/robots.txt",
+      "https://data.gov.hk/en/terms-and-conditions"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 35,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "taiwan-water-outages",
+    "name": "Taiwan Water Corporation: the water outage cases (open data, JSON)",
+    "classes": [
+      "infra.water.outage"
+    ],
+    "url": "https://web.water.gov.tw/wateroffapi/openData/export/json",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.gov.tw/en/license",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The dataset is under the Open Government Data License, version 1.0. It grants a free, worldwide licence for each purpose with attribution, and it is compatible with CC BY 4.0. The licence tells nothing of automated reading. The robots.txt of web.water.gov.tw gave 502."
+    },
+    "delay": "unknown: one read on 2026-11-25 gave an empty list.",
+    "history": "unknown",
+    "coverage": "The service area of Taiwan Water Corporation: each outage or drop of pressure, with its area, its cause and its count of households.",
+    "origins": [
+      "taiwan-water"
+    ],
+    "path": [
+      "web.water.gov.tw"
+    ],
+    "reason": "The metadata names a daily JSON file of each outage case, with no key. The read gave an empty list, so the fields come from the metadata only.",
+    "evidence": [
+      "https://data.gov.tw/api/v2/rest/dataset/6050",
+      "https://web.water.gov.tw/wateroffapi/openData/export/json",
+      "https://data.gov.tw/en/license"
+    ]
+  },
+  {
+    "cost": "unknown",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 35,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "interpol-yellow-notices",
+    "name": "INTERPOL: the public yellow notices of missing persons (JSON API)",
+    "classes": [
+      "security.missing-person"
+    ],
+    "url": "https://ws-public.interpol.int/notices/v1/yellow",
+    "access": "api",
+    "auth": "unknown",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The API gave 403 to the round, so the round did not read the terms."
+    },
+    "delay": "unknown",
+    "history": "unknown",
+    "coverage": "World: the public yellow notices of the member countries.",
+    "origins": [
+      "interpol"
+    ],
+    "path": [
+      "ws-public.interpol.int"
+    ],
+    "reason": "The API gave 403 to the user agent of the round. The round did not try again.",
+    "evidence": [
+      "https://ws-public.interpol.int/notices/v1/yellow?resultPerPage=1"
+    ]
+  },
+  {
+    "cost": "unknown",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 35,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "politie-missing-persons",
+    "name": "Politie, the police of the Netherlands: the missing persons of the open data API",
+    "classes": [
+      "security.missing-person"
+    ],
+    "url": "https://api.politie.nl/v4/vermist",
+    "access": "api",
+    "auth": "unknown",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The API gave 403 to the round, so the round did not read the terms."
+    },
+    "delay": "unknown",
+    "history": "unknown",
+    "coverage": "The Netherlands: the missing persons that the police publish.",
+    "origins": [
+      "politie"
+    ],
+    "path": [
+      "api.politie.nl"
+    ],
+    "reason": "The API gave 403 to the user agent of the round. The round did not try again.",
+    "evidence": [
+      "https://api.politie.nl/v4/vermist?language=nl&maxnumberofitems=1"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 36,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "bbk-nina-api",
+    "name": "BBK NINA API: the warnings of MoWaS and of the police in Germany (JSON)",
+    "classes": [
+      "security.explosive-ordnance",
+      "security.active-threat",
+      "safety.national-emergency",
+      "infra.telecom.outage"
+    ],
+    "url": "https://warnung.bund.de/api31/mowas/mapData.json",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The research found no terms of use for the API. The imprint page of warnung.bund.de needs JavaScript. warnung.bund.de has no robots.txt. The BBK sends each MoWaS warning to warning multipliers, for example broadcasters and app servers."
+    },
+    "delay": "Minutes to hours: the MoWaS list of the read of 2026-11-25 had a warning that a city sent less than two hours before.",
+    "history": "None: each list holds the current warnings. The API also gives the history of one MoWaS warning.",
+    "coverage": "Germany: the warnings of the federal, state and local authorities through MoWaS, and the police warnings since July 2025. The MoWaS list of 2026-11-25 had 10 warnings. Two of them were bomb finds.",
+    "origins": [
+      "de-warning-authorities"
+    ],
+    "path": [
+      "warnung.bund.de"
+    ],
+    "reason": "The BBK gives the warnings of MoWaS and of the police as JSON with no key. Each warning has a CAP form with an event code of the BBK. The bomb finds, the police warnings of attacks, the federal warnings and the warnings of phone network outages give these classes.",
+    "evidence": [
+      "https://nina.api.bund.dev/",
+      "https://github.com/bundesAPI/nina-api",
+      "https://warnung.bund.de/api31/mowas/mapData.json",
+      "https://warnung.bund.de/api31/police/mapData.json",
+      "https://warnung.bund.de/api31/appdata/gsb/eventCodes/eventCodes.json",
+      "https://www.bbk.bund.de/DE/Warnung-Vorsorge/Bundesweiter-Warntag/bundesweiter-warntag_node.html",
+      "https://www.sonntagsblatt.de/artikel/medien/nina-warnt-jetzt-auch-vor-amoklaeufen-und-bombendrohungen-was-die-notfall-app-kann",
+      "https://winfuture.de/news,134527.html",
+      "https://www.boerse-online.de/dpa-afx/roundup-2-stoerung-im-mobilfunk-bei-o2-auch-notrufe-teils-nicht-anwaehlbar-246643.html"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 36,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "naad-alerts",
+    "name": "Pelmorex NAAD System: the public alerts of Canada (CAP in Atom)",
+    "classes": [
+      "security.explosive-ordnance",
+      "security.active-threat",
+      "safety.national-emergency",
+      "infra.telecom.outage",
+      "infra.telecom.911-outage",
+      "civic.school-closure"
+    ],
+    "url": "https://rss.naad-adna.pelmorex.com/",
+    "access": "feed",
+    "auth": "none",
+    "terms": {
+      "url": "https://alerts.pelmorex.com/terms-and-conditions-of-use",
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The terms tell that the alerts come from authorized government agencies of Canada, as is. They give no limit on automated reading or redistribution. The robots.txt of the documentation site blocks some crawlers of AI companies. The feed host has no robots.txt."
+    },
+    "delay": "Minutes: the newest entry of the read of 2026-11-25 was less than one minute old.",
+    "history": "The feed holds the recent alerts. Each entry links its CAP file in an archive by date.",
+    "coverage": "Canada: the alerts of the authorized government agencies, with the event codes of CAP-CP. The read of 2026-11-25 had 203 entries: 173 actual and 30 tests. Most were weather, and one was a telephone service outage.",
+    "origins": [
+      "canada-alerting-authorities"
+    ],
+    "path": [
+      "rss.naad-adna.pelmorex.com"
+    ],
+    "reason": "The NAAD System collects the public alerts of Canada and gives them in CAP with no key and no charge. The CAP-CP event list has the codes explosive, dangerPerson, terrorism, civilEmerg, telephone, 911Service and schoolClose. These codes give the classes.",
+    "evidence": [
+      "https://rss.naad-adna.pelmorex.com/",
+      "https://alerts.pelmorex.com/",
+      "https://alerts.pelmorex.com/terms-and-conditions-of-use",
+      "https://alerts.pelmorex.com/robots.txt",
+      "https://www.publicsafety.gc.ca/cnt/rsrcs/pblctns/capcp-vnt-rfrncs/index4-eng.aspx"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 36,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "jrc-asap-hotspots",
+    "name": "JRC ASAP: the hotspots of agricultural production anomalies (CSV)",
+    "classes": [
+      "infra.supply-chain.food"
+    ],
+    "url": "https://agricultural-production-hotspots.ec.europa.eu/files/hotspots_ts.zip",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.jrc.ec.europa.eu/dataset/jrc-10112-10001",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The JRC Data Catalogue gives the ASAP data with no limitations of access, with no registration. The reuse notice of the European Commission permits reuse with acknowledgement of the source. The robots.txt blocks /data/ and /public/, not /files/."
+    },
+    "delay": "Weeks: JRC analysts make a hotspot assessment each month. The file of the read of 2026-11-25 had a change on 2026-11-10, and its first rows had the date 2026-10-11.",
+    "history": "Each hotspot assessment since October 2016.",
+    "coverage": "The countries that ASAP monitors: the hotspot code of each country, a narrative of the analyst, and the counts of the warnings of crops and rangeland.",
+    "origins": [
+      "eu-jrc"
+    ],
+    "path": [
+      "agricultural-production-hotspots.ec.europa.eu"
+    ],
+    "reason": "JRC analysts mark each country with a critical anomaly of crops or rangeland as a hotspot. A new hotspot is an early signal of a food shortage. The warnings come from the satellite data of the JRC, so the source is apart from FEWS NET.",
+    "evidence": [
+      "https://agricultural-production-hotspots.ec.europa.eu/download.php",
+      "https://agricultural-production-hotspots.ec.europa.eu/files/hotspots_ts.zip",
+      "https://agricultural-production-hotspots.ec.europa.eu/robots.txt",
+      "https://data.jrc.ec.europa.eu/dataset/jrc-10112-10001"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 36,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "faa-tfr-list",
+    "name": "FAA: the list of temporary flight restrictions (JSON)",
+    "classes": [
+      "transport.air.notam"
+    ],
+    "url": "https://tfr.faa.gov/tfrapi/exportTfrList",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.faa.gov/web_policies",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The FAA is an agency of the US government, so its works are in the public domain in the United States. The web policies page gives no rule on automated reading. tfr.faa.gov has no robots.txt."
+    },
+    "delay": "Hours: the list of the read of 2026-11-25 had TFRs with a creation date of the same day.",
+    "history": "None: the list holds the active and the planned TFRs.",
+    "coverage": "The United States: 53 TFRs in the read of 2026-11-25. Their types were security, hazards, VIP, air shows and sports, drones at public gatherings, and special.",
+    "origins": [
+      "faa"
+    ],
+    "path": [
+      "tfr.faa.gov"
+    ],
+    "reason": "The FAA gives each temporary flight restriction with its NOTAM number, its type, its facility and its place as JSON with no key. The class has 1 source, so its gap stays.",
+    "evidence": [
+      "https://tfr.faa.gov/tfrapi/exportTfrList",
+      "https://tfr.faa.gov/robots.txt",
+      "https://www.faa.gov/web_policies"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 36,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "nav-canada-notam",
+    "name": "NAV CANADA: the NOTAMs of the flight planning site (JSON)",
+    "classes": [
+      "transport.air.notam"
+    ],
+    "url": "https://plan.navcanada.ca/weather/api/alpha/?site=CYOW&alpha=notam",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.navcanada.ca/en/terms-of-use.aspx",
+      "automated": "forbidden",
+      "redistribution": "forbidden",
+      "note": "The terms permit one copy for personal, non-commercial home use only. They forbid a copy of the data in any way for any purpose without written permission. NAV CANADA sells its aeronautical data under a licence."
+    },
+    "delay": "Hours: the read of 2026-11-25 had NOTAMs that started on the same day.",
+    "history": "None: the reply holds the active NOTAMs of a site.",
+    "coverage": "Canada: the NOTAMs of each aerodrome and region. The read for one aerodrome on 2026-11-25 gave 16 NOTAMs.",
+    "origins": [
+      "nav-canada"
+    ],
+    "path": [
+      "plan.navcanada.ca"
+    ],
+    "reason": "The API answers with no key. But the terms forbid commercial use and a copy of the data. A source with such terms does not close a gap (AL-195).",
+    "evidence": [
+      "https://plan.navcanada.ca/weather/api/alpha/?site=CYOW&alpha=notam",
+      "https://www.navcanada.ca/en/terms-of-use.aspx"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 36,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "nsw-school-closures",
+    "name": "NSW Department of Education: the closed public schools (ArcGIS)",
+    "classes": [
+      "civic.school-closure"
+    ],
+    "url": "https://portal.data.nsw.gov.au/arcgis/rest/services/Hosted/School_Closure_Public/FeatureServer/layers",
+    "access": "api",
+    "auth": "account",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The research did not read the terms, because the layer needs a token."
+    },
+    "delay": "unknown",
+    "history": "unknown",
+    "coverage": "New South Wales: the public schools that are closed, for example for a bushfire or a flood.",
+    "origins": [
+      "nsw-education"
+    ],
+    "path": [
+      "portal.data.nsw.gov.au"
+    ],
+    "reason": "The layer answered with the error Token Required. A source that needs a token does not close a gap (AL-195), so the round did not try again.",
+    "evidence": [
+      "https://portal.data.nsw.gov.au/arcgis/rest/services/Hosted/School_Closure_Public/FeatureServer/layers?f=json"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 36,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "dgpa-closures",
+    "name": "DGPA of Taiwan: the closures of work and schools for natural disasters (CAP)",
+    "classes": [
+      "civic.school-closure"
+    ],
+    "url": "https://alerts.ncdr.nat.gov.tw/RssAtomFeed.ashx?AlertType=33",
+    "access": "feed",
+    "auth": "account",
+    "terms": {
+      "url": "https://data.gov.tw/license",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The open data platform of Taiwan lists the feed under the Open Government Data License. That licence permits reuse with attribution."
+    },
+    "delay": "unknown",
+    "history": "unknown",
+    "coverage": "Taiwan: the closures of work and schools of each city and county for typhoons and other natural disasters.",
+    "origins": [
+      "dgpa"
+    ],
+    "path": [
+      "alerts.ncdr.nat.gov.tw"
+    ],
+    "reason": "The feed answered that a member login is necessary. A source that needs an account does not close a gap (AL-195), so the round did not log in.",
+    "evidence": [
+      "https://data.gov.tw/api/v2/rest/dataset/20457",
+      "https://alerts.ncdr.nat.gov.tw/RssAtomFeed.ashx?AlertType=33"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 36,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "wvde-closings",
+    "name": "West Virginia Department of Education: the school closings (XML)",
+    "classes": [
+      "civic.school-closure"
+    ],
+    "url": "https://wvde.state.wv.us/closings/xml-fields.php",
+    "access": "feed",
+    "auth": "unknown",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The research found no terms. The robots.txt of wvde.state.wv.us blocks only the paths of the site software."
+    },
+    "delay": "unknown",
+    "history": "unknown",
+    "coverage": "West Virginia: the closings and delays of the schools of each county, according to a search result.",
+    "origins": [
+      "wvde"
+    ],
+    "path": [
+      "wvde.state.wv.us"
+    ],
+    "reason": "A search result names XML feeds of the school closings of West Virginia. The documentation page gave 404, so the round did not find the feed.",
+    "evidence": [
+      "https://wvde.state.wv.us/closings/xml-fields.php",
+      "https://wvde.state.wv.us/robots.txt"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 37,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "nasa-glm-bolides",
+    "name": "NASA GLM bolide detections (JSON)",
+    "classes": [
+      "geo.fireball"
+    ],
+    "url": "https://neo-bolide.ndc.nasa.gov/service/event/public",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.nasa.gov/nasa-web-privacy-policy-and-important-notices/",
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The site states no terms of use. neo-bolide.ndc.nasa.gov has no robots.txt. The notices page of NASA states no copyright for this data. One read gives all the events in 30 MB of JSON."
+    },
+    "delay": "Weeks: in the read of 2026-11-25, the median time from an event to its publication was 15.6 days.",
+    "history": "All the published events since 2017-07-23. The read of 2026-11-25 had 11,611 events, and 1,168 of them are from 2026.",
+    "coverage": "The Americas and the near oceans: the field of view of the Geostationary Lightning Mappers on the GOES satellites.",
+    "origins": [
+      "nasa-ames-atap"
+    ],
+    "path": [
+      "neo-bolide.ndc.nasa.gov"
+    ],
+    "reason": "A NASA team finds bolides in the data of the lightning mappers and publishes each event with no key. The sensors and the team are not those of CNEOS. Each event record also names the staff that submitted it, so an adapter reads only the event fields.",
+    "evidence": [
+      "https://neo-bolide.ndc.nasa.gov/",
+      "https://neo-bolide.ndc.nasa.gov/service/event/public",
+      "https://neo-bolide.ndc.nasa.gov/robots.txt",
+      "https://www.nasa.gov/nasa-web-privacy-policy-and-important-notices/"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 37,
+    "decision": "plan",
+    "rateLimit": "The robots.txt of data.sf.gov asks for 1 second between two requests.",
+    "id": "sfmta-street-closures",
+    "name": "SFMTA temporary street closures of San Francisco (Socrata JSON)",
+    "classes": [
+      "civic.planned-event"
+    ],
+    "url": "https://data.sfgov.org/resource/8x25-yybr.json",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.sfgov.org/api/views/8x25-yybr.json",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The metadata of the dataset gives the licence: the Open Data Commons Public Domain Dedication and License (PDDL). The robots.txt of data.sf.gov blocks only the browse and catalog paths."
+    },
+    "delay": "Hours: the SFMTA updates the database continuously, and the portal gets a new report each day. The rows of the read of 2026-11-25 had an update of the same day.",
+    "history": "The current and the planned closures. The read of 2026-11-25 had 4,006 rows, and 3,148 of them end after that day.",
+    "coverage": "San Francisco only: the street closures that the SFMTA permits for special events, for Shared Spaces and for some construction. The read had 923 rows of special events.",
+    "origins": [
+      "sfmta"
+    ],
+    "path": [
+      "data.sf.gov"
+    ],
+    "reason": "The SFMTA publishes each permitted street closure with its place, its start and its end, with no key. A closure for a special event tells of crowds and closed roads near the event. A name field of the rows can name a person, so an adapter does not keep it.",
+    "evidence": [
+      "https://data.sfgov.org/api/views/8x25-yybr.json",
+      "https://data.sfgov.org/resource/8x25-yybr.json?$limit=5000",
+      "https://data.sf.gov/robots.txt"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 37,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "slack-status-api",
+    "name": "Slack Status API (JSON)",
+    "classes": [
+      "infra.saas.outage"
+    ],
+    "url": "https://slack-status.com/api/v2.0.0/current",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://docs.slack.dev/reference/slack-status-api",
+      "automated": "allowed",
+      "redistribution": "unclear",
+      "note": "The developer documentation of Slack gives the two endpoints with no authentication and shows their use with curl. The robots.txt of slack-status.com allows all paths. The research found no terms for the status data."
+    },
+    "delay": "unknown",
+    "history": "The history endpoint gives the past incidents. The read of 2026-11-25 had 25 incidents, from 2026-05-31 to 2026-11-11.",
+    "coverage": "The incidents and the planned maintenance of Slack, with the services that each one affects.",
+    "origins": [
+      "slack"
+    ],
+    "path": [
+      "slack-status.com"
+    ],
+    "reason": "Slack publishes its own status as JSON with no key, apart from Statuspage. The current endpoint gives the active incidents, and the history endpoint gives the past incidents with their notes.",
+    "evidence": [
+      "https://docs.slack.dev/reference/slack-status-api",
+      "https://slack-status.com/api/v2.0.0/current",
+      "https://slack-status.com/api/v2.0.0/history",
+      "https://slack-status.com/robots.txt"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 37,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "google-workspace-status",
+    "name": "Google Workspace Status Dashboard incidents (JSON)",
+    "classes": [
+      "infra.saas.outage"
+    ],
+    "url": "https://www.google.com/appsstatus/dashboard/incidents.json",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The research found no terms for the file. The robots.txt of www.google.com does not block the path /appsstatus. The file has the format of Google Cloud Service Health."
+    },
+    "delay": "unknown",
+    "history": "The file of 2026-11-25 had 30 incidents. The newest incident started on 2026-09-25.",
+    "coverage": "The incidents of Google Workspace: Gmail, Drive, Meet, Calendar, Voice, Gemini and other products.",
+    "origins": [
+      "google"
+    ],
+    "path": [
+      "www.google.com"
+    ],
+    "reason": "Google publishes the incidents of Workspace as JSON with no key, apart from Statuspage. The adapter of gcp-status-json reads the same format.",
+    "evidence": [
+      "https://www.google.com/appsstatus/dashboard/incidents.json",
+      "https://www.google.com/robots.txt"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 37,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "cer-pipeline-incidents",
+    "name": "CER pipeline incident data of Canada (CSV)",
+    "classes": [
+      "infra.gas.pipeline-incident"
+    ],
+    "url": "https://www.cer-rec.gc.ca/open/incident/pipeline-incidents-data.csv",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://open.canada.ca/en/open-government-licence-canada",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The dataset on open.canada.ca has the Open Government Licence - Canada. The robots.txt of www.cer-rec.gc.ca blocks only some named crawlers and two paths that the file does not use."
+    },
+    "delay": "Weeks: on 2026-11-25 the newest reported date was 2026-10-22.",
+    "history": "All the incidents since 2016: 2,039 rows in the read of 2026-11-25.",
+    "coverage": "Canada: the incidents on the pipelines that the CER regulates, with the type, the place, the substance and the volume. Since 2025 the file has 3 explosions and 27 fires.",
+    "origins": [
+      "cer"
+    ],
+    "path": [
+      "www.cer-rec.gc.ca"
+    ],
+    "reason": "The CER publishes each incident as a CSV row with no key. The rows come weeks after the event, so they explain an event and do not warn. The PHMSA pages gave 403, so the class keeps one source.",
+    "evidence": [
+      "https://www.cer-rec.gc.ca/open/incident/pipeline-incidents-data.csv",
+      "https://open.canada.ca/data/en/dataset/7dffedc4-23fa-440c-a36d-adf5a6cc09f1",
+      "https://www.cer-rec.gc.ca/robots.txt"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 37,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "fgs-subsidence-reports",
+    "name": "FGS subsidence incident reports of Florida (ArcGIS REST)",
+    "classes": [
+      "geo.subsidence"
+    ],
+    "url": "https://ca.dep.state.fl.us/arcgis/rest/services/OpenData/FGS_SUBSIDENCE/MapServer/0",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The service is in the OpenData folder of the FDEP. The copyright text of the layer names the FDEP and the Florida Geological Survey. The research found no licence. ca.dep.state.fl.us has no robots.txt."
+    },
+    "delay": "Days to weeks: on 2026-11-25 the newest report was from 2026-11-02.",
+    "history": "All the reports: 4,470 in the read of 2026-11-25, and 78 of them are from 2026.",
+    "coverage": "Florida: the reports of subsidence that the survey receives, with the place and the date.",
+    "origins": [
+      "florida-geological-survey"
+    ],
+    "path": [
+      "ca.dep.state.fl.us"
+    ],
+    "reason": "The layer gives each report of subsidence as JSON with no key. A field of the layer holds the name of the reporter, so an adapter does not keep it. No second recent source was found.",
+    "evidence": [
+      "https://ca.dep.state.fl.us/arcgis/rest/services/OpenData/FGS_SUBSIDENCE/MapServer/0?f=pjson",
+      "https://ca.dep.state.fl.us/robots.txt"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 37,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "caloes-power-outages",
+    "name": "Cal OES power outages of California (ArcGIS feature service)",
+    "classes": [
+      "infra.power.psps",
+      "infra.power.outage"
+    ],
+    "url": "https://services.arcgis.com/BLN4oKB0N1YSgvY8/arcgis/rest/services/Power_Outages_(View)/FeatureServer",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The layer states no licence. Its data comes from the public outage maps of the utilities, and these maps have their own terms."
+    },
+    "delay": "Minutes: the layer gets an update every 15 minutes.",
+    "history": "None: the layer holds the active outages.",
+    "coverage": "California: the active outages of the utilities, with the cause, the customers out and the county. The read of 2026-11-25 had 132 incidents from 4 utilities.",
+    "origins": [
+      "cal-oes"
+    ],
+    "path": [
+      "services.arcgis.com",
+      "provider:arcgis-online"
+    ],
+    "reason": "The read of 2026-11-25 had no PSPS cause, so the round did not see a shutoff in the layer. The layer states no licence, and it copies the utility maps.",
+    "evidence": [
+      "https://services.arcgis.com/BLN4oKB0N1YSgvY8/arcgis/rest/services/Power_Outages_(View)/FeatureServer/0?f=pjson"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 37,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "recaap-incidents",
+    "name": "ReCAAP ISC lists of piracy and armed robbery incidents in Asia (PDF)",
+    "classes": [
+      "security.maritime-threat"
+    ],
+    "url": "https://www.recaap.org/resources/ck/files/Number%20of%20Incidents/2026/List%20of%20Incidents%20for%202026.pdf",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.recaap.org/terms",
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The terms forbid the access to information through means that the site does not make available. They give no licence for the data. The robots.txt allows all paths."
+    },
+    "delay": "Days to weeks: the 2026 list changed last on 2026-11-12.",
+    "history": "One list for each year.",
+    "coverage": "Asia: the incidents of piracy and armed robbery against ships that ReCAAP ISC records.",
+    "origins": [
+      "recaap-isc"
+    ],
+    "path": [
+      "www.recaap.org"
+    ],
+    "reason": "ReCAAP ISC gives its incident lists as PDF files with no feed. Its portal is a JavaScript application with no documented API. A PDF list is a record, not an alert.",
+    "evidence": [
+      "https://www.recaap.org/",
+      "https://www.recaap.org/terms",
+      "https://portal.recaap.org/OpenMap",
+      "https://www.recaap.org/robots.txt"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 37,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "democracy-club-elections",
+    "name": "Democracy Club elections API of the United Kingdom (JSON)",
+    "classes": [
+      "civic.election"
+    ],
+    "url": "https://elections.democracyclub.org.uk/api/elections/?current=1",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The research found no licence on the pages that it read. The robots.txt allows the election paths of the API."
+    },
+    "delay": "unknown",
+    "history": "The current elections. The read of 2026-11-25 had 92 elections, with poll dates from 2025-07-17 to 2027-01-21.",
+    "coverage": "The United Kingdom: the elections of each organisation, with the poll date, the voter ID rule and the cancellations.",
+    "origins": [
+      "democracy-club"
+    ],
+    "path": [
+      "elections.democracyclub.org.uk"
+    ],
+    "reason": "The API gives the coming elections with no key. A cancelled or a new election is an event for a voter. The class has no other source.",
+    "evidence": [
+      "https://elections.democracyclub.org.uk/api/",
+      "https://elections.democracyclub.org.uk/api/elections/?current=1",
+      "https://elections.democracyclub.org.uk/robots.txt"
     ]
   }
 ]
