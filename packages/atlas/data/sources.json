@@ -12259,25 +12259,25 @@
   },
   {
     "id": "jpl-fireball-api",
-    "name": "NASA/JPL Fireball Data API",
+    "name": "NASA/JPL Fireball Data API (CNEOS, JSON)",
     "classes": [
       "geo.fireball"
     ],
-    "url": "https://ssd-api.jpl.nasa.gov/doc/fireball.html",
+    "url": "https://ssd-api.jpl.nasa.gov/fireball.api",
     "access": "api",
     "auth": "none",
     "terms": {
       "url": null,
       "automated": "allowed",
       "redistribution": "unclear",
-      "note": "A public JSON API. No usage terms on the page."
+      "note": "The documentation page shows the use of the API and has no terms of use. ssd-api.jpl.nasa.gov has no robots.txt. NASA made the data, so the data are a work of the US government."
     },
     "cost": "free",
-    "delay": "unknown",
-    "history": "unknown",
+    "delay": "Weeks: on 2026-11-25 the newest record was from 2026-10-04.",
+    "history": "All the records of the CNEOS fireball database. The read of 2026-11-25 asked for the newest 5 records only.",
     "rateLimit": "unknown",
     "calibration": null,
-    "coverage": "World fireballs and airbursts with location, altitude and energy.",
+    "coverage": "World fireballs and airbursts that US government sensors detect, with the time, the place, the altitude, the speed and the energy.",
     "origins": [
       "nasa-jpl"
     ],
@@ -12286,13 +12286,15 @@
     ],
     "subjectIds": null,
     "risks": [],
-    "decision": "later",
+    "decision": "plan",
     "adapter": null,
-    "reason": "After-the-fact records; useful to explain a boom or flash, not to warn.",
+    "reason": "A fireball ends in seconds, so each source of the class tells of it after the fact. The record explains a boom or a flash that persons near the place saw or heard. Round 37 found a second source, nasa-glm-bolides.",
     "evidence": [
-      "https://ssd-api.jpl.nasa.gov/doc/fireball.html"
+      "https://ssd-api.jpl.nasa.gov/doc/fireball.html",
+      "https://ssd-api.jpl.nasa.gov/fireball.api?limit=5",
+      "https://ssd-api.jpl.nasa.gov/robots.txt"
     ],
-    "round": 1
+    "round": 37
   },
   {
     "id": "jpl-sentry-api",
@@ -25863,6 +25865,358 @@
     "evidence": [
       "https://wvde.state.wv.us/closings/xml-fields.php",
       "https://wvde.state.wv.us/robots.txt"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 37,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "nasa-glm-bolides",
+    "name": "NASA GLM bolide detections (JSON)",
+    "classes": [
+      "geo.fireball"
+    ],
+    "url": "https://neo-bolide.ndc.nasa.gov/service/event/public",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.nasa.gov/nasa-web-privacy-policy-and-important-notices/",
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The site states no terms of use. neo-bolide.ndc.nasa.gov has no robots.txt. The notices page of NASA states no copyright for this data. One read gives all the events in 30 MB of JSON."
+    },
+    "delay": "Weeks: in the read of 2026-11-25, the median time from an event to its publication was 15.6 days.",
+    "history": "All the published events since 2017-07-23. The read of 2026-11-25 had 11,611 events, and 1,168 of them are from 2026.",
+    "coverage": "The Americas and the near oceans: the field of view of the Geostationary Lightning Mappers on the GOES satellites.",
+    "origins": [
+      "nasa-ames-atap"
+    ],
+    "path": [
+      "neo-bolide.ndc.nasa.gov"
+    ],
+    "reason": "A NASA team finds bolides in the data of the lightning mappers and publishes each event with no key. The sensors and the team are not those of CNEOS. Each event record also names the staff that submitted it, so an adapter reads only the event fields.",
+    "evidence": [
+      "https://neo-bolide.ndc.nasa.gov/",
+      "https://neo-bolide.ndc.nasa.gov/service/event/public",
+      "https://neo-bolide.ndc.nasa.gov/robots.txt",
+      "https://www.nasa.gov/nasa-web-privacy-policy-and-important-notices/"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 37,
+    "decision": "plan",
+    "rateLimit": "The robots.txt of data.sf.gov asks for 1 second between two requests.",
+    "id": "sfmta-street-closures",
+    "name": "SFMTA temporary street closures of San Francisco (Socrata JSON)",
+    "classes": [
+      "civic.planned-event"
+    ],
+    "url": "https://data.sfgov.org/resource/8x25-yybr.json",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.sfgov.org/api/views/8x25-yybr.json",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The metadata of the dataset gives the licence: the Open Data Commons Public Domain Dedication and License (PDDL). The robots.txt of data.sf.gov blocks only the browse and catalog paths."
+    },
+    "delay": "Hours: the SFMTA updates the database continuously, and the portal gets a new report each day. The rows of the read of 2026-11-25 had an update of the same day.",
+    "history": "The current and the planned closures. The read of 2026-11-25 had 4,006 rows, and 3,148 of them end after that day.",
+    "coverage": "San Francisco only: the street closures that the SFMTA permits for special events, for Shared Spaces and for some construction. The read had 923 rows of special events.",
+    "origins": [
+      "sfmta"
+    ],
+    "path": [
+      "data.sf.gov"
+    ],
+    "reason": "The SFMTA publishes each permitted street closure with its place, its start and its end, with no key. A closure for a special event tells of crowds and closed roads near the event. A name field of the rows can name a person, so an adapter does not keep it.",
+    "evidence": [
+      "https://data.sfgov.org/api/views/8x25-yybr.json",
+      "https://data.sfgov.org/resource/8x25-yybr.json?$limit=5000",
+      "https://data.sf.gov/robots.txt"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 37,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "slack-status-api",
+    "name": "Slack Status API (JSON)",
+    "classes": [
+      "infra.saas.outage"
+    ],
+    "url": "https://slack-status.com/api/v2.0.0/current",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://docs.slack.dev/reference/slack-status-api",
+      "automated": "allowed",
+      "redistribution": "unclear",
+      "note": "The developer documentation of Slack gives the two endpoints with no authentication and shows their use with curl. The robots.txt of slack-status.com allows all paths. The research found no terms for the status data."
+    },
+    "delay": "unknown",
+    "history": "The history endpoint gives the past incidents. The read of 2026-11-25 had 25 incidents, from 2026-05-31 to 2026-11-11.",
+    "coverage": "The incidents and the planned maintenance of Slack, with the services that each one affects.",
+    "origins": [
+      "slack"
+    ],
+    "path": [
+      "slack-status.com"
+    ],
+    "reason": "Slack publishes its own status as JSON with no key, apart from Statuspage. The current endpoint gives the active incidents, and the history endpoint gives the past incidents with their notes.",
+    "evidence": [
+      "https://docs.slack.dev/reference/slack-status-api",
+      "https://slack-status.com/api/v2.0.0/current",
+      "https://slack-status.com/api/v2.0.0/history",
+      "https://slack-status.com/robots.txt"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 37,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "google-workspace-status",
+    "name": "Google Workspace Status Dashboard incidents (JSON)",
+    "classes": [
+      "infra.saas.outage"
+    ],
+    "url": "https://www.google.com/appsstatus/dashboard/incidents.json",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The research found no terms for the file. The robots.txt of www.google.com does not block the path /appsstatus. The file has the format of Google Cloud Service Health."
+    },
+    "delay": "unknown",
+    "history": "The file of 2026-11-25 had 30 incidents. The newest incident started on 2026-09-25.",
+    "coverage": "The incidents of Google Workspace: Gmail, Drive, Meet, Calendar, Voice, Gemini and other products.",
+    "origins": [
+      "google"
+    ],
+    "path": [
+      "www.google.com"
+    ],
+    "reason": "Google publishes the incidents of Workspace as JSON with no key, apart from Statuspage. The adapter of gcp-status-json reads the same format.",
+    "evidence": [
+      "https://www.google.com/appsstatus/dashboard/incidents.json",
+      "https://www.google.com/robots.txt"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 37,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "cer-pipeline-incidents",
+    "name": "CER pipeline incident data of Canada (CSV)",
+    "classes": [
+      "infra.gas.pipeline-incident"
+    ],
+    "url": "https://www.cer-rec.gc.ca/open/incident/pipeline-incidents-data.csv",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://open.canada.ca/en/open-government-licence-canada",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The dataset on open.canada.ca has the Open Government Licence - Canada. The robots.txt of www.cer-rec.gc.ca blocks only some named crawlers and two paths that the file does not use."
+    },
+    "delay": "Weeks: on 2026-11-25 the newest reported date was 2026-10-22.",
+    "history": "All the incidents since 2016: 2,039 rows in the read of 2026-11-25.",
+    "coverage": "Canada: the incidents on the pipelines that the CER regulates, with the type, the place, the substance and the volume. Since 2025 the file has 3 explosions and 27 fires.",
+    "origins": [
+      "cer"
+    ],
+    "path": [
+      "www.cer-rec.gc.ca"
+    ],
+    "reason": "The CER publishes each incident as a CSV row with no key. The rows come weeks after the event, so they explain an event and do not warn. The PHMSA pages gave 403, so the class keeps one source.",
+    "evidence": [
+      "https://www.cer-rec.gc.ca/open/incident/pipeline-incidents-data.csv",
+      "https://open.canada.ca/data/en/dataset/7dffedc4-23fa-440c-a36d-adf5a6cc09f1",
+      "https://www.cer-rec.gc.ca/robots.txt"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 37,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "fgs-subsidence-reports",
+    "name": "FGS subsidence incident reports of Florida (ArcGIS REST)",
+    "classes": [
+      "geo.subsidence"
+    ],
+    "url": "https://ca.dep.state.fl.us/arcgis/rest/services/OpenData/FGS_SUBSIDENCE/MapServer/0",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The service is in the OpenData folder of the FDEP. The copyright text of the layer names the FDEP and the Florida Geological Survey. The research found no licence. ca.dep.state.fl.us has no robots.txt."
+    },
+    "delay": "Days to weeks: on 2026-11-25 the newest report was from 2026-11-02.",
+    "history": "All the reports: 4,470 in the read of 2026-11-25, and 78 of them are from 2026.",
+    "coverage": "Florida: the reports of subsidence that the survey receives, with the place and the date.",
+    "origins": [
+      "florida-geological-survey"
+    ],
+    "path": [
+      "ca.dep.state.fl.us"
+    ],
+    "reason": "The layer gives each report of subsidence as JSON with no key. A field of the layer holds the name of the reporter, so an adapter does not keep it. No second recent source was found.",
+    "evidence": [
+      "https://ca.dep.state.fl.us/arcgis/rest/services/OpenData/FGS_SUBSIDENCE/MapServer/0?f=pjson",
+      "https://ca.dep.state.fl.us/robots.txt"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 37,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "caloes-power-outages",
+    "name": "Cal OES power outages of California (ArcGIS feature service)",
+    "classes": [
+      "infra.power.psps",
+      "infra.power.outage"
+    ],
+    "url": "https://services.arcgis.com/BLN4oKB0N1YSgvY8/arcgis/rest/services/Power_Outages_(View)/FeatureServer",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The layer states no licence. Its data comes from the public outage maps of the utilities, and these maps have their own terms."
+    },
+    "delay": "Minutes: the layer gets an update every 15 minutes.",
+    "history": "None: the layer holds the active outages.",
+    "coverage": "California: the active outages of the utilities, with the cause, the customers out and the county. The read of 2026-11-25 had 132 incidents from 4 utilities.",
+    "origins": [
+      "cal-oes"
+    ],
+    "path": [
+      "services.arcgis.com",
+      "provider:arcgis-online"
+    ],
+    "reason": "The read of 2026-11-25 had no PSPS cause, so the round did not see a shutoff in the layer. The layer states no licence, and it copies the utility maps.",
+    "evidence": [
+      "https://services.arcgis.com/BLN4oKB0N1YSgvY8/arcgis/rest/services/Power_Outages_(View)/FeatureServer/0?f=pjson"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 37,
+    "decision": "later",
+    "rateLimit": "unknown",
+    "id": "recaap-incidents",
+    "name": "ReCAAP ISC lists of piracy and armed robbery incidents in Asia (PDF)",
+    "classes": [
+      "security.maritime-threat"
+    ],
+    "url": "https://www.recaap.org/resources/ck/files/Number%20of%20Incidents/2026/List%20of%20Incidents%20for%202026.pdf",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.recaap.org/terms",
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The terms forbid the access to information through means that the site does not make available. They give no licence for the data. The robots.txt allows all paths."
+    },
+    "delay": "Days to weeks: the 2026 list changed last on 2026-11-12.",
+    "history": "One list for each year.",
+    "coverage": "Asia: the incidents of piracy and armed robbery against ships that ReCAAP ISC records.",
+    "origins": [
+      "recaap-isc"
+    ],
+    "path": [
+      "www.recaap.org"
+    ],
+    "reason": "ReCAAP ISC gives its incident lists as PDF files with no feed. Its portal is a JavaScript application with no documented API. A PDF list is a record, not an alert.",
+    "evidence": [
+      "https://www.recaap.org/",
+      "https://www.recaap.org/terms",
+      "https://portal.recaap.org/OpenMap",
+      "https://www.recaap.org/robots.txt"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 37,
+    "decision": "plan",
+    "rateLimit": "unknown",
+    "id": "democracy-club-elections",
+    "name": "Democracy Club elections API of the United Kingdom (JSON)",
+    "classes": [
+      "civic.election"
+    ],
+    "url": "https://elections.democracyclub.org.uk/api/elections/?current=1",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": null,
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The research found no licence on the pages that it read. The robots.txt allows the election paths of the API."
+    },
+    "delay": "unknown",
+    "history": "The current elections. The read of 2026-11-25 had 92 elections, with poll dates from 2025-07-17 to 2027-01-21.",
+    "coverage": "The United Kingdom: the elections of each organisation, with the poll date, the voter ID rule and the cancellations.",
+    "origins": [
+      "democracy-club"
+    ],
+    "path": [
+      "elections.democracyclub.org.uk"
+    ],
+    "reason": "The API gives the coming elections with no key. A cancelled or a new election is an event for a voter. The class has no other source.",
+    "evidence": [
+      "https://elections.democracyclub.org.uk/api/",
+      "https://elections.democracyclub.org.uk/api/elections/?current=1",
+      "https://elections.democracyclub.org.uk/robots.txt"
     ]
   }
 ]
