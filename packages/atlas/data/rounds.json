@@ -1964,5 +1964,48 @@
       "members": 1757,
       "cause": "Round 39 adds 1 planned source and 4 later sources. transport.air.accident gets its first live source, but a gap closes only at 2 origins, so the gaps stay at 63. No layer of the cover changes."
     }
+  },
+  {
+    "round": 40,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took three classes with one origin or none and looked for official sources with no account (AL-195). One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The catalog API of the open data of Canada: https://open.canada.ca/data/api/action/package_search",
+      "The content API of the CDC: https://tools.cdc.gov/api/v2/resources/media",
+      "The news API of the Government of Canada: https://api.io.canada.ca/io-server/gc/news/en/v2",
+      "The API of the space weather service of BoM: https://sws-data.sws.bom.gov.au/api-docs"
+    ],
+    "queries": [
+      "avian influenza cfia"
+    ],
+    "notes": [
+      "No gap closes. The round adds two later sources and three notes of what it did not find.",
+      "The CDC page of active food outbreak investigations returned 403. The content API of the CDC answers, but it has no feed of these investigations.",
+      "The news API of Canada gives the PHAC releases as JSON with no key. The terms page of canada.ca gave no answer, so the source stays later.",
+      "The API of BoM has 8 products: the A, K and Dst indexes, and the magnetic and aurora alerts. None is a radio blackout."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 63,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 34,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 40 adds 2 later sources and no planned source, so no layer of the cover changes and the gaps stay at 63."
+    }
   }
 ]
