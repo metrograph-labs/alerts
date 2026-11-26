@@ -8,7 +8,7 @@
  *
  * The functions are pure. The script `scripts/measure.ts` fetches the data, writes `data/rates.json`
  * and compares a new measure with the committed file. The function `priorsOf` gives the priors of the
- * shadow score from the file, and the script writes them to `data/priors.json`.
+ * shadow score from the file. The script writes them to `priors.json`, and the core holds the committed file.
  */
 
 export {

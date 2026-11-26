@@ -51,7 +51,7 @@ jobs:
           gh run download "$id" --repo "$GITHUB_REPOSITORY" --name cap --dir "$RUNNER_TEMP/last" || echo "::warning title=No file of the last run::The run $id has no artifact cap. The measure adds to the committed file."
       - name: Measure the CAP fields
         working-directory: packages/rates
-        run: node scripts/measure-cap.ts --committed=data/cap.json --last="$RUNNER_TEMP/last/cap.json" --rates=data/rates.json --priors=data/priors.json --out="$GITHUB_WORKSPACE/cap"
+        run: node scripts/measure-cap.ts --committed=data/cap.json --last="$RUNNER_TEMP/last/cap.json" --rates=data/rates.json --priors=../core/src/data/priors.json --out="$GITHUB_WORKSPACE/cap"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cap
