@@ -92,6 +92,7 @@ export function fetchStep(input: FetchInput): FetchStep {
   let waiting = 0;
   let fatal = 0;
   let lossy = 0;
+  let skipped = 0;
   const reports: Report[] = [];
   const problems: MapProblem[] = [];
   const readings: Reading[] = [];
@@ -102,6 +103,7 @@ export function fetchStep(input: FetchInput): FetchStep {
     const found = [...result.problems, ...valid.problems, ...checked.problems];
     fatal += found.filter((problem) => problem.fatal).length;
     lossy += found.filter((problem) => problem.lossy === true).length;
+    skipped += found.filter((problem) => problem.skipped === true).length;
     if (!isFresh.has(observation.id)) continue;
     if (input.admit !== undefined && !input.admit(valid.reports)) {
       waiting += 1;
@@ -120,6 +122,7 @@ export function fetchStep(input: FetchInput): FetchStep {
     fresh: fresh.length,
     fatal,
     ...(lossy > 0 ? { lossy } : {}),
+    ...(skipped > 0 ? { skipped } : {}),
     ...(canary === undefined ? {} : { canary }),
   };
   const observed = fresh.map((observation): ObservationEvent => ({ ...envelope("observation", observation.id, ended), observation }));

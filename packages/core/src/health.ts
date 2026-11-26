@@ -137,6 +137,8 @@ export interface PassedFetch {
   readonly fatal: number;
   /** The count of lossy problems. An absent count is 0. */
   readonly lossy?: number;
+  /** The count of the messages that the map skipped by design (AL-94). An absent count is 0. */
+  readonly skipped?: number;
 }
 
 /** The state of the fold of the health. It is data, so the runtime can keep it in its log. */
@@ -187,7 +189,8 @@ export function observeFetch(track: HealthTrack, record: FetchRecord, descriptor
     next = change(next, HEALTH_EVENTS.failed, end, descriptor, options, transitions);
   } else {
     const lossy = record.lossy ?? 0;
-    const passed: PassedFetch = { at: record.at, took: record.took, fatal: record.fatal, ...(lossy > 0 ? { lossy } : {}) };
+    const skipped = record.skipped ?? 0;
+    const passed: PassedFetch = { at: record.at, took: record.took, fatal: record.fatal, ...(lossy > 0 ? { lossy } : {}), ...(skipped > 0 ? { skipped } : {}) };
     const quietFrom = record.fresh > 0 || next.quietFrom === undefined ? end : next.quietFrom;
     next = { ...next, failures: 0, staleFrom: end, quietFrom, passed };
     const event = record.fatal + lossy > 0 ? HEALTH_EVENTS.changed : record.took >= descriptor.slowAfter ? HEALTH_EVENTS.slow : HEALTH_EVENTS.passed;
@@ -296,8 +299,16 @@ function classify(track: HealthTrack, descriptor: HealthSource, options: HealthO
   return { state: "healthy", reason: "The last fetch passed." };
 }
 
+// The text of the skipped messages of the last passed fetch, after the reason of a state (AL-94). No skip gives no text.
+function skippedText(passed: PassedFetch | undefined): string {
+  const skipped = passed?.skipped ?? 0;
+  if (skipped === 0) return "";
+  return ` The map skipped ${skipped} ${skipped === 1 ? "message" : "messages"} of the last passed fetch by design.`;
+}
+
 function stepOf(track: HealthTrack, descriptor: HealthSource, options: HealthOptions, transitions: readonly Transition[]): HealthStep {
-  const { reason } = classify(track, descriptor, options);
+  const { reason: stateReason } = classify(track, descriptor, options);
+  const reason = stateReason + skippedText(track.passed);
   const health: SourceHealth = {
     source: track.source,
     state: track.state,

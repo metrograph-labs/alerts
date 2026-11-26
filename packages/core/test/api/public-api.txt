@@ -3144,6 +3144,7 @@ export interface MapProblem {
   readonly message: string;
   readonly fatal: boolean;
   readonly lossy?: true;
+  readonly skipped?: true;
 }
 
 ### build/index.d.ts#MapRegion
@@ -3563,6 +3564,7 @@ export interface PassedFetch {
   readonly took: Duration;
   readonly fatal: number;
   readonly lossy?: number;
+  readonly skipped?: number;
 }
 
 ### build/index.d.ts#PersonConfig
@@ -3653,7 +3655,7 @@ export type ProbeOutcome = {
 };
 
 ### build/index.d.ts#ProblemEffect
-export type ProblemEffect = "note" | "lossy" | "fatal";
+export type ProblemEffect = "note" | "lossy" | "fatal" | "skip";
 
 ### build/index.d.ts#ProblemSink
 export interface ProblemSink {
@@ -3667,6 +3669,7 @@ export declare class Problems implements ProblemSink {
   add(path: string, message: string, effect?: ProblemEffect): void;
   get fatal(): number;
   get lossy(): number;
+  get skipped(): number;
 }
 
 ### build/index.d.ts#ProviderBalance
