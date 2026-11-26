@@ -680,6 +680,7 @@ export const fetchRecordSchema: z.ZodType<FetchRecord, FetchRecord> = schemaOf<F
       fresh: count(),
       fatal: count(),
       lossy: count().exactOptional(),
+      skipped: count().exactOptional(),
       canary: canaryResultSchema.exactOptional(),
     })
     .readonly(),
