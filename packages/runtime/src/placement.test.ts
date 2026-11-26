@@ -4,6 +4,10 @@ import { checkPlacement } from "@mark1russell7/stack-placement";
 import { describe, expect, it } from "vitest";
 import {
   baseAssumed,
+  causeFragment,
+  fixedName,
+  readCauses,
+  withCauses,
   COMMON_FRAGMENT,
   jointFit,
   readBase,
@@ -31,6 +35,7 @@ import {
   type PlacementBase,
   type PlacementChances,
   type PlacementInput,
+  type SharedCause,
   windowsOffer,
 } from "./placement.ts";
 
@@ -473,6 +478,94 @@ describe("the common cause of the live copies (AL-147)", () => {
     expect(readJoint({ ...value, anyWorks: { works: 2, ...measured } })).toMatch(/anyWorks/u);
     expect(readJoint({ ...value, works: [{ works: 0.9, kind: "guess", source: "x" }] })).toMatch(/Each input/u);
     expect(() => placementLayer(input(offers, { chances, fixed: [fixed[0]!], copies: 1 }))).toThrow(RangeError);
+  });
+});
+
+describe("the shared causes of the copies (AL-198)", () => {
+  // Two live copies at two providers with no offer, and one offer for a new copy. Each name is made up.
+  const offers = [offer({ provider: "provider-a", region: "region-1", plan: "small", hourly: 0.01 })];
+  const registrar = (id: string): SharedCause => ({ kind: "registrar", id });
+  const live = (first: string, second: string): readonly FixedCopy[] => [
+    { kind: "cloud", provider: "provider-c", region: "region-1", causes: [registrar(first)] },
+    { kind: "cloud", provider: "provider-d", region: "region-1", causes: [registrar(second)] },
+  ];
+  const chances: PlacementChances = { ...CHANCES, causes: { registrar: { works: 0.99, kind: "assumed", source: "a test input" } } };
+  const copy = CHANCES.provider.works * CHANCES.region.works * CHANCES.host.works;
+  const noNewCopy = (build: ReturnType<typeof placementLayer>): number => frontLevels(distinctRows(planCopies(build, TODAY).front))[0]?.chance ?? Number.NaN;
+
+  it("puts the fragment of each cause in the copies that name it, with the input of its kind", () => {
+    const build = placementLayer(input(offers, { chances, fixed: live("registrar-a", "registrar-a"), copies: 1, causes: [registrar("registrar-a")] }));
+    const fragment = causeFragment(registrar("registrar-a"));
+    expect(fragment).toBe("cause:registrar/registrar-a");
+    expect((build.layer.shared ?? []).filter((each) => each.id === fragment)).toHaveLength(1);
+    expect(build.layer.slots.every((slot) => slot.candidates.every((candidate) => candidate.uses?.includes(fragment) === true))).toBe(true);
+    expect(fragmentInput(chances, fragment)).toBe(chances.causes?.["registrar"]);
+    expect(checkPlacement(build.layer, build.base).filter((fault) => fault.level === "error")).toEqual([]);
+  });
+
+  it("shows a shared registrar in the chance: one registrar gives less than two", () => {
+    const one = noNewCopy(placementLayer(input(offers, { chances, fixed: live("registrar-a", "registrar-a"), copies: 1 })));
+    const two = noNewCopy(placementLayer(input(offers, { chances, fixed: live("registrar-a", "registrar-b"), copies: 1 })));
+    expect(one).toBeCloseTo(0.99 * (1 - (1 - copy) ** 2), 9);
+    expect(two).toBeCloseTo(1 - (1 - 0.99 * copy) ** 2, 9);
+    expect(one).toBeLessThan(two);
+  });
+
+  it("limits the gain of each new copy by a cause that all copies share", () => {
+    const build = placementLayer(input(offers, { chances, fixed: live("registrar-a", "registrar-a"), copies: 1, causes: [registrar("registrar-a")] }));
+    const levels = frontLevels(distinctRows(planCopies(build, TODAY).front));
+    expect(levels.length).toBeGreaterThan(1);
+    expect(levels.every((level) => level.chance <= 0.99 + 1e-12)).toBe(true);
+  });
+
+  it("gives the override of one cause, and names an assumed cause of a row", () => {
+    const fragment = causeFragment(registrar("registrar-b"));
+    const measured: PlacementChances = { ...chances, overrides: [{ id: fragment, works: 0.9999, kind: "measured", source: "a made-up history" }] };
+    expect(fragmentInput(measured, fragment).works).toBe(0.9999);
+    const build = placementLayer(input(offers, { chances, fixed: live("registrar-a", "registrar-a"), copies: 1 }));
+    const row = distinctRows(planCopies(build, TODAY).front)[0];
+    expect(row === undefined ? [] : assumedInputs(build.layer, chances, row)).toContain(causeFragment(registrar("registrar-a")));
+  });
+
+  it("refuses a cause with no input, a bad kind and a cause two times in one copy", () => {
+    expect(() => placementLayer(input(offers, { fixed: live("registrar-a", "registrar-b"), copies: 1 }))).toThrow(RangeError);
+    expect(() => placementLayer(input(offers, { chances, causes: [{ kind: "Registrar", id: "registrar-a" }] }))).toThrow(RangeError);
+    expect(() => placementLayer(input(offers, { chances, causes: [registrar("registrar-a"), registrar("registrar-a")] }))).toThrow(RangeError);
+    expect(() => fragmentInput(chances, "cause:constructor/registrar-a")).toThrow(RangeError);
+    expect(() => fragmentInput(chances, "cause:registrar")).toThrow(RangeError);
+  });
+
+  it("reads a causes file, and gives a problem for a bad field", () => {
+    const file = {
+      fixed: { "provider-c/region-1": [{ kind: "dns", id: "dns-a" }], home: [{ kind: "power", id: "feed-a" }] },
+      new: [{ kind: "registrar", id: "registrar-a" }],
+      chances: { dns: { works: 0.999, kind: "assumed", source: "a test input" } },
+      overrides: [{ id: "cause:dns/dns-a", works: 0.9995, kind: "measured", source: "a made-up history" }],
+    };
+    const read = readCauses(file);
+    expect(typeof read).toBe("object");
+    if (typeof read === "string") return;
+    expect(read.fresh).toEqual([registrar("registrar-a")]);
+    expect(read.fixed["home"]).toEqual([{ kind: "power", id: "feed-a" }]);
+    expect(read.overrides[0]?.id).toBe("cause:dns/dns-a");
+    expect(readCauses({})).toEqual({ fixed: {}, fresh: [], chances: {}, overrides: [] });
+    expect(typeof readCauses([])).toBe("string");
+    expect(typeof readCauses({ new: [{ kind: "dns" }] })).toBe("string");
+    expect(typeof readCauses({ chances: { dns: { works: 2, kind: "assumed", source: "x" } } })).toBe("string");
+    expect(typeof readCauses({ overrides: [{ id: "provider:provider-a", works: 0.9, kind: "assumed", source: "x" }] })).toBe("string");
+  });
+
+  it("gives the causes of a file to the live copies by name, and refuses a name that is not live", () => {
+    const fixed: readonly FixedCopy[] = [
+      { kind: "site", site: "home" },
+      { kind: "cloud", provider: "provider-c", region: "region-1" },
+    ];
+    expect(fixed.map(fixedName)).toEqual(["home", "provider-c/region-1"]);
+    const file = { fixed: { home: [{ kind: "power", id: "feed-a" }] }, fresh: [], chances: {}, overrides: [] };
+    const placed = withCauses(fixed, file);
+    expect(typeof placed).toBe("object");
+    if (typeof placed !== "string") expect(placed.map((each) => each.causes ?? [])).toEqual([[{ kind: "power", id: "feed-a" }], []]);
+    expect(typeof withCauses(fixed, { ...file, fixed: { other: [] } })).toBe("string");
   });
 });
 
