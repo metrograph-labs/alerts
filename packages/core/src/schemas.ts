@@ -2103,6 +2103,7 @@ export const historyChangeSchema: z.ZodType<HistoryChange, HistoryChange> = sche
       reports: z.array(reportIdSchema).readonly(),
       level: assessedLevelSchema,
       severity: severitySchema,
+      certainty: certaintySchema.exactOptional(),
       live: z.boolean(),
       onset: instantSchema.exactOptional(),
       expires: instantSchema.exactOptional(),

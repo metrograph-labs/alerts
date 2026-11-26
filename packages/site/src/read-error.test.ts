@@ -1,3 +1,4 @@
+import { callTrace } from "@mark1russell7/otel-ts/call-trace";
 import { ERROR_RECORD_FORMAT } from "@mark1russell7/otel-ts/error";
 import { describe, expect, it } from "vitest";
 import { NO_ANSWER_TEXT } from "./map-read.ts";
@@ -20,6 +21,18 @@ describe("the error record of a failed read", () => {
   it("gives a different id to each record", () => {
     const failure = { text: NO_ANSWER_TEXT, path: "/map", page: "/" };
     expect(readErrorRecord(failure).id).not.toBe(readErrorRecord(failure).id);
+  });
+
+  // The page has no SDK. callTrace gives the read its trace, and the record of the failed read has the same ids.
+  it("has the trace id and the span id of the traceparent of the read", () => {
+    const call = callTrace();
+    const record = readErrorRecord({ text: NO_ANSWER_TEXT, path: "/map", page: "/alerts/local.html", at, from: call.context });
+    expect(call.headers.traceparent).toBe(`00-${record.traceId}-${record.spanId}-01`);
+    expect(record.sampled).toBe(true);
+  });
+
+  it("has no trace id with no call trace and no SDK", () => {
+    expect(readErrorRecord({ text: NO_ANSWER_TEXT, path: "/map", page: "/" }).traceId).toBeUndefined();
   });
 });
 

@@ -34,6 +34,7 @@ CAP_MESSAGE_SYSTEM: build/index.d.ts#CAP_MESSAGE_SYSTEM
 CATEGORIES: build/index.d.ts#CATEGORIES
 CATEGORY_LABELS: build/index.d.ts#CATEGORY_LABELS
 CELL_RESOURCES: build/index.d.ts#CELL_RESOURCES
+CERTAINTY_ORDER: build/index.d.ts#CERTAINTY_ORDER
 CHAIN_MACHINE: build/index.d.ts#CHAIN_MACHINE
 CHANNEL_KIND: build/index.d.ts#CHANNEL_KIND
 CHANNEL_SUBJECT: build/index.d.ts#CHANNEL_SUBJECT
@@ -976,6 +977,7 @@ signalHistories: build/index.d.ts#signalHistories
 signalRate: build/index.d.ts#signalRate
 significanceSchema: build/index.d.ts#significanceSchema
 simplifyBasemap: build/index.d.ts#simplifyBasemap
+simplifyBasemapSteps: build/index.d.ts#simplifyBasemapSteps
 softwareMatchSchema: build/index.d.ts#softwareMatchSchema
 softwareMatchText: build/index.d.ts#softwareMatchText
 softwareMatches: build/index.d.ts#softwareMatches
@@ -1036,6 +1038,10 @@ whyLimitSchema: build/index.d.ts#whyLimitSchema
 whyLine: build/index.d.ts#whyLine
 whyRecordSchema: build/index.d.ts#whyRecordSchema
 workLayer: build/index.d.ts#workLayer
+
+## ./priors (build/priors.d.ts): names
+
+committedPriors: build/priors.d.ts#committedPriors
 
 ## Declarations
 
@@ -1285,6 +1291,9 @@ export declare const CATEGORY_LABELS: Readonly<Record<Category, string>>;
 
 ### build/index.d.ts#CELL_RESOURCES
 export declare const CELL_RESOURCES: readonly CellResource[];
+
+### build/index.d.ts#CERTAINTY_ORDER
+export declare const CERTAINTY_ORDER: readonly Certainty[];
 
 ### build/index.d.ts#CHAIN_MACHINE
 export declare const CHAIN_MACHINE: Machine;
@@ -2572,6 +2581,7 @@ export interface HistoryChange {
   readonly reports: readonly ReportId[];
   readonly level: AssessedLevel;
   readonly severity: Severity;
+  readonly certainty?: Certainty;
   readonly live: boolean;
   readonly onset?: Instant;
   readonly expires?: Instant;
@@ -6005,6 +6015,9 @@ export declare const significanceSchema: z.ZodType<Significance, Significance>;
 ### build/index.d.ts#simplifyBasemap
 export declare function simplifyBasemap(regions: readonly MapRegion[], toleranceKm: number): MapRegion[];
 
+### build/index.d.ts#simplifyBasemapSteps
+export declare function simplifyBasemapSteps(regions: readonly MapRegion[], toleranceKm: number): SimplifySteps<MapRegion[]>;
+
 ### build/index.d.ts#softwareMatchSchema
 export declare const softwareMatchSchema: z.ZodType<SoftwareMatch, SoftwareMatch>;
 
@@ -6184,3 +6197,6 @@ export declare const whyRecordSchema: z.ZodType<WhyRecord, WhyRecord>;
 
 ### build/index.d.ts#workLayer
 export declare function workLayer(works: readonly string[], table?: Readonly<Record<string, WorkDefaults>>, date?: string): readonly InterestEdge[];
+
+### build/priors.d.ts#committedPriors
+export declare function committedPriors(): ScorePriors;

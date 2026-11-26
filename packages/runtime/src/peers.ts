@@ -135,6 +135,28 @@ function drillStarts(value: unknown): Readonly<Record<string, Instant>> | undefi
  */
 export type ExchangeCall = (peer: CopyPeer, input: EntriesInput, signal: AbortSignal) => Promise<unknown>;
 
+/** The least count of items of a page that gives a note of its import (AL-222). A small page gives no note. */
+export const TAKE_NOTE_ITEMS = 100;
+
+/** The least time of an import of a page that gives a note at its end (AL-222). */
+export const TAKE_NOTE_MS: Duration = 1_000;
+
+/**
+ * The note of one import of a page of another copy (AL-222). The note `start` comes before the import, thus a stop of the
+ * process in the import leaves it in the output. The note `end` has the time of the import.
+ */
+export type TakeNote =
+  | { readonly phase: "start"; readonly copy: string; readonly after: number; readonly items: number; readonly head: number }
+  | { readonly phase: "end"; readonly copy: string; readonly after: number; readonly items: number; readonly imports: number; readonly next: number; readonly ms: number };
+
+/** This function gives the line of the output for a note of an import. The line has ids, positions and counts only. */
+export function takeNoteText(note: TakeNote): string {
+  if (note.phase === "start") {
+    return `The exchange imports a page of the copy ${note.copy}: ${String(note.items)} items after the position ${String(note.after)}, of the head ${String(note.head)}.`;
+  }
+  return `The import of the page of the copy ${note.copy} after the position ${String(note.after)} took ${String(Math.round(note.ms))} ms: ${String(note.imports)} imports of ${String(note.items)} items, the next position is ${String(note.next)}.`;
+}
+
 /** The options of `exchangeWorker`. */
 export interface ExchangeWorkerOptions {
   /** The parts of the runtime of this copy that the worker uses. */
@@ -156,6 +178,10 @@ export interface ExchangeWorkerOptions {
   readonly pages?: number;
   /** The most entries that one page examines. Without it, the other copy gives `EXCHANGE_PAGE` entries. */
   readonly entries?: number;
+  /** This function gets the notes of the large or slow imports of pages (AL-222). */
+  readonly onTake?: (note: TakeNote) => void;
+  /** The clock of the times of the imports. The default is `performance.now()`. */
+  readonly mono?: () => number;
 }
 
 /** The result of one round of the worker. */
@@ -206,6 +232,7 @@ export function exchangeWorker(options: ExchangeWorkerOptions): ExchangeWorker {
   const maxAge = options.maxAge ?? COPY_MAX_AGE;
   const skewLimit = options.skewLimit ?? CLOCK_SKEW_LIMIT;
   const pages = options.pages ?? EXCHANGE_ROUND_PAGES;
+  const mono = options.mono ?? (() => performance.now());
   for (const [name, value] of Object.entries({ limit, maxAge, skewLimit, pages, ...(options.entries === undefined ? {} : { entries: options.entries }) })) {
     if (!(Number.isSafeInteger(value) && value > 0)) throw new Error(`The value ${name} of the exchange worker is not a whole number above 0.`);
   }
@@ -304,12 +331,17 @@ export function exchangeWorker(options: ExchangeWorkerOptions): ExchangeWorker {
         return result(false);
       }
       let take: ReturnType<Runtime["take"]>;
+      const items = entries.page.items.length;
+      if (items >= TAKE_NOTE_ITEMS) options.onTake?.({ phase: "start", copy: peer.id, after, items, head: entries.page.head });
+      const begun = mono();
       try {
         take = runtime.take(entries.page);
       } catch (error) {
         failures.set(peer.id, `The import of a page of the copy ${peer.id} failed: ${errorMessage(error)}`);
         return result(false);
       }
+      const took = mono() - begun;
+      if (items >= TAKE_NOTE_ITEMS || took >= TAKE_NOTE_MS) options.onTake?.({ phase: "end", copy: peer.id, after, items, imports: take.imports, next: take.next, ms: took });
       imports += take.imports;
       problems.push(...take.problems.map((problem) => `${peer.id}: ${problem}`));
       conflicts.push(...take.conflicts);

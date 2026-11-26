@@ -1528,7 +1528,7 @@ The shadow score (`shadowScore`) is the first step. It operates next to the tabl
 - A factor that the priors do not give makes a score with no read. The score names each missing factor. It does not take 0 or a default value.
 - `assessWithShadow` adds the score as the last reason of an assessment with a reason of the table. The level and the other reasons stay those of `assess`. A seeded gate test holds this. An assessment whose reason `score` holds the score gets no second score.
 
-The priors come from the base rates of the package `rates` (`priorsOf`). The file `packages/rates/data/priors.json` holds them. A test holds it equal to the priors of `data/rates.json`:
+The priors come from the base rates of the package `rates` (`priorsOf`). The file `packages/core/src/data/priors.json` holds them, and the entry `@mark1russell7/alerts/priors` gives them. A test of `rates` holds the file equal to the priors of `data/rates.json`:
 
 - The verified share of a kind is the own share of IEM Cow. It is the share of the warnings that a storm report of the same hazard verified. Its interval is the gate interval of the share.
 - A share with a reason of no read gives no prior. A phenomenon that Cow does not verify gives no prior.
@@ -2387,6 +2387,7 @@ The change has the parts of the incident that the copy knew at that time:
 - The change has the live parts, as the map has only live incidents. With no live part, it has each part, and `live` is false.
 - The level is the highest level over each person at that time, with the policy of the delivery and the mutes.
 - Two parts of an incident before their merge give one change. The change has the higher level and severity, and the areas of the two parts.
+- `certainty` is the highest CAP certainty of the parts of the change, from `observed` to `unknown`. A reader tells an observed event from a forecast with it. A payload of an older copy has no `certainty`, and a reader then uses `unknown`.
 - `places` has each watched place in the areas, in the order of the input places. The level of a place is the highest level of the assessments with the place. A matched place with no assessment has the level `none`. The map uses the same rule.
 - The time of entry comes from the clock of this copy. Thus a late import of a report of another copy comes after the `since` of a reader.
 

@@ -3,7 +3,7 @@
 # It also counts the alerts of each kind (the IEM archive of the VTEC alerts) and the harm under an active alert.
 # The requests name no state and no office. The script compares each value with packages/rates/data/rates.json.
 # A value out of its gate interval stops the job. Then a person examines the change and commits the new files from the artifact:
-# rates.json and priors.json. A test holds priors.json equal to the priors of rates.json.
+# rates.json to packages/rates/data and priors.json to packages/core/src/data. A test holds priors.json equal to the priors of rates.json.
 # The job calls outside servers for a long time, so it runs in CI only.
 name: Rates
 

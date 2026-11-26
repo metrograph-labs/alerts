@@ -22,10 +22,15 @@
     "directory": "packages/core"
   },
   "license": "MIT",
-  "version": "0.5.4",
+  "version": "0.5.7",
   "type": "module",
   "sideEffects": false,
   "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./priors": "./src/priors.ts",
+    "./package.json": "./package.json"
+  },
   "files": [
     "build"
   ],
@@ -38,6 +43,11 @@
         "types": "./build/index.d.ts",
         "import": "./build/index.js",
         "default": "./build/index.js"
+      },
+      "./priors": {
+        "types": "./build/priors.d.ts",
+        "import": "./build/priors.js",
+        "default": "./build/priors.js"
       },
       "./package.json": "./package.json"
     }
@@ -54,7 +64,7 @@
   "dependencies": {
     "@mark1russell7/algebra": "^0.9.9",
     "@mark1russell7/collections": "^0.11.2",
-    "@mark1russell7/geo": "^0.5.3",
+    "@mark1russell7/geo": "^0.5.18",
     "@mark1russell7/interval": "^0.1.0",
     "@mark1russell7/optional": "^1.5.0",
     "@mark1russell7/package-id": "^0.1.3",

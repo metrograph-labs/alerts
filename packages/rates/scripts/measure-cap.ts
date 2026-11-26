@@ -13,7 +13,7 @@
  * (`replay.json` and `replay.md`).
  *
  * Start: `node scripts/measure-cap.ts --out=<folder> [--committed=data/cap.json] [--last=<cap.json of the last run>]
- * [--rates=data/rates.json --priors=data/priors.json]`
+ * [--rates=data/rates.json --priors=../core/src/data/priors.json]`
  */
 
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";

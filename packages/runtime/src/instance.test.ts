@@ -57,7 +57,7 @@ import { DATE_FORMAT as EIA_DATE_FORMAT, EIA_930_DESCRIPTOR, HOUR_MS, periodEnd,
 import { memoryQuotaStore, quotaGate, type Exchange, type Transport } from "polite-crawler/api";
 import { DEFAULT_POLICY } from "polite-crawler/politeness";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ACCOUNT_SOURCES, BOM_SWS_KEY, readsGdelt, CHECKS_KEY, EIA_KEY, CLOUDFLARE_RADAR_KEY, checksKeys, DAEMON_CHECK, daemonCheck, DELIVERY_TIMES, INSTANCE_CHANNELS, INSTANCE_CHECK, INSTANCE_EXPECTATIONS, instanceExpectations, INSTANCE_FETCH_LIMIT, INSTANCE_SOURCES, INSTANCE_TIMES, instanceCheck, instanceContextKey, instanceProblems, instanceServices, shownNode, shownServices, LOUD_PING_URL_KEY, LOUD_STEADY, nwwsKeys, nwwsSetup, openInstance, PING_URL_KEY, pingKeyOf, pingTargets, RANK_DELAY, RANK_FLOOR, SOURCE_POLICY, sourcePace, twilioSetup, USER_AGENT_NAME, instanceSenders, copySounderProblems, sounderOptions, WEBHOOK_SECRET_KEY, WEBHOOK_USER_AGENT, webhookSetup, type Instance, type InstanceOptions } from "./instance.ts";
+import { ACCOUNT_SOURCES, BOM_SWS_KEY, readsGdelt, strayLeaveIds, strayLeavesText, CHECKS_KEY, EIA_KEY, CLOUDFLARE_RADAR_KEY, checksKeys, DAEMON_CHECK, daemonCheck, DELIVERY_TIMES, INSTANCE_CHANNELS, INSTANCE_CHECK, INSTANCE_EXPECTATIONS, instanceExpectations, INSTANCE_FETCH_LIMIT, INSTANCE_SOURCES, INSTANCE_TIMES, instanceCheck, instanceContextKey, instanceProblems, instanceServices, shownNode, shownServices, LOUD_PING_URL_KEY, LOUD_STEADY, nwwsKeys, nwwsSetup, openInstance, PING_URL_KEY, pingKeyOf, pingTargets, RANK_DELAY, RANK_FLOOR, SOURCE_POLICY, sourcePace, twilioSetup, USER_AGENT_NAME, instanceSenders, copySounderProblems, sounderOptions, WEBHOOK_SECRET_KEY, WEBHOOK_USER_AGENT, webhookSetup, type Instance, type InstanceOptions } from "./instance.ts";
 import { heartbeatGap } from "./heartbeat.ts";
 import { NO_PARTS } from "./config.ts";
 import { configFilesOf } from "./config-sync.ts";
@@ -1417,6 +1417,18 @@ describe("the GDELT source of the instance (AL-19)", () => {
     // An id that names no source of the instance changes nothing.
     const other = open(store(SECRETS), sharing, 0, TEST_FETCH_LIMIT, { transport: withGdelt(network()), copy: { ...CLOUD, leaveSources: ["no-such-source" as SourceId] } });
     expect(other.instance.runtime.config.sources.map((source) => source.id)).toContain(GDELT_DESCRIPTOR.id);
+    // The instance gives the stray id, and the start writes one line that names it (AL-219).
+    expect(instance.strayLeaves).toEqual([]);
+    expect(other.instance.strayLeaves).toEqual(["no-such-source"]);
+    expect(strayLeavesText(other.instance.strayLeaves)).toContain("names no-such-source, and this copy makes no source with that id.");
+    expect(strayLeavesText([])).toBeUndefined();
+  });
+
+  it("gives the ids of leaveSources that name no made source, in the order of the field (AL-219)", () => {
+    const copy: CopySettings = { ...CLOUD, leaveSources: ["b" as SourceId, "a" as SourceId, "c" as SourceId] };
+    expect(strayLeaveIds(copy, ["a"])).toEqual(["b", "c"]);
+    expect(strayLeaveIds(copy, ["a", "b", "c"])).toEqual([]);
+    expect(strayLeaveIds(CLOUD, [])).toEqual([]);
   });
 
   it("keeps the census of the state of the place in the store of the readings (AL-142)", async () => {
