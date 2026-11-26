@@ -2457,5 +2457,43 @@
       "members": 1757,
       "cause": "Round 51 adds eppo-reporting-service as a later source. The class keeps 0 sources, so the gaps stay at 56."
     }
+  },
+  {
+    "round": 52,
+    "date": "2026-11-26",
+    "by": "One session, with no subagent.",
+    "method": "The round looked again at the federal shutdowns, a class with no source. It read the OPM status API and the documents of the Congress.gov API. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json"
+    ],
+    "queries": [
+      "https://www.opm.gov/json/operatingstatus.json?date=10/01/2025"
+    ],
+    "notes": [
+      "The OPM status of 2025-10-01 was Open, with the normal message. The status of OPM tells about the weather and other closures, not about a lapse of appropriations.",
+      "The Congress.gov API needs a free key of api.data.gov, with a limit of 5,000 requests each hour. The round had no key, so it did not read the delay.",
+      "The legal notice of the Library of Congress blocks only a client that ignores robots.txt or loads the service."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 56,
+      "cover": {
+        "adopted": 59,
+        "paths": 59,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 166,
+        "paths": 165,
+        "origins": 84
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 52 makes congress-gov-api a plan for the federal shutdowns. The class gets 1 source of 2, so the gaps stay at 56."
+    }
   }
 ]
