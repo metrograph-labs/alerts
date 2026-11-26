@@ -14,12 +14,17 @@
  *
  * The next panel tells each pair where the table of the levels and the shadow score disagree. The score is of the present.
  *
+ * A failed read of the map shows the shared error view of `@mark1russell7/otel-ts/error-view`. The view has the words of
+ * the failure, a retry, a copy of the whole record and a report. The view of the same failure stays, with its record and
+ * its time.
+ *
  * The last panel tells the interest graph of each person: each edge, its origin, its weight and its state. A default
  * edge that an edge of the person replaces stays as a row. The graph changes only with the configuration. Thus the page
  * reads it with the whole history.
  */
 
 import { NO_HISTORIES, type Histories, type MapPayload } from "@mark1russell7/alerts";
+import { errorView } from "@mark1russell7/otel-ts/error-view";
 import { byId, setupTheme } from "@mark1russell7/site-pages/chrome";
 import { replayOf, replayPause, replaySeek, replaySpan, type Replay } from "@mark1russell7/visuals";
 import { createScrubber, type Scrubber } from "@mark1russell7/visuals/scrubber";
@@ -30,8 +35,9 @@ import { readHistories, WHOLE_READ_EVERY_MS } from "./history-read.ts";
 import { drawIndicators, indicatorPanel } from "./indicators-view.ts";
 import { readInterests } from "./interests-read.ts";
 import { drawInterests, interestPanel } from "./interests-view.ts";
-import { readLine, readMap, READ_EVERY_MS } from "./map-read.ts";
+import { MAP_PATH, readLine, readMap, READ_EVERY_MS } from "./map-read.ts";
 import { drawIncidentList, drawMapView, drawStatusLegend, drawUnshaped } from "./map-view.ts";
+import { READ_ERROR_SUMMARY, readErrorRecord, reportAddress } from "./read-error.ts";
 import { differencePanel, drawDifferences } from "./score-view.ts";
 import { scrubKey, scrubLabels, scrubPayload, scrubRange, scrubText, scrubWords, timeForm, type ScrubRange, type TimeForm } from "./scrub.ts";
 
@@ -261,6 +267,29 @@ byId<HTMLButtonElement>("now").addEventListener("click", () => {
   scrubber.element.querySelector<HTMLElement>('input[type="range"]')?.focus();
 });
 
+/** The words of the failure that the error view shows, or undefined after a good read. */
+let shownProblem: string | undefined;
+
+/**
+ * This function shows the error view of a failed read of the map, or removes it after a good read. A failure with the
+ * same words keeps the view. Thus an open list of details stays open after the next read.
+ */
+function showProblem(text: string | undefined): void {
+  problem.hidden = text === undefined;
+  if (text === shownProblem) return;
+  shownProblem = text;
+  if (text === undefined) {
+    problem.replaceChildren();
+    return;
+  }
+  const view = errorView(readErrorRecord({ text, path: MAP_PATH, page: location.pathname }), { retry: true, report: "Report", summary: READ_ERROR_SUMMARY });
+  view.addEventListener("otel-error-retry", (event) => event.detail.waitUntil(refresh()));
+  view.addEventListener("otel-error-report", (event) => {
+    window.open(reportAddress(event.detail.record), "_blank", "noopener");
+  });
+  problem.replaceChildren(view);
+}
+
 async function refresh(): Promise<void> {
   if (reading || document.hidden) return;
   reading = true;
@@ -285,8 +314,7 @@ async function refresh(): Promise<void> {
       setPicture();
       draw(false);
     }
-    problem.textContent = result.ok ? "" : result.text;
-    problem.hidden = result.ok;
+    showProblem(result.ok ? undefined : result.text);
     line.textContent = readLine(lastGood, !result.ok, time);
     // The health also comes after a good map, for the same reason. It is the last read, so a slow health does not hold the map.
     showHealth(result.ok ? await readHealth(get) : undefined);

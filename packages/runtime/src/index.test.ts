@@ -159,6 +159,13 @@ describe("the declaration of the service", () => {
     // The status shows the files of the start, thus a runtime on the last good set is plain to see.
     expect(statusOf(loop, outage, { use: "good", reasons: 1 }).start).toEqual({ use: "good", reasons: 1 });
     expect("start" in statusOf(loop, outage)).toBe(false);
+    // The status shows the last read of each other copy, thus a deploy can tell if another copy is up (AL-186).
+    const watch = { copy: "b", skewLimit: 2_000, maxAge: 60_000, since: 1, read: { at: 9, skew: 0, sameConfig: true } };
+    expect(statusOf(loop, outage, undefined, { watches: () => [watch, { copy: "c", skewLimit: 2_000, maxAge: 60_000, since: 1 }] }).copies).toEqual([
+      { copy: "b", readAt: 9 },
+      { copy: "c", readAt: null },
+    ]);
+    expect("copies" in statusOf(loop, outage)).toBe(false);
   });
 
   it("declares the worker and the host of the exchange together, as a copy with peers and a listener has them", () => {

@@ -3214,5 +3214,17 @@
     "name": "your.kingcounty.gov",
     "kind": "host",
     "note": "The host of the file of king-county-cso-status."
+  },
+  {
+    "id": "api.entur.io",
+    "name": "api.entur.io",
+    "kind": "host",
+    "note": "The host of the API of entur-situations."
+  },
+  {
+    "id": "webgate.ec.europa.eu",
+    "name": "webgate.ec.europa.eu",
+    "kind": "host",
+    "note": "The host of the ADIS reports of eu-adis-weekly."
   }
 ]

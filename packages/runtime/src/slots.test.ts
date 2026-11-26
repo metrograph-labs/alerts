@@ -11,6 +11,7 @@ import {
   entryRoot,
   FOLD_FILE,
   foldChange,
+  copyReadsOf,
   foldHeapLimit,
   FOLD_HEAP_RESERVE,
   keyChange,
@@ -18,6 +19,11 @@ import {
   startKeysOf,
   foldStep,
   memInfoOf,
+  parseDeployArgs,
+  STAGE_MEMORY_FLOOR,
+  stepsAfterStage,
+  stopBeforeStage,
+  stopRefusal,
   foldVersionOf,
   foreignLinks,
   insideFolder,
@@ -501,5 +507,52 @@ describe("the key step of a stage (AL-169)", () => {
   it("tells when a slot gave no keys", () => {
     expect(keyChange(undefined, { files: "3:a", good: null })[0]).toContain("cannot tell");
     expect(keyChange({ files: "3:a", good: null }, undefined)[0]).toContain("gave no key");
+  });
+});
+
+describe("the one deploy command (AL-186)", () => {
+  it("reads the arguments of a deploy", () => {
+    expect(parseDeployArgs(["f998797"])).toEqual({ commit: "f998797", page: false, alone: false });
+    expect(parseDeployArgs(["f998797", "--alone", "--page"])).toEqual({ commit: "f998797", page: true, alone: true });
+    expect(parseDeployArgs([])).toBeUndefined();
+    expect(parseDeployArgs(["main"])).toBeUndefined();
+    expect(parseDeployArgs(["f998797", "--page", "--page"])).toBeUndefined();
+    expect(parseDeployArgs(["f998797", "--fast"])).toBeUndefined();
+  });
+
+  it("stops the runtime before the stage only on a host with too little free memory", () => {
+    expect(stopBeforeStage({ available: STAGE_MEMORY_FLOOR - 1, swap: 2000 })).toBe(true);
+    expect(stopBeforeStage({ available: STAGE_MEMORY_FLOOR, swap: 0 })).toBe(false);
+  });
+
+  it("reads the reads of the other copies from the status", () => {
+    expect(copyReadsOf({ at: 1 })).toEqual([]);
+    expect(copyReadsOf({ copies: [{ copy: "b", readAt: 5 }, { copy: "c", readAt: null }] })).toEqual([
+      { copy: "b", readAt: 5 },
+      { copy: "c", readAt: null },
+    ]);
+    expect(copyReadsOf({ copies: [{ copy: "b", readAt: "5" }] })).toBeUndefined();
+    expect(copyReadsOf({ copies: {} })).toBeUndefined();
+    expect(copyReadsOf("text")).toBeUndefined();
+  });
+
+  it("stops the runtime only when each other copy had a recent read", () => {
+    const now = 1_000_000;
+    expect(stopRefusal([{ copy: "b", readAt: now - 10_000 }], now, 60_000, false)).toBeUndefined();
+    expect(stopRefusal([{ copy: "b", readAt: now - 10_000 }, { copy: "c", readAt: now - 61_000 }], now, 60_000, false)).toContain("The copies c had no read");
+    expect(stopRefusal([{ copy: "b", readAt: null }], now, 60_000, true)).toContain("The copies b had no read");
+    // A runtime that does not answer is no copy that sends. A bad status refuses.
+    expect(stopRefusal("down", now, 60_000, false)).toBeUndefined();
+    expect(stopRefusal(undefined, now, 60_000, true)).toContain("no good list");
+    // The only copy stops only with the consent of the operator.
+    expect(stopRefusal([], now, 60_000, false)).toContain("--alone");
+    expect(stopRefusal([], now, 60_000, true)).toBeUndefined();
+  });
+
+  it("stops a running runtime only for a fold", () => {
+    expect(stepsAfterStage(true, false)).toEqual(["swap", "restart"]);
+    expect(stepsAfterStage(true, true)).toEqual(["stop", "swap", "fold", "start"]);
+    expect(stepsAfterStage(false, true)).toEqual(["swap", "fold", "start"]);
+    expect(stepsAfterStage(false, false)).toEqual(["swap", "start"]);
   });
 });

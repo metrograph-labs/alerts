@@ -20,6 +20,7 @@ import type { Stats } from "node:fs";
 import { lstat, mkdir, readdir, readlink, rename, rmdir, symlink, unlink } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { runCommand, type CommandResult } from "@procedures/shell/command";
+import { isRecord } from "@mark1russell7/optional/read";
 import { acquireInstanceLock, type HostPorts } from "@mark1russell7/service/host";
 
 /** The names of the two slots. */
@@ -527,6 +528,80 @@ export function memInfoOf(text: string): FoldMemory | undefined {
 export function foldHeapLimit(memory: FoldMemory, defaultLimit: number): number | undefined {
   const limit = Math.floor(memory.available + memory.swap - FOLD_HEAP_RESERVE);
   return limit > defaultLimit ? limit : undefined;
+}
+
+/** The memory in MiB that a stage needs next to the live runtime (AL-186). On a host with less, the deploy stops the runtime first. */
+export const STAGE_MEMORY_FLOOR = 400;
+
+/** This function tells if the deploy stops the runtime before the stage, because the host has too little free memory (AL-186). */
+export const stopBeforeStage = (memory: FoldMemory): boolean => memory.available < STAGE_MEMORY_FLOOR;
+
+/** The read of another copy in the status of the live runtime (AL-186). `readAt` is the time of the last read, or `null`. */
+export interface CopyReadStatus {
+  readonly copy: string;
+  readonly readAt: number | null;
+}
+
+/**
+ * This function reads the reads of the other copies from the answer of `GET /status` (AL-186). A status with no field
+ * `copies` has no other copy. A bad answer gives `undefined`.
+ */
+export function copyReadsOf(value: unknown): readonly CopyReadStatus[] | undefined {
+  if (!isRecord(value)) return undefined;
+  const copies = value["copies"];
+  if (copies === undefined) return [];
+  if (!Array.isArray(copies)) return undefined;
+  const reads: CopyReadStatus[] = [];
+  for (const item of copies as unknown[]) {
+    if (!isRecord(item) || typeof item["copy"] !== "string") return undefined;
+    const readAt = item["readAt"];
+    if (readAt !== null && typeof readAt !== "number") return undefined;
+    reads.push({ copy: item["copy"], readAt });
+  }
+  return reads;
+}
+
+/**
+ * This function gives the reason that the deploy does not stop the live runtime, or `undefined` (AL-186). A stop is safe
+ * when each other copy had a read in the last `maxAge`. Then another copy sends the alerts during the stop.
+ *
+ * - `"down"` is a runtime that does not answer. A stop of it removes no copy, thus the function gives `undefined`.
+ * - A host with no other copy stops only with `alone`: no copy sends the alerts during the stop.
+ */
+export function stopRefusal(copies: readonly CopyReadStatus[] | "down" | undefined, now: number, maxAge: number, alone: boolean): string | undefined {
+  if (copies === "down") return undefined;
+  if (copies === undefined) return "The status of the live runtime has no good list of the other copies. The deploy does not stop the runtime.";
+  if (copies.length === 0) return alone ? undefined : "This runtime has no other copy, thus a stop leaves no copy up. Add `--alone` to accept the gap.";
+  const old = copies.filter((read) => read.readAt === null || now - read.readAt > maxAge).map((read) => read.copy);
+  if (old.length === 0) return undefined;
+  return `The copies ${old.join(", ")} had no read in the last ${String(Math.round(maxAge / 1000))} s, thus a stop can leave no copy up. The deploy does not stop the runtime.`;
+}
+
+/** The arguments of `deploy.ts deploy` (AL-186): the commit, the build of the page, and the consent to a stop with no other copy. */
+export interface DeployArgs {
+  readonly commit: string;
+  readonly page: boolean;
+  readonly alone: boolean;
+}
+
+/** This function reads the arguments `<commit> [--page] [--alone]` of a deploy, or gives undefined for bad arguments. */
+export function parseDeployArgs(args: readonly string[]): DeployArgs | undefined {
+  const [commit, ...flags] = args;
+  if (commit === undefined || !/^[0-9a-f]{7,40}$/u.test(commit)) return undefined;
+  if (flags.some((flag) => flag !== "--page" && flag !== "--alone") || new Set(flags).size !== flags.length) return undefined;
+  return { commit, page: flags.includes("--page"), alone: flags.includes("--alone") };
+}
+
+/** A step of the deploy after the stage (AL-186). `restart` is the restart of `install.ts`: the runtime stops and starts on the new code. */
+export type DeployStep = "stop" | "swap" | "fold" | "start" | "restart";
+
+/**
+ * This function gives the steps of the deploy after the stage (AL-186). A fold needs a stopped runtime, because the fold
+ * holds the lock of the home folder. With no fold, a running runtime takes the new code with one restart.
+ */
+export function stepsAfterStage(running: boolean, fold: boolean): readonly DeployStep[] {
+  if (!running) return fold ? ["swap", "fold", "start"] : ["swap", "start"];
+  return fold ? ["stop", "swap", "fold", "start"] : ["swap", "restart"];
 }
 
 /**

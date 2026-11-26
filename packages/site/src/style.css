@@ -1017,13 +1017,9 @@ main.local {
   font-size: 0.875rem;
 }
 
+/* The slot of the shared error view. The view has its own border and colors. */
 .problem {
   margin: 0 0 1rem;
-  padding: 0.75rem 1rem;
-  border: 1px solid var(--urgent);
-  border-left-width: 0.3rem;
-  border-radius: 0.5rem;
-  background: color-mix(in srgb, var(--urgent) 10%, transparent);
 }
 
 .panel h2 {

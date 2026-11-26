@@ -15,6 +15,8 @@
  *   the gain of each new copy, thus the front tells the true gain.
  * - A joint measure of the live copies gives their common cause of failure (AL-147). Each copy needs the common cause.
  *   Thus a new copy does not get the gain of an independent copy.
+ * - A copy can name more shared causes (AL-198): its DNS provider, the registrar of its domain or its power feed. Each
+ *   cause is a shared fragment of its kind. Thus two copies with one registrar share one cause of failure.
  *
  * The chances are inputs. Each input tells if it is measured or assumed, and its source. This module holds no chance
  * and no limit of cost. The caller reads the limit of cost from the private configuration at run time.
@@ -96,6 +98,11 @@ export interface PlacementChances {
   readonly overrides?: readonly ChanceOverride[] | undefined;
   /** The joint measure of the live copies (AL-147). With it, each copy needs the common cause of the live copies. */
   readonly joint?: JointMeasure | undefined;
+  /**
+   * The chance input of each kind of shared cause (AL-198), by the kind: for example `registrar`. A cause with no
+   * override needs the input of its kind.
+   */
+  readonly causes?: Readonly<Record<string, ChanceInput>> | undefined;
 }
 
 /**
@@ -177,8 +184,114 @@ export interface CopyNeeds {
  * of ISO 3166-1 alpha-2. A copy at a provider with no country gets the country of the offers of its region.
  */
 export type FixedCopy =
-  | { readonly kind: "cloud"; readonly provider: string; readonly region: string; readonly country?: string | undefined }
-  | { readonly kind: "site"; readonly site: string; readonly country?: string | undefined };
+  | { readonly kind: "cloud"; readonly provider: string; readonly region: string; readonly country?: string | undefined; readonly causes?: readonly SharedCause[] | undefined }
+  | { readonly kind: "site"; readonly site: string; readonly country?: string | undefined; readonly causes?: readonly SharedCause[] | undefined };
+
+/** The form of the kind of a shared cause: one word of small letters, digits and hyphens. */
+const CAUSE_KIND = /^[a-z][a-z0-9-]*$/u;
+
+/**
+ * One more shared cause of a copy past its provider, its region, its site and its country (AL-198). The kind is one
+ * word, for example `dns`, `registrar` or `power`. The id names the part of the system stack, for example the registrar
+ * of the domain of the copies. Two copies with one cause share one fragment.
+ */
+export interface SharedCause {
+  /** The kind of the cause, as one word. It selects the chance input of the kind. */
+  readonly kind: string;
+  /** The id of the part of the cause, for example `registrar-a`. */
+  readonly id: string;
+}
+
+/** This function gives the id of the shared fragment of a cause: `cause:`, the kind, a slash and the id. */
+export function causeFragment(cause: SharedCause): string {
+  return `cause:${cause.kind}/${cause.id}`;
+}
+
+/**
+ * The shared causes of the copies and their chance inputs, from a private file (AL-198). The private file keeps the
+ * names of the DNS provider, the registrar and the power feed of each copy.
+ */
+export interface CauseInput {
+  /** The causes of each live copy, by the name of the copy: `provider/region`, or the name of its site. */
+  readonly fixed: Readonly<Record<string, readonly SharedCause[]>>;
+  /** The causes of each new copy, for example the registrar of the one domain of all the copies. */
+  readonly fresh: readonly SharedCause[];
+  /** The chance input of each kind of cause. */
+  readonly chances: Readonly<Record<string, ChanceInput>>;
+  /** The inputs of single causes, by the id of the fragment (`causeFragment`). */
+  readonly overrides: readonly ChanceOverride[];
+}
+
+// A cause from a JSON value, or a problem as a text.
+function causeOf(value: unknown): SharedCause | string {
+  const kind = textOf(value, "kind");
+  const id = textOf(value, "id");
+  if (kind === undefined || !CAUSE_KIND.test(kind) || id === undefined || id.trim() === "") return "Each cause needs a kind (one word of small letters, digits and hyphens) and an id.";
+  return { kind, id };
+}
+
+// A list of causes from a JSON value, or a problem as a text.
+function causeList(value: unknown, owner: string): readonly SharedCause[] | string {
+  if (!Array.isArray(value)) return `The causes of ${owner} are not a list.`;
+  const causes: SharedCause[] = [];
+  for (const item of value as readonly unknown[]) {
+    const cause = causeOf(item);
+    if (typeof cause === "string") return cause;
+    causes.push(cause);
+  }
+  return causes;
+}
+
+// A chance input from a JSON value, or `undefined` for a bad value.
+function inputOf(value: unknown): ChanceInput | undefined {
+  const works = numberOf(value, "works");
+  const kind = textOf(value, "kind");
+  const source = textOf(value, "source");
+  if (works === undefined || !(works >= 0 && works <= 1) || (kind !== "measured" && kind !== "assumed") || source === undefined || source.trim() === "") return undefined;
+  return { works, kind, source };
+}
+
+/**
+ * This function reads the shared causes of the copies from a JSON value (AL-198): `{ fixed?, new?, chances?, overrides? }`.
+ *
+ * - `fixed` maps the name of each live copy to its list of causes. Each cause has `kind` and `id`.
+ * - `new` is the list of causes of each new copy.
+ * - `chances` maps each kind of cause to its input: `works`, `kind` (`measured` or `assumed`) and `source`.
+ * - `overrides` is a list of inputs of single causes, each with the `id` of its fragment.
+ *
+ * It gives the input, or a problem as a text.
+ */
+export function readCauses(value: unknown): CauseInput | string {
+  if (!isRecord(value)) return "The causes file is not an object.";
+  const fixedValue: unknown = value["fixed"] ?? {};
+  if (!isRecord(fixedValue)) return "The field fixed of the causes file is not an object.";
+  const fixed: Record<string, readonly SharedCause[]> = {};
+  for (const [name, list] of Object.entries(fixedValue)) {
+    const causes = causeList(list, `the live copy ${name}`);
+    if (typeof causes === "string") return causes;
+    fixed[name] = causes;
+  }
+  const fresh = causeList(value["new"] ?? [], "each new copy");
+  if (typeof fresh === "string") return fresh;
+  const chanceValue: unknown = value["chances"] ?? {};
+  if (!isRecord(chanceValue)) return "The field chances of the causes file is not an object.";
+  const chances: Record<string, ChanceInput> = {};
+  for (const [kind, item] of Object.entries(chanceValue)) {
+    const input = inputOf(item);
+    if (!CAUSE_KIND.test(kind) || input === undefined) return `The chance of the cause kind ${kind} needs works from 0 to 1, kind (measured or assumed) and source.`;
+    chances[kind] = input;
+  }
+  const overrideValue: unknown = value["overrides"] ?? [];
+  if (!Array.isArray(overrideValue)) return "The field overrides of the causes file is not a list.";
+  const overrides: ChanceOverride[] = [];
+  for (const item of overrideValue as readonly unknown[]) {
+    const id = textOf(item, "id");
+    const input = inputOf(item);
+    if (id === undefined || !id.startsWith("cause:") || input === undefined) return "Each override of the causes file needs the id of a cause fragment, works, kind and source.";
+    overrides.push({ id, ...input });
+  }
+  return { fixed, fresh, chances, overrides };
+}
 
 /** The kinds of read of a status page: the documented list of incidents (`api`) or the JSON of the public history page (`history`). */
 export const STATUS_READS: readonly ["api", "history"] = ["api", "history"];
@@ -270,6 +383,25 @@ export function readBase(value: unknown): PlacementBase | string {
   return { stack: stack.stack, part, copies: copyList as readonly string[], chances };
 }
 
+/** This function gives the name of a live copy in a causes file: `provider/region`, or the name of its site. */
+export function fixedName(copy: FixedCopy): string {
+  return copy.kind === "cloud" ? `${copy.provider}/${copy.region}` : copy.site;
+}
+
+/**
+ * This function gives the live copies with the causes of a causes file (AL-198). It gives a problem as a text when the
+ * file names a copy that is not live.
+ */
+export function withCauses(fixed: readonly FixedCopy[], input: CauseInput): readonly FixedCopy[] | string {
+  const names = new Set(fixed.map(fixedName));
+  const other = Object.keys(input.fixed).find((name) => !names.has(name));
+  if (other !== undefined) return `The causes file names the copy ${other}, which is not a copy of --fixed.`;
+  return fixed.map((copy) => {
+    const causes = input.fixed[fixedName(copy)];
+    return causes === undefined ? copy : { ...copy, causes: [...(copy.causes ?? []), ...causes] };
+  });
+}
+
 /** The inputs of a placement layer. */
 export interface PlacementInput {
   /** The live offers, for example from the plan client of `@mark1russell7/market-sources`. */
@@ -289,6 +421,11 @@ export interface PlacementInput {
   readonly costLimit?: number | undefined;
   /** The function and the needs that all copies share. Without it, the function needs only some slot. */
   readonly base?: PlacementBase | undefined;
+  /**
+   * The shared causes of each new copy (AL-198), for example the registrar of the one domain of all the copies. Each
+   * candidate needs the fragment of each cause.
+   */
+  readonly causes?: readonly SharedCause[] | undefined;
 }
 
 /** The reasons to skip an offer. */
@@ -444,10 +581,10 @@ function riskOf(part: string, input: ChanceInput): RiskLayer {
   return { schema: RISK_SCHEMA, goals: [], chances: [{ part, works: input.works, source: sourceOf(input) }] };
 }
 
-function candidateOf(slot: string, pick: OfferPick, chances: PlacementChances, currency: string): Candidate {
+function candidateOf(slot: string, pick: OfferPick, chances: PlacementChances, causes: readonly SharedCause[], currency: string): Candidate {
   const provider = providerFragment(pick.provider);
   const region = regionFragment(pick.provider, pick.region);
-  const uses = [provider, region, ...countryUses(chances, pick.country), ...(chances.joint === undefined ? [] : [COMMON_FRAGMENT])];
+  const uses = [provider, region, ...countryUses(chances, pick.country), ...causes.map(causeFragment), ...(chances.joint === undefined ? [] : [COMMON_FRAGMENT])];
   const spend: SpendLayer = { schema: "spend/1", currency, kinds: [], proofDays: 30, services: [{ part: slot, billing: "fixed", price: pick.cost }] };
   return {
     key: `${pick.provider}/${pick.region}`,
@@ -464,7 +601,18 @@ function sharedOf(id: string, kind: string, input: ChanceInput): Shared {
 
 function fixedUses(copy: FixedCopy, chances: PlacementChances): readonly string[] {
   const own = copy.kind === "cloud" ? [providerFragment(copy.provider), regionFragment(copy.provider, copy.region)] : [siteFragment(copy.site)];
-  return [...own, ...countryUses(chances, copy.country)];
+  return [...own, ...countryUses(chances, copy.country), ...(copy.causes ?? []).map(causeFragment)];
+}
+
+// The check of a list of causes: each kind is one word, each id is a text, and no cause is in the list two times.
+function checkCauses(owner: string, causes: readonly SharedCause[]): void {
+  const seen = new Set<string>();
+  for (const cause of causes) {
+    if (!CAUSE_KIND.test(cause.kind) || cause.id.trim() === "") throw new RangeError(`A cause of ${owner} needs a kind of one word and an id.`);
+    const fragment = causeFragment(cause);
+    if (seen.has(fragment)) throw new RangeError(`The cause ${fragment} is two times in the causes of ${owner}.`);
+    seen.add(fragment);
+  }
 }
 
 /**
@@ -506,6 +654,7 @@ function fixedCandidate(slot: string, copy: FixedCopy, chances: PlacementChances
  * or the limit of cost is less than 0, or when a chance input is not valid. It also throws when two fixed copies have
  * one key, or when a fixed copy at a site has no site input and no override. It also throws when a joint measure does not
  * have one input for each fixed copy. It also throws when the country of a fixed copy is not two capital letters.
+ * It also throws when a cause is not valid, is two times in one copy, or has no input (AL-198).
  */
 export function placementLayer(input: PlacementInput): PlacementBuild {
   const { needs, chances } = input;
@@ -518,6 +667,10 @@ export function placementLayer(input: PlacementInput): PlacementBuild {
   if (chances.site !== undefined) checkChance("site", chances.site);
   if (chances.country !== undefined) checkChance("country", chances.country);
   for (const item of chances.overrides ?? []) checkChance(item.id, item);
+  for (const [kind, item] of Object.entries(chances.causes ?? {})) checkChance(`cause ${kind}`, item);
+  const causes = input.causes ?? [];
+  checkCauses("each new copy", causes);
+  for (const copy of input.fixed ?? []) checkCauses(`the fixed copy ${fixedKey(copy)}`, copy.causes ?? []);
   // The country of each provider and region, from the first offer that tells it.
   const countries = new Map<string, string>();
   for (const { offer } of input.offers) {
@@ -599,7 +752,9 @@ export function placementLayer(input: PlacementInput): PlacementBuild {
       add(regionFragment(copy.provider, copy.region), "region");
     }
     for (const fragment of countryUses(chances, copy.country)) add(fragment, "country");
+    for (const cause of copy.causes ?? []) add(causeFragment(cause), cause.kind);
   }
+  if (picks.length > 0) for (const cause of causes) add(causeFragment(cause), cause.kind);
   for (const pick of picks) {
     add(providerFragment(pick.provider), "provider");
     add(regionFragment(pick.provider, pick.region), "region");
@@ -618,7 +773,7 @@ export function placementLayer(input: PlacementInput): PlacementBuild {
   const newSlots = Array.from({ length: input.copies }, (_, index) => ({
     id: slotId(index),
     ...(index === 0 && fixed.length === 0 ? {} : { optional: true }),
-    candidates: picks.map((pick) => candidateOf(slotId(index), pick, chances, needs.currency)),
+    candidates: picks.map((pick) => candidateOf(slotId(index), pick, chances, causes, needs.currency)),
   }));
   const slots = [...fixedSlots, ...newSlots];
   for (const slot of slots) taken(slot.id);
@@ -795,9 +950,10 @@ export function frontLevels(front: readonly PlacementRow[]): readonly FrontLevel
 /**
  * This function gives the chance input of one shared fragment: the override of the fragment, or the input of its kind.
  * A fragment `provider:...` gets the provider input, a fragment `site:...` gets the site input, and a fragment
- * `country:...` gets the country input. Each other fragment gets the region input.
+ * `country:...` gets the country input. A fragment `cause:<kind>/...` gets the input of its kind (AL-198). Each other
+ * fragment gets the region input.
  *
- * @throws RangeError when a site fragment or a country fragment has no override and the chances have no input of its kind.
+ * @throws RangeError when a site, country or cause fragment has no override and the chances have no input of its kind.
  */
 export function fragmentInput(chances: PlacementChances, fragment: string): ChanceInput {
   const override = (chances.overrides ?? []).find((item) => item.id === fragment);
@@ -814,6 +970,14 @@ export function fragmentInput(chances: PlacementChances, fragment: string): Chan
   if (fragment.startsWith("country:")) {
     if (chances.country === undefined) throw new RangeError(`The country fragment ${fragment} has no input.`);
     return chances.country;
+  }
+  if (fragment.startsWith("cause:")) {
+    // The kind has no slash. Thus the first slash ends the kind, and the id can have a slash.
+    const kind = fragment.slice("cause:".length, fragment.indexOf("/"));
+    const causes = chances.causes ?? {};
+    const found = fragment.includes("/") && Object.hasOwn(causes, kind) ? causes[kind] : undefined;
+    if (found === undefined) throw new RangeError(`The cause fragment ${fragment} has no input of its kind.`);
+    return found;
   }
   return fragment.startsWith("provider:") ? chances.provider : chances.region;
 }

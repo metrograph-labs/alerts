@@ -4,7 +4,7 @@
  * machine. It also reads the incident history of the status page of each provider. It reads no other source and opens
  * no account.
  *
- * `node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--assume-country <p>] [--site-log <site=file,site=file>] [--base <file>] [--joint <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>] [--azure-sizes <n>]`
+ * `node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--assume-country <p>] [--site-log <site=file,site=file>] [--base <file>] [--joint <file>] [--causes <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>] [--azure-sizes <n>]`
  *
  * - `--min-memory-mib` is the least memory of a host of a copy, in MiB.
  * - The three `--assume-*` values are assumed chance inputs, from 0 to 1, for each provider, region and host. The script
@@ -35,6 +35,9 @@
  *   from the history of that page (`measureBase` of `placement-chances.ts`), and prints one line for each input.
  * - `--joint` names a private JSON file with the joint measure of the live copies (`readJoint` of `placement.ts`), in the
  *   order of `--fixed`. The fit gives a common cause that each copy needs, thus a new copy is not an independent copy.
+ * - `--causes` names a private JSON file with the shared causes of the copies (`readCauses` of `placement.ts`, AL-198).
+ *   The file gives the DNS provider, the registrar and the power feed of each copy, and their chance inputs. Two copies
+ *   with one cause share its fragment. A name of its field `fixed` is a name of `--fixed` with no country code.
  * - `--copies` is the count of new copies. The default is 2.
  * - `--spend` names the spend entry of `config.json` that gives the limit of cost of a month (`monthlyUsd`). Without
  *   it, or without that entry, the front has no limit of cost.
@@ -83,7 +86,9 @@ import {
   measuredBuild,
   jointFit,
   readBase,
+  readCauses,
   readJoint,
+  withCauses,
   type PlacementBase,
   type FixedCopy,
   placementLayer,
@@ -99,7 +104,7 @@ import {
 const print = createPrinter({ out: process.stdout, err: process.stderr });
 
 const USAGE =
-  "The command is: node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--assume-country <p>] [--site-log <site=file,site=file>] [--base <file>] [--joint <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>] [--azure-sizes <n>]";
+  "The command is: node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> --assume-host <p> [--fixed <copy,copy>] [--assume-site <p>] [--assume-country <p>] [--site-log <site=file,site=file>] [--base <file>] [--joint <file>] [--causes <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>] [--azure-sizes <n>]";
 
 /** The User-Agent of each request. It names no person and no project. */
 const USER_AGENT = "alerts-placement";
@@ -119,6 +124,7 @@ interface Command {
   readonly fixed: readonly FixedCopy[];
   readonly base: string | undefined;
   readonly joint: string | undefined;
+  readonly causes: string | undefined;
   readonly siteLogs: readonly { readonly site: string; readonly path: string }[];
   readonly spend: string | undefined;
   readonly terms: readonly PriceTerm["kind"][];
@@ -135,7 +141,7 @@ function command(args: readonly string[]): Command | string {
     if (name === undefined || !name.startsWith("--") || value === undefined || value.startsWith("--")) return `The argument ${String(name)} has no value.`;
     values.set(name.slice(2), value);
   }
-  const known = new Set(["min-memory-mib", "assume-provider", "assume-region", "assume-host", "assume-site", "assume-country", "fixed", "site-log", "base", "joint", "copies", "spend", "terms", "window-days", "azure-sizes"]);
+  const known = new Set(["min-memory-mib", "assume-provider", "assume-region", "assume-host", "assume-site", "assume-country", "fixed", "site-log", "base", "joint", "causes", "copies", "spend", "terms", "window-days", "azure-sizes"]);
   const other = [...values.keys()].find((name) => !known.has(name));
   if (other !== undefined) return `The option --${other} is not known.`;
   const memory = Number(values.get("min-memory-mib"));
@@ -185,7 +191,7 @@ function command(args: readonly string[]): Command | string {
   const bad = terms.find((term) => !TERM_KINDS.some((kind) => kind === term));
   if (bad !== undefined) return `The price term ${bad} is not on-demand, spot or committed.`;
   const chances: PlacementChances = { provider, region, host, ...(site === undefined ? {} : { site }), ...(country === undefined ? {} : { country }) };
-  return { minMemoryMiB: memory, chances, copies, fixed, base: values.get("base"), joint: values.get("joint"), siteLogs, spend: values.get("spend"), terms: terms as PriceTerm["kind"][], windowDays, azureSizes };
+  return { minMemoryMiB: memory, chances, copies, fixed, base: values.get("base"), joint: values.get("joint"), causes: values.get("causes"), siteLogs, spend: values.get("spend"), terms: terms as PriceTerm["kind"][], windowDays, azureSizes };
 }
 
 // The front of a build: its search, its levels and the assumed fragments of each row. It prints each level.
@@ -258,6 +264,16 @@ if (typeof parsed === "string") {
   }
   if (joint !== undefined && joint.works.length !== parsed.fixed.length) {
     print.error("The joint file needs one input for each copy of --fixed, in the same order.");
+    process.exit(2);
+  }
+  const causeRead = parsed.causes === undefined ? undefined : readCauses(await readConfig(parsed.causes));
+  if (typeof causeRead === "string") {
+    print.error(`The causes file has a problem: ${causeRead}`);
+    process.exit(2);
+  }
+  const fixedCopies = causeRead === undefined ? parsed.fixed : withCauses(parsed.fixed, causeRead);
+  if (typeof fixedCopies === "string") {
+    print.error(`The causes file has a problem: ${fixedCopies}`);
     process.exit(2);
   }
   if (parsed.spend === undefined) print.line("No spend entry is named. The front has no limit of cost.");
@@ -345,7 +361,8 @@ if (typeof parsed === "string") {
       print.line(`The site ${log.site} has a measured input: ${site.measure.input.source}.`);
     } else print.line(`The site ${log.site} keeps the assumed input: ${site.reason}`);
   }
-  const chances = withMeasures({ ...parsed.chances, ...(joint === undefined ? {} : { joint }) }, measures);
+  const causeChances: Pick<PlacementChances, "causes" | "overrides"> = causeRead === undefined ? {} : { causes: causeRead.chances, overrides: [...(parsed.chances.overrides ?? []), ...causeRead.overrides] };
+  const chances = withMeasures({ ...parsed.chances, ...causeChances, ...(joint === undefined ? {} : { joint }) }, measures);
   const fit = jointFit(chances);
   if (fit === undefined) print.line("No joint measure is named. The front counts the live copies as independent copies.");
   else print.line(`The common cause of the live copies works with the chance ${fit.common.works.toFixed(6)} (${fit.common.kind}). Each copy needs it.`);
@@ -356,7 +373,9 @@ if (typeof parsed === "string") {
   } else {
     const at = new Date();
     const today = at.toISOString().slice(0, 10);
-    const build = placementLayer({ offers, needs: { minMemoryMiB: parsed.minMemoryMiB, terms: parsed.terms, currency: "USD" }, chances, copies: parsed.copies, fixed: parsed.fixed, costLimit, base });
+    const build = placementLayer({ offers, needs: { minMemoryMiB: parsed.minMemoryMiB, terms: parsed.terms, currency: "USD" }, chances, copies: parsed.copies, fixed: fixedCopies, costLimit, base, causes: causeRead?.fresh ?? [] });
+    if (causeRead === undefined) print.line("No causes file is named. The copies share only their providers, regions, sites and countries.");
+    else print.line(`The causes file gives ${countOf(Object.values(causeRead.fixed).flat().length + causeRead.fresh.length, "shared cause")} of ${countOf(Object.keys(causeRead.chances).length, "kind")}.`);
     if (parsed.fixed.length > 0) print.line(`Fixed slots with no cost: ${countOf(parsed.fixed.length, "live copy", "live copies")}. The first level of the front with the cost 0 is no new copy.`);
     const measuredIds = new Set(measures.map((measure) => measure.input.id));
     const shared = build.layer.shared ?? [];

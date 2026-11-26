@@ -2225,5 +2225,82 @@
       "members": 1757,
       "cause": "Round 45 plans the OSC investor alerts and the King County overflow status, a second origin for each class. Thus the gaps go from 60 to 58."
     }
+  },
+  {
+    "round": 46,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took the transit service alerts, a class with one source. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The developer portal of Entur: https://developer.entur.no/"
+    ],
+    "queries": [],
+    "notes": [
+      "The terms page of the TfL API gave 403 in round 33, so the round did not read it again.",
+      "The situation exchange API of Entur answers with SIRI-SX XML and needs no key. The terms ask for the header ET-Client-Name.",
+      "The data of Entur has the NLOD licence. It permits reuse and redistribution with attribution to Entur.",
+      "With a second source, the transit service alert class has no gap."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 57,
+      "cover": {
+        "adopted": 59,
+        "paths": 59,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 166,
+        "paths": 165,
+        "origins": 84
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 46 plans the situation exchange API of Entur, a second source of transit service alerts. Thus the gaps go from 58 to 57."
+    }
+  },
+  {
+    "round": 47,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took the animal disease outbreaks, a class with one source. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The ADIS page of the European Commission: https://food.ec.europa.eu/animals/animal-diseases/animal-disease-information-system-adis_en"
+    ],
+    "queries": [],
+    "notes": [
+      "The weekly report of ADIS is a PDF that the server makes at each request. It gives the outbreaks of the last seven days by disease and country.",
+      "The report of the current year is a second PDF with each outbreak of the year.",
+      "The legal notice of the Commission puts its content under CC BY 4.0. It says nothing about automated reading, so that term stays unclear.",
+      "The pages of APHIS and WAHIS stay later, because their terms for automated reading are not known.",
+      "With a second source, the animal disease class has no gap."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 56,
+      "cover": {
+        "adopted": 59,
+        "paths": 59,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 166,
+        "paths": 165,
+        "origins": 84
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 47 plans the weekly outbreak report of ADIS, a second source of animal disease outbreaks. Thus the gaps go from 57 to 56."
+    }
   }
 ]

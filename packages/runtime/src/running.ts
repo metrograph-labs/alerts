@@ -84,6 +84,19 @@ export function codeReport(live: LiveState, running: RunningCode | undefined, pi
 export const runningPath = (host: string): string => join(host, RUNNING_FILE);
 
 /** This function reads the record of the running code from the host folder `host`. */
+/**
+ * This function gives the problem of the end of a deploy, or `undefined` (AL-186). The runtime must run `commit`, and its
+ * start must be at `began` or later. A runtime that did not start again still runs the old code.
+ */
+export function deployEndProblem(running: RunningCode | undefined, commit: string, began: number): string | undefined {
+  if (running === undefined) return "The runtime wrote no record of its code, thus the deploy cannot tell its code.";
+  const short7 = commit.slice(0, 7);
+  if (running.commit === undefined) return `The runtime runs a slot with no stage, not ${short7}.`;
+  if (!running.commit.startsWith(short7)) return `The runtime runs ${running.commit.slice(0, 7)}, not ${short7}.`;
+  if (!(Date.parse(running.at) >= began)) return `The runtime started at ${running.at}, before the deploy. It did not start again.`;
+  return undefined;
+}
+
 export async function readRunningCode(host: string): Promise<RunningCode | undefined> {
   const file = await readText(() => readFile(runningPath(host), "utf8"));
   return parseRunningCode("text" in file ? file.text : undefined);
