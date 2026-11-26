@@ -486,8 +486,47 @@ export function foldChange(live: number | undefined, next: number | undefined): 
  * This function gives the fold step: `main.ts fold <set>` of the live slot on the live home. The profile is the profile of
  * the supervised runtime, thus the fold has the configuration and the key of a start with that set (AL-169).
  */
-export function foldStep(runtime: string, home: string, node: string, set: "files" | "good"): StageStep {
-  return { program: node, args: [join(runtime, "src", "main.ts"), "fold", set], env: { ALERTS_HOME: home, SERVICE_PROFILE: "daemon" } };
+export function foldStep(runtime: string, home: string, node: string, set: "files" | "good", heap?: number): StageStep {
+  const limit = heap === undefined ? [] : [`--max-old-space-size=${String(heap)}`];
+  return { program: node, args: [...limit, join(runtime, "src", "main.ts"), "fold", set], env: { ALERTS_HOME: home, SERVICE_PROFILE: "daemon" } };
+}
+
+/** The memory in MiB that the fold leaves to the host (AL-175). */
+export const FOLD_HEAP_RESERVE = 128;
+
+/** The free memory of a host in MiB, for the heap limit of the fold (AL-175). */
+export interface FoldMemory {
+  /** The memory that the host gives with no swap: `MemAvailable` on Linux, the free memory on other hosts. */
+  readonly available: number;
+  /** The free swap. A host with no reading has 0. */
+  readonly swap: number;
+}
+
+/**
+ * This function reads the free memory of a Linux host from the text of `/proc/meminfo` (AL-175). It gives `undefined` when
+ * the text has no `MemAvailable` line. A text with no `SwapFree` line gives a swap of 0.
+ */
+export function memInfoOf(text: string): FoldMemory | undefined {
+  const mib = (name: string): number | undefined => {
+    const match = new RegExp(`^${name}:\\s+(\\d+) kB$`, "m").exec(text);
+    return match?.[1] === undefined ? undefined : Math.floor(Number(match[1]) / 1024);
+  };
+  const available = mib("MemAvailable");
+  return available === undefined ? undefined : { available, swap: mib("SwapFree") ?? 0 };
+}
+
+/**
+ * This function gives the heap limit of the fold in MiB, from the free memory and swap of the host (AL-175). It gives
+ * `undefined` when the default limit of node is as large. The runtime is stopped during the fold, thus the fold can use
+ * the free memory and swap, less `FOLD_HEAP_RESERVE`.
+ *
+ * - A heap limit below the need of the fold makes the garbage collector work with no end. On 2026-11-24 a small host
+ *   with the default limit of 530 MB did not fold a log of 287 000 events in 12 min.
+ * - A limit above the memory of the host moves the end of the heap into swap. That is slow, but the fold ends.
+ */
+export function foldHeapLimit(memory: FoldMemory, defaultLimit: number): number | undefined {
+  const limit = Math.floor(memory.available + memory.swap - FOLD_HEAP_RESERVE);
+  return limit > defaultLimit ? limit : undefined;
 }
 
 /**
