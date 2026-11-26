@@ -451,8 +451,8 @@ importers:
         specifier: ^1.5.0
         version: 1.5.0
       '@mark1russell7/package-id':
-        specifier: ^0.0.2
-        version: 0.0.2
+        specifier: ^0.1.0
+        version: 0.1.0
       '@mark1russell7/quantity':
         specifier: ^0.4.3
         version: 0.4.3(zod@4.6.7)
@@ -1061,8 +1061,8 @@ importers:
         specifier: ^1.5.0
         version: 1.5.0
       '@mark1russell7/text':
-        specifier: ^0.0.18
-        version: 0.0.18
+        specifier: ^0.0.20
+        version: 0.0.20
       polite-crawler:
         specifier: ^0.7.12
         version: 0.7.12(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
@@ -1175,8 +1175,8 @@ importers:
         specifier: ^1.5.0
         version: 1.5.0
       '@mark1russell7/text':
-        specifier: ^0.0.18
-        version: 0.0.18
+        specifier: ^0.0.20
+        version: 0.0.20
       polite-crawler:
         specifier: ^0.7.12
         version: 0.7.12(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
@@ -1288,6 +1288,9 @@ importers:
       '@mark1russell7/optional':
         specifier: ^1.5.0
         version: 1.5.0
+      '@mark1russell7/package-id':
+        specifier: ^0.1.0
+        version: 0.1.0
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
@@ -1953,8 +1956,8 @@ importers:
         specifier: ^1.5.0
         version: 1.5.0
       '@mark1russell7/package-id':
-        specifier: ^0.0.2
-        version: 0.0.2
+        specifier: ^0.1.0
+        version: 0.1.0
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
@@ -1993,8 +1996,8 @@ importers:
         specifier: ^1.5.0
         version: 1.5.0
       '@mark1russell7/text':
-        specifier: ^0.0.18
-        version: 0.0.18
+        specifier: ^0.0.20
+        version: 0.0.20
       polite-crawler:
         specifier: ^0.7.12
         version: 0.7.12(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
@@ -2760,8 +2763,8 @@ packages:
       '@opentelemetry/sdk-node':
         optional: true
 
-  '@mark1russell7/package-id@0.0.2':
-    resolution: {integrity: sha512-H1rtu6R8xcSX7o9KEUeY2ThktjsV/nJFfGmeh3ihVxkgPieS+lVXWt4gOYfzni+qikIUf/27fEp4ke7uMEe+AA==}
+  '@mark1russell7/package-id@0.1.0':
+    resolution: {integrity: sha512-OYbZ3MOMakuIffbjLbpz3Mg8m5o+swzUzgl0Oa4cq0u0nZ9AgVdch9Kt/se7N8AtvYXbR2oBR1fmMKYH1r7TrA==}
     engines: {node: '>=22.12'}
 
   '@mark1russell7/predicates@0.1.5':
@@ -3078,6 +3081,10 @@ packages:
 
   '@mark1russell7/text@0.0.19':
     resolution: {integrity: sha512-pPJV318wzfEcsnnzlqVu+OBp/o9VLKWsAo1Wkf4rNaerOjgINDo+vErhmtPVQw6BzcVmGn4brXmMLcosCT9sAw==}
+    engines: {node: '>=22.12'}
+
+  '@mark1russell7/text@0.0.20':
+    resolution: {integrity: sha512-HrjBak4BE0fDC+bLzFi/c4NDCHqiUm7VhYR5YhJmkApRSB8mUOao4bFiO9Jy3xwpsCGJCj4echVDCUxXjV+3NA==}
     engines: {node: '>=22.12'}
 
   '@mark1russell7/text@0.0.6':
@@ -5429,7 +5436,7 @@ snapshots:
       - vite
       - zone.js
 
-  '@mark1russell7/package-id@0.0.2': {}
+  '@mark1russell7/package-id@0.1.0': {}
 
   '@mark1russell7/predicates@0.1.5': {}
 
@@ -5643,6 +5650,8 @@ snapshots:
   '@mark1russell7/text@0.0.18': {}
 
   '@mark1russell7/text@0.0.19': {}
+
+  '@mark1russell7/text@0.0.20': {}
 
   '@mark1russell7/text@0.0.6': {}
 

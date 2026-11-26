@@ -10,8 +10,7 @@
 import { observationId, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch } from "@mark1russell7/alerts";
 import { createRequester } from "@mark1russell7/alerts-fetch";
 import { readFeed, type FeedEntry } from "@mark1russell7/alerts-format-cap";
-import { scanHtml } from "@mark1russell7/text/html";
-import { decodeReferences } from "@mark1russell7/text/references";
+import { plainText } from "@mark1russell7/text/plain-text";
 import type { Condition, Pace, Transport } from "polite-crawler/api";
 
 import { DAY_MS, type CertProvider } from "./providers.ts";
@@ -96,15 +95,8 @@ export interface DatedEntries {
   readonly invalid: number;
 }
 
-/**
- * This function gives the plain text of the HTML of an entry: no tags, decoded references and single spaces. An empty text
- * gives `undefined`. It is the third copy of this function in the adapters. AL-183 moves it to `@mark1russell7/text`.
- */
-export function plainText(html: string | undefined): string | undefined {
-  if (html === undefined) return undefined;
-  const text = decodeReferences(scanHtml(html).text).replace(/\s+/g, " ").trim();
-  return text === "" ? undefined : text;
-}
+// The plain text of the HTML of an entry comes from its home. The package keeps the export for its users.
+export { plainText };
 
 /** This function gives the CVE ids of a text, each one time, in the order of the text, at most `MAX_CVES`. */
 export function cvesOf(text: string): readonly string[] {

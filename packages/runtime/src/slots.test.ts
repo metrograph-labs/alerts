@@ -22,6 +22,7 @@ import {
   parseDeployArgs,
   STAGE_MEMORY_FLOOR,
   stepsAfterStage,
+  takesDown,
   stopBeforeStage,
   stopRefusal,
   foldVersionOf,
@@ -50,6 +51,7 @@ import {
   swapRefusal,
   withDeployLock,
   withMark,
+  type CopyReadStatus,
   type LiveState,
   type StageMark,
 } from "./slots.ts";
@@ -527,20 +529,26 @@ describe("the one deploy command (AL-186)", () => {
 
   it("reads the reads of the other copies from the status", () => {
     expect(copyReadsOf({ at: 1 })).toEqual([]);
-    expect(copyReadsOf({ copies: [{ copy: "b", readAt: 5 }, { copy: "c", readAt: null }] })).toEqual([
-      { copy: "b", readAt: 5 },
-      { copy: "c", readAt: null },
+    // A status of an older build has no field unsteadySince, thus the copy reads as steady (AL-204).
+    expect(copyReadsOf({ copies: [{ copy: "b", readAt: 5 }, { copy: "c", readAt: null, unsteadySince: 4 }] })).toEqual([
+      { copy: "b", readAt: 5, unsteadySince: null },
+      { copy: "c", readAt: null, unsteadySince: 4 },
     ]);
     expect(copyReadsOf({ copies: [{ copy: "b", readAt: "5" }] })).toBeUndefined();
+    expect(copyReadsOf({ copies: [{ copy: "b", readAt: 5, unsteadySince: "4" }] })).toBeUndefined();
     expect(copyReadsOf({ copies: {} })).toBeUndefined();
     expect(copyReadsOf("text")).toBeUndefined();
   });
 
   it("stops the runtime only when each other copy had a recent read", () => {
     const now = 1_000_000;
-    expect(stopRefusal([{ copy: "b", readAt: now - 10_000 }], now, 60_000, false)).toBeUndefined();
-    expect(stopRefusal([{ copy: "b", readAt: now - 10_000 }, { copy: "c", readAt: now - 61_000 }], now, 60_000, false)).toContain("The copies c had no read");
-    expect(stopRefusal([{ copy: "b", readAt: null }], now, 60_000, true)).toContain("The copies b had no read");
+    const read = (copy: string, readAt: number | null, unsteadySince: number | null = null): CopyReadStatus => ({ copy, readAt, unsteadySince });
+    expect(stopRefusal([read("b", now - 10_000)], now, 60_000, false)).toBeUndefined();
+    expect(stopRefusal([read("b", now - 10_000), read("c", now - 61_000)], now, 60_000, false)).toContain("The copies c had no read");
+    expect(stopRefusal([read("b", null)], now, 60_000, true)).toContain("The copies b had no read");
+    // A copy that started a short time ago is not steady, thus the second copy does not deploy yet (AL-204).
+    expect(stopRefusal([read("b", now - 10_000), read("c", now - 5_000, now - 120_000)], now, 60_000, false)).toContain("The copies c are not steady");
+    expect(stopRefusal([read("c", now - 5_000, now - 120_000)], now, 60_000, true)).toContain("not steady");
     // A runtime that does not answer is no copy that sends. A bad status refuses.
     expect(stopRefusal("down", now, 60_000, false)).toBeUndefined();
     expect(stopRefusal(undefined, now, 60_000, true)).toContain("no good list");
@@ -554,5 +562,12 @@ describe("the one deploy command (AL-186)", () => {
     expect(stepsAfterStage(true, true)).toEqual(["stop", "swap", "fold", "start"]);
     expect(stepsAfterStage(false, true)).toEqual(["swap", "fold", "start"]);
     expect(stepsAfterStage(false, false)).toEqual(["swap", "start"]);
+  });
+
+  it("checks the other copies before the swap when the steps take the runtime down, also for a restart (AL-204)", () => {
+    expect(takesDown(stepsAfterStage(true, false))).toBe(true);
+    expect(takesDown(stepsAfterStage(true, true))).toBe(true);
+    expect(takesDown(stepsAfterStage(false, true))).toBe(false);
+    expect(takesDown(stepsAfterStage(false, false))).toBe(false);
   });
 });

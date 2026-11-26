@@ -584,7 +584,7 @@
       "EM-DAT: Biological > Infestation",
       "UNDRR-ISC HIPs 2025: BI0401 Insect Pest Infestations, BI0403 Invasive weed/species, BI0501-BI0503 plant diseases"
     ],
-    "gap": "APHIS has pest pages and an IPHIS system, but no quarantine feed was confirmed. The Federal Register carries the federal orders (see civic.regulation).",
+    "gap": "APHIS has pest pages and an IPHIS system, but no quarantine feed was confirmed. The Federal Register carries the federal orders (see civic.regulation). Round 49: 1 of the newest 20 quarantine documents of APHIS in the Federal Register changed quarantined areas. The APHIS site gave 403. The CFIA news releases give the new regulated areas of Canada, but a commercial use needs a permission.",
     "round": 1
   },
   {
@@ -1185,7 +1185,7 @@
       "UNDRR-ISC HIPs 2025: BI0104 Foodborne Diseases, BI0210 E. coli, BI0218 Listeriosis",
       "CISA sectors: Food and Agriculture"
     ],
-    "gap": "Round 1 found 0 adopted or planned sources with no risk. fda-core-investigations is later, fsis-recall-api is later: see the reason of each. Round 34: the feed of public health updates of the PHAC gave no answer in 120 seconds. Round 40: the CDC page of investigations returned 403, and the CDC content API has no feed of them. The news API of Canada has no food notices.",
+    "gap": "Round 1 found 0 adopted or planned sources with no risk. fda-core-investigations is later, fsis-recall-api is later: see the reason of each. Round 34: the feed of public health updates of the PHAC gave no answer in 120 seconds. Round 40: the CDC page of investigations returned 403, and the CDC content API has no feed of them. The news API of Canada has no food notices. Round 50: the website policies of the FDA put its content in the public domain, so fda-core-investigations is a plan.",
     "round": 1
   },
   {

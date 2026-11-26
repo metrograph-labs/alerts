@@ -3171,7 +3171,7 @@
     "id": "api.io.canada.ca",
     "name": "api.io.canada.ca",
     "kind": "host",
-    "note": "The host of the news API of the Government of Canada, the releases of gc-news-phac."
+    "note": "The host of the news API of the Government of Canada, the releases of gc-news-phac and gc-news-cfia."
   },
   {
     "id": "api.scottishwater.co.uk",

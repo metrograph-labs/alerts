@@ -161,9 +161,10 @@ describe("the declaration of the service", () => {
     expect("start" in statusOf(loop, outage)).toBe(false);
     // The status shows the last read of each other copy, thus a deploy can tell if another copy is up (AL-186).
     const watch = { copy: "b", skewLimit: 2_000, maxAge: 60_000, since: 1, read: { at: 9, skew: 0, sameConfig: true } };
-    expect(statusOf(loop, outage, undefined, { watches: () => [watch, { copy: "c", skewLimit: 2_000, maxAge: 60_000, since: 1 }] }).copies).toEqual([
-      { copy: "b", readAt: 9 },
-      { copy: "c", readAt: null },
+    // It also shows a copy that is not steady, thus a deploy waits until the copy is steady (AL-204).
+    expect(statusOf(loop, outage, undefined, { watches: () => [watch, { copy: "c", skewLimit: 2_000, maxAge: 60_000, since: 1, unsteadySince: 7 }] }).copies).toEqual([
+      { copy: "b", readAt: 9, unsteadySince: null },
+      { copy: "c", readAt: null, unsteadySince: 7 },
     ]);
     expect("copies" in statusOf(loop, outage)).toBe(false);
   });

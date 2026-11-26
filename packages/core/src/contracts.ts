@@ -1683,7 +1683,15 @@ export type AssessReason =
   /** The person watches a subject of the incident. */
   | { readonly kind: "subject"; readonly subject: SubjectWatch }
   /** An advisory of the incident matches a part of the software of the stack, and the person watches the part. */
-  | { readonly kind: "software"; readonly match: SoftwareMatch }
+  | {
+      readonly kind: "software";
+      readonly match: SoftwareMatch;
+      /**
+       * The level of the table for the part, when attackers use the flaw at this time and the installed version is affected.
+       * Then the part counts the severity of the incident as `severe` at least (AL-197).
+       */
+      readonly exploited?: AssessedLevel;
+    }
   /**
    * The level of the table at this place is not the level of the incident. The lines of these reports hold the
    * place, and the highest table of those lines gives the level.

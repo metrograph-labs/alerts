@@ -6937,10 +6937,10 @@
     "access": "feed",
     "auth": "none",
     "terms": {
-      "url": "https://www.ecdc.europa.eu/en/legal-notice",
+      "url": "https://www.ecdc.europa.eu/en/ecdc-intellectual-property-notices",
       "automated": "unclear",
-      "redistribution": "unclear",
-      "note": "The legal notice links copyright and limited reproduction notices. Their text did not come through in the fetch."
+      "redistribution": "allowed",
+      "note": "The intellectual property notices license the content of ECDC under CC BY 4.0, also for a commercial use, with credit to ECDC and a link to the licence. The round did not read the robots.txt."
     },
     "cost": "free",
     "delay": "Weekly in principle. The newest item at the read on 2026-11-21 was the report for week 42 (16 October 2026).",
@@ -6963,7 +6963,8 @@
     "reason": "A weekly list of the communicable disease threats that ECDC monitors, a second outbreak report source, but the feed lagged five weeks.",
     "evidence": [
       "https://www.ecdc.europa.eu/en/rss-feeds",
-      "https://www.ecdc.europa.eu/en/taxonomy/term/1505/feed"
+      "https://www.ecdc.europa.eu/en/taxonomy/term/1505/feed",
+      "https://www.ecdc.europa.eu/en/ecdc-intellectual-property-notices"
     ],
     "round": 18
   },
@@ -7017,10 +7018,10 @@
     "access": "page",
     "auth": "none",
     "terms": {
-      "url": null,
+      "url": "https://www.ecdc.europa.eu/en/ecdc-intellectual-property-notices",
       "automated": "unclear",
-      "redistribution": "unclear",
-      "note": "General ECDC RSS feeds exist. No CDTR-specific feed seen."
+      "redistribution": "allowed",
+      "note": "The intellectual property notices license the content of ECDC under CC BY 4.0, also for a commercial use, with credit to ECDC and a link to the licence. The round did not read the robots.txt."
     },
     "cost": "free",
     "delay": "weekly until October 2026, then daily updates",
@@ -7040,7 +7041,8 @@
     "adapter": null,
     "reason": "The EU epidemic intelligence summary; check the new daily page in round 2. The decision is later because a page source needs terms that let automated reading.",
     "evidence": [
-      "https://www.ecdc.europa.eu/en/threats-and-outbreaks/reports-and-data/weekly-threats"
+      "https://www.ecdc.europa.eu/en/threats-and-outbreaks/reports-and-data/weekly-threats",
+      "https://www.ecdc.europa.eu/en/ecdc-intellectual-property-notices"
     ],
     "round": 1
   },
@@ -8468,17 +8470,17 @@
     "access": "page",
     "auth": "none",
     "terms": {
-      "url": null,
-      "automated": "unclear",
-      "redistribution": "unclear",
-      "note": "An HTML table with a dated What's New list. No feed seen."
+      "url": "https://www.fda.gov/about-fda/about-website/website-policies",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The website policies tell that the content of www.fda.gov is in the public domain, with no permission needed. The robots.txt of www.fda.gov permits the path for each agent, with a crawl delay of 30 s."
     },
     "cost": "free",
-    "delay": "unknown",
-    "history": "unknown",
-    "rateLimit": "unknown",
+    "delay": "Days: the table gets a row when the CORE network starts an investigation, often before a product is known.",
+    "history": "The page lists the active investigations and the closed investigations of the year, each with the date of its post.",
+    "rateLimit": "The robots.txt asks for 30 s between two requests.",
     "calibration": null,
-    "coverage": "US outbreak investigations: pathogen, product, case count, recall and traceback status.",
+    "coverage": "The US outbreak investigations of the FDA: the pathogen, the product, the case count, the status and the steps (recall, traceback, inspection, samples). The read of 2026-11-26 listed 9 active investigations.",
     "origins": [
       "fda"
     ],
@@ -8487,13 +8489,15 @@
     ],
     "subjectIds": null,
     "risks": [],
-    "decision": "later",
+    "decision": "plan",
     "adapter": null,
-    "reason": "Shows outbreaks before the product is named or recalled. The decision is later because a page source needs terms that let automated reading.",
+    "reason": "The table tells of an outbreak before a recall, often with no product yet. The content is in the public domain. The page is HTML, so an adapter reads each row and its reference number.",
     "evidence": [
-      "https://www.fda.gov/food/outbreaks-foodborne-illness/investigations-foodborne-illness-outbreaks"
+      "https://www.fda.gov/food/outbreaks-foodborne-illness/investigations-foodborne-illness-outbreaks",
+      "https://www.fda.gov/about-fda/about-website/website-policies",
+      "https://www.fda.gov/robots.txt"
     ],
-    "round": 1
+    "round": 50
   },
   {
     "id": "fdic-bankfind-api",
@@ -26965,5 +26969,42 @@
       "https://bea.aero/en/legal-notice/"
     ],
     "round": 48
+  },
+  {
+    "id": "gc-news-cfia",
+    "name": "Government of Canada news API: the news releases of the CFIA",
+    "classes": [
+      "env.pest-quarantine"
+    ],
+    "url": "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=foodinspectionagency&sort=publishedDate&orderBy=desc&pick=50&format=atom",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.canada.ca/en/transparency/terms.html",
+      "automated": "unclear",
+      "redistribution": "limited",
+      "note": "The terms page gave no answer in 30 s. A search result of the page tells that a commercial reproduction needs the permission of the institution that owns the content."
+    },
+    "cost": "free",
+    "delay": "The same day: each release has its time of publication.",
+    "history": "The API gives older releases with a date filter.",
+    "rateLimit": "unknown",
+    "calibration": "None. A release names the pest and the new regulated places, for example the counties.",
+    "coverage": "The news releases of the Canadian Food Inspection Agency. 5 of the newest 50 releases were new or larger regulated areas for plant pests. The other releases are about food.",
+    "origins": [
+      "cfia"
+    ],
+    "path": [
+      "api.io.canada.ca"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "An Atom feed with no key gives the new regulated areas of Canada. But a commercial reproduction needs a permission. Such terms do not close a gap (AL-195).",
+    "evidence": [
+      "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=foodinspectionagency&sort=publishedDate&orderBy=desc&pick=50&format=atom"
+    ],
+    "round": 49
   }
 ]
