@@ -1040,6 +1040,23 @@ describe("the match of an advisory to the software of the stack (AL-197)", () =>
     expect(found.reasons).toContainEqual({ kind: "software", match: { part: "api", purl: "pkg:npm/lib", installed: "2.4.1", verdict: "unknown" } });
   });
 
+  it("raises an affected part when attackers use the flaw now, and keeps a part with an unknown verdict", () => {
+    // An ICS advisory of a high flaw joins the KEV entry of the same CVE: the two heads give two lines.
+    const line = (code: string, urgency: "future" | "immediate", report: string) => ({ report: report.repeat(64) as ReportId, kind: { code, label: code }, severity: "moderate" as const, urgency, certainty: "observed" as const, areas: [] });
+    const draft = { kind: "cyber.advisory.ics", severity: "moderate" as const, urgency: "immediate" as const, areas: [] };
+    const lines = [line("cyber.advisory.ics", "future", "a"), line("cyber.vulnerability.exploited", "immediate", "b")];
+    const ranged = [{ system: "purl", id: "pkg:npm/lib", ranges: ["vers:npm/<2.4.1"] }];
+    const found = assess(incident({ ...draft, about: ranged, lines }), watcher(), places, policy);
+    expect(found.level).toBe("urgent");
+    expect(found.reasons).toContainEqual({ kind: "software", match: { part: "web", purl: "pkg:npm/lib", installed: "2.3.0", verdict: "affected", fixed: "2.4.1" }, exploited: "urgent" });
+    expect(assessmentSchema.safeParse(found).success).toBe(true);
+    // With no exploited head, the table of the incident gives the level: a moderate severity gives `notice`.
+    expect(assess(incident({ ...draft, about: ranged }), watcher(), places, policy).level).toBe("notice");
+    const unknown = assess(incident({ ...draft, about: [{ system: "purl", id: "pkg:npm/lib" }], lines }), watcher("api"), places, policy);
+    expect(unknown.level).toBe("notice");
+    expect(unknown.reasons).toContainEqual({ kind: "software", match: { part: "api", purl: "pkg:npm/lib", installed: "2.4.1", verdict: "unknown" } });
+  });
+
   it("keeps the policy with no software", () => {
     expect(policyWithSoftware(undefined, undefined)).toBeUndefined();
     expect(policyWithSoftware(DEFAULT_ASSESS_POLICY, undefined)).toBe(DEFAULT_ASSESS_POLICY);
