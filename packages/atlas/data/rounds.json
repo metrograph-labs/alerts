@@ -2495,5 +2495,41 @@
       "members": 1757,
       "cause": "Round 52 makes congress-gov-api a plan for the federal shutdowns. The class gets 1 source of 2, so the gaps stay at 56."
     }
+  },
+  {
+    "round": 53,
+    "date": "2026-11-26",
+    "by": "One session, with no subagent.",
+    "method": "The round looked again at the air accidents, a class with one source, and at the space weather classes. It read the pages of the NTSB and the API page of the space weather service of BoM. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json"
+    ],
+    "queries": [],
+    "notes": [
+      "The API of the space weather service of BoM has no radio product and no radiation product, as round 40 found. It does not close a space weather gap.",
+      "The NTSB page of investigations shows Loading in its HTML. Its script comes from /_layouts/ and /SiteAssets/, and robots.txt disallows both.",
+      "The NTSB news page had 8 releases from 2026-08-28 to 2026-11-17. The newest release was a call for corrosion tests of fire retardants, not a notice of an accident."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 56,
+      "cover": {
+        "adopted": 59,
+        "paths": 59,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 166,
+        "paths": 165,
+        "origins": 84
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 53 adds ntsb-investigations as a later source. The classes keep their sources, so the gaps stay at 56."
+    }
   }
 ]
