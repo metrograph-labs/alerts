@@ -3226,5 +3226,11 @@
     "name": "webgate.ec.europa.eu",
     "kind": "host",
     "note": "The host of the ADIS reports of eu-adis-weekly."
+  },
+  {
+    "id": "bea.aero",
+    "name": "bea.aero",
+    "kind": "host",
+    "note": "The host of the pages of bea-aero-notified-events."
   }
 ]
