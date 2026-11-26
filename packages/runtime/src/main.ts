@@ -94,6 +94,7 @@ import { recordRunningCode } from "./running.ts";
 import { checkoutOf, liveRoot, slotsOfCheckout } from "./slots.ts";
 import { openStartSnapshots, START_SNAPSHOTS_FOLDER, startReadText } from "./start-snapshot.ts";
 import { supervisor } from "./supervise.ts";
+import { snapshotWriteLine, timedSnapshot } from "./timed-snapshot.ts";
 import { outputOf, timedLogger } from "./output.ts";
 import { runtimeVersion, startTelemetry } from "./telemetry.ts";
 
@@ -329,6 +330,9 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
   });
   if (snapshot.fault !== undefined) out.error(`The folder ${START_SNAPSHOTS_FOLDER} did not open (${snapshot.fault}). Each start folds the whole log.`);
   if (recovered !== undefined) snapshot.store?.clear();
+  // Each write of the snapshot gives one line with its time (AL-123). Thus a block of the event loop at a write has its cause in the log.
+  const opened = snapshot.store;
+  const startStore = opened === undefined ? undefined : { ...timedSnapshot(opened, (write) => out.log(snapshotWriteLine(write))), close: () => opened.close() };
   // A broken file of shapes goes into quarantine, and the store starts empty. Then the outlines come again from the NWS API.
   const shapes = openShapeCache(join(home, SHAPES_FILE));
   if (shapes.quarantined !== undefined) out.error(`The file ${SHAPES_FILE} was broken. It is in quarantine, and the store of shapes starts empty.`);
@@ -392,7 +396,7 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
     readings,
     // The kind of the error only: its message can quote a value of a reading.
     onReadingsFault: (error, action) => out.error(`The store of readings failed (${action}): ${error instanceof Error ? error.name : typeof error}.`),
-    ...(snapshot.store === undefined ? {} : { startSnapshot: snapshot.store }),
+    ...(startStore === undefined ? {} : { startSnapshot: startStore }),
     // The kind of the error only, as for the readings.
     onStartSnapshotFault: (error) => out.error(`A write of the snapshot of the start failed: ${error instanceof Error ? error.name : typeof error}.`),
     // The store of shapes and the keeper of the transit catalog start their work at a pass after the good start (AL-75).
@@ -424,7 +428,7 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
   }
   // The mode fold writes the snapshot of this fold. Then it closes the files in the sequence of the shutdown of the service.
   if (fold) {
-    const store = snapshot.store;
+    const store = startStore;
     if (store === undefined) throw new Error(`The folder ${START_SNAPSHOTS_FOLDER} did not open. The mode fold writes no snapshot.`);
     blockWatch?.phase("fold: write of the snapshot");
     const transitKeeper = instance.transit;
@@ -464,7 +468,7 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
     ...(instance.transit === undefined ? {} : { transit: instance.transit }),
     quotas,
     readings,
-    ...(snapshot.store === undefined ? {} : { startSnapshot: snapshot.store }),
+    ...(startStore === undefined ? {} : { startSnapshot: startStore }),
     sources: instance.runtime,
     map: instance.map,
     health: instance.health,
