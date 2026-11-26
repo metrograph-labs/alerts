@@ -259,7 +259,8 @@ describe("openMeasuredRuntime", { timeout: 30_000 }, () => {
     const only = await open();
     expect(only.first.fetched).toEqual(expect.arrayContaining(left));
     await only.close();
-    const measured = await openMeasuredRuntime(home, { copy: leaving });
+    // The first start fetched each source. A start one day later has each source due again.
+    const measured = await openMeasuredRuntime(home, { copy: leaving, wall: wallClock({ start: Date.now() + 24 * 60 * MINUTE }) });
     opened.push(measured);
     expect(measured.first.fetched.length).toBeGreaterThan(0);
     expect(measured.first.fetched.filter((source) => left.includes(source))).toEqual([]);
