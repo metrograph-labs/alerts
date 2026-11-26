@@ -967,8 +967,8 @@ importers:
         specifier: ^1.5.0
         version: 1.5.0
       '@mark1russell7/otel-ts':
-        specifier: ^0.9.1
-        version: 0.9.1(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3)
+        specifier: ^0.10.2
+        version: 0.10.2(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3)
       '@mark1russell7/site-pages':
         specifier: ^0.8.0
         version: 0.8.4
@@ -977,7 +977,7 @@ importers:
         version: 0.0.18
       '@mark1russell7/visuals':
         specifier: ^0.4.0
-        version: 0.4.0(three@0.187.0)
+        version: 0.4.0(three@0.187.0)(zod@4.6.7)
       '@types/d3-geo':
         specifier: ^3.1.1
         version: 3.1.1
@@ -2751,8 +2751,8 @@ packages:
     resolution: {integrity: sha512-QpVjyHD/1JYriLVVJr4P6QpDJJN9q2BiM6CFu0q1hnyEEaH5RlrIMQSsrsKKzyED29VnT08xmliR65WbTkNTFw==}
     engines: {node: '>=22.12'}
 
-  '@mark1russell7/otel-ts@0.8.5':
-    resolution: {integrity: sha512-tlhtI5HhsYahFbb54Zqr2aCsVEdiOR05el7lfXRVqs6Q71KAZigwdIaNU5Dyzvzr5/Qz33UQSWdFkFQMp8bujQ==}
+  '@mark1russell7/otel-ts@0.10.2':
+    resolution: {integrity: sha512-8BM4csdZ0lwIfv4NfeZOhBYPt01xFK0jR7oYpJTJ2hzIuI3nzUNcSzZqCjKlPX/ikJlQQ/TnOjFPXnL/N04Gmw==}
     engines: {node: '>=22.15.0'}
     peerDependencies:
       '@mark1russell7/lag': '>=0.4.2 <0.6.0'
@@ -2763,8 +2763,8 @@ packages:
       '@opentelemetry/sdk-node':
         optional: true
 
-  '@mark1russell7/otel-ts@0.9.1':
-    resolution: {integrity: sha512-C8/8asnPb99GI4lM5MBNvgwDkohYsXpNXu4nHZexvJpwgjRIZi1wSgYZP0W3quALUUdEqtP7gorUwL4fJQf/Cg==}
+  '@mark1russell7/otel-ts@0.8.5':
+    resolution: {integrity: sha512-tlhtI5HhsYahFbb54Zqr2aCsVEdiOR05el7lfXRVqs6Q71KAZigwdIaNU5Dyzvzr5/Qz33UQSWdFkFQMp8bujQ==}
     engines: {node: '>=22.15.0'}
     peerDependencies:
       '@mark1russell7/lag': '>=0.4.2 <0.6.0'
@@ -5290,7 +5290,7 @@ snapshots:
   '@mark1russell7/algebra@0.9.12(zod@4.6.7)':
     dependencies:
       '@mark1russell7/quantity': 0.5.1(zod@4.6.7)
-      '@mark1russell7/rigor-statistics': 0.2.21
+      '@mark1russell7/rigor-statistics': 0.2.30
     optionalDependencies:
       zod: 4.6.7
 
@@ -5383,13 +5383,13 @@ snapshots:
       '@opentelemetry/api': 1.10.0
       async-browser-context: 0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
-  '@mark1russell7/layout-contract@0.11.1':
+  '@mark1russell7/layout-contract@0.11.1(zod@4.6.7)':
     dependencies:
       '@mark1russell7/predicates': 0.1.5
       '@mark1russell7/rigor-generators': 0.2.4
       '@mark1russell7/rigor-statistics': 0.2.30
       '@mark1russell7/strategy-space': 0.1.1
-      '@mark1russell7/typeset': 0.7.1
+      '@mark1russell7/typeset': 0.7.1(zod@4.6.7)
     transitivePeerDependencies:
       - zod
 
@@ -5426,9 +5426,10 @@ snapshots:
 
   '@mark1russell7/optional@1.5.0': {}
 
-  '@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3)':
+  '@mark1russell7/otel-ts@0.10.2(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3)':
     dependencies:
       '@grafana/faro-web-sdk': 2.14.0
+      '@mark1russell7/text': 0.0.20
       '@opentelemetry/api': 1.10.0
       '@opentelemetry/auto-instrumentations-web': 0.70.1(@opentelemetry/api@1.10.0)(supports-color@7.2.0)(zone.js@0.16.3)
       '@opentelemetry/context-async-hooks': 3.1.1(@opentelemetry/api@1.10.0)
@@ -5455,10 +5456,9 @@ snapshots:
       - vite
       - zone.js
 
-  '@mark1russell7/otel-ts@0.9.1(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3)':
+  '@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3)':
     dependencies:
       '@grafana/faro-web-sdk': 2.14.0
-      '@mark1russell7/text': 0.0.19
       '@opentelemetry/api': 1.10.0
       '@opentelemetry/auto-instrumentations-web': 0.70.1(@opentelemetry/api@1.10.0)(supports-color@7.2.0)(zone.js@0.16.3)
       '@opentelemetry/context-async-hooks': 3.1.1(@opentelemetry/api@1.10.0)
@@ -5716,7 +5716,7 @@ snapshots:
 
   '@mark1russell7/text@0.0.6': {}
 
-  '@mark1russell7/typeset@0.7.1':
+  '@mark1russell7/typeset@0.7.1(zod@4.6.7)':
     dependencies:
       '@mark1russell7/collections': 0.11.2(zod@4.6.7)
       '@mark1russell7/rigor-generators': 0.2.4
@@ -5736,10 +5736,10 @@ snapshots:
     transitivePeerDependencies:
       - zod
 
-  '@mark1russell7/visuals@0.4.0(three@0.187.0)':
+  '@mark1russell7/visuals@0.4.0(three@0.187.0)(zod@4.6.7)':
     dependencies:
       '@mark1russell7/geo': 0.5.13
-      '@mark1russell7/layout-contract': 0.11.1
+      '@mark1russell7/layout-contract': 0.11.1(zod@4.6.7)
     optionalDependencies:
       three: 0.187.0
     transitivePeerDependencies:
