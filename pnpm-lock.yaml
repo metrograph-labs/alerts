@@ -257,6 +257,9 @@ importers:
       '@mark1russell7/alerts-source-faa':
         specifier: workspace:*
         version: link:../source-faa
+      '@mark1russell7/alerts-source-firms':
+        specifier: workspace:*
+        version: link:../source-firms
       '@mark1russell7/alerts-source-gcp':
         specifier: workspace:*
         version: link:../source-gcp

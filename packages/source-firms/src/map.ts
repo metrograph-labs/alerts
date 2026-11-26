@@ -7,11 +7,11 @@
  * confidence is urgent. No hotspot is a life-safety alert. The fetch keeps no hotspot of the low confidence.
  */
 
-import { categoryOf, kindLabel, reportId, type Area, type Certainty, type MapResult, type Observation, type Report, type Severity } from "@mark1russell7/alerts";
+import { categoryOf, kindLabel, reportId, type Area, type Certainty, type MapResult, type Observation, type Report, type Severity, type SourceId } from "@mark1russell7/alerts";
 import { isRecord } from "@mark1russell7/optional/read";
 
 /** The id of the source. */
-export const SOURCE_ID = "firms";
+export const SOURCE_ID = "firms" as SourceId;
 
 /** The origin of each report: the Fire Information for Resource Management System of NASA. */
 export const FIRMS_ORIGIN = "nasa-firms";
@@ -44,7 +44,7 @@ export const CELL_SYSTEM = "firms-cell";
 export const CELL_DEGREES = 0.1;
 
 /** The time from the scan of a hotspot to the end of its report, in milliseconds: 12 hours, approximately two passes of each satellite. */
-export const HOTSPOT_LIFE_MS = 12 * 3_600_000;
+export const HOTSPOT_LIFE_MS: number = 12 * 3_600_000;
 
 /** The confidence values of a VIIRS hotspot that give a report: nominal and high. */
 export const REPORT_CONFIDENCES = ["n", "h"] as const;

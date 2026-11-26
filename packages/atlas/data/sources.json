@@ -13846,7 +13846,9 @@
     "path": [
       "firms.modaps.eosdis.nasa.gov"
     ],
-    "subjectIds": null,
+    "subjectIds": [
+      "point"
+    ],
     "risks": [],
     "decision": "adopt",
     "adapter": "@mark1russell7/alerts-source-firms",
