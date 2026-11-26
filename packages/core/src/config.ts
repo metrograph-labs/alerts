@@ -17,6 +17,7 @@ import { incidents, normalize } from "./merge.ts";
 import { optInFields, resolveOptIn, type OptInConfig, type OptInRecord } from "./opt-in.ts";
 import { CHANNEL_SUBJECT, DRILL_SUBJECT, NO_SYSTEM_LINES, systemReports, type SourceClearConfig } from "./system-reports.ts";
 import type { TryChain } from "./chain.ts";
+import type { SoftwareStack } from "./software.ts";
 import type { Expectation } from "./lateness.ts";
 import { rankDelayProblems, rankFloorProblems, type RankDelays } from "./escalation.ts";
 import { sendLimitProblems, type SendLimitConfig } from "./send-limit.ts";
@@ -318,6 +319,11 @@ export interface AlertConfig {
   readonly limits?: readonly LimitConfig[];
   /** The stack of the alert chain, for the redundancy reports (AL-90). Without it, the instance gives no redundancy report. */
   readonly chain?: ChainConfig;
+  /**
+   * The software of the stack (AL-197): the installed packages of each part. With it, an advisory that names an installed
+   * version reaches each person who watches the subject `software.part`. The values are private.
+   */
+  readonly software?: SoftwareStack;
   /** The policy of the link rule of the merge. Without it, the instance uses `DEFAULT_LINK_POLICY`. */
   readonly link?: LinkPolicy;
   /** The outage call. Without it, an outage of the instance calls no person. */

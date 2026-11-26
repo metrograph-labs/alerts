@@ -177,6 +177,7 @@ import type { ChannelDownConfig, ChannelRun } from "./channel-down.ts";
 import type { SourceClearConfig } from "./system-reports.ts";
 import type { SendLimitConfig } from "./send-limit.ts";
 import type { ThrottleConfig } from "./throttle.ts";
+import type { InstalledPackage, SoftwareMatch, SoftwarePart, SoftwareStack } from "./software.ts";
 import type { EscalationEnd, Recipient } from "./delivery.ts";
 import type { DrillConfig, DrillPath } from "./drill.ts";
 import { OPT_IN_WAYS, type OptInConfig, type OptInRecord } from "./opt-in.ts";
@@ -361,6 +362,49 @@ export const areaSchema: z.ZodType<Area, Area> = schemaOf<Area>()(
 /** This schema checks a thing that an event is about, other than a place. */
 export const subjectSchema: z.ZodType<Subject, Subject> = schemaOf<Subject>()(
   z.strictObject({ system: z.string(), id: z.string(), label: z.string().exactOptional(), ranges: z.array(z.string()).readonly().exactOptional() }).readonly(),
+);
+
+/** This schema checks one installed package of a part: a purl with no version, and the version. */
+export const installedPackageSchema: z.ZodType<InstalledPackage, InstalledPackage> = schemaOf<InstalledPackage>()(
+  z
+    .strictObject({
+      purl: z.string().regex(/^pkg:[a-z0-9.+-]+\/[^@?#]+$/u, "The purl of an installed package starts with pkg: and has no version, qualifiers or subpath."),
+      version: z.string().min(1, "The version of an installed package is a non-empty text."),
+    })
+    .readonly(),
+);
+
+/** This schema checks the software of one part of a stack. */
+export const softwarePartSchema: z.ZodType<SoftwarePart, SoftwarePart> = schemaOf<SoftwarePart>()(
+  z
+    .strictObject({
+      part: z.string().min(1, "The id of a part is a non-empty text."),
+      label: z.string().exactOptional(),
+      packages: z.array(installedPackageSchema).readonly(),
+    })
+    .readonly(),
+);
+
+/** This schema checks the software of a stack (AL-197). Each part id is unique. */
+export const softwareStackSchema: z.ZodType<SoftwareStack, SoftwareStack> = schemaOf<SoftwareStack>()(
+  z
+    .strictObject({ parts: z.array(softwarePartSchema).readonly() })
+    .readonly()
+    .refine((stack) => new Set(stack.parts.map((part) => part.part)).size === stack.parts.length, "Each part of the software has a unique id."),
+);
+
+/** This schema checks one match of an advisory to a part of the software of a stack. */
+export const softwareMatchSchema: z.ZodType<SoftwareMatch, SoftwareMatch> = schemaOf<SoftwareMatch>()(
+  z
+    .strictObject({
+      part: z.string(),
+      label: z.string().exactOptional(),
+      purl: z.string(),
+      installed: z.string(),
+      verdict: z.enum(["affected", "unknown"]),
+      fixed: z.string().exactOptional(),
+    })
+    .readonly(),
 );
 
 /** This schema checks a key that two sources share for one real event. */
@@ -990,6 +1034,7 @@ export const assessPolicySchema: z.ZodType<AssessPolicy, AssessPolicy> = schemaO
       relevance: z.lazy(() => relevancePolicySchema).exactOptional(),
       // The schema of the priors comes later in this file.
       priors: z.lazy(() => scorePriorsSchema).exactOptional(),
+      software: softwareStackSchema.exactOptional(),
     })
     .readonly(),
 );
@@ -1196,7 +1241,7 @@ export const shadowScoreSchema: z.ZodType<ShadowScore, ShadowScore> = schemaOf<S
 // =============================================================================
 
 // The key `person`, or `<system>:<id>` with a system of SUBJECT_SYSTEMS and an id that is not empty.
-const NODE_KEY = new RegExp(`^(?:person|(?:${Object.keys(SUBJECT_SYSTEMS).join("|")}):.+)$`);
+const NODE_KEY = new RegExp(`^(?:person|(?:${Object.keys(SUBJECT_SYSTEMS).map((system) => system.replaceAll(".", "[.]")).join("|")}):.+)$`);
 const nodeKeyText = z
   .string()
   .regex(NODE_KEY, "A node key is `person`, or `<system>:<id>` with a system of SUBJECT_SYSTEMS and an id that is not empty.")
@@ -1368,6 +1413,7 @@ export const assessReasonSchema: z.ZodType<AssessReason, AssessReason> = schemaO
         zoneFallback: z.literal(true).exactOptional(),
       }),
       z.strictObject({ kind: z.literal("subject"), subject: subjectWatchSchema }),
+      z.strictObject({ kind: z.literal("software"), match: softwareMatchSchema }),
       z.strictObject({ kind: z.literal("place-table"), place: placeIdSchema, reports: z.array(reportIdSchema).min(1).readonly(), level: assessedLevelSchema }),
       z.strictObject({
         kind: z.literal("table"),
@@ -1752,6 +1798,7 @@ export const alertConfigSchema: z.ZodType<AlertConfig, AlertConfig> = schemaOf<A
       spend: z.array(spendConfigSchema).readonly().exactOptional(),
       limits: z.array(limitConfigSchema).readonly().exactOptional(),
       chain: chainConfigSchema.exactOptional(),
+      software: softwareStackSchema.exactOptional(),
       link: linkPolicySchema.exactOptional(),
       outage: outageConfigSchema.exactOptional(),
       rankDelay: rankDelaysSchema.exactOptional(),

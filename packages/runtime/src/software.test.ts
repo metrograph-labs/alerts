@@ -1,7 +1,6 @@
-import { softwareMatches, type ObservationId, type SoftwareStack, type Subject } from "@mark1russell7/alerts";
+import { softwareMatches, versRangeCheck, type ObservationId, type SoftwareStack, type Subject } from "@mark1russell7/alerts";
 import { createOsvMap, fileBody, OSV_PROVIDERS } from "@mark1russell7/alerts-source-osv";
 import { describe, expect, it } from "vitest";
-import { versRangeCheck } from "./software.ts";
 
 // The gate of AL-197: advisories of five ecosystems, and a sample stack with known matches. The OSV map gives the
 // subjects with their ranges. The match gives 0 misses and 0 false matches.

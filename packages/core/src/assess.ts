@@ -39,6 +39,7 @@ import { hasKind } from "./kind-prefix.ts";
 import type { MapShape } from "./map.ts";
 import { DEFAULT_ENTRY_MAX, DEFAULT_RELEVANCE_POLICY, canReach, relevance, topicEntry } from "./relevance.ts";
 import { shadowScore } from "./score.ts";
+import { SOFTWARE_PART_SYSTEM, softwareMatches, versRangeCheck, type SoftwareMatch, type SoftwareStack } from "./software.ts";
 import { isShape, shapeDistanceKm } from "./shapes.ts";
 import { STATE_POSTAL } from "./state-codes.ts";
 import { kindOfNode, nodesOverlap, placeNode, subjectNode } from "./why.ts";
@@ -423,6 +424,15 @@ export function scoreRuleResult(
  * when a person has a score rule and the policy has no priors. Else the function gives the policy as it is. Thus with no
  * score rule, each assessment stays the same.
  */
+/**
+ * This function gives the policy of the assessment with the software of the stack (AL-197). With no software, it gives
+ * the policy as it is. Thus with no software, each assessment stays the same.
+ */
+export function policyWithSoftware(policy: AssessPolicy | undefined, software: SoftwareStack | undefined): AssessPolicy | undefined {
+  if (software === undefined) return policy;
+  return { ...(policy ?? DEFAULT_ASSESS_POLICY), software };
+}
+
 export function policyWithPriors(
   policy: AssessPolicy | undefined,
   people: readonly Pick<PersonWatch, "score">[],
@@ -687,7 +697,11 @@ export function assess(
   // The escalation reports of a person go to the people who watch that person, and not to the person. Thus the subject
   // of the person itself matches no watch of the person, also a watch with no id.
   const others = incident.about.filter((subject) => !(subject.system === PERSON_SUBJECT && subject.id === person.person));
-  const subjects = matchSubjects({ about: others }, person.subjects ?? []);
+  // Each match of an advisory to a part of the stack gives the subject of the part (AL-197). The match is a query at
+  // each assessment, so a new version of a part ends the match at once.
+  const software = watchedMatches(others, policy.software, person.subjects ?? []);
+  const parts = software.map((match) => ({ system: SOFTWARE_PART_SYSTEM, id: match.part }));
+  const subjects = matchSubjects({ about: [...others, ...parts] }, person.subjects ?? []);
   let muted: Assessment["muted"];
   const result = (level: AssessedLevel): Assessment => ({
     incident: incident.anchor,
@@ -787,7 +801,14 @@ export function assess(
     reasons.push({ kind: "subject", subject });
     level = higherLevel(level, atMatch(undefined, incidentLevel, kindOfNode(subjectNode({ system: subject.system, id: subject.id ?? "*" })) ?? "entity"));
   }
+  for (const match of software) reasons.push({ kind: "software", match });
   return result(level);
+}
+
+// The matches of the advisories of the subjects to the software of the stack, for the parts that the person watches.
+function watchedMatches(about: Incident["about"], stack: SoftwareStack | undefined, watches: readonly SubjectWatch[]): SoftwareMatch[] {
+  if (stack === undefined || !watches.some((watch) => watch.system === SOFTWARE_PART_SYSTEM)) return [];
+  return softwareMatches(about, stack, versRangeCheck).filter((match) => matchSubjects({ about: [{ system: SOFTWARE_PART_SYSTEM, id: match.part }] }, watches).length > 0);
 }
 
 /**

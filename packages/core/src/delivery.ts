@@ -39,6 +39,7 @@ import { heldPlaces, type PlaceHolds } from "./place-holds.ts";
 import type { Suppression } from "./throttle.ts";
 import { unknownKinds } from "./taxonomy.ts";
 import { assessmentWhy } from "./why.ts";
+import { softwareMatchText, type SoftwareMatch } from "./software.ts";
 
 /** A person of the delivery. The private configuration gives each one. */
 export interface Recipient {
@@ -245,6 +246,8 @@ export interface Route {
    * `PersonWatch.subjects` has no why.
    */
   readonly why?: WhyRecord;
+  /** The matches of the advisory to the parts of the software that the person watches (AL-197). The message names each. */
+  readonly software?: readonly SoftwareMatch[];
   /** The hold of the send limit (`limitRoutes`). A held route has no send in its plan. Its cancels stay. */
   readonly held?: EscalationHold;
   /**
@@ -390,6 +393,7 @@ export function route(input: RouteInput): Route[] {
         const closing = closed ?? (freshEnd ? { incident: incident.anchor, person, at: now, ...(reason === "ended" ? {} : { reason }) } : undefined);
         if (changed && closing !== undefined) closes.push(closing);
         const why = current && assessment !== undefined ? assessmentWhy(assessment) : undefined;
+        const software = current ? (assessment?.reasons ?? []).flatMap((reason) => (reason.kind === "software" ? [reason.match] : [])) : [];
         // A later episode keeps only the acknowledgments from its first time. An end `muted` joins two episodes: the
         // acknowledgments of the episode before it still count, thus a change of a mute does not alert again.
         let from = episode;
@@ -454,6 +458,7 @@ export function route(input: RouteInput): Route[] {
             ...(closing === undefined ? {} : { end: closing }),
             freshEnd,
             ...(why === undefined ? {} : { why }),
+            ...(software.length === 0 ? {} : { software }),
             ...(shared ? { imported: true as const } : {}),
           });
         });
@@ -636,11 +641,16 @@ export function recipientProblems(recipient: Recipient, channels: readonly Chann
  * stops the message that tells of it.
  *
  * The `why` is the why line of the channel, from `whyLine`. An empty line gives no field.
+ *
+ * Each match of the advisory to a part of the software (`Route.software`, AL-197) gives one line at the top of the body.
+ * The line names the part, the package, the installed version and the fixed version. A last line gives the severity.
  */
-export function messageOf(incident: Incident, reports: readonly Report[], send: EscalationSend, why?: string): Message {
+export function messageOf(incident: Incident, reports: readonly Report[], send: EscalationSend, why?: string, software: readonly SoftwareMatch[] = []): Message {
   const report = textReport(incident, reports);
   const title = titleOf(incident, report);
-  const body = [report?.instruction, report?.areaText, report?.description].flatMap((part) => (part === undefined || part.trim() === "" ? [] : [part.trim()])).join("\n\n");
+  const matches = software.length === 0 ? [] : [[...software.map(softwareMatchText), `The severity of the advisory is ${incident.severity}.`].join("
+")];
+  const body = [...matches, report?.instruction, report?.areaText, report?.description].flatMap((part) => (part === undefined || part.trim() === "" ? [] : [part.trim()])).join("\n\n");
   return {
     key: messageKey(send),
     person: send.person,
