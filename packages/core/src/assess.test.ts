@@ -37,6 +37,7 @@ import {
   linesAt,
   matchPlaces,
   matchSubjects,
+  policyWithSoftware,
   regionContains,
   regionCovers,
   tableLevel,
@@ -1004,5 +1005,43 @@ describe("a private incident (AL-92)", () => {
     expect(tell("system.tell.needs-you", "extreme", "immediate")).toBe("urgent");
     // The class admits only the status `system`.
     expect(tell("system.tell.live", "moderate", "expected", "actual")).toBe("none");
+  });
+});
+
+describe("the match of an advisory to the software of the stack (AL-197)", () => {
+  const software = {
+    parts: [
+      { part: "web", packages: [{ purl: "pkg:npm/lib", version: "2.3.0" }] },
+      { part: "api", packages: [{ purl: "pkg:npm/lib", version: "2.4.1" }] },
+    ],
+  };
+  const policy = policyWithSoftware(undefined, software)!;
+  const advisory = (ranges?: readonly string[]) =>
+    incident({ kind: "cyber.supply-chain.malicious-package", severity: "severe", urgency: "immediate", areas: [], about: [{ system: "purl", id: "pkg:npm/lib", ...(ranges === undefined ? {} : { ranges }) }] });
+  const watcher = (id?: string): PersonWatch => ({ ...person(), subjects: [{ system: "software.part", ...(id === undefined ? {} : { id }) }] });
+
+  it("gives the advisory to a person who watches the parts, with the match as a reason", () => {
+    const found = assess(advisory(["vers:npm/<2.4.1"]), watcher(), places, policy);
+    expect(found.level).not.toBe("none");
+    expect(found.reasons).toContainEqual({ kind: "software", match: { part: "web", purl: "pkg:npm/lib", installed: "2.3.0", verdict: "affected", fixed: "2.4.1" } });
+    expect(found.reasons.filter((reason) => reason.kind === "software")).toHaveLength(1);
+    expect(assessmentSchema.safeParse(found).success).toBe(true);
+  });
+
+  it("gives no level for a fixed version, for a part that the person does not watch, or with no software", () => {
+    expect(assess(advisory(["vers:npm/<2.0.0"]), watcher(), places, policy).level).toBe("none");
+    expect(assess(advisory(["vers:npm/<2.4.1"]), watcher("api"), places, policy).level).toBe("none");
+    expect(assess(advisory(["vers:npm/<2.4.1"]), person(), places, policy).level).toBe("none");
+    expect(assess(advisory(["vers:npm/<2.4.1"]), watcher(), places).level).toBe("none");
+  });
+
+  it("gives a match unknown for an advisory with no range", () => {
+    const found = assess(advisory(), watcher("api"), places, policy);
+    expect(found.reasons).toContainEqual({ kind: "software", match: { part: "api", purl: "pkg:npm/lib", installed: "2.4.1", verdict: "unknown" } });
+  });
+
+  it("keeps the policy with no software", () => {
+    expect(policyWithSoftware(undefined, undefined)).toBeUndefined();
+    expect(policyWithSoftware(DEFAULT_ASSESS_POLICY, undefined)).toBe(DEFAULT_ASSESS_POLICY);
   });
 });

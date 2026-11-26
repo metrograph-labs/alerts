@@ -3,10 +3,11 @@
  * `purl`, each with the ranges of its affected versions. A stack gives the installed packages of each part. A match is a
  * part with an installed version in a range. Thus the match is a query over the live data, not a list by hand.
  *
- * The core names no version scheme. The caller gives the check of a version against a range (`RangeCheck`), for
- * example from the version order of `@mark1russell7/package-id`.
+ * The match takes the check of a version against a range (`RangeCheck`). The assessment uses `versRangeCheck`, with
+ * the version order of `@mark1russell7/package-id`.
  */
 
+import { parseVers, versContains, versEnd } from "@mark1russell7/package-id";
 import type { Subject } from "./contracts.ts";
 
 /** The system of the subject of a package: its purl with no version. */
@@ -42,6 +43,19 @@ export interface RangeResult {
 
 /** The check of a version against a range, as a `vers` text. */
 export type RangeCheck = (range: string, version: string) => RangeResult;
+
+/**
+ * This function checks a version against a `vers` range with the version order of `@mark1russell7/package-id`. A text
+ * that is not a range, or a scheme with no known order, gives `affected: undefined`.
+ */
+export const versRangeCheck: RangeCheck = (range, version) => {
+  const vers = parseVers(range);
+  if (vers === undefined) return { affected: undefined };
+  const affected = versContains(vers, version);
+  if (affected !== true) return { affected };
+  const fixed = versEnd(vers, version);
+  return fixed === undefined ? { affected } : { affected, fixed };
+};
 
 /**
  * The verdict of a match. `affected`: a range holds the installed version. `unknown`: no range gives a decision, because
@@ -120,4 +134,18 @@ function verdictOf(
     }
   }
   return unknown ? { verdict: "unknown" } : undefined;
+}
+
+/** The system of the subject of a part of the stack, for example `{ system: "software.part", id: "web" }`. */
+export const SOFTWARE_PART_SYSTEM = "software.part";
+
+/**
+ * This function gives the text of one match for a message, for example `The part web has pkg:npm/a 2.3.0. The first
+ * fixed version is 2.4.1.` A match `unknown` tells that the affected versions are not known.
+ */
+export function softwareMatchText(match: SoftwareMatch): string {
+  const part = match.label === undefined ? `The part ${match.part}` : `The part ${match.part} (${match.label})`;
+  const has = `${part} has ${match.purl} ${match.installed}.`;
+  if (match.verdict === "unknown") return `${has} The advisory does not tell if this version is affected.`;
+  return match.fixed === undefined ? `${has} The advisory gives no fixed version.` : `${has} The first fixed version is ${match.fixed}.`;
 }

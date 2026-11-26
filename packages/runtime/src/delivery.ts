@@ -609,7 +609,7 @@ export function createDispatcher(options: DeliveryOptions, context: DeliveryCont
               }
               const limit = whyLimits.get(send.channel);
               const why = limit === undefined || entry.why === undefined ? undefined : whyLine(entry.why, labelsOf(send.person), limit);
-              const message = messageOf(entry.incident, context.state().merge.reports, send, why);
+              const message = messageOf(entry.incident, context.state().merge.reports, send, why, entry.software);
               const deliveryOf = (accepted: Extract<SendOutcome, { ok: true }>): Delivery => ({ key: message.key, incident: send.incident, level: send.level, person: send.person, channel: send.channel, step: send.step, at: accepted.accepted, receipt: accepted.receipt });
               // A send with no free place on its channel goes at a later step. It has no copy yet.
               const release = place(send.channel);

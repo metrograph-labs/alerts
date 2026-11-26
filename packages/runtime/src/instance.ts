@@ -25,6 +25,7 @@ import {
   placeLabels,
   placeCodesWithContaining,
   policyWithPriors,
+  policyWithSoftware,
   sendLimitsOf,
   throttleOf,
   sourceCovers,
@@ -1296,10 +1297,14 @@ export function openInstance(options: InstanceOptions): Instance {
   ];
   // The labels of the places go only into the why line of each message. The policy of the configuration replaces the default policy of the core.
   // A person with a score rule needs the priors in the policy (AL-31). With no score rule, the policy stays the same.
-  const assess = policyWithPriors(
-    config.assess,
-    recipients.map((recipient) => recipient.watch),
-    options.priors,
+  // The software of the stack goes into the policy (AL-197). Each assessment matches the advisories to it again.
+  const assess = policyWithSoftware(
+    policyWithPriors(
+      config.assess,
+      recipients.map((recipient) => recipient.watch),
+      options.priors,
+    ),
+    config.software,
   );
   const delivery: DeliveryOptions = {
     recipients,

@@ -3,7 +3,7 @@
  * the reports of an incident. These functions only write text. The core makes each decision.
  */
 
-import { placeOfNode, type AssessedLevel, type AssessReason, type HealthStep, type Incident, type Report } from "@mark1russell7/alerts";
+import { placeOfNode, softwareMatchText, type AssessedLevel, type AssessReason, type HealthStep, type Incident, type Report } from "@mark1russell7/alerts";
 import { NAMES, SHORT_NAMES } from "./demo.ts";
 import { estimateText, scoreRuleText, shadowText } from "./score-view.ts";
 
@@ -104,6 +104,8 @@ export function reasonText(reason: AssessReason, incident: Pick<Incident, "sever
     }
     case "subject":
       return `The person watches the subject ${reason.subject.system}${reason.subject.id === undefined ? "" : ` ${reason.subject.id}`}.`;
+    case "software":
+      return `${softwareMatchText(reason.match)} The person watches the part.`;
     case "table": {
       // A kind with no class from the sources of another copy only gets the quiet table (AL-76).
       const table =

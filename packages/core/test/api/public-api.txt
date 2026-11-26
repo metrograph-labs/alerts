@@ -443,6 +443,7 @@ SEND_LIMIT_MIN_WINDOW: build/index.d.ts#SEND_LIMIT_MIN_WINDOW
 SERIES_VERSION: build/index.d.ts#SERIES_VERSION
 SEVERITY_ORDER: build/index.d.ts#SEVERITY_ORDER
 SHARED_HANDOVER: build/index.d.ts#SHARED_HANDOVER
+SOFTWARE_PART_SYSTEM: build/index.d.ts#SOFTWARE_PART_SYSTEM
 SOURCE_SUBJECT: build/index.d.ts#SOURCE_SUBJECT
 STATE_FIPS: build/index.d.ts#STATE_FIPS
 STATE_POSTAL: build/index.d.ts#STATE_POSTAL
@@ -749,6 +750,7 @@ indicatorAreaSchema: build/index.d.ts#indicatorAreaSchema
 indicatorBreadth: build/index.d.ts#indicatorBreadth
 indicatorSurprise: build/index.d.ts#indicatorSurprise
 indicatorUnits: build/index.d.ts#indicatorUnits
+installedPackageSchema: build/index.d.ts#installedPackageSchema
 instantSchema: build/index.d.ts#instantSchema
 interestDefaultsConfigSchema: build/index.d.ts#interestDefaultsConfigSchema
 interestEdgeSchema: build/index.d.ts#interestEdgeSchema
@@ -874,6 +876,7 @@ planDigests: build/index.d.ts#planDigests
 policyFor: build/index.d.ts#policyFor
 policyName: build/index.d.ts#policyName
 policyWithPriors: build/index.d.ts#policyWithPriors
+policyWithSoftware: build/index.d.ts#policyWithSoftware
 positionSchema: build/index.d.ts#positionSchema
 probabilitySchema: build/index.d.ts#probabilitySchema
 providerBalanceSchema: build/index.d.ts#providerBalanceSchema
@@ -957,7 +960,11 @@ signalHistories: build/index.d.ts#signalHistories
 signalRate: build/index.d.ts#signalRate
 significanceSchema: build/index.d.ts#significanceSchema
 simplifyBasemap: build/index.d.ts#simplifyBasemap
+softwareMatchSchema: build/index.d.ts#softwareMatchSchema
+softwareMatchText: build/index.d.ts#softwareMatchText
 softwareMatches: build/index.d.ts#softwareMatches
+softwarePartSchema: build/index.d.ts#softwarePartSchema
+softwareStackSchema: build/index.d.ts#softwareStackSchema
 sourceClearAt: build/index.d.ts#sourceClearAt
 sourceClearConfigSchema: build/index.d.ts#sourceClearConfigSchema
 sourceClearPolicy: build/index.d.ts#sourceClearPolicy
@@ -1001,6 +1008,7 @@ urgencySchema: build/index.d.ts#urgencySchema
 useLevelsReached: build/index.d.ts#useLevelsReached
 useStages: build/index.d.ts#useStages
 useUnreadAt: build/index.d.ts#useUnreadAt
+versRangeCheck: build/index.d.ts#versRangeCheck
 watchSchema: build/index.d.ts#watchSchema
 watchedDrillMiss: build/index.d.ts#watchedDrillMiss
 watchedDrillReportAt: build/index.d.ts#watchedDrillReportAt
@@ -1055,6 +1063,7 @@ export interface AlertConfig {
   readonly spend?: readonly SpendConfig[];
   readonly limits?: readonly LimitConfig[];
   readonly chain?: ChainConfig;
+  readonly software?: SoftwareStack;
   readonly link?: LinkPolicy;
   readonly outage?: OutageConfig;
   readonly rankDelay?: RankDelays;
@@ -1103,6 +1112,7 @@ export interface AssessPolicy {
   readonly otherwise: LevelTable;
   readonly relevance?: RelevancePolicy;
   readonly priors?: ScorePriors;
+  readonly software?: SoftwareStack;
 }
 
 ### build/index.d.ts#AssessReason
@@ -1134,6 +1144,9 @@ export type AssessReason = {
 } | {
   readonly kind: "subject";
   readonly subject: SubjectWatch;
+} | {
+  readonly kind: "software";
+  readonly match: SoftwareMatch;
 } | {
   readonly kind: "place-table";
   readonly place: PlaceId;
@@ -3914,6 +3927,7 @@ export interface Route {
   readonly end?: EscalationEnd;
   readonly freshEnd: boolean;
   readonly why?: WhyRecord;
+  readonly software?: readonly SoftwareMatch[];
   readonly held?: EscalationHold;
   readonly imported?: true;
   readonly suppressed?: Suppression;
@@ -3960,6 +3974,9 @@ export declare const SEVERITY_ORDER: readonly Severity[];
 
 ### build/index.d.ts#SHARED_HANDOVER
 export declare const SHARED_HANDOVER: Duration;
+
+### build/index.d.ts#SOFTWARE_PART_SYSTEM
+export declare const SOFTWARE_PART_SYSTEM = "software.part";
 
 ### build/index.d.ts#SOURCE_SUBJECT
 export declare const SOURCE_SUBJECT = "alerts.source";
@@ -4356,7 +4373,7 @@ export type SubjectKey = Pick<Subject, "system" | "id">;
 export type SubjectKind = "place" | "topic" | "entity";
 
 ### build/index.d.ts#SubjectSystem
-export type SubjectSystem = "place" | "point" | "polygon" | "ugc" | "ugc-fire" | "same" | "fips" | "state" | "iso3166" | "geonames" | "icao" | "topic" | "iptc" | "cap-category" | "cve" | "wikidata" | "asn" | "domain" | "provider-region" | "ticker" | "lei" | "purl";
+export type SubjectSystem = "place" | "point" | "polygon" | "ugc" | "ugc-fire" | "same" | "fips" | "state" | "iso3166" | "geonames" | "icao" | "topic" | "iptc" | "cap-category" | "cve" | "wikidata" | "asn" | "domain" | "provider-region" | "ticker" | "lei" | "purl" | "software.part";
 
 ### build/index.d.ts#SubjectWatch
 export interface SubjectWatch {
@@ -5256,6 +5273,9 @@ export declare function indicatorSurprise(breadth: IndicatorBreadth, histories: 
 ### build/index.d.ts#indicatorUnits
 export declare function indicatorUnits(breadth: IndicatorBreadth): SignalUnit[];
 
+### build/index.d.ts#installedPackageSchema
+export declare const installedPackageSchema: z.ZodType<InstalledPackage, InstalledPackage>;
+
 ### build/index.d.ts#instantSchema
 export declare const instantSchema: z.ZodType<Instant, Instant>;
 
@@ -5451,7 +5471,7 @@ export declare function mergeParts(root: AlertConfig, parts: readonly NamedPart[
 export declare function messageKey(input: MessageKeyInput): string;
 
 ### build/index.d.ts#messageOf
-export declare function messageOf(incident: Incident, reports: readonly Report[], send: EscalationSend, why?: string): Message;
+export declare function messageOf(incident: Incident, reports: readonly Report[], send: EscalationSend, why?: string, software?: readonly SoftwareMatch[]): Message;
 
 ### build/index.d.ts#messageSchema
 export declare const messageSchema: z.ZodType<Message, Message>;
@@ -5635,6 +5655,9 @@ export declare function policyName(policy: EscalationPolicy): string;
 
 ### build/index.d.ts#policyWithPriors
 export declare function policyWithPriors(policy: AssessPolicy | undefined, people: readonly Pick<PersonWatch, "score">[], priors: ScorePriors | undefined): AssessPolicy | undefined;
+
+### build/index.d.ts#policyWithSoftware
+export declare function policyWithSoftware(policy: AssessPolicy | undefined, software: SoftwareStack | undefined): AssessPolicy | undefined;
 
 ### build/index.d.ts#positionSchema
 export declare const positionSchema: z.ZodType<Position, Position>;
@@ -5885,8 +5908,20 @@ export declare const significanceSchema: z.ZodType<Significance, Significance>;
 ### build/index.d.ts#simplifyBasemap
 export declare function simplifyBasemap(regions: readonly MapRegion[], toleranceKm: number): MapRegion[];
 
+### build/index.d.ts#softwareMatchSchema
+export declare const softwareMatchSchema: z.ZodType<SoftwareMatch, SoftwareMatch>;
+
+### build/index.d.ts#softwareMatchText
+export declare function softwareMatchText(match: SoftwareMatch): string;
+
 ### build/index.d.ts#softwareMatches
 export declare function softwareMatches(about: readonly Subject[], stack: SoftwareStack, check: RangeCheck): SoftwareMatch[];
+
+### build/index.d.ts#softwarePartSchema
+export declare const softwarePartSchema: z.ZodType<SoftwarePart, SoftwarePart>;
+
+### build/index.d.ts#softwareStackSchema
+export declare const softwareStackSchema: z.ZodType<SoftwareStack, SoftwareStack>;
 
 ### build/index.d.ts#sourceClearAt
 export declare function sourceClearAt(lines: SystemLines, snapshot: Pick<SystemSnapshot, "sources" | "health" | "sourceClear">, at: Instant): Instant[];
@@ -6016,6 +6051,9 @@ export declare function useStages(use: LimitUse, at: Instant): UseStage[];
 
 ### build/index.d.ts#useUnreadAt
 export declare function useUnreadAt(use: LimitUse): Instant;
+
+### build/index.d.ts#versRangeCheck
+export declare const versRangeCheck: RangeCheck;
 
 ### build/index.d.ts#watchSchema
 export declare const watchSchema: z.ZodType<Watch, Watch>;

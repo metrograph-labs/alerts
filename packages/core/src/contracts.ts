@@ -5,6 +5,8 @@
  * crosses a procedure call, a log row and a copy of the system without a change.
  */
 
+import type { SoftwareMatch, SoftwareStack } from "./software.ts";
+
 // =============================================================================
 // Time, ids and references
 // =============================================================================
@@ -1393,6 +1395,11 @@ export interface AssessPolicy {
    * read, and the table decides. `policyWithPriors` sets them only when a person has a score rule.
    */
   readonly priors?: ScorePriors;
+  /**
+   * The software of the stack (AL-197). With it, each match of an advisory to a part (`softwareMatches`) gives the subject
+   * `software.part` of the part. A person who watches that system gets the advisory. `policyWithSoftware` sets it.
+   */
+  readonly software?: SoftwareStack;
 }
 
 /**
@@ -1670,6 +1677,8 @@ export type AssessReason =
     }
   /** The person watches a subject of the incident. */
   | { readonly kind: "subject"; readonly subject: SubjectWatch }
+  /** An advisory of the incident matches a part of the software of the stack, and the person watches the part. */
+  | { readonly kind: "software"; readonly match: SoftwareMatch }
   /**
    * The level of the table at this place is not the level of the incident. The lines of these reports hold the
    * place, and the highest table of those lines gives the level.
@@ -1770,7 +1779,8 @@ export type SubjectSystem =
   | "provider-region"
   | "ticker"
   | "lei"
-  | "purl";
+  | "purl"
+  | "software.part";
 
 /**
  * The kind of the subjects of each system. The list is closed. A new system comes with the first source or
@@ -1799,6 +1809,7 @@ export const SUBJECT_SYSTEMS: Readonly<Record<SubjectSystem, SubjectKind>> = {
   ticker: "entity",
   lei: "entity",
   purl: "entity",
+  "software.part": "entity",
 };
 
 /**

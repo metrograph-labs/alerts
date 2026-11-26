@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Subject } from "./contracts.ts";
-import { subjectSchema } from "./schemas.ts";
-import { softwareMatches, type RangeCheck, type SoftwareStack } from "./software.ts";
+import { alertConfigSchema, subjectSchema, softwareStackSchema } from "./schemas.ts";
+import { softwareMatches, softwareMatchText, versRangeCheck, type RangeCheck, type SoftwareStack } from "./software.ts";
 
 // A check for the tests: a range `vers:test/<N` holds each whole number below N, and gives N as the fixed version. A
 // range `vers:test/?` has no known order.
@@ -51,5 +51,31 @@ describe("the schema of a subject with ranges", () => {
   it("keeps the ranges and refuses a range that is not a text", () => {
     expect(subjectSchema.parse({ system: "purl", id: "pkg:npm/a", ranges: ["vers:npm/<1.0.0"] })).toEqual({ system: "purl", id: "pkg:npm/a", ranges: ["vers:npm/<1.0.0"] });
     expect(subjectSchema.safeParse({ system: "purl", id: "pkg:npm/a", ranges: [1] }).success).toBe(false);
+  });
+});
+
+describe("the schema of the software of a stack", () => {
+  it("keeps a stack, and refuses a purl with a version or two parts with one id", () => {
+    expect(softwareStackSchema.parse(stack)).toEqual(stack);
+    expect(softwareStackSchema.safeParse({ parts: [{ part: "web", packages: [{ purl: "pkg:npm/a@1.0.0", version: "1.0.0" }] }] }).success).toBe(false);
+    expect(softwareStackSchema.safeParse({ parts: [{ part: "web", packages: [] }, { part: "web", packages: [] }] }).success).toBe(false);
+  });
+
+  it("takes the software as a field of the configuration", () => {
+    const config = { format: "alerts-config/1", places: [], people: [], contacts: [], policies: [], software: stack };
+    expect(alertConfigSchema.safeParse(config).success).toBe(true);
+  });
+});
+
+describe("the text of a match", () => {
+  it("names the part, the package, the installed version and the fixed version", () => {
+    expect(softwareMatchText({ part: "web", purl: "pkg:npm/a", installed: "3", verdict: "affected" })).toBe("The part web has pkg:npm/a 3. The advisory gives no fixed version.");
+  });
+});
+
+describe("the check of the ranges of the core", () => {
+  it("gives the verdict and the fixed version with the order of package-id", () => {
+    expect(versRangeCheck("vers:npm/<2.4.1", "2.3.0")).toEqual({ affected: true, fixed: "2.4.1" });
+    expect(versRangeCheck("npm/<1.0.0", "0.9.0")).toEqual({ affected: undefined });
   });
 });

@@ -1117,6 +1117,20 @@ describe("messageOf", () => {
     expect("why" in messageOf(members, reports, send, "")).toBe(false);
   });
 
+  it("puts each match of the software and the severity at the top of the body (AL-197)", () => {
+    const reports = [report(anchor, { sent: T0, headline: "An advisory", description: "A package is malicious." })];
+    const software = [
+      { part: "web", label: "The web server", purl: "pkg:npm/lib", installed: "2.3.0", verdict: "affected", fixed: "2.4.1" },
+      { part: "api", purl: "pkg:npm/lib", installed: "1.0.0", verdict: "unknown" },
+    ] as const;
+    expect(messageOf(incident(), reports, send, undefined, software).body).toBe(
+      "The part web (The web server) has pkg:npm/lib 2.3.0. The first fixed version is 2.4.1.\n" +
+        "The part api has pkg:npm/lib 1.0.0. The advisory does not tell if this version is affected.\n" +
+        `The severity of the advisory is ${incident().severity}.\n\nA package is malicious.`,
+    );
+    expect(messageOf(incident(), reports, send, undefined, []).body).toBe("A package is malicious.");
+  });
+
   it("uses the label of the kind when no report of the incident is in the state", () => {
     const message = messageOf(incident(), [], { ...send, quiet: true });
     expect(message.title).toBe("Tornado");
