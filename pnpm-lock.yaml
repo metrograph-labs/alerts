@@ -1061,8 +1061,8 @@ importers:
         specifier: ^1.5.0
         version: 1.5.0
       '@mark1russell7/text':
-        specifier: ^0.0.18
-        version: 0.0.18
+        specifier: ^0.0.20
+        version: 0.0.20
       polite-crawler:
         specifier: ^0.7.12
         version: 0.7.12(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
@@ -1175,8 +1175,8 @@ importers:
         specifier: ^1.5.0
         version: 1.5.0
       '@mark1russell7/text':
-        specifier: ^0.0.18
-        version: 0.0.18
+        specifier: ^0.0.20
+        version: 0.0.20
       polite-crawler:
         specifier: ^0.7.12
         version: 0.7.12(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
@@ -1996,8 +1996,8 @@ importers:
         specifier: ^1.5.0
         version: 1.5.0
       '@mark1russell7/text':
-        specifier: ^0.0.18
-        version: 0.0.18
+        specifier: ^0.0.20
+        version: 0.0.20
       polite-crawler:
         specifier: ^0.7.12
         version: 0.7.12(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
@@ -3081,6 +3081,10 @@ packages:
 
   '@mark1russell7/text@0.0.19':
     resolution: {integrity: sha512-pPJV318wzfEcsnnzlqVu+OBp/o9VLKWsAo1Wkf4rNaerOjgINDo+vErhmtPVQw6BzcVmGn4brXmMLcosCT9sAw==}
+    engines: {node: '>=22.12'}
+
+  '@mark1russell7/text@0.0.20':
+    resolution: {integrity: sha512-HrjBak4BE0fDC+bLzFi/c4NDCHqiUm7VhYR5YhJmkApRSB8mUOao4bFiO9Jy3xwpsCGJCj4echVDCUxXjV+3NA==}
     engines: {node: '>=22.12'}
 
   '@mark1russell7/text@0.0.6':
@@ -5646,6 +5650,8 @@ snapshots:
   '@mark1russell7/text@0.0.18': {}
 
   '@mark1russell7/text@0.0.19': {}
+
+  '@mark1russell7/text@0.0.20': {}
 
   '@mark1russell7/text@0.0.6': {}
 

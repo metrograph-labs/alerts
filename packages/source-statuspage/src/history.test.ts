@@ -116,4 +116,10 @@ describe("spanOf", () => {
     expect(spanOf("Foo 1, 10:00 UTC", 2, 2027)).toBeUndefined();
     expect(ZONE_OFFSETS["UTC"]).toBe(0);
   });
+
+  it("reads the markup of the history file, with a reference in it", () => {
+    const span = { start: Date.parse("2027-03-01T09:00:00Z"), end: Date.parse("2027-03-01T11:00:00Z") };
+    expect(spanOf("Mar <var data-var='date'>1</var>, <var data-var='time'>10:00</var> - <var data-var='time'>12:00</var> CET", 2, 2027)).toEqual(span);
+    expect(spanOf("Mar <var>1</var>,&nbsp;<var>10:00</var>&nbsp;-&nbsp;<var>12:00</var> CET", 2, 2027)).toEqual(span);
+  });
 });

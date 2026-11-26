@@ -14,6 +14,7 @@
  */
 
 import { arrayOf, isRecord, numberOf, textOf, timeOf, type Fields } from "@mark1russell7/optional/read";
+import { plainText } from "@mark1russell7/text/plain-text";
 
 /** The path of the documented list of the latest incidents of a page. */
 export const HISTORY_PATH = "/api/v2/incidents.json";
@@ -155,33 +156,14 @@ export interface HistoryFileRead extends HistoryRead {
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-const SPAN_PATTERN = /^([A-Z][a-z]{2}) (\d{1,2}), (\d{2}):(\d{2})(?: - (?:([A-Z][a-z]{2}) (\d{1,2}), )?(\d{2}):(\d{2}))? ([A-Z]{2,5})$/u;
+// The plain text puts one space for each tag, thus `<var>1</var>,` gives `1 ,`. The pattern permits that space before a comma.
+const SPAN_PATTERN = /^([A-Z][a-z]{2}) (\d{1,2}) ?, (\d{2}):(\d{2})(?: - (?:([A-Z][a-z]{2}) (\d{1,2}) ?, )?(\d{2}):(\d{2}))? ([A-Z]{2,5})$/u;
 
 /** This function gives the year of a month near a known month. A month more than half a year away is in the next or the last year. */
 function yearNear(month: number, knownMonth: number, knownYear: number): number {
   if (month - knownMonth > 6) return knownYear - 1;
   if (knownMonth - month > 6) return knownYear + 1;
   return knownYear;
-}
-
-// The text of a timestamp with no markup. One pass drops each part from `<` to `>`, and each run of white space becomes
-// one space. The result goes only to a pattern, not to a page. The one pass keeps the time linear in the length of the text.
-function plainText(text: string): string {
-  let out = "";
-  let inTag = false;
-  let space = false;
-  for (const char of text) {
-    if (inTag) {
-      if (char === ">") inTag = false;
-    } else if (char === "<") inTag = true;
-    else if (/\s/u.test(char)) space = out.length > 0;
-    else {
-      if (space) out += " ";
-      out += char;
-      space = false;
-    }
-  }
-  return out;
 }
 
 /**
@@ -191,7 +173,8 @@ function plainText(text: string): string {
  * a change of the clock can be one hour wrong.
  */
 export function spanOf(timestamp: string, listMonth: number, listYear: number): { readonly start: number; readonly end: number | undefined } | undefined {
-  const match = SPAN_PATTERN.exec(plainText(timestamp));
+  // The plain text of `@mark1russell7/text` is linear in the length of the text, and it decodes a reference such as `&nbsp;`
+  const match = SPAN_PATTERN.exec(plainText(timestamp) ?? "");
   if (match === null) return undefined;
   const offset = ZONE_OFFSETS[match[9]!];
   const month = MONTHS.indexOf(match[1]!);
