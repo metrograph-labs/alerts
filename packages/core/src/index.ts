@@ -50,6 +50,7 @@ export * from "./problems.ts";
 export * from "./interest-defaults.ts";
 export * from "./interests-payload.ts";
 export * from "./relevance.ts";
+export * from "./software.ts";
 export * from "./schemas.ts";
 export * from "./shapes.ts";
 export * from "./system-reports.ts";
