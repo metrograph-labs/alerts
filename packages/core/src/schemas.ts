@@ -657,7 +657,7 @@ export const fetchOutcomeSchema: z.ZodType<FetchOutcome, FetchOutcome> = schemaO
 
 /** This schema checks a part of a message that the map function did not understand. The field `lossy` is absent or true. */
 export const mapProblemSchema: z.ZodType<MapProblem, MapProblem> = schemaOf<MapProblem>()(
-  z.strictObject({ path: z.string(), message: z.string(), fatal: z.boolean(), lossy: z.literal(true).exactOptional() }).readonly(),
+  z.strictObject({ path: z.string(), message: z.string(), fatal: z.boolean(), lossy: z.literal(true).exactOptional(), skipped: z.literal(true).exactOptional() }).readonly(),
 );
 
 /** This schema checks the result of the map function. */

@@ -25,21 +25,23 @@ describe("Problems", () => {
     problems.add("b", "lost too", "lossy");
     problems.add("c", "more", "note");
     problems.add("d", "no report", "fatal");
+    problems.add("e", "skipped by design", "skip");
     expect(problems.list).toEqual([
       { path: "a", message: "lost", fatal: false, lossy: true },
       { path: "b", message: "lost too", fatal: false, lossy: true },
       { path: "c", message: "more", fatal: false },
       { path: "d", message: "no report", fatal: true },
+      { path: "e", message: "skipped by design", fatal: false, skipped: true },
     ]);
     expect(problems.list.every((problem) => !(problem.fatal && problem.lossy === true))).toBe(true);
   });
 
   it("keeps the order of the problems and counts the fatal and the lossy problems", () => {
     const problems = new Problems("m");
-    const effects: ProblemEffect[] = ["note", "fatal", "lossy", "fatal", "fatal", "lossy", "note"];
+    const effects: ProblemEffect[] = ["note", "fatal", "lossy", "fatal", "skip", "fatal", "lossy", "note"];
     for (const [index, effect] of effects.entries()) problems.add(String(index), "p", effect);
-    expect(problems.list.map((problem) => problem.path)).toEqual(["m.0", "m.1", "m.2", "m.3", "m.4", "m.5", "m.6"]);
-    expect([problems.fatal, problems.lossy]).toEqual([3, 2]);
+    expect(problems.list.map((problem) => problem.path)).toEqual(["m.0", "m.1", "m.2", "m.3", "m.4", "m.5", "m.6", "m.7"]);
+    expect([problems.fatal, problems.lossy, problems.skipped]).toEqual([3, 2, 1]);
   });
 
   it("is a problem sink for a reader", () => {
