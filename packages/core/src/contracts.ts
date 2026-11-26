@@ -143,6 +143,11 @@ export interface Subject {
   /** The id in that system, for example `aws/us-east-1`. */
   readonly id: string;
   readonly label?: string;
+  /**
+   * The ranges of the affected versions of a package, as `vers` texts, for example `vers:npm/<4.17.21`. Only a subject of
+   * the system `purl` has them. A version in one range is affected. Absent: the source gives no range.
+   */
+  readonly ranges?: readonly string[];
 }
 
 /**
