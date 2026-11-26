@@ -6,6 +6,9 @@
  * The fetch counts the valid records of each group at the time of the publication, and it gives the counts as one
  * observation. The id of an observation has the URL of the file and the counts. Thus two fetches of one publication give
  * one observation, and the runtime keeps it one time. The log keeps the counts, not the file of approximately 3.5 MB.
+ *
+ * The fetch also gives one observation for each valid accident, closure and obstruction whose location reaches a watched
+ * place with a position. A place has a position only when the owner shares it with this source.
  */
 
 import { gunzipSync } from "node:zlib";
@@ -16,6 +19,7 @@ import { errorMessage } from "@mark1russell7/text";
 import type { Condition, Pace, Transport } from "polite-crawler/api";
 
 import { countBody, SOURCE_ID, type GroupCounts } from "./map.ts";
+import { reachesPlace, recordBody, reportRecords, type LocatedRecord } from "./record.ts";
 
 /** The base URL of the open data of NDW. */
 export const NDW_BASE_URL = "https://opendata.ndw.nu";
@@ -75,8 +79,13 @@ export function countsOf(publication: SituationPublication): PublicationCounts {
   return { published: publication.published, country: publication.country ?? "", groups, unreal: publication.unreal, faults: publication.faults.length };
 }
 
-/** The result of `readFile`: the counts of the file, or the reason of a file that is not a situation publication. */
-export type FileRead = { readonly ok: true; readonly counts: PublicationCounts } | { readonly ok: false; readonly reason: string };
+/**
+ * The result of `readFile`. A situation publication gives its counts and the records that give a report. Another file
+ * gives the reason of the refusal.
+ */
+export type FileRead =
+  | { readonly ok: true; readonly counts: PublicationCounts; readonly records: readonly LocatedRecord[] }
+  | { readonly ok: false; readonly reason: string };
 
 /**
  * This function reads the bytes of the file: gzip, or XML when the transport removed the gzip. It does not throw. A gzip
@@ -92,7 +101,7 @@ export function readFile(bytes: Uint8Array): FileRead {
     return { ok: false, reason: `the gzip of the file does not read: ${errorMessage(error)}` };
   }
   const read = readSituationPublication(xml);
-  return read.ok ? { ok: true, counts: countsOf(read.publication) } : { ok: false, reason: read.reason };
+  return read.ok ? { ok: true, counts: countsOf(read.publication), records: reportRecords(read.publication) } : { ok: false, reason: read.reason };
 }
 
 /**
@@ -115,22 +124,25 @@ export function createNdwFetch(options: NdwFetchOptions): (input: NdwFetchInput,
   const now = options.pace.now;
   const file = `${requester.baseUrl}${SITUATIONS_PATH}`;
   const conditions = new Map<string, Condition>();
-  let last: { readonly url: string; readonly body: string; readonly published: Instant } | undefined;
+  let last: { readonly url: string; readonly body: string; readonly published: Instant; readonly country: string; readonly records: readonly LocatedRecord[] } | undefined;
 
-  const outcomeOf = (url: string, status: number, body: string, published: Instant, latency: number): FetchOutcome => {
-    const observation: Observation = {
+  const outcomeOf = (input: NdwFetchInput, url: string, status: number, read: NonNullable<typeof last>, latency: number): FetchOutcome => {
+    const fetched = now();
+    const observe = (body: string): Observation => ({
       id: observationId({ source: SOURCE_ID, contentType: BODY_TYPE, url: file, body }),
       source: SOURCE_ID,
-      fetched: now(),
+      fetched,
       contentType: BODY_TYPE,
       body,
       transport: { url, status, latency },
-    };
+    });
+    // The watch of each fetch decides the records: a 304 answer also gives the records of a new place.
+    const near = read.records.filter((record) => reachesPlace(record.location, input.watch.places));
     // The time of the publication is the time of the data: NDW writes the file each minute.
-    return { ok: true, observations: [observation], complete: true, asOf: published };
+    return { ok: true, observations: [observe(read.body), ...near.map((record) => observe(recordBody(record, read.country)))], complete: true, asOf: read.published };
   };
 
-  return async (_input, signal) => {
+  return async (input, signal) => {
     const requested = await requester.get({ path: SITUATIONS_PATH, what: "the current road situations", conditions, read: "bytes" }, signal);
     if (!requested.ok) return { ok: false, failure: requested.failure };
     const { url, answer, latency } = requested;
@@ -140,7 +152,7 @@ export function createNdwFetch(options: NdwFetchOptions): (input: NdwFetchInput,
         conditions.delete(url);
         return { ok: false, failure: { kind: "network", message: `a 304 answer with no earlier full answer: ${file}` } };
       }
-      return outcomeOf(url, 304, last.body, last.published, latency);
+      return outcomeOf(input, url, 304, last, latency);
     }
     const bytes = answer.reply.bytes;
     const read = bytes === undefined ? undefined : readFile(bytes);
@@ -150,10 +162,10 @@ export function createNdwFetch(options: NdwFetchOptions): (input: NdwFetchInput,
       last = undefined;
       return { ok: false, failure: { kind: "network", message: `the answer is not a DATEX II situation publication: ${read?.reason ?? "no body"}: ${file}` } };
     }
-    const { counts } = read;
+    const { counts, records } = read;
     // The body has the country of the file: the map refuses a country that is not the Netherlands.
     const body = countBody(counts.published, counts.country, counts.groups, counts.unreal, counts.faults);
-    last = { url, body, published: counts.published };
-    return outcomeOf(url, answer.reply.status, body, counts.published, latency);
+    last = { url, body, published: counts.published, country: counts.country, records };
+    return outcomeOf(input, url, answer.reply.status, last, latency);
   };
 }

@@ -22,7 +22,7 @@
     "@mark1russell7/algebra": "^0.9.9",
     "@mark1russell7/service": "^0.12.2",
     "@mark1russell7/text": "^0.0.18",
-    "@procedures/shell": "^0.68.0"
+    "@procedures/shell": "^0.68.12"
   },
   "devDependencies": {
     "@mark1russell7/cue": "^2.0.0",

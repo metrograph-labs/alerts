@@ -7,7 +7,7 @@ The source adapter of the alert system for NOAA Weather Radio. A receiver of the
 | Entry | What it has |
 | --- | --- |
 | `@mark1russell7/alerts-source-nwr` | The pure source: the feed of the lines, the read of a line, the assembler of the copies, the fetch, the map and the canary check. |
-| `@mark1russell7/alerts-source-nwr/receiver` | The process of the receiver and the decoder, the host check, and the pure argument lists and line split. It needs Node.js. |
+| `@mark1russell7/alerts-source-nwr/receiver` | The process of the receiver and the decoder, the host check, and the pure argument lists. It needs Node.js. |
 
 ## What a host needs
 

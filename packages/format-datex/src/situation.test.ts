@@ -68,8 +68,8 @@ describe("readSituationPublication", () => {
       country: "xx",
       creator: "PUBLISHER",
       records: [
-        { situation: "S1", id: "R1", version: "2", type: "RoadOrCarriagewayOrLaneManagement", kind: "laneClosures", status: "active", probability: "certain", cause: "roadMaintenance", severity: "medium" },
-        { situation: "S2", id: "R2", version: "2", type: "VehicleObstruction", kind: "brokenDownVehicle", status: "definedByValidityTimeSpec", start: Date.parse("2026-11-25T01:09:33.450Z"), probability: "certain", severity: "low" },
+        { situation: "S1", id: "R1", version: "2", type: "RoadOrCarriagewayOrLaneManagement", kind: "laneClosures", status: "active", probability: "certain", cause: "roadMaintenance", severity: "medium", created: Date.parse("2026-11-20T10:00:00Z") },
+        { situation: "S2", id: "R2", version: "2", type: "VehicleObstruction", kind: "brokenDownVehicle", status: "definedByValidityTimeSpec", start: Date.parse("2026-11-25T01:09:33.450Z"), probability: "certain", severity: "low", created: Date.parse("2026-11-20T10:00:00Z") },
       ],
       unreal: 0,
       faults: [],
