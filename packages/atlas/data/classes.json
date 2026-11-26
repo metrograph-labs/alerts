@@ -1080,7 +1080,7 @@
       "CISA sectors: Food and Agriculture",
       "FEMA lifelines: Food, Hydration, Shelter > Agriculture"
     ],
-    "gap": "One source: defra-avian-influenza-zones, for England. aphis-hpai is later, woah-wahis is later: see the reason of each. Round 32: the APHIS page of flocks gave 403, and the CFIA gives its flocks only on a page. Round 34: ecdc-wnv-animal-outbreaks is later, because each query of its layer failed. Round 40: the open data catalog of Canada has no dataset of the infected flocks of the CFIA.",
+    "gap": null,
     "round": 1
   },
   {
