@@ -6,3 +6,5 @@
 - The records of the fixture are 2 closures, 1 vehicle obstruction and 5 records of the group `other`: lane management, speed management and the swing of a bridge.
 - The publication time has nine digits of a second: `2026-11-25T01:12:00.002329901Z`.
 - The open data of NDW is under the license CC0 1.0. The records are facts about roads. They contain no personal data.
+- The closure `NDW18_0140b614-b73b-4b72-a87e-98c9f9e7a9d5` has a line of 3 points, and the vehicle obstruction has one point. These 2 records give a report near a place.
+- The second closure names only a location code with no coordinate. Thus it gives no report.

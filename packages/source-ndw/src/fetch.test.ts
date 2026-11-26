@@ -48,8 +48,9 @@ const bodyOf = (outcome: FetchOutcome): CountBody | undefined => (outcome.ok && 
 describe("readFile", () => {
   it("counts the valid records of each group of the real publication, from gzip and from XML", () => {
     const expected = { published: PUBLISHED, country: "nl", groups: COUNTS, unreal: 0, faults: 0 };
-    expect(readFile(gzipSync(LIVE))).toEqual({ ok: true, counts: expected });
-    expect(readFile(LIVE)).toEqual({ ok: true, counts: expected });
+    // The records of the file are in `record.test.ts`.
+    expect(readFile(gzipSync(LIVE))).toMatchObject({ ok: true, counts: expected });
+    expect(readFile(LIVE)).toMatchObject({ ok: true, counts: expected });
   });
 
   it("gives a reason for a cut gzip, for a gzip larger than the limit after gunzip, and for a text that is not a publication", () => {
