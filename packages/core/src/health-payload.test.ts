@@ -1,11 +1,13 @@
+import { random, seedsFrom } from "@mark1russell7/rigor-generators";
 import { describe, expect, it } from "vitest";
 import type { ChannelId, ChannelQuota, CopyWatch, Coverage, PlaceId, ProviderBalance, ReportId, SourceHealth, SourceId } from "./contracts.ts";
 import { DEFAULT_CHANNEL_DOWN, type ChannelSnapshot } from "./channel-down.ts";
-import { HEALTH_FORMAT, healthPayload, sourceHealthView, type HealthPayloadInput } from "./health-payload.ts";
+import { FAILURE_MESSAGE_LIMIT, failureMessage, HEALTH_FORMAT, healthPayload, sourceHealthView, type HealthPayloadInput } from "./health-payload.ts";
 import type { Lateness } from "./lateness.ts";
 import { healthPayloadSchema, sourceHealthViewSchema } from "./schemas.ts";
 import { balanceStages, copyStages, quotaStages } from "./system-reports.ts";
 
+const SEEDS = seedsFrom(process.env["SEED"], [1, 2, 3, 4]);
 const START = 1_800_000_000_000;
 const NOW = START + 120_000;
 const API = "api" as SourceId;
@@ -54,9 +56,15 @@ const input: HealthPayloadInput = {
 };
 
 describe("sourceHealthView", () => {
-  it("keeps the time and the kind of the last failure, and not its message", () => {
-    expect(sourceHealthView(failing)).toEqual({ ...failing, lastFailure: { at: START + 90_000, kind: "server" } });
+  it("keeps the time, the kind and the redacted message of the last failure", () => {
+    expect(sourceHealthView(failing)).toEqual({ ...failing, lastFailure: { at: START + 90_000, kind: "server", message: "The fetch of /feed?key=[secret] gave 503." } });
     expect(JSON.stringify(sourceHealthView(failing))).not.toContain(KEY);
+    expect(sourceHealthViewSchema.safeParse(sourceHealthView(failing)).success).toBe(true);
+  });
+
+  it("gives no message for a failure with an empty message", () => {
+    const empty: SourceHealth = { ...failing, lastFailure: { at: START, failure: { kind: "network", message: " \n " } } };
+    expect(sourceHealthView(empty).lastFailure).toEqual({ at: START, kind: "network" });
   });
 
   it("keeps a health with no failure as it is", () => {
@@ -65,8 +73,82 @@ describe("sourceHealthView", () => {
   });
 });
 
+describe("failureMessage", () => {
+  it("keeps the cause of a time-out to a host, as on 11-25 for NWWS", () => {
+    expect(failureMessage("the connection failed: connect ETIMEDOUT 192.0.2.10:5222")).toBe("the connection failed: connect ETIMEDOUT 192.0.2.10:5222");
+  });
+
+  it("removes a known secret in each of its forms", () => {
+    const secret = "pa ss/word";
+    const message = `bad answer from https://host.example/x?k=${encodeURIComponent(secret)} with ${secret}`;
+    const text = failureMessage(message, [secret]) ?? "";
+    expect(text).not.toContain(secret);
+    expect(text).not.toContain(encodeURIComponent(secret));
+    expect(text).toBe("bad answer from https://host.example/… with [secret]");
+  });
+
+  it("removes a token of a known shape and the value after the name of a secret, with no list of secrets", () => {
+    const token = `ghp_${"a".repeat(36)}`;
+    expect(failureMessage(`refused: ${token}`)).toBe("refused: [secret]");
+    expect(failureMessage("the reply said api_key=abc123 is not valid")).toBe("the reply said api_key=[secret] is not valid");
+  });
+
+  it("keeps the scheme and the host of a URL, and removes its path, its query and its fragment", () => {
+    expect(failureMessage("no answer in 30000 ms: https://api.example.gov/points/40.7128,-74.0060?units=si#top")).toBe("no answer in 30000 ms: https://api.example.gov/…");
+    expect(failureMessage("GET https://host.example gave 503")).toBe("GET https://host.example gave 503");
+  });
+
+  it("removes the user part of a URL: a user with a password, and a user only", () => {
+    const withPassword = failureMessage("the fetch of https://user:p4ss@host.example/x failed");
+    expect(withPassword).toBe("the fetch of https://[secret]@host.example/… failed");
+    // The message of undici: the name "credentials" is a name of a secret, thus the shape secret-parameter of text takes all of the URL.
+    const undici = failureMessage("Request cannot be constructed from a URL that includes credentials: https://user:p4ss@host.example/x") ?? "";
+    expect(undici).not.toContain("p4ss");
+    expect(undici).not.toContain("user");
+    const userOnly = failureMessage("no answer: https://t0ken9f@host.example/repo.git");
+    expect(userOnly).toBe("no answer: https://[secret]@host.example/…");
+    // An @ in the path is not a user part.
+    expect(failureMessage("GET https://host.example/@me gave 404")).toBe("GET https://host.example/… gave 404");
+  });
+
+  it("joins the white space, and cuts a long message to the limit with no split of a surrogate pair", () => {
+    expect(failureMessage("a\n\n  b\tc")).toBe("a b c");
+    const long = failureMessage("x".repeat(FAILURE_MESSAGE_LIMIT + 50)) ?? "";
+    expect(long).toHaveLength(FAILURE_MESSAGE_LIMIT);
+    expect(long.endsWith("…")).toBe(true);
+    const astral = failureMessage(`${"x".repeat(FAILURE_MESSAGE_LIMIT - 2)}😀😀😀`) ?? "";
+    expect(astral.length).toBeLessThanOrEqual(FAILURE_MESSAGE_LIMIT);
+    expect(astral).toBe(`${"x".repeat(FAILURE_MESSAGE_LIMIT - 2)}…`);
+    expect(failureMessage("x".repeat(FAILURE_MESSAGE_LIMIT))).toHaveLength(FAILURE_MESSAGE_LIMIT);
+  });
+
+  it.each(SEEDS)("gives a message that the schema of the view accepts, for each message (seed %i)", (seed) => {
+    const r = random(seed);
+    // The parts of a message: any code unit (a lone surrogate too), white space, a pair, a URL and a secret.
+    const parts = (): string =>
+      r.pick([
+        () => String.fromCharCode(r.int(0, 0xffff)),
+        () => r.pick([" ", "\n", "\t"]),
+        () => "😀",
+        () => `https://h${String(r.int(0, 9))}.example/p?q=${String(r.int(0, 99))}`,
+        () => `${KEY} token=${KEY}`,
+      ])();
+    for (let round = 0; round < 100; round += 1) {
+      const message = Array.from({ length: r.int(0, 400) }, parts).join("");
+      const view = sourceHealthView({ ...failing, lastFailure: { at: START, failure: { kind: "network", message } } }, [KEY]);
+      expect(sourceHealthViewSchema.safeParse(view).success).toBe(true);
+      expect(view.lastFailure?.message ?? "").not.toContain(KEY);
+    }
+  });
+});
+
 describe("healthPayload", () => {
   const payload = healthPayload(input);
+
+  it("removes the secrets of its input from each message", () => {
+    const withSecret = healthPayload({ ...input, secrets: ["503"] });
+    expect(withSecret.sources[1]?.lastFailure?.message).toBe("The fetch of /feed?key=[secret] gave [secret].");
+  });
 
   it("gives the format, the two times and each list in the order of its input", () => {
     expect(payload.format).toBe(HEALTH_FORMAT);
@@ -98,7 +180,7 @@ describe("healthPayload", () => {
     expect(healthPayload({ ...input, channelDown: { failures: 4, span: 0 } }).channels.map((entry) => entry.down)).toEqual([false, false, false]);
   });
 
-  it("passes its schema after a JSON round trip, and holds no message of a failure", () => {
+  it("passes its schema after a JSON round trip, and holds no secret of a failure", () => {
     const text = JSON.stringify(payload);
     expect(text).not.toContain(KEY);
     expect(healthPayloadSchema.safeParse(JSON.parse(text))).toMatchObject({ success: true });
@@ -111,7 +193,7 @@ describe("healthPayload", () => {
     expect(healthPayloadSchema.safeParse(empty).success).toBe(true);
   });
 
-  it("refuses a payload with a message of a failure, of another format or with an unknown field", () => {
+  it("refuses a payload with the raw failure of a source, of another format or with an unknown field", () => {
     const withMessage = { ...payload, sources: [failing] };
     expect(healthPayloadSchema.safeParse(withMessage).success).toBe(false);
     expect(healthPayloadSchema.safeParse({ ...payload, format: "alerts-health/0" }).success).toBe(false);

@@ -363,6 +363,8 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
   const instance = openInstance({
     config,
     secret,
+    // The health route removes each value of secrets.env from the message of a failure (AL-182).
+    secretValues: values,
     log,
     ...(priors === undefined ? {} : { priors }),
     clock: realClock,
