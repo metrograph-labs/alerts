@@ -128,7 +128,8 @@ describe("the OSV reader", () => {
 describe("the purl of a package", () => {
   it("gives the purl of each ecosystem with a purl type", () => {
     expect(osvPurl("npm", "@waline/client")).toBe("pkg:npm/%40waline/client");
-    expect(osvPurl("PyPI", "Mcp_Diag.Tool")).toBe("pkg:pypi/mcp-diag-tool");
+    // The purl spec swaps only `_` for `-` in a PyPI name. A match key with the PEP 503 form is AL-206.
+    expect(osvPurl("PyPI", "Mcp_Diag.Tool")).toBe("pkg:pypi/mcp-diag.tool");
     expect(osvPurl("crates.io", "besk")).toBe("pkg:cargo/besk");
     expect(osvPurl("RubyGems", "rails")).toBe("pkg:gem/rails");
     expect(osvPurl("Maven", "org.example:core")).toBe("pkg:maven/org.example/core");
