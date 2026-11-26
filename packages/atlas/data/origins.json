@@ -2862,5 +2862,11 @@
     "name": "BEA, the French safety investigation authority for civil aviation",
     "issues": null,
     "note": "The events of bea-aero-notified-events come from the notifications to the BEA."
+  },
+  {
+    "id": "cfia",
+    "name": "CFIA, the Canadian Food Inspection Agency",
+    "issues": null,
+    "note": "The CFIA sets the regulated areas of plant pests in Canada. The releases of gc-news-cfia name them."
   }
 ]

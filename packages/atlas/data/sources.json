@@ -26965,5 +26965,42 @@
       "https://bea.aero/en/legal-notice/"
     ],
     "round": 48
+  },
+  {
+    "id": "gc-news-cfia",
+    "name": "Government of Canada news API: the news releases of the CFIA",
+    "classes": [
+      "env.pest-quarantine"
+    ],
+    "url": "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=foodinspectionagency&sort=publishedDate&orderBy=desc&pick=50&format=atom",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.canada.ca/en/transparency/terms.html",
+      "automated": "unclear",
+      "redistribution": "limited",
+      "note": "The terms page gave no answer in 30 s. A search result of the page tells that a commercial reproduction needs the permission of the institution that owns the content."
+    },
+    "cost": "free",
+    "delay": "The same day: each release has its time of publication.",
+    "history": "The API gives older releases with a date filter.",
+    "rateLimit": "unknown",
+    "calibration": "None. A release names the pest and the new regulated places, for example the counties.",
+    "coverage": "The news releases of the Canadian Food Inspection Agency. 5 of the newest 50 releases were new or larger regulated areas for plant pests. The other releases are about food.",
+    "origins": [
+      "cfia"
+    ],
+    "path": [
+      "api.io.canada.ca"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "An Atom feed with no key gives the new regulated areas of Canada. But a commercial reproduction needs a permission. Such terms do not close a gap (AL-195).",
+    "evidence": [
+      "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=foodinspectionagency&sort=publishedDate&orderBy=desc&pick=50&format=atom"
+    ],
+    "round": 49
   }
 ]
