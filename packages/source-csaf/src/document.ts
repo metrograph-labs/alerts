@@ -5,6 +5,8 @@
 
 import { isRecord, type Fields } from "@mark1russell7/optional/read";
 
+import { affectedPackages, type ProductPackage } from "./products.ts";
+
 /** The TLP labels of a document that the source keeps: the labels for sharing with no limit. */
 export const SHARED_LABELS: ReadonlySet<string> = new Set(["CLEAR", "WHITE"]);
 
@@ -52,6 +54,10 @@ export interface AdvisoryBody {
   readonly products: readonly string[];
   /** True: a remediation of the category `vendor_fix` is in the document. */
   readonly fix: boolean;
+  /** The affected packages, with the ranges of their versions. The body has the field only when the list is not empty. */
+  readonly packages?: readonly ProductPackage[];
+  /** The count of the affected packages above `MAX_PACKAGES` that the body leaves out. */
+  readonly packagesCut?: number;
 }
 
 /**
@@ -137,6 +143,7 @@ export function readAdvisory(source: string, url: string): AdvisoryBody | Refuse
     .filter((reference) => reference["category"] === "self")
     .map((reference) => text(reference, "url"))
     .find(isPage);
+  const affected = affectedPackages(isRecord(value) ? value["product_tree"] : undefined, vulnerabilities);
   const fix = vulnerabilities.some((vulnerability) => records(vulnerability, "remediations").some((remediation) => remediation["category"] === "vendor_fix"));
   return {
     url,
@@ -155,5 +162,7 @@ export function readAdvisory(source: string, url: string): AdvisoryBody | Refuse
     flaws: flawsOf(vulnerabilities),
     products: productNames(isRecord(value) ? value["product_tree"] : undefined),
     fix,
+    ...(affected.packages.length === 0 ? {} : { packages: affected.packages }),
+    ...(affected.cut === 0 ? {} : { packagesCut: affected.cut }),
   };
 }
