@@ -25,7 +25,8 @@
  * - `deploy <commit> [--page] [--alone]` does the whole deploy in one command (AL-186). Its steps are the stage and the swap.
  *   Then it folds when the fold version or the snapshot key changes, and it starts the new code. It stops the runtime only for a fold, or before the
  *   stage on a host with less free memory than `STAGE_MEMORY_FLOOR`. It stops the runtime only when each other copy had a
- *   read in the last `COPY_MAX_AGE`. A host with no other copy stops only with `--alone`. At the end, the runtime must run
+ *   read in the last `COPY_MAX_AGE`, and each other copy is steady (AL-204). A restart takes the runtime down too, thus
+ *   the check comes before the swap. A host with no other copy stops only with `--alone`. At the end, the runtime must run
  *   the new commit, with a start after the begin of the deploy. On Windows, a stop and a start change the boot task.
  *
  * A swap back to older code is a rollback. Do it only when the new code wrote no new kind of event to the log.
@@ -93,6 +94,7 @@ import {
   supervisorChanges,
   swapLink,
   swapRefusal,
+  takesDown,
   textHash,
   withDeployLock,
   withMark,
@@ -257,10 +259,15 @@ function outcomeProblem(outcome: ServiceOutcome): string | undefined {
   }
 }
 
-/** This function stops the runtime and keeps it stopped, after the check of the other copies (AL-186). */
-async function stopLive(alone: boolean): Promise<void> {
+/** This function stops the deploy when a stop of the runtime is not safe now (AL-186, AL-204). */
+async function checkCopies(alone: boolean): Promise<void> {
   const refusal = stopRefusal(await liveCopies(), Date.now(), COPY_MAX_AGE, alone);
   if (refusal !== undefined) throw new Error(refusal);
+}
+
+/** This function stops the runtime and keeps it stopped, after the check of the other copies (AL-186). */
+async function stopLive(alone: boolean): Promise<void> {
+  await checkCopies(alone);
   const problem = outcomeProblem(await stopService(spec, nodeHostPorts(), { discovery: supervisorDiscovery(home) }));
   if (problem !== undefined) throw new Error(`The stop of the runtime failed: ${problem}`);
   print.line("The runtime is stopped. The other copies send the alerts until it is ready again.");
@@ -312,6 +319,8 @@ async function deploy(args: DeployArgs): Promise<void> {
     sha = staged.sha;
     const steps = stepsAfterStage(running, staged.fold);
     print.line(`The next steps of the deploy: ${steps.join(", ")}.`);
+    // A restart also takes the runtime down for its start. The check comes before the swap, thus a refusal changes nothing (AL-204).
+    if (takesDown(steps)) await checkCopies(args.alone);
     for (const next of steps) {
       if (next === "stop") {
         await stopLive(args.alone);

@@ -59,6 +59,11 @@ export interface CopyReadLine {
   readonly copy: string;
   /** The time of the last read that passed, or `null` before the first read. */
   readonly readAt: Instant | null;
+  /**
+   * The first read that told that the copy is not steady, or `null` (AL-204). A copy that started a short time ago is not
+   * steady. A copy of an older build tells nothing, thus it has `null`.
+   */
+  readonly unsteadySince: Instant | null;
 }
 
 /**
@@ -193,7 +198,7 @@ export function statusOf(loop: RuntimeLoop, outage?: { state(): OutageDeployStat
     ...(outage === undefined ? {} : { outage: outage.state() }),
     ...(start === undefined ? {} : { start }),
     ...(last?.modes === undefined ? {} : { modes: last.modes }),
-    ...(copies === undefined ? {} : { copies: copies.watches().map((watch) => ({ copy: watch.copy, readAt: watch.read?.at ?? null })) }),
+    ...(copies === undefined ? {} : { copies: copies.watches().map((watch) => ({ copy: watch.copy, readAt: watch.read?.at ?? null, unsteadySince: watch.unsteadySince ?? null })) }),
   };
 }
 
