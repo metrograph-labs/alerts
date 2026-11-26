@@ -54,6 +54,7 @@ COPY_SUBJECT: build/index.d.ts#COPY_SUBJECT
 COUNTED_CALLS: build/index.d.ts#COUNTED_CALLS
 COUNTED_FAILURES: build/index.d.ts#COUNTED_FAILURES
 COVERAGE_KIND: build/index.d.ts#COVERAGE_KIND
+CPE_SYSTEM: build/index.d.ts#CPE_SYSTEM
 CanaryResult: build/index.d.ts#CanaryResult
 CancelTarget: build/index.d.ts#CancelTarget
 CapMessageKeyInput: build/index.d.ts#CapMessageKeyInput
@@ -1327,6 +1328,9 @@ export declare const COUNTED_FAILURES: readonly ChannelFailureKind[];
 
 ### build/index.d.ts#COVERAGE_KIND
 export declare const COVERAGE_KIND = "system.coverage";
+
+### build/index.d.ts#CPE_SYSTEM
+export declare const CPE_SYSTEM = "cpe";
 
 ### build/index.d.ts#CanaryResult
 export interface CanaryResult {
@@ -2687,6 +2691,7 @@ export interface IndicatorSurprise {
 export interface InstalledPackage {
   readonly purl: string;
   readonly version: string;
+  readonly cpe?: string;
 }
 
 ### build/index.d.ts#Instant

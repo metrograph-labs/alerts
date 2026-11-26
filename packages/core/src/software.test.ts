@@ -47,6 +47,33 @@ describe("the match of an advisory to the software of a stack", () => {
   });
 });
 
+describe("the match of a part by its CPE name", () => {
+  const plc = "cpe:2.3:o:example:panel_plc_firmware:*:*:*:*:*:*:*:*";
+  const devices: SoftwareStack = {
+    parts: [
+      { part: "plant", packages: [{ purl: "pkg:generic/example/panel", version: "3.1.4", cpe: "cpe:2.3:o:Example:Panel_PLC_Firmware:3.1.4:*:*:*:*:*:*:*" }] },
+      { part: "office", packages: [{ purl: "pkg:generic/example/panel", version: "3.1.5", cpe: "cpe:/o:example:panel_plc_firmware:3.1.5" }] },
+      { part: "lab", packages: [{ purl: "pkg:generic/example/panel", version: "3.1.4" }] },
+    ],
+  };
+
+  it("matches the product of the name, with the installed version, and needs the CPE of the part", () => {
+    const about: Subject[] = [{ system: "cpe", id: plc, ranges: ["vers:generic/<3.1.5"] }];
+    expect(softwareMatches(about, devices, versRangeCheck)).toEqual([{ part: "plant", purl: "pkg:generic/example/panel", installed: "3.1.4", verdict: "affected", fixed: "3.1.5" }]);
+  });
+
+  it("gives the verdict unknown for a CPE subject with no range, and no match for another product", () => {
+    expect(softwareMatches([{ system: "cpe", id: plc }], devices, versRangeCheck).map((match) => `${match.part} ${match.verdict}`)).toEqual(["plant unknown", "office unknown"]);
+    expect(softwareMatches([{ system: "cpe", id: "cpe:2.3:o:example:other_firmware:*:*:*:*:*:*:*:*" }], devices, versRangeCheck)).toEqual([]);
+    expect(softwareMatches([{ system: "cpe", id: "not a cpe" }], devices, versRangeCheck)).toEqual([]);
+  });
+
+  it("keeps a CPE name in the schema, and refuses a name with no product", () => {
+    expect(softwareStackSchema.parse(devices)).toEqual(devices);
+    expect(softwareStackSchema.safeParse({ parts: [{ part: "x", packages: [{ purl: "pkg:generic/a/b", version: "1", cpe: "cpe:2.3:o:example:*" }] }] }).success).toBe(false);
+  });
+});
+
 describe("the schema of a subject with ranges", () => {
   it("keeps the ranges and refuses a range that is not a text", () => {
     expect(subjectSchema.parse({ system: "purl", id: "pkg:npm/a", ranges: ["vers:npm/<1.0.0"] })).toEqual({ system: "purl", id: "pkg:npm/a", ranges: ["vers:npm/<1.0.0"] });

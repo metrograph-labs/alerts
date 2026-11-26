@@ -7,17 +7,25 @@
  * the version order of `@mark1russell7/package-id`.
  */
 
-import { parseVers, versContains, versEnd } from "@mark1russell7/package-id";
+import { cpeProductOf, parseVers, versContains, versEnd } from "@mark1russell7/package-id";
 import type { Subject } from "./contracts.ts";
 
 /** The system of the subject of a package: its purl with no version. */
 export const PACKAGE_SYSTEM = "purl";
+
+/**
+ * The system of the subject of a product of a vendor: its CPE name. A match compares the products of two names, with
+ * `cpeProductOf`: the part, the vendor and the product. The version of the name is not part of the match.
+ */
+export const CPE_SYSTEM = "cpe";
 
 /** One installed package of a part: its purl with no version, in the canonical form, and its version. */
 export interface InstalledPackage {
   /** The purl of the package with no version, qualifiers or subpath, for example `pkg:npm/lodash`. */
   readonly purl: string;
   readonly version: string;
+  /** The CPE name of the package, for a product of a vendor that its advisories name by CPE. The match uses its product. */
+  readonly cpe?: string;
 }
 
 /** The software of one part of a stack. */
@@ -83,22 +91,28 @@ export interface SoftwareMatch {
  *
  * A subject of the system `purl` with no field `ranges` is a package with no known range: its verdict is `unknown`. A
  * package with two subjects is affected when one range of one subject holds its version.
+ *
+ * A package with a CPE name also matches each subject of the system `cpe` with the same product. Thus a device of a
+ * vendor matches an advisory that names it only by CPE.
  */
 export function softwareMatches(about: readonly Subject[], stack: SoftwareStack, check: RangeCheck): SoftwareMatch[] {
   // The ranges of each package. `undefined` in the list: a subject of the package with no range.
+  // The key of a purl is the purl, and the key of a CPE name is its product.
   const named = new Map<string, (readonly string[] | undefined)[]>();
   for (const subject of about) {
-    if (subject.system !== PACKAGE_SYSTEM) continue;
-    const list = named.get(subject.id) ?? [];
+    const key = subjectKey(subject.system, subject.id);
+    if (key === undefined) continue;
+    const list = named.get(key) ?? [];
     list.push(subject.ranges);
-    named.set(subject.id, list);
+    named.set(key, list);
   }
   if (named.size === 0) return [];
   const matches: SoftwareMatch[] = [];
   for (const part of stack.parts) {
     for (const pkg of part.packages) {
-      const lists = named.get(pkg.purl);
-      if (lists === undefined) continue;
+      const cpe = pkg.cpe === undefined ? undefined : subjectKey(CPE_SYSTEM, pkg.cpe);
+      const lists = [...(named.get(`${PACKAGE_SYSTEM} ${pkg.purl}`) ?? []), ...(cpe === undefined ? [] : (named.get(cpe) ?? []))];
+      if (lists.length === 0) continue;
       const result = verdictOf(lists, pkg.version, check);
       if (result === undefined) continue;
       matches.push({
@@ -112,6 +126,14 @@ export function softwareMatches(about: readonly Subject[], stack: SoftwareStack,
     }
   }
   return matches;
+}
+
+// The key of a subject in the map of the named packages, or `undefined` for a subject that is not a package.
+function subjectKey(system: string, id: string): string | undefined {
+  if (system === PACKAGE_SYSTEM) return `${PACKAGE_SYSTEM} ${id}`;
+  if (system !== CPE_SYSTEM) return undefined;
+  const product = cpeProductOf(id);
+  return product === undefined ? undefined : `${CPE_SYSTEM} ${product}`;
 }
 
 // The verdict of one installed version against the range lists of the subjects of its package, or `undefined` for
