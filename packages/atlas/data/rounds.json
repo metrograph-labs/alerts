@@ -2339,5 +2339,46 @@
       "members": 1757,
       "cause": "Round 48 adds the notified events of the BEA as a later source. Its terms need a licence for a commercial use, so the gaps stay at 56."
     }
+  },
+  {
+    "round": 49,
+    "date": "2026-11-26",
+    "by": "One session, with no subagent.",
+    "method": "The round looked for a live source of pest quarantines. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json"
+    ],
+    "queries": [
+      "APHIS federal order domestic quarantine RSS feed",
+      "CFIA RSS feeds plant health notices to industry",
+      "canada.ca terms commercial reproduction"
+    ],
+    "notes": [
+      "The Federal Register API gave the newest 20 quarantine documents of APHIS. Only 1 changed quarantined areas: most are risk analyses and information collections.",
+      "The bulletin feed of APHIS on GovDelivery gave 406. The program updates of the APHIS site gave 403. The round did not try again.",
+      "The news API of the Government of Canada gave the newest 50 releases of the CFIA as Atom. 5 were new or larger regulated areas for plant pests.",
+      "The terms page of canada.ca gave no answer in 30 s, as in round 40. A search result tells that a commercial reproduction needs a permission."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 56,
+      "cover": {
+        "adopted": 59,
+        "paths": 59,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 166,
+        "paths": 165,
+        "origins": 84
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 49 adds the CFIA news releases as a later source of pest quarantines. Their terms need a permission for a commercial use, so the gaps stay at 56."
+    }
   }
 ]
