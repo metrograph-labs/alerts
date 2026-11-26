@@ -2392,6 +2392,7 @@ export interface FetchRecord {
   readonly fresh: number;
   readonly fatal: number;
   readonly lossy?: number;
+  readonly skipped?: number;
   readonly canary?: CanaryResult;
 }
 
