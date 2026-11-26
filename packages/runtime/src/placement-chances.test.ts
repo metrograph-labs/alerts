@@ -17,6 +17,7 @@ import {
   fetchGapTime,
   googleHistory,
   historyWindow,
+  inLogWindow,
   HISTORY_GAPS,
   HISTORY_SOURCES,
   HOUR_MS,
@@ -30,6 +31,7 @@ import {
   measureSite,
   readChannelCalls,
   readFetchTimes,
+  readLogEnd,
   readPageHistory,
   withMeasures,
   type CallRead,
@@ -209,6 +211,66 @@ describe("the measured chance of a site from its log", () => {
     expect(measured.measure.input.source).toContain("4 of 48 hours down");
     expect(measureSite("site-a", times.slice(-60), NOW).ok).toBe(false);
     expect(measureSite("site-a", [], NOW).ok).toBe(false);
+  });
+
+  it("counts only the fetches in the window of a log (AL-215)", () => {
+    // A fetch each minute for 30 hours, with a fault of 3 hours in hour 2. The copy of the log ends 20 minutes before
+    // the read time. With no window, the fault and the time after the copy are down times.
+    const begin = NOW - 30 * HOUR_MS;
+    const copyEnd = NOW - 20 * MINUTE;
+    const fix = begin + 5 * HOUR_MS;
+    const steady = Array.from({ length: 30 * 60 }, (_, index) => begin + index * MINUTE).filter((time) => time <= copyEnd);
+    const open = measureSite("site-a", steady, NOW);
+    expect(open.ok && open.measure.down.downHours).toBe(1);
+    const copied = measureSite("site-a", steady, NOW, FETCH_GAP_MS, { to: copyEnd });
+    expect(copied.ok && copied.measure.down.downHours).toBe(0);
+    const log = steady.filter((time) => time < begin + 2 * HOUR_MS || time >= fix);
+    const closed = measureSite("site-a", log, NOW, FETCH_GAP_MS, { from: fix, to: copyEnd });
+    expect(closed.ok).toBe(true);
+    if (!closed.ok) return;
+    expect(closed.measure.down.downHours).toBe(0);
+    expect(closed.measure.window).toEqual({ from: fix, to: copyEnd });
+    expect(closed.measure.input.source).toContain("0 of");
+    // The end alone leaves the fault in the window: 3 hours and 1 minute.
+    const ended = measureSite("site-a", log, NOW, FETCH_GAP_MS, { to: copyEnd });
+    expect(ended.ok && ended.measure.down.downHours).toBe(4);
+  });
+
+  it("counts the gap from the start of a window to its first fetch, and refuses a short window", () => {
+    const begin = NOW - 30 * HOUR_MS;
+    const log = Array.from({ length: 30 * 60 }, (_, index) => begin + index * MINUTE);
+    const early = measureSite("site-a", log, NOW, FETCH_GAP_MS, { from: begin - 10 * MINUTE, to: NOW - MINUTE });
+    expect(early.ok && early.measure.down.downHours).toBe(1);
+    const short = measureSite("site-a", log, NOW, FETCH_GAP_MS, { from: NOW - 23 * HOUR_MS });
+    expect(short.ok).toBe(false);
+    if (!short.ok) expect(short.reason).toContain("in its window");
+    expect(measureSite("site-a", log, NOW, FETCH_GAP_MS, { from: NOW + HOUR_MS }).ok).toBe(false);
+  });
+
+  it("tells if a time is in a log window, with an open end on each side", () => {
+    expect(inLogWindow(5, {})).toBe(true);
+    expect(inLogWindow(5, { from: 5, to: 5 })).toBe(true);
+    expect(inLogWindow(4, { from: 5 })).toBe(false);
+    expect(inLogWindow(6, { to: 5 })).toBe(false);
+  });
+
+  it("reads the time of the last event of any type, and none for an empty log", () => {
+    const folder = mkdtempSync(join(tmpdir(), "alerts-log-end-"));
+    try {
+      const path = join(folder, "runtime.sqlite");
+      const db = openDatabase(path);
+      db.exec("CREATE TABLE events (seq INTEGER PRIMARY KEY, id TEXT NOT NULL UNIQUE, at TEXT NOT NULL, type TEXT NOT NULL, body TEXT NOT NULL) STRICT");
+      db.close();
+      expect(readLogEnd(path)).toBeUndefined();
+      const again = openDatabase(path);
+      const add = again.prepare("INSERT INTO events (id, at, type, body) VALUES (?, ?, ?, '{}')");
+      add.run("a", "2026-01-01T00:00:00.000Z", "fetch");
+      add.run("b", "2026-01-01T00:07:00.000Z", "delivery");
+      again.close();
+      expect(readLogEnd(path)).toBe(at("2026-01-01T00:07:00.000Z"));
+    } finally {
+      rmSync(folder, { recursive: true, force: true });
+    }
   });
 
   it("reads the fetch times of a log file, and no other event", () => {
