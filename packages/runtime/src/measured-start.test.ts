@@ -4,9 +4,12 @@ import { join } from "node:path";
 import { CONFIG_FORMAT, type AlertConfig, type ChannelId, type EscalationPolicy, type PersonId, type PlaceId, type SpendConfig } from "@mark1russell7/alerts";
 import { fakeWallClock, wallClock } from "@mark1russell7/algebra/clock";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { isPushoverKey } from "@mark1russell7/alerts-channel-pushover";
+import { envSecrets } from "./config.ts";
 import { HomeHeld } from "./home-lock.ts";
+import { instanceSenders, twilioSetup, webhookSetup } from "./instance.ts";
 import { openRuntimeLog } from "./log.ts";
-import { fakeBase, fakeUrl, longestPartWork, MEASURE_KEYS, MEASURE_NOW_HEADER, openMeasuredRuntime, type MeasuredRuntime, type SnapshotWriteTime } from "./measured-start.ts";
+import { fakeBase, fakeUrl, keyFormsOf, longestPartWork, MEASURE_KEYS, MEASURE_NOW_HEADER, measureKeys, openMeasuredRuntime, type MeasuredRuntime, type SnapshotWriteTime } from "./measured-start.ts";
 import { START_SNAPSHOT_EVERY, START_SNAPSHOT_FLOOR } from "./start-snapshot.ts";
 
 const MINUTE = 60_000;
@@ -231,6 +234,25 @@ describe("openMeasuredRuntime", { timeout: 30_000 }, () => {
     expect(requests).not.toHaveBeenCalled();
   });
 
+  it("opens a configuration from the names of its keys, with all its channels, and sends nothing (AL-176)", async () => {
+    const call = "twilio-call" as ChannelId;
+    const spend: SpendConfig = { provider: "provider:twilio", monthlyUsd: 10, reserveUsd: 3, floor: 5, timeZone: "America/Chicago" };
+    const base = config("USER_KEY_1");
+    const calling: AlertConfig = {
+      ...base,
+      contacts: [...base.contacts, { person, channel: call, address: { to: { secret: "PHONE_1" } } }],
+      policies: base.policies.map((entry) => ({ ...entry, steps: [...entry.steps, { channel: call, at: 0 }] })),
+      spend: [spend],
+    };
+    writeFileSync(join(home, "config.json"), JSON.stringify(calling));
+    const keyNames = ["PUSHOVER_APP_TOKEN", "USER_KEY_1", "PHONE_1", "TWILIO_ACCOUNT_SID", "TWILIO_API_KEY_SID", "TWILIO_API_KEY_SECRET", "TWILIO_FROM", "TWILIO_TEXT_FROM", "WEBHOOK_SECRET", "EIA_API_KEY"];
+    const measured = await openMeasuredRuntime(home, { keyNames });
+    opened.push(measured);
+    expect(measured.first.fetched.length).toBeGreaterThan(0);
+    await measured.pass();
+    expect(requests).not.toHaveBeenCalled();
+  });
+
   it("refuses private files that do not pass the check, and frees the lock", async () => {
     writeFileSync(join(home, "config.json"), JSON.stringify(config("NOT_A_MEASURE_KEY")));
     await expect(openMeasuredRuntime(home)).rejects.toThrow(/do not pass the check/);
@@ -258,5 +280,45 @@ describe("the work of the parts of a snapshot write (AL-174)", () => {
     // A pause longer than the CPU time of its part gives no work below 0.
     expect(longestPartWork([{ at: 0, ms: 10, cpuMs: 2 }], [{ startTime: 0, duration: 9 }])).toEqual({ workMs: 0, gcMs: 9 });
     expect(longestPartWork([], pauses)).toEqual({ workMs: 0, gcMs: 0 });
+  });
+});
+
+describe("the fake keys of a measure from the names of real keys (AL-176)", () => {
+  const call = "twilio-call";
+  const document = {
+    contacts: [
+      { person: "person-1", channel: "pushover", address: { user: { secret: "USER_KEY_1" }, device: "phone" } },
+      { person: "person-1", channel: call, address: { to: { secret: "PHONE_1" } } },
+      { person: "person-2", channel: "twilio-text", address: { to: { secret: "PHONE_2" } } },
+      { person: "person-2", channel: "webhook", address: { url: { secret: "HOOK_URL" } } },
+    ],
+    optIn: [{ number: { secret: "PHONE_3" } }, { number: "+99900000009" }],
+  };
+
+  it("gives the form of each key that an address or the opt-in list uses", () => {
+    expect(Object.fromEntries(keyFormsOf(document))).toEqual({ USER_KEY_1: "pushover", PHONE_1: "phone", PHONE_2: "phone", PHONE_3: "phone" });
+    expect(keyFormsOf(undefined).size).toBe(0);
+    expect(keyFormsOf({ contacts: "not a list", optIn: [3] }).size).toBe(0);
+  });
+
+  it("gives keys that open the channels of the names: Pushover, the call, the text and the webhook", () => {
+    const names = ["PUSHOVER_APP_TOKEN", "TWILIO_ACCOUNT_SID", "TWILIO_API_KEY_SID", "TWILIO_API_KEY_SECRET", "TWILIO_FROM", "TWILIO_TEXT_FROM", "WEBHOOK_SECRET"];
+    const secret = envSecrets(measureKeys(names));
+    expect(twilioSetup(secret).tag).toBe("ok");
+    expect(webhookSetup(secret).tag).toBe("ok");
+    expect([...instanceSenders(secret)].sort()).toEqual([call, "pushover", "twilio-text", "webhook"].sort());
+    // With no keys of Twilio and of the webhook, only the Pushover channel opens.
+    expect(instanceSenders(envSecrets(measureKeys(["PUSHOVER_APP_TOKEN"])))).toEqual(["pushover"]);
+  });
+
+  it("gives each other key a value of its form, and two names two values", () => {
+    const names = ["USER_KEY_1", "PHONE_1", "PHONE_2", "PHONE_3", "PUSHOVER_USER_KEY", "HEALTHCHECKS_PING_URL", "OUTAGE_TOKEN", "NWWS_OI_USER_1", "PHONE_1"];
+    const keys = measureKeys(names, keyFormsOf(document));
+    expect(Object.keys(keys)).toHaveLength(8);
+    expect(new Set(Object.values(keys)).size).toBe(8);
+    for (const name of ["USER_KEY_1", "PUSHOVER_USER_KEY"]) expect(isPushoverKey(keys[name])).toBe(true);
+    for (const name of ["PHONE_1", "PHONE_2", "PHONE_3"]) expect(keys[name]).toMatch(/^\+999[0-9]{8}$/u);
+    expect(new URL(keys.HEALTHCHECKS_PING_URL ?? "").hostname).toBe("example.invalid");
+    for (const name of ["OUTAGE_TOKEN", "NWWS_OI_USER_1"]) expect(keys[name]).toMatch(/^[A-Za-z0-9]{32}$/u);
   });
 });
