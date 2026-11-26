@@ -179,20 +179,55 @@ export function fetchGapTime(times: readonly number[], now: number, limit: numbe
 }
 
 /**
- * This function gives the measured chance input of a site from the fetch times of the log of its live copy. The window
- * starts at the first fetch and ends at `now`. It gives a reason and no input for a log shorter than `MIN_LOG_HOURS`.
+ * The window of the log of a site (AL-215). Each end is optional. With no start, the window starts at the first fetch.
+ * With no end, it ends at the read time. A fault before its fix and the time after the copy of a log are not in it.
  */
-export function measureSite(site: string, times: readonly number[], now: number, limit: number = FETCH_GAP_MS): { readonly ok: true; readonly measure: ChanceMeasure } | { readonly ok: false; readonly reason: string } {
-  const first = times[0];
-  if (first === undefined || now - first < MIN_LOG_HOURS * HOUR_MS) return { ok: false, reason: `The log of the site ${site} has less than ${String(MIN_LOG_HOURS)} hours of fetch events.` };
-  const window: TimeWindow = { from: first, to: now };
-  const down = downShare(fetchGapTime(times, now, limit), window);
+export interface LogWindow {
+  /** The start of the window. A gap from the start to the first fetch in the window is a down time. */
+  readonly from?: number | undefined;
+  /** The end of the window. For a copy of a log, this is the time of the copy. */
+  readonly to?: number | undefined;
+}
+
+/**
+ * This function gives the measured chance input of a site from the fetch times of the log of its live copy. The window
+ * starts at the first fetch and ends at `now`, or it is `window`. Only the fetches in the window count. It gives a
+ * reason and no input for a window shorter than `MIN_LOG_HOURS`.
+ */
+export function measureSite(site: string, times: readonly number[], now: number, limit: number = FETCH_GAP_MS, window: LogWindow = {}): { readonly ok: true; readonly measure: ChanceMeasure } | { readonly ok: false; readonly reason: string } {
+  const to = window.to ?? now;
+  const inside = times.filter((time) => (window.from === undefined || time >= window.from) && time <= to);
+  const from = window.from ?? inside[0];
+  if (from === undefined || inside.length === 0 || to - from < MIN_LOG_HOURS * HOUR_MS) return { ok: false, reason: `The log of the site ${site} has less than ${String(MIN_LOG_HOURS)} hours of fetch events in its window.` };
+  const span: TimeWindow = { from, to };
+  const down = downShare(fetchGapTime(window.from === undefined ? inside : [from, ...inside], to, limit), span);
   const low = 1 - down.interval.high;
   const source =
-    `the fetch events of the log of the site ${site} from ${dayOf(window.from)} to ${dayOf(window.to)}: ` +
+    `the fetch events of the log of the site ${site} from ${dayOf(span.from)} to ${dayOf(span.to)}: ` +
     `${String(down.downHours)} of ${String(down.hours)} hours down (no fetch for more than ${String(limit / 60_000)} minutes), ` +
     `works ${(1 - down.share).toFixed(6)}, 95% Wilson interval ${low.toFixed(6)} to ${(1 - down.interval.low).toFixed(6)}, the input is the low end`;
-  return { ok: true, measure: { input: { id: siteFragment(site), works: low, kind: "measured", source }, down, window } };
+  return { ok: true, measure: { input: { id: siteFragment(site), works: low, kind: "measured", source }, down, window: span } };
+}
+
+/**
+ * This function gives the time of the last event of any type in a runtime log file, or `undefined` for a log with no
+ * event. A live copy writes events all the time. Thus a last event long before the end of a window tells that the file
+ * is a copy. Then the end of the window is not the time of the copy (AL-215).
+ */
+export function readLogEnd(path: string): number | undefined {
+  const db = openDatabase(path, { readOnly: true });
+  try {
+    const row = db.prepare("SELECT max(at) AS last FROM events").get();
+    const last = row === undefined || row["last"] === null ? Number.NaN : Date.parse(String(row["last"]));
+    return Number.isFinite(last) ? last : undefined;
+  } finally {
+    db.close();
+  }
+}
+
+/** This function tells if a time is in a log window. A window with no end has no limit at that end. */
+export function inLogWindow(time: number, window: LogWindow): boolean {
+  return (window.from === undefined || time >= window.from) && (window.to === undefined || time <= window.to);
 }
 
 /** This function reads the times of the fetch events of a runtime log file, in their order. It opens the file to read only. */
