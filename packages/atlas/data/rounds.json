@@ -2007,5 +2007,45 @@
       "members": 1757,
       "cause": "Round 40 adds 2 later sources and no planned source, so no layer of the cover changes and the gaps stay at 63."
     }
+  },
+  {
+    "round": 41,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round looked again at a class with one origin. A web search found the API host of a later source. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The near real-time API of Scottish Water: https://api.scottishwater.co.uk/overflow-event-monitoring/v1/near-real-time"
+    ],
+    "queries": [
+      "combined sewer overflow real-time status open data API JSON"
+    ],
+    "notes": [
+      "In round 31 the API host of Scottish Water had no DNS record. In round 41 it answered with the status of 2091 overflow points and no key.",
+      "The documentation page still gave 403, and the API host has no robots.txt and no documentation. So the terms are not read, and the plan has a risk.",
+      "A source with a risk does not count in the cover, so the gap of sewage overflows stays open.",
+      "The search found no US city with a documented live API of its overflows. The EPA inventory and the data of one state give only the places of the outfalls."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 63,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 41 moves one source from later to plan, with a risk on its terms. A source with a risk does not count in the cover, so the gaps stay at 63."
+    }
   }
 ]

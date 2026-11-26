@@ -24620,36 +24620,39 @@
     "cost": "free",
     "calibration": null,
     "subjectIds": null,
-    "risks": [],
+    "risks": [
+      "No round read the terms, because the documentation page gave 403. An adapter reads the licence before it ships."
+    ],
     "adapter": null,
-    "round": 31,
-    "decision": "later",
+    "round": 41,
+    "decision": "plan",
     "rateLimit": "unknown",
     "id": "scottish-water-overflows",
     "name": "Scottish Water: the near real-time data of the storm overflows",
     "classes": [
       "env.water.sewage-overflow"
     ],
-    "url": "https://www.scottishwater.co.uk/Help-and-Resources/Open-Data/Overflow-Map-Data",
+    "url": "https://api.scottishwater.co.uk/overflow-event-monitoring/v1/near-real-time",
     "access": "api",
-    "auth": "unknown",
+    "auth": "none",
     "terms": {
-      "url": null,
+      "url": "https://www.scottishwater.co.uk/Help-and-Resources/Open-Data/Overflow-Map-Data",
       "automated": "unclear",
       "redistribution": "unclear",
-      "note": "The documentation page gave 403 on 2026-11-25, so round 31 read no terms. Search results tell of an open licence with credit to Scottish Water."
+      "note": "The documentation page gave 403 in rounds 31 and 41, so no round read the terms. Search results tell of an open licence with credit to Scottish Water, and of no key."
     },
-    "delay": "unknown",
-    "history": "unknown",
-    "coverage": "Scotland: the monitored storm overflows. Search results tell of an update each hour.",
+    "delay": "One hour or less: in the read of 2026-11-25, the last update of the file was 44 minutes old.",
+    "history": "For each overflow point, the current or last overflow, the overflow before it and the total minutes of the last 48 hours.",
+    "coverage": "Scotland: 2091 monitored overflow points in the read of 2026-11-25, 68 of them in overflow at that time.",
     "origins": [
       "scottish-water"
     ],
     "path": [
-      "unknown"
+      "api.scottishwater.co.uk"
     ],
-    "reason": "A possible second origin of overflows, apart from the companies of England. The documentation page gave 403, and the API host from search results has no DNS record.",
+    "reason": "A second origin of overflows, apart from the companies of England. The API gives the status of each overflow point as JSON with no key. The terms are not read, so the source has a risk.",
     "evidence": [
+      "https://api.scottishwater.co.uk/overflow-event-monitoring/v1/near-real-time",
       "https://www.scottishwater.co.uk/Help-and-Resources/Open-Data/Overflow-Map-Data"
     ]
   },
