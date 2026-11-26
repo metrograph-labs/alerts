@@ -259,7 +259,7 @@ function outcomeProblem(outcome: ServiceOutcome): string | undefined {
   }
 }
 
-/** This function stops the deploy when a stop of the runtime is not safe now (AL-186, AL-204). */
+/** This function stops the deploy when a stop of the runtime is not safe at this time (AL-186, AL-204). */
 async function checkCopies(alone: boolean): Promise<void> {
   const refusal = stopRefusal(await liveCopies(), Date.now(), COPY_MAX_AGE, alone);
   if (refusal !== undefined) throw new Error(refusal);
