@@ -135,8 +135,8 @@ export function runtimeHost(options: RuntimeHostOptions): ProcedureHost {
 }
 
 /**
- * This function gives the face of the listener that took a request, from the local port and the local address of its
- * socket and the endpoints of the host. With no match, or with two matches, it gives undefined. Then the request is refused.
+ * This function gives the face of the listener that took a request. It reads the local port and the local address of
+ * the socket, and the endpoints of the host. With no match, or with two matches, it gives undefined. Then the request is refused.
  */
 export function faceOfRequest<F extends { readonly basePath: string }>(faces: readonly F[], endpoints: readonly { readonly type: string; readonly address: string }[], credentials: Credentials): F | undefined {
   const port = credentials.connection?.localPort;
