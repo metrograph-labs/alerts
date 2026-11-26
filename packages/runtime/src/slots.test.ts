@@ -11,10 +11,13 @@ import {
   entryRoot,
   FOLD_FILE,
   foldChange,
+  foldHeapLimit,
+  FOLD_HEAP_RESERVE,
   keyChange,
   keyStep,
   startKeysOf,
   foldStep,
+  memInfoOf,
   foldVersionOf,
   foreignLinks,
   insideFolder,
@@ -440,6 +443,32 @@ describe("the fold version of a slot (AL-153)", () => {
     const step = foldStep(runtime, home, "/usr/bin/node", "good");
     expect(step.args).toEqual([join(runtime, "src", "main.ts"), "fold", "good"]);
     expect(step.env).toEqual({ ALERTS_HOME: home, SERVICE_PROFILE: "daemon" });
+  });
+});
+
+describe("the heap limit of the fold (AL-175)", () => {
+  const MEMINFO = ["MemTotal:         987720 kB", "MemFree:           80000 kB", "MemAvailable:     616448 kB", "SwapTotal:       2097148 kB", "SwapFree:        1837804 kB", ""].join("\n");
+
+  it("reads the available memory and the free swap of /proc/meminfo in MiB", () => {
+    expect(memInfoOf(MEMINFO)).toEqual({ available: 602, swap: 1794 });
+    expect(memInfoOf("MemAvailable:     616448 kB\n")).toEqual({ available: 602, swap: 0 });
+    expect(memInfoOf("MemTotal:         987720 kB\n")).toBeUndefined();
+  });
+
+  it("gives the free memory and swap less the reserve, when that is above the default limit", () => {
+    const memory = { available: 602, swap: 1794 };
+    expect(foldHeapLimit(memory, 530)).toBe(602 + 1794 - FOLD_HEAP_RESERVE);
+  });
+
+  it("keeps the default limit of node when the host gives no more", () => {
+    expect(foldHeapLimit({ available: 3000, swap: 0 }, 4144)).toBeUndefined();
+    expect(foldHeapLimit({ available: 530 + FOLD_HEAP_RESERVE, swap: 0 }, 530)).toBeUndefined();
+    expect(foldHeapLimit({ available: 531 + FOLD_HEAP_RESERVE, swap: 0 }, 530)).toBe(531);
+  });
+
+  it("puts the limit before the entry of the fold step", () => {
+    const runtime = join("slot-a", "packages", "runtime");
+    expect(foldStep(runtime, "home", "node", "files", 2268).args).toEqual(["--max-old-space-size=2268", join(runtime, "src", "main.ts"), "fold", "files"]);
   });
 });
 
