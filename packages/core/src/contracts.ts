@@ -529,6 +529,11 @@ export interface MapProblem {
    * absent for a note and for a fatal problem.
    */
   readonly lossy?: true;
+  /**
+   * True: the map skipped a good message by design and gave no report for it (AL-94). A skip is no problem of the
+   * source, thus it does not change the health. The field is absent for each other problem.
+   */
+  readonly skipped?: true;
 }
 
 /** The result of the map function. */
@@ -566,6 +571,11 @@ export interface FetchRecord {
   readonly fatal: number;
   /** The count of lossy problems that the map gave for the observations of the fetch. An absent count is 0. */
   readonly lossy?: number;
+  /**
+   * The count of messages of the fetch that the map skipped by design, for example a CAP message with the scope Private or
+   * Restricted (AL-94). A skipped message is no problem of the source. An absent count is 0.
+   */
+  readonly skipped?: number;
   /** The result of the canary check of the observations of the fetch, when the source has a canary and the check decides. */
   readonly canary?: CanaryResult;
 }
@@ -1447,6 +1457,24 @@ export interface QuietWindow {
   readonly start: string;
   /** The end of the window, a local time `HH:MM`. The end is not in the window. An end before the start crosses midnight. An end equal to the start gives the full day. */
   readonly end: string;
+  /**
+   * The sound rules of the window (AL-97). When it is absent, `DEFAULT_QUIET_SOUNDS` applies. An empty list makes each
+   * message below `life-safety` quiet.
+   */
+  readonly sounds?: readonly QuietSound[];
+}
+
+/**
+ * A sound rule of a quiet window (AL-97). An incident of one of its kinds, at its level or above, sounds in the window.
+ * At most `most` incidents of the rule sound in one window. Each later incident of the rule is quiet.
+ */
+export interface QuietSound {
+  /** The prefixes of the kinds, as in the classes of `AssessPolicy`. */
+  readonly kinds: readonly string[];
+  /** The lowest level that sounds. A `life-safety` message sounds with no rule. */
+  readonly level: "notice" | "urgent";
+  /** The most incidents of the rule that sound in one window: a whole number, 0 or more. */
+  readonly most: number;
 }
 
 /**

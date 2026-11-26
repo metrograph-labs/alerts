@@ -1,7 +1,8 @@
 /**
  * The NDW source of the alert system: the road situations of the Netherlands from NDW (Nationaal Dataportaal
- * Wegverkeer), the national road data portal. Each publication gives one indicator reading for each group of records,
- * and no report. The data is under the license CC0 1.0.
+ * Wegverkeer), the national road data portal. Each publication gives one indicator reading for each group of records.
+ * Each valid accident, closure and obstruction near a place with a position gives one report. The data is under the
+ * license CC0 1.0.
  */
 
 import type { SourceProcedures } from "@mark1russell7/alerts";
@@ -15,6 +16,23 @@ export { checkCanary, PUBLISHED_MAX_AGE_MS } from "./check.ts";
 export { FETCH_INTERVAL_MS, MEASURE_DELAY_MS, MINUTE_MS, NDW_DESCRIPTOR, NDW_MEASURES } from "./descriptor.ts";
 export { BODY_TYPE, countsOf, createNdwFetch, MAX_XML_BYTES, MIN_INTERVAL_MS, NDW_BASE_URL, readFile, SITUATIONS_PATH, TIMEOUT_MS } from "./fetch.ts";
 export type { FileRead, NdwFetchInput, NdwFetchOptions, PublicationCounts } from "./fetch.ts";
+export {
+  isRecordBody,
+  LINE_BUFFER_KM,
+  LINE_TOLERANCE_KM,
+  mapRecord,
+  NDW_SENDER,
+  POINT_RADIUS_KM,
+  reachesPlace,
+  RECORD_FIELDS,
+  RECORD_KIND,
+  RECORD_SYSTEM,
+  recordAreas,
+  recordBody,
+  REPORT_GROUPS,
+  reportRecords,
+} from "./record.ts";
+export type { LocatedRecord, RecordBody } from "./record.ts";
 export {
   ALL_RECORDS,
   COUNT_FIELDS,

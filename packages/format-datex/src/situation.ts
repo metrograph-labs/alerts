@@ -4,14 +4,15 @@
  * accident, a closure, a speed limit or roadworks. The reader names no publisher and no country.
  *
  * The reader keeps only the facts of each record that a count or a report needs. These facts are the class, the type,
- * the validity and the cause. It does not read the location of a record. The parser keeps each location as text, and the
- * reader does not read it.
+ * the validity, the cause, the times of the record and its location. The function `readLocation` reads the location.
  */
 
 import { parseXml, xmlFault } from "@mark1russell7/alerts-format-cap";
 import { isRecord } from "@mark1russell7/optional/read";
 import { ENTITY_ACTION, EntityDecoder } from "@nodable/entities";
 import { XMLParser } from "fast-xml-parser";
+
+import { readLocation, type RecordLocation } from "./location.ts";
 
 /** A time in milliseconds since the epoch. */
 export type Time = number;
@@ -50,6 +51,12 @@ export interface SituationRecord {
   readonly cause?: string;
   /** The severity of the situation of the record, for example `low` or `highest`. */
   readonly severity?: string;
+  /** The time at which the publisher made the record. Absent: the record has no creation time. */
+  readonly created?: Time;
+  /** The time of the version of the record. Absent: the record has no version time. */
+  readonly updated?: Time;
+  /** The WGS 84 points of the location of the record. Absent: the location has no coordinate. */
+  readonly location?: RecordLocation;
 }
 
 /** The facts of one situation publication. */
@@ -83,7 +90,7 @@ const parser = new XMLParser({
   parseAttributeValue: false,
   trimValues: true,
   isArray: (name) => LISTS.has(name),
-  // The reader does not read the locations, the sources and the comments. The parser keeps each of them as one text.
+  // The parser keeps each location, source and comment as one text. The function readLocation reads the text of a location.
   stopNodes: ["*.locationReference", "*.source", "*.generalPublicComment"],
   // The decoder blocks each entity of a DOCTYPE: a second guard, after the refusal of a DOCTYPE.
   entityDecoder: new EntityDecoder({
@@ -154,6 +161,10 @@ function readRecord(value: unknown, situation: string, severity: string | undefi
   const kind = textOf(Array.isArray(kinds) ? kinds[0] : kinds);
   const probability = textOf(value["probabilityOfOccurrence"]);
   const cause = isRecord(value["cause"]) ? textOf(value["cause"]["causeType"]) : undefined;
+  // A creation time or a version time that is not a time gives no field: the record stays valid.
+  const created = datexTime(value["situationRecordCreationTime"]);
+  const updated = datexTime(value["situationRecordVersionTime"]);
+  const location = readLocation(textOf(value["locationReference"]));
   return {
     situation,
     id,
@@ -166,6 +177,9 @@ function readRecord(value: unknown, situation: string, severity: string | undefi
     ...(probability === undefined ? {} : { probability }),
     ...(cause === undefined ? {} : { cause }),
     ...(severity === undefined ? {} : { severity }),
+    ...(created === undefined ? {} : { created }),
+    ...(updated === undefined ? {} : { updated }),
+    ...(location === undefined ? {} : { location }),
   };
 }
 

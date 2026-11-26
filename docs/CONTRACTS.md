@@ -742,6 +742,7 @@ The channel does not escalate. The core does:
 - An acknowledgment comes from any channel or from the UI. It stops the escalation of that level of that incident, and the core cancels the repeats on the other channels.
 - Only an acknowledgment proves that the person got a message. The Pushover receipt field `last_delivered_at` is the time of a retry of the server, not a proof.
 - The core decides the silent mode. `escalate` sets `quiet` on each send, and `Message.quiet` takes it. Each channel maps it to its silent mode: Pushover priority `-1`, or a text and no call on Twilio. No channel keeps its own rule about the time of day.
+- A sound rule of the quiet window (`QuietWindow.sounds`, AL-97) makes a send loud in the window. The first rule lets an urgent `needs-you` of the operator sound, at most 2 in one window. Each other message below `life-safety` stays quiet.
 - On an iPhone, an Emergency message of Pushover sounds through silent mode only when the Pushover app has Critical Alerts on for Emergency. A reset of the iOS permission of Pushover turns that setting off.
 - A channel with `why` in its descriptor gets a why line in `Message.why`: why the message reaches the person, in the limit of the channel. `WHY_LIMITS` in `why.ts` holds the limit of each kind of channel. Pushover takes the push limit, and puts the line first in the body.
 
@@ -2314,12 +2315,13 @@ The API also serves the built local page (`packages/site/dist`) on the same addr
 
 The route `GET /health` of the runtime gives the `HealthPayload` of `healthPayload`. The page reads it on its own origin, next to the map. `healthPayloadSchema` checks it.
 
-- `format`: `alerts-health/4` (`HEALTH_FORMAT`). A change that breaks a reader gets a new name. The second format added `reads`.
+- `format`: `alerts-health/5` (`HEALTH_FORMAT`). A change that breaks a reader gets a new name. The second format added `reads`.
 - The third format gives the list `floors` of each balance in place of one `floor` (AL-61).
 - The fourth format adds `channels` (AL-65). The schema refuses an unknown field, thus an added field breaks a reader too.
+- The fifth format adds the `message` of the last failure of each source (AL-182).
 - `at`: the time of the last pass, or `null` before the first pass. The sources, the lateness and the coverage come from that pass.
 - `now`: the time of the read. The stages of the copies and of the balances are at this time.
-- `sources`: the health of each source. The last failure keeps its time and its kind, and not its message, because a message can hold the address of a fetch.
+- `sources`: the health of each source. The last failure keeps its time, its kind and its redacted message (`failureMessage`). The redaction removes each value of `secrets.env`, each token of a known shape (`SECRET_SHAPES`, `CONTEXT_SHAPES` of `@mark1russell7/text/redact`), the user part of each URL (`URL_USER_SHAPE`) and the path, the query and the fragment of each URL (`URL_PATH_SHAPE`), because they can hold a key or a place. The message keeps the scheme and the host, and at most `FAILURE_MESSAGE_LIMIT` (300) code units. A failure with an empty message has no `message`.
 - `lateness` and `coverage`: the lists of the view of the last pass.
 - `copies`, `quotas` and `balances`: each watch with its stages. The stages come from `copyStages`, `quotaStages` and `balanceStages`, thus the page and the system reports agree.
 - `reads`: each read on a schedule other than the balances, for example the replies of the texts and the spend of Twilio. Each read has the end of its last read that passed, a `failed` flag and the time of its next read. It holds no message and no value of the read.

@@ -104,9 +104,12 @@ const EARTHQUAKE_TABLE: LevelTable = {
  * higher severity reaches the digest, and a minor alert stays in the map and the log. The status of the FAA gives a ground
  * stop or a ground delay program at a large airport on most days of bad weather (AL-165).
  *
- * The count of its alerts is an indicator reading. A policy of the configuration can give the kinds a different level.
+ * The count of the transit alerts is an indicator reading. A policy of the configuration can give the kinds a different level.
+ *
+ * A road closure, a crash or an obstruction near a place changes a route, not the safety of the place (AL-178). A kind
+ * of context needs no coverage at a place. Thus the roads of one country give no gap at a place in another country.
  */
-export const CONTEXT_KINDS: readonly string[] = ["transport.transit", "transport.air.disruption"];
+export const CONTEXT_KINDS: readonly string[] = ["transport.transit", "transport.air.disruption", "transport.road.incident"];
 
 /**
  * The table of the kinds of context. It gives `digest` at most. A minor or unknown severity, or the urgency

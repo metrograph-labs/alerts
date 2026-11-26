@@ -791,6 +791,11 @@ export interface InstanceOptions {
   readonly config: ParsedConfig;
   /** The secret store of the instance. It gives the keys of the file `secrets.env`. */
   readonly secret: SecretLookup;
+  /**
+   * The values of the keys of `secrets.env`. The health route removes each of them from the message of the last failure of
+   * each source (AL-182). The default is none: then the route removes only the tokens of a known shape and the paths of URLs.
+   */
+  readonly secretValues?: readonly string[];
   readonly log: RuntimeLog;
   /** The monotonic clock of the service. The loop and the pace of the sources use it. */
   readonly clock: Clock;
@@ -1483,6 +1488,7 @@ export function openInstance(options: InstanceOptions): Instance {
       ],
       channels: runtime.channels(),
       channelDown: channelDownPolicy(runtime.config.channelDown),
+      secrets: options.secretValues ?? [],
     });
   // The history reads the merge state at the time of the read, with the link rule of the view and the delivery.
   const link = linkRule(runtime.config.link ?? DEFAULT_LINK_POLICY);

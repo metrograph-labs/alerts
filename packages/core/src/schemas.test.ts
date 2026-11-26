@@ -677,6 +677,10 @@ describe("the round trip of real values", () => {
     const record: FetchRecord = { source: API, at: T0, took: 500, failure: { kind: "timeout", message: "No answer in 10 s." }, fresh: 0, fatal: 0 };
     holds(fetchRecordSchema, record);
     holds(fetchRecordSchema, { source: API, at: T0, took: 200, fresh: 3, fatal: 0, canary: { pass: true, reason: "The feed has 12 alerts." } });
+    // A record can count the messages that the map skipped by design (AL-94). The count is a whole number of 0 or more.
+    holds(fetchRecordSchema, { source: API, at: T0, took: 200, fresh: 1, fatal: 0, skipped: 2 });
+    fails(fetchRecordSchema, { source: API, at: T0, took: 200, fresh: 1, fatal: 0, skipped: -1 });
+    fails(fetchRecordSchema, { source: API, at: T0, took: 200, fresh: 1, fatal: 0, skipped: 1.5 });
     const first = observeFetch(startHealth(API, T0 - HOUR), record, DESCRIPTOR).track;
     const failing = observeFetch(first, { ...record, at: T0 + 60_000 }, DESCRIPTOR).health;
     expect(failing.state).toBe("failing");
@@ -832,6 +836,15 @@ describe("the value rules", () => {
     fails(latenessLimitSchema, { delay: 60_000, misses: 0 });
     fails(latenessLimitSchema, { delay: 60_000, misses: 1.5 });
     holds(latenessLimitSchema, { delay: 60_000, misses: 1 });
+  });
+
+  it("a quiet window can have sound rules (AL-97)", () => {
+    const window = { zone: "America/Chicago", start: "22:00", end: "07:00" };
+    holds(quietWindowSchema, { ...window, sounds: [{ kinds: ["system.tell.needs-you"], level: "urgent", most: 2 }] });
+    holds(quietWindowSchema, { ...window, sounds: [] });
+    fails(quietWindowSchema, { ...window, sounds: [{ kinds: ["met.tornado"], level: "life-safety", most: 2 }] });
+    fails(quietWindowSchema, { ...window, sounds: [{ kinds: ["met.tornado"], level: "urgent", most: -1 }] });
+    fails(quietWindowSchema, { ...window, sounds: [{ kinds: ["met.tornado"], level: "urgent", most: 2, extra: true }] });
   });
 
   it("a life-safety message is not quiet", () => {

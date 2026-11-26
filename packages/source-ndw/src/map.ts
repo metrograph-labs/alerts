@@ -1,28 +1,22 @@
 /**
- * The map function of the NDW source. One observation holds the counts of the valid records of each group in one situation
- * publication. NDW is the national road data portal of the Netherlands. The fetch gives its body. The map gives no
- * report. It gives one indicator reading for each measure: the count of a group, and the count of all valid records.
+ * The map function of the NDW source. NDW is the national road data portal of the Netherlands. The fetch gives two kinds
+ * of body. The body of the counts holds the count of the valid records of each group in one situation publication. The
+ * map gives one indicator reading for each measure of it: the count of a group, and the count of all valid records. The
+ * body of one record gives one report: the module `record.ts` maps it.
  *
  * The counts are for the whole country. Thus the area of each reading is the code of the Netherlands. A rise of the
  * accidents, the obstructions or the closures tells of a disruption of the roads, for example in a storm.
  */
 
-import { Problems, type IndicatorArea, type Instant, type MapResult, type Observation, type Reading, type SourceId } from "@mark1russell7/alerts";
+import { Problems, type IndicatorArea, type Instant, type MapResult, type Observation, type Reading } from "@mark1russell7/alerts";
 import { RECORD_GROUPS, type RecordGroup } from "@mark1russell7/alerts-format-datex";
 import { isRecord } from "@mark1russell7/optional/read";
 import { errorMessage } from "@mark1russell7/text";
 
-/** The id of this source. */
-export const SOURCE_ID = "ndw" as SourceId;
+import { NDW_COUNTRY, NDW_LICENSE, SOURCE_ID } from "./ids.ts";
+import { isRecordBody, mapRecord } from "./record.ts";
 
-/** The origin of the records: NDW (Nationaal Dataportaal Wegverkeer), which collects the road data of the road authorities. */
-export const NDW_ORIGIN = "ndw";
-
-/** The license of the open data of NDW: CC0 1.0. NDW asks for no credit. */
-export const NDW_LICENSE = "CC0 1.0";
-
-/** The country of the publication, as the field `country` of the publication creator gives it. */
-export const NDW_COUNTRY = "nl";
+export { NDW_COUNTRY, NDW_LICENSE, NDW_ORIGIN, SOURCE_ID } from "./ids.ts";
 
 /** The id of the one series of each measure: the whole country. */
 export const SERIES = "nl";
@@ -109,6 +103,7 @@ function mapOrThrow(observation: Observation): MapResult {
   } catch {
     return { reports: [], problems: [{ path: "", message: "the body is not JSON", fatal: true }] };
   }
+  if (isRecordBody(fields)) return mapRecord(observation, fields);
   if (!isRecord(fields) || !isRecord(fields["groups"])) {
     return { reports: [], problems: [{ path: "", message: "the observation is not the counts of one publication of NDW", fatal: true }] };
   }

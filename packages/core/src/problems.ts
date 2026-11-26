@@ -7,9 +7,10 @@ import type { MapProblem } from "./contracts.ts";
 
 /**
  * The effect of a problem on the report. `fatal`: no report. `lossy`: the report lacks a value of the
- * message, or holds a fallback in its place. `note`: the report is whole, and the message has more.
+ * message, or holds a fallback in its place. `note`: the report is whole, and the message has more. `skip`: the map
+ * skipped a good message by design, for example a CAP message with the scope Private (AL-94). A skip is no problem of the source.
  */
-export type ProblemEffect = "note" | "lossy" | "fatal";
+export type ProblemEffect = "note" | "lossy" | "fatal" | "skip";
 
 /**
  * The place where a map function or a reader puts the problems of a message. The default effect is
@@ -35,7 +36,13 @@ export class Problems implements ProblemSink {
   /** This method adds one problem. A problem is lossy if the caller does not give another effect. */
   add(path: string, message: string, effect: ProblemEffect = "lossy"): void {
     const full = this.prefix === "" ? path : path === "" ? this.prefix : `${this.prefix}.${path}`;
-    this.list.push(effect === "lossy" ? { path: full, message, fatal: false, lossy: true } : { path: full, message, fatal: effect === "fatal" });
+    this.list.push(
+      effect === "lossy"
+        ? { path: full, message, fatal: false, lossy: true }
+        : effect === "skip"
+          ? { path: full, message, fatal: false, skipped: true }
+          : { path: full, message, fatal: effect === "fatal" },
+    );
   }
 
   /** The count of the fatal problems. A `FetchRecord` holds this count for the observations of a fetch. */
@@ -46,5 +53,10 @@ export class Problems implements ProblemSink {
   /** The count of the lossy problems. A `FetchRecord` holds this count for the observations of a fetch. */
   get lossy(): number {
     return this.list.filter((problem) => problem.lossy === true).length;
+  }
+
+  /** The count of the messages that the map skipped by design. A `FetchRecord` holds this count for the observations of a fetch. */
+  get skipped(): number {
+    return this.list.filter((problem) => problem.skipped === true).length;
   }
 }

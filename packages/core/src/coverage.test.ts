@@ -152,6 +152,13 @@ describe("coverage", () => {
     expect(coverageShort(entry!)).toBe(false);
   });
 
+  it("gives no gap at a place out of the country of a source of road reports (AL-178)", () => {
+    const roads = source("roads", { kinds: ["transport.road.incident"], coverage: [{ type: "code", system: "iso3166", code: "NL" }] });
+    const [entry] = coverage({ sources: [roads], health: [healthOf("roads", "healthy")], places: [KANSAS], kinds: ["transport.road.incident"] });
+    expect(entry).toMatchObject({ sources: [], independent: 0, required: 0 });
+    expect(coverageShort(entry!)).toBe(false);
+  });
+
   it("gives each place and kind in order", () => {
     const state = source("state", { coverage: [{ type: "code", system: "state", code: "KS" }] });
     const entries = coverage({ sources: [state, RADIO], health: [healthOf("state", "healthy"), healthOf("radio", "healthy")], places: [KANSAS, TEXAS], kinds: [TORNADO, "met.winter"] });

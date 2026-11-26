@@ -2868,5 +2868,17 @@
     "name": "CFIA, the Canadian Food Inspection Agency",
     "issues": null,
     "note": "The CFIA sets the regulated areas of plant pests in Canada. The releases of gc-news-cfia name them."
+  },
+  {
+    "id": "eppo",
+    "name": "EPPO, the European and Mediterranean Plant Protection Organization",
+    "issues": null,
+    "note": "The reports of eppo-reporting-service come from the national plant protection organizations of its member countries and from studies."
+  },
+  {
+    "id": "us-congress",
+    "name": "The US Congress, through Congress.gov of the Library of Congress",
+    "issues": null,
+    "note": "The bills, actions and laws of congress-gov-api come from the House and the Senate."
   }
 ]

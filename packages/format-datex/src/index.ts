@@ -17,3 +17,4 @@ export {
   type Time,
   type ValidityStatus,
 } from "./situation.ts";
+export { MAX_LOCATION_POINTS, readLocation, type DatexPoint, type RecordLocation } from "./location.ts";

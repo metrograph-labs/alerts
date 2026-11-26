@@ -3232,5 +3232,23 @@
     "name": "bea.aero",
     "kind": "host",
     "note": "The host of the pages of bea-aero-notified-events."
+  },
+  {
+    "id": "gd.eppo.int",
+    "name": "gd.eppo.int",
+    "kind": "host",
+    "note": "The host of the pages of eppo-reporting-service."
+  },
+  {
+    "id": "api.congress.gov",
+    "name": "api.congress.gov",
+    "kind": "host",
+    "note": "The host of congress-gov-api."
+  },
+  {
+    "id": "www.ntsb.gov",
+    "name": "www.ntsb.gov",
+    "kind": "host",
+    "note": "The host of the pages of ntsb-investigations."
   }
 ]

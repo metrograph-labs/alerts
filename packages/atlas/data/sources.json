@@ -14253,7 +14253,9 @@
   {
     "id": "ndw-open-data",
     "name": "NDW open data (Netherlands)",
-    "classes": [],
+    "classes": [
+      "transport.road.incident"
+    ],
     "dimensions": [
       "road-events"
     ],
@@ -14284,7 +14286,7 @@
     "risks": [],
     "decision": "adopt",
     "adapter": "@mark1russell7/alerts-source-ndw",
-    "reason": "Open road situations for the Netherlands under CC0, with no key, in DATEX II version 3. The adapter counts the valid records of each group (accidents, congestion, obstructions, closures, works, conditions) for the country. A report for each record near a watched place is AL-178. The traffic speeds of NDW are not read.",
+    "reason": "Open road situations for the Netherlands under CC0, with no key, in DATEX II version 3. The adapter counts the valid records of each group (accidents, congestion, obstructions, closures, works, conditions) for the country. It also gives a report for each valid accident, closure and obstruction near a watched place with a position (AL-178). The traffic speeds of NDW are not read.",
     "evidence": [
       "https://opendata.ndw.nu/",
       "https://docs.ndw.nu/en/",
@@ -14296,9 +14298,7 @@
   {
     "id": "ndw-incidents-speeds",
     "name": "NDW road incidents near a place and traffic speeds (Netherlands)",
-    "classes": [
-      "transport.road.incident"
-    ],
+    "classes": [],
     "dimensions": [
       "road-traffic"
     ],
@@ -14327,7 +14327,7 @@
     "risks": [],
     "decision": "plan",
     "adapter": null,
-    "reason": "The parts of NDW that the adapter of ndw-open-data does not read yet. A report for each situation record near a watched place is AL-178: the same file and the same reader of DATEX II version 3. The traffic speeds are a separate file of NDW.",
+    "reason": "The traffic speeds of NDW, a separate file that the adapter of ndw-open-data does not read. The reports of the situation records near a watched place are in the adapter of ndw-open-data since AL-178.",
     "evidence": [
       "https://opendata.ndw.nu/",
       "https://docs.ndw.nu/en/",
@@ -27006,5 +27006,124 @@
       "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=foodinspectionagency&sort=publishedDate&orderBy=desc&pick=50&format=atom"
     ],
     "round": 49
+  },
+  {
+    "id": "eppo-reporting-service",
+    "name": "EPPO Reporting Service",
+    "classes": [
+      "env.pest-quarantine"
+    ],
+    "url": "https://gd.eppo.int/reporting/",
+    "access": "page",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.eppo.int/data/Open_Licence.pdf",
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The Open Data Licence of EPPO covers the EPPO Codes only, not the articles of the Reporting Service. The round found no terms for the articles. The robots.txt does not block the path."
+    },
+    "cost": "free",
+    "delay": "About one month: on 2026-11-26 the newest issue was the issue of October 2026. Each month has one issue.",
+    "history": "The page lists each issue since 1974. Each issue has a page for each article.",
+    "rateLimit": "unknown",
+    "calibration": "None. Each article names the pest, the country and the kind of the report: a first finding, an incursion, an outbreak or an eradication.",
+    "coverage": "The quarantine pests and the pests of the EPPO Alert List in the member countries of EPPO and in other countries. The issue of October 2026 had 28 articles.",
+    "origins": [
+      "eppo"
+    ],
+    "path": [
+      "gd.eppo.int"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "A monthly source of the new pest incursions of many countries. But the site has no feed, and the round found no terms for the articles. Such terms do not close a gap (AL-195).",
+    "evidence": [
+      "https://gd.eppo.int/reporting/",
+      "https://gd.eppo.int/reporting/Rse-2026-10",
+      "https://gd.eppo.int/robots.txt",
+      "https://data.eppo.int/data/Open_Licence.pdf"
+    ],
+    "round": 51
+  },
+  {
+    "id": "congress-gov-api",
+    "name": "Congress.gov API",
+    "classes": [
+      "civic.government-shutdown"
+    ],
+    "url": "https://api.congress.gov/",
+    "access": "api",
+    "auth": "key",
+    "terms": {
+      "url": "https://www.loc.gov/legal/",
+      "automated": "limited",
+      "redistribution": "allowed",
+      "note": "The legal notice of the Library of Congress blocks only a client that ignores robots.txt or loads the service. The bills and laws are works of the US government."
+    },
+    "cost": "free",
+    "delay": "Unknown: the round had no key. The README tells that the chambers deliver the data to Congress.gov.",
+    "history": "The bills, the actions and the laws of each Congress, with the text of each version.",
+    "rateLimit": "5,000 requests each hour, from the README of the API.",
+    "calibration": "None. A lapse of appropriations is a calculation: the end date in the text of the last continuing resolution, and no new appropriation law before it.",
+    "coverage": "The federal appropriations of the US: each continuing resolution and each appropriation act, with its actions.",
+    "origins": [
+      "us-congress"
+    ],
+    "path": [
+      "api.congress.gov"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "The law that ends or prevents a federal shutdown. The adapter needs a free key of api.data.gov, which the owner of the deploy makes.",
+    "evidence": [
+      "https://api.congress.gov/",
+      "https://raw.githubusercontent.com/LibraryOfCongress/api.congress.gov/main/README.md",
+      "https://www.loc.gov/legal/"
+    ],
+    "round": 52
+  },
+  {
+    "id": "ntsb-investigations",
+    "name": "NTSB investigations and news releases",
+    "classes": [
+      "transport.air.accident",
+      "transport.rail.accident"
+    ],
+    "url": "https://www.ntsb.gov/investigations/Pages/Investigations.aspx",
+    "access": "page",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.ntsb.gov/robots.txt",
+      "automated": "limited",
+      "redistribution": "allowed",
+      "note": "The pages are works of the US government. The robots.txt disallows /_layouts/ and /SiteAssets/, the paths of the script that loads the list of investigations."
+    },
+    "cost": "free",
+    "delay": "Unknown. The news releases tell of findings and recommendations: 8 releases from 2026-08-28 to 2026-11-17.",
+    "history": "The investigations of each mode, open and completed. The news releases of each year since 2020.",
+    "rateLimit": "unknown",
+    "calibration": "None. The list has the investigations of each surface mode, and only the aviation investigations with a large loss of life or of high public interest.",
+    "coverage": "The United States: aviation, highway, marine, pipeline, railroad and hazardous materials.",
+    "origins": [
+      "ntsb"
+    ],
+    "path": [
+      "www.ntsb.gov"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "The list of open investigations tells of each major accident. But the page loads the list by a script from a path that robots.txt disallows, and the news releases are not notices of accidents.",
+    "evidence": [
+      "https://www.ntsb.gov/investigations/Pages/Investigations.aspx",
+      "https://www.ntsb.gov/news/press-releases/Pages/default.aspx",
+      "https://www.ntsb.gov/robots.txt"
+    ],
+    "round": 53
   }
 ]
