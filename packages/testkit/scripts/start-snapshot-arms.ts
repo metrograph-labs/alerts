@@ -24,7 +24,7 @@
  * appends its table to that file.
  */
 import { execFileSync } from "node:child_process";
-import { appendFileSync, cpSync, readFileSync, rmSync, statSync } from "node:fs";
+import { appendFileSync, cpSync, existsSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { growthVerdict, type GrowthVerdict } from "@mark1russell7/rigor-bench";
@@ -183,7 +183,7 @@ async function child(folder: string, id: string): Promise<void> {
 
 /** The mode `prepare`: one start that folds the whole log of a home and writes its snapshot. */
 async function prepare(home: string): Promise<void> {
-  const { openMeasuredRuntime, START_SNAPSHOT_FILE } = await import("@mark1russell7/alerts-runtime");
+  const { openMeasuredRuntime, START_SNAPSHOTS_FOLDER } = await import("@mark1russell7/alerts-runtime");
   const { wallClock } = await import("@mark1russell7/algebra/clock");
   const { SEED_RECORD_FILE } = await import("../src/seed-home.ts");
   const seed = JSON.parse(readFileSync(join(home, SEED_RECORD_FILE), "utf8")) as { readonly end: number };
@@ -193,8 +193,11 @@ async function prepare(home: string): Promise<void> {
   await measured.pass();
   const writes = measured.snapshotWrites.length;
   await measured.close();
-  const bytes = statSync(join(home, START_SNAPSHOT_FILE), { throwIfNoEntry: false })?.size ?? 0;
-  if (writes === 0 || bytes === 0) throw new Error(`The start of ${home} wrote no snapshot. The arm snapshot has nothing to read.`);
+  // The store keeps one file for each key of the start in the folder `START_SNAPSHOTS_FOLDER`, not in the old single file.
+  const folder = join(home, START_SNAPSHOTS_FOLDER);
+  const names = (existsSync(folder) ? readdirSync(folder, { withFileTypes: true }) : []).filter((entry) => entry.isFile() && entry.name.endsWith(".sqlite"));
+  const bytes = names.reduce((sum, entry) => sum + statSync(join(folder, entry.name)).size, 0);
+  if (writes === 0 || bytes === 0) throw new Error(`The start of ${home} wrote no snapshot (${String(writes)} writes, ${String(bytes)} bytes in ${START_SNAPSHOTS_FOLDER}). The arm snapshot has nothing to read.`);
 }
 
 /** The mode `measure`: the seed and the snapshot of each size, and then the arms of each size in fresh processes. */
