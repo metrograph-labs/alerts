@@ -9,7 +9,8 @@
  * - With the option `services`, the fetches and the sends go to fakes on `127.0.0.1` (AL-131). The lab of the capacity
  *   models starts the fakes. No request goes to another host.
  * - The start reads no key. The keys of the measure are fake keys that the caller gives. The start reads no
- *   `secrets.env` and no `copy.json`. Thus the runtime is the only copy, with no exchange and no heartbeat.
+ *   `secrets.env` and no `copy.json`. The runtime is the only copy, or the copy of the option `copy` (AL-160). It has no
+ *   exchange and no heartbeat.
  * - The start takes the lock of the home folder. Thus a measure stops when a live runtime holds the folder.
  *
  * Give a scratch copy of a home folder, because the passes append events to its log. A measured start has two points,
@@ -17,6 +18,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
+import type { CopySettings } from "@mark1russell7/alerts";
 import { CHANNEL_ID as PUSHOVER_CHANNEL, PUSHOVER_QUOTA, PUSHOVER_RESERVE_NOTICES, type PushoverChannelOptions } from "@mark1russell7/alerts-channel-pushover";
 import { CHANNEL_ID as TWILIO_CHANNEL, TEXT_CHANNEL_ID, type TwilioFetch } from "@mark1russell7/alerts-channel-twilio";
 import { openShapeCache, SHAPES_FILE } from "@mark1russell7/alerts-shapes-nws";
@@ -252,6 +254,11 @@ export interface MeasuredOptions {
    * of the channels. Each request has the header `MEASURE_NOW_HEADER`.
    */
   readonly services?: MeasuredServices;
+  /**
+   * The settings of the copy, in place of `copy.json` (AL-160). Default: the only copy. The check of the start examines them as
+   * a file `copy.json`. The start makes no exchange, thus the peers get no request. A lab gives `leaveSources` with a peer.
+   */
+  readonly copy?: CopySettings;
 }
 
 /** A runtime of a measured start. */
@@ -301,14 +308,14 @@ export async function openMeasuredRuntime(home: string, options: MeasuredOptions
   const channels = options.services?.channels === undefined ? undefined : fakeBase(options.services.channels, "channels");
   const held = await holdHome(home, nodeHostPorts());
   try {
-    // The texts of a start, with the fake keys in place of secrets.env and with no copy.json. The check is the check of main.ts.
+    // The texts of a start, with the fake keys in place of secrets.env and with the option `copy` in place of copy.json. The check is the check of main.ts.
     const files = privateFiles(home, join(home, CONFIG_FILE));
     const read = await readStartTexts(files);
     const keys = options.keys ?? (options.keyNames === undefined ? MEASURE_KEYS : measureKeys(options.keyNames, startKeyForms(read)));
     const secretsText = Object.entries(keys)
       .map(([name, value]) => `${name}=${value}\n`)
       .join("");
-    const checked = checkStart({ ...read, secrets: { text: secretsText }, copy: { code: "ENOENT" } }, instanceCheck);
+    const checked = checkStart({ ...read, secrets: { text: secretsText }, copy: options.copy === undefined ? { code: "ENOENT" } : { text: JSON.stringify(options.copy) } }, instanceCheck);
     if (checked.tag === "err") throw new Error(`The private files of the measure do not pass the check:\n- ${checked.error.join("\n- ")}`);
     const wall = options.wall ?? wallClock();
     const quotas = new SqliteHostStateStore(join(home, "quotas.sqlite"));
@@ -327,6 +334,7 @@ export async function openMeasuredRuntime(home: string, options: MeasuredOptions
     const store = snapshot.store === undefined || options.timeSnapshot !== true ? snapshot.store : timedSnapshot(snapshot.store, (write) => { snapshotWrites.push(write); options.onSnapshotWrite?.(write); });
     const instance = openInstance({
       config: checked.value.parsed,
+      copy: checked.value.copy,
       secret: envSecrets(checked.value.keys),
       log,
       ...(priors === undefined ? {} : { priors }),

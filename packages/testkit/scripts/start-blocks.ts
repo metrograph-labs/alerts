@@ -13,11 +13,17 @@
  * the pauses of the garbage collector. A phase is the open with its first pass, or one more pass. The line also has the time
  * of each write of the snapshot: the build of the rows apart from the write of SQLite. It also has the longest part between two
  * pauses of the write, the most CPU time of the thread in one part, and the wait of the longest part.
+ *
+ * With the environment variable `LEAVE_SOURCES` (source ids with commas), the script opens the home two more times as a copy
+ * that leaves these sources (AL-160). The source set of the copy is part of the snapshot key. Thus the start `leave-new` has no
+ * snapshot of its key and folds the whole log, and the start `leave-snapshot` reads the snapshot of `leave-new`. The gate
+ * reads only the start `full`.
  */
 import { statSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { PerformanceObserver, type PerformanceEntry } from "node:perf_hooks";
+import { COPY_FORMAT, sourceIdSchema, type CopySettings } from "@mark1russell7/alerts";
 import { longestPartWork, openMeasuredRuntime, START_SNAPSHOT_FILE, type MeasuredRuntime } from "@mark1russell7/alerts-runtime";
 import { wallClock } from "@mark1russell7/algebra/clock";
 import { EVENT_LOOP_RESOLUTION_MS, watchEventLoop, type LoopBlock } from "@mark1russell7/lag/node";
@@ -31,6 +37,18 @@ if (folder === undefined) throw new Error("Give a scratch folder.");
 const size = Number(sizeText);
 const passes = Number(passesText);
 if (!(size > 0) || !Number.isInteger(passes) || passes < 2) throw new RangeError("Give a size above 0 MB and 2 or more passes.");
+const leaveText = process.env["LEAVE_SOURCES"] ?? "";
+const leave = leaveText.split(",").map((id) => id.trim()).filter((id) => id !== "").map((id) => sourceIdSchema.parse(id));
+// A copy leaves a source only when it has another copy. The start makes no exchange, thus the peer gets no request.
+const leaving: CopySettings = {
+  format: COPY_FORMAT,
+  id: "lab",
+  rank: 1,
+  listen: { host: "127.0.0.1", port: 9 },
+  peers: [{ id: "peer", url: "http://127.0.0.1:9" }],
+  leaveSources: leave,
+};
+const KINDS = leave.length === 0 ? (["full", "snapshot"] as const) : (["full", "snapshot", "leave-new", "leave-snapshot"] as const);
 
 // The timer of the watch ticks at this period. A gap above `LONG_MS` between two ticks is one block of the loop.
 const TICK_MS = EVENT_LOOP_RESOLUTION_MS;
@@ -97,7 +115,7 @@ const seeded = await seedHome(dir, { log: size * 1_000_000, seed: "al105" });
 // The parts of the snapshot writes in the start that folds the whole log, for the gate: the most CPU time of the thread in one
 // part, and the wall time and the wait of the longest part.
 let work: { readonly workMs: number; readonly cpuMs: number; readonly gcMs: number; readonly wallMs: number; readonly waitMs: number } | undefined;
-for (const kind of ["full", "snapshot"] as const) {
+for (const kind of KINDS) {
   const phases: Phase[] = [];
   const watch = watchEventLoop({ limitMs: LONG_MS, maxBlocks: MAX_BLOCKS });
   let found: readonly Block[] = [];
@@ -109,7 +127,7 @@ for (const kind of ["full", "snapshot"] as const) {
   const lines: string[] = [];
   try {
     await phase("open", phases, async () => {
-      measured = await openMeasuredRuntime(dir, { wall: wallClock({ start: seeded.end }), startSnapshot: true, timeSnapshot: true, report: (line) => lines.push(line) });
+      measured = await openMeasuredRuntime(dir, { wall: wallClock({ start: seeded.end }), startSnapshot: true, timeSnapshot: true, report: (line) => lines.push(line), ...(kind.startsWith("leave") ? { copy: leaving } : {}) });
     });
     for (let at = 2; at <= passes; at += 1) await phase(`pass-${String(at)}`, phases, () => measured!.pass());
   } finally {
@@ -130,6 +148,7 @@ for (const kind of ["full", "snapshot"] as const) {
   const record = {
     kind: "start",
     start: kind,
+    ...(kind.startsWith("leave") ? { leave } : {}),
     size,
     events: seeded.events,
     days: Number(((seeded.end - seeded.start) / 86_400_000).toFixed(2)),
