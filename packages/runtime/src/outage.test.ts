@@ -325,20 +325,27 @@ describe("outageDeploy", () => {
   }, 60_000);
 });
 
-// The packages of the workspace, by name. Each package has its entry in `src/index.ts`.
+// The entries of the packages of the workspace, by specifier: the root and each subpath of the field `exports`.
+// A subpath "./x" with the source "./src/x.ts" gives the specifier `<name>/x`. A package with no field `exports` has its root in `src/index.ts`.
 const PACKAGES = new URL("../../", import.meta.url);
 const ENTRIES = new Map(
   readdirSync(PACKAGES, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .flatMap((entry) => {
+      let manifest: { readonly name: string; readonly exports?: Readonly<Record<string, unknown>> };
       try {
-        const name = (JSON.parse(readFileSync(new URL(`${entry.name}/package.json`, PACKAGES), "utf8")) as { name: string }).name;
-        return [[name, new URL(`${entry.name}/src/index.ts`, PACKAGES).href] as const];
+        manifest = JSON.parse(readFileSync(new URL(`${entry.name}/package.json`, PACKAGES), "utf8")) as typeof manifest;
       } catch {
         return [];
       }
+      const folder = new URL(`${entry.name}/`, PACKAGES);
+      const exports = manifest.exports ?? { ".": "./src/index.ts" };
+      return Object.entries(exports).flatMap(([subpath, target]) =>
+        typeof target === "string" && target.endsWith(".ts") ? [[subpath === "." ? manifest.name : `${manifest.name}/${subpath.slice(2)}`, new URL(target, folder).href] as const] : [],
+      );
     }),
 );
+const NAMES = new Set([...ENTRIES.keys()].map((specifier) => specifier.split("/").slice(0, 2).join("/")));
 // A static import or export of a module. Type imports go away at the load, so they do not count. A dynamic import() does not match.
 const STATIC_IMPORT = /^[ \t]*(?:import|export)\s+(?!type\s)(?:[^;'"]*?\s+from\s+)?["']([^"']+)["']/gmu;
 
@@ -353,7 +360,7 @@ function staticGraph(entry: URL): { readonly files: ReadonlySet<string>; readonl
     for (const [, specifier = ""] of readFileSync(new URL(href), "utf8").matchAll(STATIC_IMPORT)) {
       if (specifier.startsWith(".")) queue.push(new URL(specifier, href).href);
       else if (ENTRIES.has(specifier)) queue.push(ENTRIES.get(specifier) ?? "");
-      else if ([...ENTRIES.keys()].some((name) => specifier.startsWith(`${name}/`))) throw new Error(`The walk does not read the subpath ${specifier}.`);
+      else if ([...NAMES].some((name) => specifier.startsWith(`${name}/`))) throw new Error(`The walk does not read the subpath ${specifier}.`);
       else if (!specifier.startsWith("node:")) outside.add(specifier.split("/").slice(0, specifier.startsWith("@") ? 2 : 1).join("/"));
     }
   }
