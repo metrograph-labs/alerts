@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fakeWallClock } from "@mark1russell7/algebra/clock";
-import { readSeries, type MapResult, type MeasureDeclaration, type Observation, type ObservationId, type PlaceId, type Reading, type SourceDescriptor, type SourceId, type SourceProcedures, type WatchedPlace } from "@mark1russell7/alerts";
+import { bucketOf, HISTORY_BUCKET, indicatorSurprise, MIN_READS, readSeries, type MapResult, type MeasureDeclaration, type Observation, type ObservationId, type PlaceId, type Reading, type SourceDescriptor, type SourceId, type SourceProcedures, type WatchedPlace } from "@mark1russell7/alerts";
 import { afterEach, describe, expect, it } from "vitest";
 import { fetchStep, type FetchInput } from "./fetch.ts";
 import { openRuntimeLog } from "./log.ts";
@@ -195,6 +195,12 @@ describe("the readings in a pass of the runtime", () => {
       refs: () => {
         throw new Error("The disk is full.");
       },
+      addUnitReads: () => {
+        throw new Error("The disk is full.");
+      },
+      unitReads: () => {
+        throw new Error("The disk is full.");
+      },
       prune: () => {
         throw new Error("The disk is full.");
       },
@@ -208,6 +214,7 @@ describe("the readings in a pass of the runtime", () => {
       expect(pass.fetched).toEqual([SOURCE_ID]);
       expect(faults).toEqual(["add", "read", "prune"]);
       expect(pass.breadth).toBeUndefined();
+      expect(pass.surprise).toBeUndefined();
       expect(log.has("obs-1")).toBe(true);
     } finally {
       log.close();
@@ -231,6 +238,86 @@ describe("the readings in a pass of the runtime", () => {
       expect(pass.breadth?.world).toEqual({ signals: ["river-levels"], read: ["river-levels"], dimensions: counts });
       expect(pass.breadth?.places).toEqual([{ place: KANSAS.id, signals: ["river-levels"], read: ["river-levels"], dimensions: [{ dimension: "river-levels", read: 1, signals: 1, noRead: 0 }] }]);
       expect(pass.breadth?.unplaced).toEqual([]);
+    } finally {
+      log.close();
+    }
+  });
+
+  // The store of the breadth test, with a signal of the station in the zone at T0, and 40 hours of calm units before T0.
+  const surpriseStore = (): FileReadingStore => {
+    const store = openStore();
+    const inZone = { type: "code", system: "ugc", code: "KSZ083" } as const;
+    const weeks = [1, 2, 3].flatMap((week) =>
+      [-2, -1, 0, 1, 2].map((slot) => reading(T0 - week * 7 * 24 * 60 * MINUTE + slot * 15 * MINUTE, 1 + slot / 100, { series: "station-2", area: inZone, observation: `obs-w${week}-${slot}` as ObservationId })),
+    );
+    store.add([...weeks, reading(T0, 50, { series: "station-2", area: inZone, observation: "obs-high" as ObservationId })]);
+    for (let hour = 1; hour <= 40; hour += 1) {
+      store.addUnitReads({ bucket: bucketOf(T0) - hour * HISTORY_BUCKET, units: [{ unit: "world/river-levels", signal: false }, { unit: "place/place:a/river-levels", signal: false }] });
+    }
+    return store;
+  };
+
+  it("gives the surprise of the signals from one read of each unit in each hour (AL-24)", async () => {
+    const store = surpriseStore();
+    const clock = fakeWallClock(T0);
+    const log = openRuntimeLog(":memory:");
+    try {
+      const runtime = openRuntime({ log, clock, sources: [gauges()], watch: () => ({ places: [KANSAS], kinds: ["met"] }), view: VIEW, run: "run-0", readings: store });
+      const first = await runtime.pass();
+      const calm = [
+        { unit: "place/place:a/river-levels", reads: 40, signals: 0 },
+        { unit: "world/river-levels", reads: 40, signals: 0 },
+      ];
+      expect(first.breadth).toBeDefined();
+      // The two units are of two scopes, thus the store has no pair, and each scope has an empty list of pairs.
+      expect(first.surprise).toEqual(indicatorSurprise(first.breadth!, calm, MIN_READS, []));
+      expect(first.surprise?.world.pairs).toEqual([]);
+      expect(first.surprise?.world).toMatchObject({ units: 1, signals: 1, noRate: [] });
+      expect(first.surprise?.places.map((place) => [place.place, place.signals])).toEqual([[KANSAS.id, 1]]);
+      expect(first.surprise!.world.surprise).toBeGreaterThan(0);
+      // The first pass of the hour writes its units. The later passes of the hour write nothing, and see the same history.
+      await clock.advance(10_000);
+      const second = await runtime.pass();
+      await clock.advance(10_000);
+      await runtime.pass();
+      expect(store.unitReads(bucketOf(T0))).toEqual([
+        { bucket: bucketOf(T0), units: [{ unit: "place/place:a/river-levels", signal: true }, { unit: "world/river-levels", signal: true }] },
+      ]);
+      expect(store.unitReads(Number.MIN_SAFE_INTEGER)).toHaveLength(41);
+      expect(second.surprise).toEqual(first.surprise);
+    } finally {
+      log.close();
+    }
+  });
+
+  it("gives no surprise when the history of the units fails, and the pass continues (AL-24)", async () => {
+    const store = surpriseStore();
+    let broken = true;
+    const fail = (): never => {
+      throw new Error("The disk is full.");
+    };
+    const flaky: ReadingStore = {
+      ...store,
+      unitReads: (since) => (broken ? fail() : store.unitReads(since)),
+      addUnitReads: (reads) => (broken ? fail() : store.addUnitReads(reads)),
+    };
+    const faults: string[] = [];
+    const clock = fakeWallClock(T0);
+    const log = openRuntimeLog(":memory:");
+    try {
+      const runtime = openRuntime({ log, clock, sources: [gauges()], watch: () => ({ places: [KANSAS], kinds: ["met"] }), view: VIEW, run: "run-0", readings: flaky, onReadingsFault: (_error, action) => faults.push(action) });
+      const pass = await runtime.pass();
+      expect(pass.fetched).toEqual([SOURCE_ID]);
+      expect(pass.breadth?.world.signals).toEqual(["river-levels"]);
+      expect(pass.surprise).toBeUndefined();
+      expect(faults).toEqual(["read", "add"]);
+      expect(log.has("obs-1")).toBe(true);
+      // The next pass reads the store again.
+      broken = false;
+      await clock.advance(10_000);
+      const next = await runtime.pass();
+      expect(next.surprise?.world).toMatchObject({ units: 1, signals: 1, noRate: [] });
+      expect(store.unitReads(bucketOf(T0))).toHaveLength(1);
     } finally {
       log.close();
     }

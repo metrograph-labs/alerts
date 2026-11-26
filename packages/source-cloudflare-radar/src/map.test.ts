@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
-import { knownKind, matchPlaces, type Observation, type ObservationId, type PlaceId, type Report } from "@mark1russell7/alerts";
+import { incidents, knownKind, matchPlaces, normalize, type Observation, type ObservationId, type PlaceId, type Report } from "@mark1russell7/alerts";
 import { describe, expect, it } from "vitest";
-import { ANOMALIES_SOURCE, OUTAGE_CENTER, OUTAGES_SOURCE } from "./feed.ts";
+import { ANOMALIES_SOURCE, GRID_COLLAPSE_KIND, OUTAGE_CENTER, OUTAGE_KIND, OUTAGES_SOURCE } from "./feed.ts";
 import { mapAnomaly, mapOutage, RADAR_CREDIT } from "./map.ts";
 
 /** The real answers and the pages of chosen real records (`fixtures/README.md`). */
@@ -96,6 +96,21 @@ describe("mapOutage", () => {
     expect(matchPlaces(report, [{ id: "p" as PlaceId, codes: [{ system: "geonames", code: "686966" }], bufferKm: 0 }])).toHaveLength(1);
     expect(report.areaText).toBe("Zhytomyr Oblast, Ukraine");
     expect(report.headline).toBe("Cloudflare Radar: regional internet outage (power outage): Zhytomyr Oblast, Ukraine");
+  });
+
+  it("maps a nationwide outage with the cause power outage to an internet outage and a grid collapse, in one incident", () => {
+    // The real regional outage 1744 (a power outage) as a nationwide outage of its country. A regional one gives one report.
+    const record = { ...outage("1744"), outage: { outageCause: "POWER_OUTAGE", outageType: "NATIONWIDE" }, geoIds: [], entities: [], locations: ["UA"], locationsDetails: [{ code: "UA", name: "Ukraine" }] };
+    const result = mapOutage(observationOf(OUTAGES_SOURCE, record));
+    expect(result.problems.filter((problem) => problem.fatal || problem.lossy === true)).toEqual([]);
+    const [internet, power, ...others] = result.reports;
+    expect(others).toEqual([]);
+    expect(internet).toMatchObject({ key: "1744", kind: { code: OUTAGE_KIND }, severity: "severe", certainty: "observed" });
+    expect(power).toMatchObject({ key: "1744/power", kind: { code: GRID_COLLAPSE_KIND }, severity: "severe", certainty: "likely", areas: [{ type: "code", system: "iso3166", code: "UA" }] });
+    expect(power?.correlation).toEqual(internet?.correlation);
+    expect(power?.headline).toBe("Cloudflare Radar: nationwide power outage (internet outage of the whole country): Ukraine");
+    expect(knownKind(GRID_COLLAPSE_KIND)).toBe(true);
+    expect(incidents(normalize({ reports: result.reports }), FETCHED)).toHaveLength(1);
   });
 
   it("maps an outage that an authority ordered to a shutdown, with the countries of the record and not of its networks", () => {

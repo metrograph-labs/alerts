@@ -35,9 +35,11 @@ import {
 } from "./contracts.ts";
 import { dailyTimeProblems, digestTimeOf, escalate, escalationProblems, quietWindowProblems, rankDelayOf, rankFloors, type EscalationPlan, type EscalationSend, type RankDelays } from "./escalation.ts";
 import { messageKey } from "./ids.ts";
+import { heldPlaces, type PlaceHolds } from "./place-holds.ts";
 import type { Suppression } from "./throttle.ts";
 import { unknownKinds } from "./taxonomy.ts";
 import { assessmentWhy } from "./why.ts";
+import { softwareMatchText, type SoftwareMatch } from "./software.ts";
 
 /** A person of the delivery. The private configuration gives each one. */
 export interface Recipient {
@@ -177,6 +179,11 @@ export interface RouteInput {
   readonly incidents: readonly Incident[];
   readonly recipients: readonly Recipient[];
   readonly places: readonly WatchedPlace[];
+  /**
+   * The holds of the moving places (`holdPlaces`, AL-40). Each incident reads its places with its holds (`heldPlaces`). Without
+   * them, each incident reads `places`.
+   */
+  readonly holds?: PlaceHolds | undefined;
   /** The policy of the assessment. The default is `DEFAULT_ASSESS_POLICY`. */
   readonly assess?: AssessPolicy | undefined;
   /**
@@ -239,6 +246,8 @@ export interface Route {
    * `PersonWatch.subjects` has no why.
    */
   readonly why?: WhyRecord;
+  /** The matches of the advisory to the parts of the software that the person watches (AL-197). The message names each. */
+  readonly software?: readonly SoftwareMatch[];
   /** The hold of the send limit (`limitRoutes`). A held route has no send in its plan. Its cancels stay. */
   readonly held?: EscalationHold;
   /**
@@ -300,6 +309,7 @@ function byReport<T extends { readonly incident: ReportId }>(items: readonly T[]
  *   comes only from the deliveries of another copy. Its route sends nothing and writes no start (`Route.imported`).
  *   The level still holds the top, thus a lower own level starts nothing. A later own assessment at that level sends.
  * - A kind with no class in an incident of only the sources of other copies (`RouteInput.sources`) gets `FOREIGN_TABLE`.
+ * - A hold of a moving place (`RouteInput.holds`) keeps its match after the fix leaves the area. Thus a flap at the edge starts no new episode.
  */
 export function route(input: RouteInput): Route[] {
   const { state, now } = input;
@@ -324,20 +334,30 @@ export function route(input: RouteInput): Route[] {
     const acks = acksOf(reports);
     const ends = endsOf(reports);
     const end = endOf(incident, now);
+    // The places of the incident: a moving place with a hold keeps its match after its fix leaves the area (AL-40).
+    const places = input.holds === undefined ? input.places : heldPlaces(incident, input.places, input.holds);
+    // The parts of each person, one time for each incident. Thus each person reads only its own parts (AL-136).
+    const endsBy = Map.groupBy(ends, (item) => item.person);
+    const startsBy = Map.groupBy(starts, (item) => item.person);
+    const deliveriesBy = Map.groupBy(deliveries, (item) => item.person);
+    const acksBy = Map.groupBy(acks, (item) => item.person);
     for (const recipient of input.recipients) {
       const person = recipient.watch.person;
       const policyOf = (level: Level): EscalationPolicy | undefined => policyFor(recipient.policies, level, incident);
-      const mine = <T extends { readonly person: PersonId }>(items: readonly T[]): T[] => items.filter((item) => item.person === person);
+      const myEnds = endsBy.get(person) ?? [];
+      const myStarts = startsBy.get(person) ?? [];
+      const myDeliveries = deliveriesBy.get(person) ?? [];
+      const myAcks = acksBy.get(person) ?? [];
       // The ends of the person in time order. Each one closes an episode. A change of the mode adds its end at `now`.
-      const closes: EscalationEnd[] = mine(ends)
+      const closes: EscalationEnd[] = myEnds
         .filter((item) => Number.isFinite(item.at))
         .sort((a, b) => a.at - b.at || compareCodeUnits(a.incident, b.incident));
       // The episode of a time: the count of the ends before it. A time that is not a number is in the first episode.
       const episodeOf = (at: Instant): number => closes.filter((close) => close.at < at).length;
       // The first time of an episode: its earliest start or delivery, or `now`.
       const firstOf = (episode: number): Instant =>
-        Math.min(now, ...[...mine(starts), ...mine(deliveries)].filter((item) => episodeOf(item.at) === episode).map((item) => item.at).filter(Number.isFinite));
-      const assessment = incident.live ? assess(incident, recipient.watch, input.places, policy, now, foreign) : undefined;
+        Math.min(now, ...[...myStarts, ...myDeliveries].filter((item) => episodeOf(item.at) === episode).map((item) => item.at).filter(Number.isFinite));
+      const assessment = incident.live ? assess(incident, recipient.watch, places, policy, now, foreign) : undefined;
       // A mute with the effect `absent` keeps the incident from the person. With `silent`, the level stays and the mode changes.
       const muted = assessment?.muted;
       const assessed: AssessedLevel | undefined = assessment === undefined ? undefined : reachedAssessment(assessment).level;
@@ -345,8 +365,8 @@ export function route(input: RouteInput): Route[] {
       for (let episode = 0; episode <= closes.length; episode += 1) {
         const closed = closes[episode];
         const current = closed === undefined;
-        const ownStarts = mine(starts).filter((item) => episodeOf(item.at) === episode);
-        const ownDeliveries = mine(deliveries).filter((item) => episodeOf(item.at) === episode);
+        const ownStarts = myStarts.filter((item) => episodeOf(item.at) === episode);
+        const ownDeliveries = myDeliveries.filter((item) => episodeOf(item.at) === episode);
         // An earlier episode continues only to cancel its deliveries with no cancel.
         if (!current && ownDeliveries.every((delivery) => input.cancelled.has(delivery.key))) continue;
         const levels = new Set<Level>();
@@ -373,12 +393,13 @@ export function route(input: RouteInput): Route[] {
         const closing = closed ?? (freshEnd ? { incident: incident.anchor, person, at: now, ...(reason === "ended" ? {} : { reason }) } : undefined);
         if (changed && closing !== undefined) closes.push(closing);
         const why = current && assessment !== undefined ? assessmentWhy(assessment) : undefined;
+        const software = current ? (assessment?.reasons ?? []).flatMap((reason) => (reason.kind === "software" ? [reason.match] : [])) : [];
         // A later episode keeps only the acknowledgments from its first time. An end `muted` joins two episodes: the
         // acknowledgments of the episode before it still count, thus a change of a mute does not alert again.
         let from = episode;
         while (from > 0 && closes[from - 1]?.reason === "muted") from -= 1;
         const since = from === 0 ? undefined : firstOf(from);
-        const ownAcks = mine(acks).filter((ack) => {
+        const ownAcks = myAcks.filter((ack) => {
           const at = episodeOf(ack.at);
           return at >= from && at <= episode && (since === undefined || ack.at >= since);
         });
@@ -396,7 +417,7 @@ export function route(input: RouteInput): Route[] {
           const ruled = ruleSteps(policyOf(level) ?? { level, steps: [], exhaustedAfter: 0 }, recipient.channelRules, incident);
           const chosen = ruled.policy;
           // The silent mode sends step 0 only, and only when the person has no other delivery of the incident.
-          const others = silent && mine(deliveries).some((item) => item.level !== level || episodeOf(item.at) !== episode);
+          const others = silent && myDeliveries.some((item) => item.level !== level || episodeOf(item.at) !== episode);
           const planned = escalate({
             policy: silent ? { ...chosen, steps: others ? [] : chosen.steps.slice(0, 1) } : chosen,
             person,
@@ -437,6 +458,7 @@ export function route(input: RouteInput): Route[] {
             ...(closing === undefined ? {} : { end: closing }),
             freshEnd,
             ...(why === undefined ? {} : { why }),
+            ...(software.length === 0 ? {} : { software }),
             ...(shared ? { imported: true as const } : {}),
           });
         });
@@ -619,11 +641,15 @@ export function recipientProblems(recipient: Recipient, channels: readonly Chann
  * stops the message that tells of it.
  *
  * The `why` is the why line of the channel, from `whyLine`. An empty line gives no field.
+ *
+ * Each match of the advisory to a part of the software (`Route.software`, AL-197) gives one line at the top of the body.
+ * The line names the part, the package, the installed version and the fixed version. A last line gives the severity.
  */
-export function messageOf(incident: Incident, reports: readonly Report[], send: EscalationSend, why?: string): Message {
+export function messageOf(incident: Incident, reports: readonly Report[], send: EscalationSend, why?: string, software: readonly SoftwareMatch[] = []): Message {
   const report = textReport(incident, reports);
   const title = titleOf(incident, report);
-  const body = [report?.instruction, report?.areaText, report?.description].flatMap((part) => (part === undefined || part.trim() === "" ? [] : [part.trim()])).join("\n\n");
+  const matches = software.length === 0 ? [] : [[...software.map(softwareMatchText), `The severity of the advisory is ${incident.severity}.`].join("\n")];
+  const body = [...matches, report?.instruction, report?.areaText, report?.description].flatMap((part) => (part === undefined || part.trim() === "" ? [] : [part.trim()])).join("\n\n");
   return {
     key: messageKey(send),
     person: send.person,

@@ -13,7 +13,8 @@
  * - `systemView` gives the `system` events at the steps of the delivery path, with the causes of `seed-system.ts` (AL-104).
  *
  * The options `shapes` and `transit` also write the cache of the zone shapes and the copy of the transit catalog, from
- * `seed-files.ts`.
+ * `seed-files.ts`. The option `open` adds reports that stay live at the end of the log, at the areas that the caller gives (AL-126).
+ * The option `observe` puts sources in observe mode at the start of the log, as the new sources of a live copy (AL-172).
  *
  * The function folds each event into a state, as a live copy does. Thus the retirements keep the state bounded, and the
  * log ends in the state of a copy that operated for the days of the log.
@@ -71,7 +72,7 @@ import { random, seedOf, type Random } from "@mark1russell7/rigor-generators";
 import { openDatabase } from "@mark1russell7/sqlite";
 import { seedDelivery, type DeliveryMix } from "./seed-delivery.ts";
 import { seedSystem, type SystemMix } from "./seed-system.ts";
-import { SEED_FORECAST_ZONES, seedShapes, seedTransit, type SeedShapesResult, type SeedTransitResult } from "./seed-files.ts";
+import { SEED_FORECAST_ZONES, seedShapes, seedTransit, type NearFeeds, type SeedShapesResult, type SeedTransitResult } from "./seed-files.ts";
 import { fileBytes, pagesOf, textOf } from "./seed-parts.ts";
 
 const DAY = 86_400_000;
@@ -215,6 +216,26 @@ export interface SeedStoreOptions {
   readonly shapes?: number;
   /** The byte size of `transit-catalog.json`, from `seedTransit`. When it is absent, the function writes no copy of the catalog. */
   readonly transit?: number;
+  /** The feeds of the copy of the catalog near one point, with the option `transit` (AL-126). */
+  readonly near?: NearFeeds;
+  /** The reports that stay live at the end of the log (AL-126). They come after the log of the byte size `log`. */
+  readonly open?: OpenReports;
+  /**
+   * The starts of the ids of the sources in observe mode (AL-172). The log starts with a `mode` event for each source of
+   * the mix with one of these starts. An example is `gtfs-seed-`. The default puts no source in observe mode.
+   */
+  readonly observe?: readonly string[];
+}
+
+/**
+ * The reports that stay live at the end of the log (AL-126). The lab of the capacity models reads them as the open incidents
+ * of its configuration.
+ */
+export interface OpenReports {
+  /** The count of the reports: a whole number, 0 or more. Each report is a new incident. */
+  readonly incidents: number;
+  /** The areas of each report. A place of the configuration in these areas gets each incident. */
+  readonly areas: readonly Area[];
 }
 
 /** The result of `seedStore`. */
@@ -238,6 +259,8 @@ export interface SeedStoreResult {
   readonly shapes?: SeedShapesResult;
   /** The copy of the catalog, when the options give its size. Its fetch time is `end`. */
   readonly transit?: SeedTransitResult;
+  /** The count of the reports of the option `open`, when the options give it. */
+  readonly open?: number;
 }
 
 /** The id of the second copy of the store, and the id of its log. */
@@ -276,6 +299,9 @@ interface SourcePlan {
  */
 export async function seedStore(dir: string, options: SeedStoreOptions): Promise<SeedStoreResult> {
   if (!Number.isFinite(options.log) || options.log <= 0) throw new Error(`The size of the log is ${String(options.log)}, not a finite number above 0.`);
+  if (options.open !== undefined && !(Number.isInteger(options.open.incidents) && options.open.incidents >= 0)) {
+    throw new RangeError(`The count of the open reports is ${String(options.open.incidents)}, not a whole number, 0 or more.`);
+  }
   await mkdir(dir, { recursive: true });
   const path = join(dir, "runtime.sqlite");
   const mix = options.mix ?? LIVE_MIX;
@@ -340,6 +366,8 @@ export async function seedStore(dir: string, options: SeedStoreOptions): Promise
 
   try {
     add([{ ...envelope("started", `started:seed-run-${String(runs)}`, start), run: `seed-run-${String(runs)}` }]);
+    const observed = plans.filter((plan) => (options.observe ?? []).some((prefix) => plan.id.startsWith(prefix)));
+    add(observed.map((plan): RuntimeEvent => ({ ...envelope("mode", `mode:${plan.id}`, start), source: plan.id, mode: "observe", reason: "seed" })));
     while (onDisk + pendingBytes < options.log) {
       const plan = earliest(plans);
       const at = Math.min(plan.next, nextExchange, nextStart, delivery?.due ?? Number.POSITIVE_INFINITY);
@@ -382,6 +410,7 @@ export async function seedStore(dir: string, options: SeedStoreOptions): Promise
       }
       if (pendingBytes >= chunk) flush();
     }
+    if (options.open !== undefined) add(openOf(options.open, state.time, root.fork("open")));
     flush();
   } finally {
     reader.close();
@@ -389,8 +418,74 @@ export async function seedStore(dir: string, options: SeedStoreOptions): Promise
   }
   const end = state.time;
   const shapes = options.shapes === undefined ? undefined : await seedShapes(dir, { bytes: options.shapes, seed: options.seed, fetched: end });
-  const transit = options.transit === undefined ? undefined : await seedTransit(dir, { bytes: options.transit, seed: options.seed, fetched: end });
-  return { path, bytes: fileBytes(path), events: written, start, end, types, ...(shapes === undefined ? {} : { shapes }), ...(transit === undefined ? {} : { transit }) };
+  const near = options.near === undefined ? {} : { near: options.near };
+  const transit = options.transit === undefined ? undefined : await seedTransit(dir, { bytes: options.transit, seed: options.seed, fetched: end, ...near });
+  return {
+    path,
+    bytes: fileBytes(path),
+    events: written,
+    start,
+    end,
+    types,
+    ...(shapes === undefined ? {} : { shapes }),
+    ...(transit === undefined ? {} : { transit }),
+    ...(options.open === undefined ? {} : { open: options.open.incidents }),
+  };
+}
+
+// The source of the open reports: the NWS API, as in the mix. The kinds are the kinds of the NWS on land.
+const OPEN_SOURCE = "nws-api" as SourceId;
+const OPEN_KINDS = NWS_KINDS.filter((code) => code !== "met.marine.small-craft");
+
+// The events of one fetch of the NWS API after the time `at`: one observation, with one report for each open incident.
+// Each report expires 2 days after the fetch. Thus it is live at the end of the log and at the start of a measure.
+function openOf(open: OpenReports, at: Instant, r: Random): RuntimeEvent[] {
+  if (open.incidents === 0) return [];
+  const started = at + 200;
+  const fetched = at + 1_000;
+  const contentType = "application/json";
+  const body = JSON.stringify({ seed: "open", incidents: open.incidents });
+  const url = `https://seed.example.test/${OPEN_SOURCE}/open`;
+  const observation: Observation = {
+    id: observationId({ source: OPEN_SOURCE, contentType, body, url }),
+    source: OPEN_SOURCE,
+    fetched,
+    contentType,
+    body,
+    transport: { url, status: 200, latency: r.int(40, 900) },
+  };
+  const reports = Array.from({ length: open.incidents }, (_, index): Report => {
+    const code = OPEN_KINDS[index % OPEN_KINDS.length]!;
+    const key = `seed:open:${String(index + 1)}`;
+    const sent = fetched - r.int(0, 600_000);
+    return {
+      id: reportId({ source: OPEN_SOURCE, key, sent }),
+      source: OPEN_SOURCE,
+      origin: "seed-origin-1",
+      key,
+      references: [],
+      correlation: [],
+      status: "actual",
+      op: "alert",
+      kind: { code, label: `Seed ${code}` },
+      categories: ["met"],
+      severity: "severe",
+      urgency: "expected",
+      certainty: "likely",
+      response: ["monitor"],
+      sent,
+      received: fetched,
+      expires: fetched + 2 * DAY,
+      areas: open.areas,
+      about: [],
+      sender: "seed sender",
+      headline: `Seed ${code} open ${String(index + 1)}`,
+      observation: observation.id,
+      parameters: {},
+    };
+  });
+  const outcome = { ok: true as const, observations: [observation], complete: true };
+  return [...fetchStep({ source: OPEN_SOURCE, procedures: { map: () => ({ reports, problems: [] }) }, started, ended: fetched, outcome, known: () => false }).events];
 }
 
 // The map of a fetch with a failure. The fetch has no observation, thus the step does not use it.

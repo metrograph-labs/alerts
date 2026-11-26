@@ -3,12 +3,20 @@ import type { FetchOutcome, PlaceId, SourceId, Watch } from "@mark1russell7/aler
 import type { Exchange, Reply, Transport } from "polite-crawler/api";
 import { HostScheduler } from "polite-crawler/politeness";
 import { describe, expect, it } from "vitest";
-import { createStatusPageFetch, incidentBody, readSummary, SUMMARY_PATH, SUMMARY_TIMEOUT_MS } from "./fetch.ts";
+import { createStatusPageFetch, incidentBody, readIncidentList, readSummary, SUMMARY_PATH, SUMMARY_TIMEOUT_MS } from "./fetch.ts";
+import { HISTORY_PATH } from "./history.ts";
+import { mapObservation } from "./map.ts";
 import type { StatusPage } from "./page.ts";
+import { registeredPage } from "./register.ts";
 
 /** The real summaries of two pages, with a part of their components (`fixtures/README.md`). */
 const CLOUDFLARE = readFileSync(new URL("../fixtures/cloudflare-20261118.json", import.meta.url), "utf8");
 const OPENAI = readFileSync(new URL("../fixtures/openai-20261118.json", import.meta.url), "utf8");
+/** The real list of the latest incidents of a page of incident.io, with its 2 latest incidents (`fixtures/README.md`). */
+const OPENAI_LIST = readFileSync(new URL("../fixtures/openai-incidents-20261125.json", import.meta.url), "utf8");
+const LIST = JSON.parse(OPENAI_LIST) as { page: Record<string, unknown>; incidents: Record<string, unknown>[] };
+/** The list with its latest incident open again. The real list has no open incident. */
+const OPEN_LIST = JSON.stringify({ ...LIST, incidents: [{ ...LIST.incidents[0], status: "investigating", resolved_at: null }, LIST.incidents[1]] });
 const SUMMARY = JSON.parse(CLOUDFLARE) as { incidents: Record<string, unknown>[] } & Record<string, unknown>;
 const FETCHED = Date.parse("2026-11-18T04:34:02Z");
 
@@ -22,7 +30,7 @@ const json = (body: string, status = 200, headers: Record<string, string> = {}):
 const NOT_MODIFIED: Reply = { status: 304, statusText: "Not Modified", headers: { etag: ETAG }, body: "" };
 
 /** This function makes a fetch whose transport gives the replies in turn, and then the last reply again. */
-const fetchWith = (replies: readonly Reply[]) => {
+const fetchWith = (replies: readonly Reply[], page: StatusPage = PAGE) => {
   const sent: Exchange[] = [];
   let index = 0;
   const transport: Transport = async (exchange) => {
@@ -33,7 +41,7 @@ const fetchWith = (replies: readonly Reply[]) => {
   };
   let time = FETCHED;
   const clock = { now: () => time, sleep: async (ms: number) => void (time += ms) };
-  const fetch = createStatusPageFetch({ page: PAGE, pace: { scheduler: new HostScheduler(clock, 1), now: clock.now }, transport, userAgent: "alerts-tests", minIntervalMs: 0, timeoutMs: 1000 });
+  const fetch = createStatusPageFetch({ page, pace: { scheduler: new HostScheduler(clock, 1), now: clock.now }, transport, userAgent: "alerts-tests", minIntervalMs: 0, timeoutMs: 1000 });
   return { fetch, sent };
 };
 const observationsOf = (outcome: FetchOutcome) => (outcome.ok ? outcome.observations : []);
@@ -89,7 +97,49 @@ describe("readSummary", () => {
   });
 });
 
+describe("readIncidentList", () => {
+  it("keeps no resolved incident, and gives the page with no status as the head", () => {
+    const list = readIncidentList(OPENAI_LIST)!;
+    expect(list.incidents).toEqual([]);
+    expect(list.complete).toBe(true);
+    expect(JSON.parse(list.head)).toEqual({ page: { id: "01JMDK9XYNY6RXSED6SDWW50WY", name: "OpenAI", url: "https://status.openai.com/" } });
+    expect(list.asOf).toBe(Date.parse(String(LIST.page["updated_at"])));
+  });
+
+  it("keeps each incident with no time of resolution and a state with no end, with the fields of the summary", () => {
+    const list = readIncidentList(OPEN_LIST)!;
+    expect(list.incidents).toEqual([incidentBody({ ...LIST.incidents[0], status: "investigating", resolved_at: null })]);
+    expect(list.complete).toBe(true);
+  });
+
+  it("gives the whole body as the head of an answer that is not a list, and undefined for a body that does not parse", () => {
+    const summary = JSON.stringify({ page: LIST.page, status: { indicator: "none" }, components: [] });
+    expect(readIncidentList(summary)).toEqual({ head: summary, incidents: [], complete: false });
+    expect(readIncidentList(OPENAI_LIST.slice(0, 200))).toBeUndefined();
+  });
+
+  it("tells of the change of 2026-11-25: a summary with no list of incidents is not complete", () => {
+    const summary = JSON.stringify({ page: LIST.page, status: { indicator: "none", description: "All Systems Operational" }, components: [] });
+    expect(readSummary(summary)?.complete).toBe(false);
+  });
+});
+
 describe("createStatusPageFetch", () => {
+  it("reads the list of the latest incidents for the OpenAI page, and the map finds no problem", async () => {
+    const page = registeredPage("statuspage-openai")!;
+    expect(page.format).toBe("incident-list");
+    const { fetch, sent } = fetchWith([json(OPEN_LIST)], page);
+    const outcome = await fetch({ watch: WATCH });
+    expect(sent.map((exchange) => exchange.url)).toEqual([`https://status.openai.com${HISTORY_PATH}`]);
+    expect(outcome).toMatchObject({ ok: true, complete: true });
+    expect(idsOf(outcome)).toEqual([LIST.incidents[0]?.["id"]]);
+    expect(observationsOf(outcome)).toHaveLength(2);
+    const results = observationsOf(outcome).map((observation) => mapObservation(observation, page));
+    expect(results.flatMap((result) => result.problems)).toEqual([]);
+    expect(results.flatMap((result) => result.reports).map((report) => report.urgency)).toEqual(["immediate"]);
+  });
+
+
   it("asks for the summary with a timeout of 30 seconds by default", () => {
     expect(SUMMARY_TIMEOUT_MS).toBe(30_000);
     expect(SUMMARY_PATH).toBe("/api/v2/summary.json");

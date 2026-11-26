@@ -16,8 +16,8 @@
     "@mark1russell7/alerts-fetch": "workspace:*",
     "@mark1russell7/alerts-quake": "workspace:*",
     "@mark1russell7/optional": "^1.5.0",
-    "@mark1russell7/text": "^0.0.17",
-    "polite-crawler": "^0.7.10"
+    "@mark1russell7/text": "^0.0.18",
+    "polite-crawler": "^0.7.12"
   },
   "devDependencies": {
     "@mark1russell7/alerts-source-usgs": "workspace:*",

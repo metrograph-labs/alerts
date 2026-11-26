@@ -1,31 +1,57 @@
 import { spawnSync } from "node:child_process";
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { nodeHostPorts } from "@mark1russell7/service/host";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { FOLD_VERSION } from "./start-snapshot.ts";
 import {
   adoptLive,
   checkoutOf,
   entryRoot,
+  FOLD_FILE,
+  foldChange,
+  copyReadsOf,
+  foldHeapLimit,
+  FOLD_HEAP_RESERVE,
+  keyChange,
+  keyStep,
+  startKeysOf,
+  foldStep,
+  memInfoOf,
+  parseDeployArgs,
+  STAGE_MEMORY_FLOOR,
+  stepsAfterStage,
+  takesDown,
+  stopBeforeStage,
+  stopRefusal,
+  foldVersionOf,
+  foreignLinks,
+  insideFolder,
   installArgs,
   liveRoot,
   loadStep,
   otherSlot,
   parseDeployFile,
+  parseSwapTarget,
   pnpmCall,
   readLive,
+  readPackageLinks,
   runStep,
   samePath,
   SERVICE_PACKAGE,
   stageScope,
   slotOfTarget,
   slotsOf,
+  slotsOfCheckout,
   STAGE_CHECKS,
   SUPERVISOR_FILES,
   supervisorChanges,
   swapLink,
   swapRefusal,
+  withDeployLock,
   withMark,
+  type CopyReadStatus,
   type LiveState,
   type StageMark,
 } from "./slots.ts";
@@ -34,6 +60,7 @@ const SHA = "1".repeat(40);
 const OTHER_SHA = "2".repeat(40);
 const goodMark: StageMark = { sha: SHA, at: "2026-11-19T02:00:00.000Z", checks: [...STAGE_CHECKS] };
 const linkTo = (slot: "a" | "b" | undefined): LiveState => ({ kind: "link", target: "live-x", slot });
+const TO_B = { slot: "b", commit: SHA.slice(0, 7) } as const;
 
 describe("the names and paths of the slots (AL-89)", () => {
   it("gives two slots next to the live path, and the other slot of each", () => {
@@ -108,6 +135,22 @@ describe("the swap of the live link on the file system (AL-89)", () => {
     expect((await readdir(top)).sort()).toEqual(["live", "live-a", "live-b"]);
   });
 
+  it("finds the live link of a checkout that is the real path of a slot (AL-169)", async () => {
+    const slots = slotsOf(join(top, "live"));
+    await mkdir(slots.a);
+    await mkdir(slots.b);
+    await swapLink(slots.live, slots.b);
+    // A unit in the live folder runs in the real path of slot b.
+    expect(await slotsOfCheckout(slots.b)).toEqual(slots);
+    expect(await slotsOfCheckout(slots.live)).toEqual(slots);
+    // Slot a is not the target of the link, thus it is a checkout of its own.
+    expect(await slotsOfCheckout(slots.a)).toEqual(slotsOf(slots.a));
+    // A folder with a name like a slot and no link next to it is a checkout of its own.
+    const other = join(top, "repo-b");
+    await mkdir(other);
+    expect(await slotsOfCheckout(other)).toEqual(slotsOf(other));
+  });
+
   it("starts each process through the link in the slot that the link names at its start", async () => {
     const slots = slotsOf(join(top, "live"));
     for (const name of ["a", "b"] as const) {
@@ -151,17 +194,164 @@ describe("the marks of a stage and the swap rule (AL-89)", () => {
   });
 
   it("swaps only to a slot staged at its commit with each check and no change", () => {
-    const facts = { live: linkTo("a"), mark: goodMark, head: SHA, clean: true };
+    const facts = { target: TO_B, live: linkTo("a"), mark: goodMark, head: SHA, clean: true };
     expect(swapRefusal(facts)).toBeUndefined();
     expect(swapRefusal({ ...facts, live: { kind: "folder" } })).toContain("adopt");
     expect(swapRefusal({ ...facts, live: linkTo(undefined) })).toContain("adopt");
     expect(swapRefusal({ ...facts, head: undefined })).toContain("Slot b has no checkout");
     expect(swapRefusal({ ...facts, mark: undefined })).toContain("no stage");
-    expect(swapRefusal({ ...facts, head: OTHER_SHA })).toContain("no stage");
+    expect(swapRefusal({ ...facts, head: OTHER_SHA })).toContain("Slot b has the commit 2222222");
+    expect(swapRefusal({ ...facts, head: OTHER_SHA, target: { slot: "b", commit: OTHER_SHA.slice(0, 7) } })).toContain("no stage");
     expect(swapRefusal({ ...facts, mark: { ...goodMark, checks: ["install", "config"] } })).toContain("load");
     // A stage of the code before AL-112 step 2 wrote no file of the outage bundles. Thus a swap refuses its mark.
     expect(swapRefusal({ ...facts, mark: { ...goodMark, checks: ["install", "config", "load"] } })).toContain("bundles");
     expect(swapRefusal({ ...facts, clean: false })).toContain("changes");
+  });
+
+  it("refuses a swap when a package link of either slot resolves outside its slot (AL-144)", () => {
+    const facts = { target: TO_B, live: linkTo("a"), mark: goodMark, head: SHA, clean: true };
+    const bad = [{ path: "/x/live-a/node_modules/pkg", target: "/x/live/node_modules/.pnpm/pkg" }];
+    expect(swapRefusal({ ...facts, foreign: { live: [], target: [] } })).toBeUndefined();
+    expect(swapRefusal({ ...facts, foreign: { live: [], target: bad } })).toContain("Slot b has 1 package links outside its folder");
+    expect(swapRefusal({ ...facts, foreign: { live: bad, target: [] } })).toContain("relink a");
+  });
+});
+
+describe("the swap as a compare and swap with the deploy lock (AL-167)", () => {
+  it("reads the target of a swap only from a slot name and the start of a commit", () => {
+    expect(parseSwapTarget(["a", "09f542f"])).toEqual({ slot: "a", commit: "09f542f" });
+    expect(parseSwapTarget(["b", SHA])).toEqual({ slot: "b", commit: SHA });
+    expect(parseSwapTarget([])).toBeUndefined();
+    expect(parseSwapTarget(["a"])).toBeUndefined();
+    expect(parseSwapTarget(["c", "09f542f"])).toBeUndefined();
+    expect(parseSwapTarget(["a", "09f5"])).toBeUndefined();
+    expect(parseSwapTarget(["a", "main"])).toBeUndefined();
+    expect(parseSwapTarget(["a", "09f542f", "x"])).toBeUndefined();
+  });
+
+  it("refuses a target that the live link names already, and a target slot with another commit", () => {
+    const facts = { target: TO_B, live: linkTo("a"), mark: goodMark, head: SHA, clean: true };
+    expect(swapRefusal(facts)).toBeUndefined();
+    // The crossed swaps of 2026-11-24: the link names slot b after a swap of another operator, and this swap wants slot b.
+    expect(swapRefusal({ ...facts, live: linkTo("b") })).toContain("a link to slot b already");
+    expect(swapRefusal({ ...facts, target: { slot: "b", commit: OTHER_SHA.slice(0, 7) } })).toContain(`not ${OTHER_SHA.slice(0, 7)}`);
+  });
+
+  describe("on the file system", () => {
+    let top = "";
+    beforeEach(async () => {
+      top = await mkdtemp(join(tmpdir(), "alerts-swap-lock-"));
+    });
+    afterEach(async () => {
+      await rm(top, { recursive: true, force: true });
+    });
+
+    /** This function is the swap of `deploy.ts` with no stage facts: the lock, the read of the link, the compare and the change. */
+    const lockedSwap = (slots: ReturnType<typeof slotsOf>, lock: string, slot: "a" | "b"): Promise<void> =>
+      withDeployLock(lock, nodeHostPorts(), async () => {
+        const live = await readLive(slots);
+        const refusal = swapRefusal({ target: { slot, commit: SHA.slice(0, 7) }, live, mark: goodMark, head: SHA, clean: true });
+        if (refusal !== undefined) throw new Error(refusal);
+        await swapLink(slots.live, slots[slot]);
+      });
+
+    it("lets one of two swaps at once change the link, and refuses the other", async () => {
+      const slots = slotsOf(join(top, "live"));
+      await mkdir(slots.a);
+      await mkdir(slots.b);
+      await swapLink(slots.live, slots.b);
+      const lock = join(top, "host", "deploy.lock");
+      const results = await Promise.allSettled([lockedSwap(slots, lock, "a"), lockedSwap(slots, lock, "a")]);
+      expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+      const refused = results.find((result) => result.status === "rejected");
+      expect(String(refused?.status === "rejected" ? refused.reason : "")).toMatch(/deploy lock|already/u);
+      expect(await readLive(slots)).toMatchObject({ kind: "link", slot: "a" });
+      // The lock goes at the end of each swap. Thus the next deploy takes it.
+      await expect(lockedSwap(slots, lock, "b")).resolves.toBeUndefined();
+      expect(await readLive(slots)).toMatchObject({ kind: "link", slot: "b" });
+    });
+
+    it("refuses the second of two crossed swaps, thus the link keeps the slot of the first", async () => {
+      const slots = slotsOf(join(top, "live"));
+      await mkdir(slots.a);
+      await mkdir(slots.b);
+      await swapLink(slots.live, slots.b);
+      const lock = join(top, "host", "deploy.lock");
+      // Two operators read slot b as live, and each wants slot a. The first swap goes. The second finds slot a live.
+      await lockedSwap(slots, lock, "a");
+      await expect(lockedSwap(slots, lock, "a")).rejects.toThrow("a link to slot a already");
+      expect(await readLive(slots)).toMatchObject({ kind: "link", slot: "a" });
+    });
+
+    it("does no work while another live process holds the lock", async () => {
+      const lock = join(top, "host", "deploy.lock");
+      let ran = 0;
+      await withDeployLock(lock, nodeHostPorts(), async () => {
+        await expect(withDeployLock(lock, nodeHostPorts(), async () => void ran++)).rejects.toThrow("holds the deploy lock");
+      });
+      expect(ran).toBe(0);
+      await withDeployLock(lock, nodeHostPorts(), async () => void ran++);
+      expect(ran).toBe(1);
+    });
+  });
+});
+
+describe("the package links of a slot (AL-144)", () => {
+  it("tells a path in a folder from a path next to it, on each platform", () => {
+    expect(insideFolder("/x/live-a", "/x/live-a/node_modules/pkg", "linux")).toBe(true);
+    expect(insideFolder("/x/live-a", "/x/live-a", "linux")).toBe(true);
+    // The live path is a prefix of the name of the slot, but not a folder of it.
+    expect(insideFolder("/x/live", "/x/live-a/node_modules", "linux")).toBe(false);
+    expect(insideFolder("/x/live-a", "/x/live/node_modules", "linux")).toBe(false);
+    expect(insideFolder("D:\\git\\live-a", "\\\\?\\d:\\GIT\\live-a\\node_modules\\pkg", "win32")).toBe(true);
+    expect(insideFolder("D:\\git\\live-a", "D:\\git\\live\\node_modules\\pkg", "win32")).toBe(false);
+  });
+
+  it("gives the links whose target is outside the slot, and starts a relative target at the folder of the link", () => {
+    const links = [
+      { path: "/x/live-a/node_modules/one", target: "/x/live-a/node_modules/.pnpm/one" },
+      { path: "/x/live-a/node_modules/two", target: ".pnpm/two" },
+      { path: "/x/live-a/node_modules/three", target: "/x/live/node_modules/.pnpm/three" },
+      { path: "/x/live-a/packages/core/node_modules/four", target: "../../../../live-b/node_modules/.pnpm/four" },
+    ];
+    expect(foreignLinks("/x/live-a", links, "linux").map((link) => link.path)).toEqual([
+      "/x/live-a/node_modules/three",
+      "/x/live-a/packages/core/node_modules/four",
+    ]);
+  });
+
+  describe("on the file system", () => {
+    let top = "";
+    beforeEach(async () => {
+      top = await mkdtemp(join(tmpdir(), "alerts-links-"));
+    });
+    afterEach(async () => {
+      await rm(top, { recursive: true, force: true });
+    });
+
+    it("finds the links that an adopt leaves on the old path of the checkout", async () => {
+      const slots = slotsOf(join(top, "live"));
+      const store = join(slots.live, "node_modules", ".pnpm", "pkg");
+      await mkdir(store, { recursive: true });
+      await mkdir(join(slots.live, "node_modules", "@scope"), { recursive: true });
+      await mkdir(join(slots.live, "packages", "core", "node_modules"), { recursive: true });
+      // An install on Windows makes junctions with absolute targets, as these links.
+      await symlink(store, join(slots.live, "node_modules", "pkg"), "junction");
+      await symlink(store, join(slots.live, "node_modules", "@scope", "inner"), "junction");
+      await symlink(store, join(slots.live, "packages", "core", "node_modules", "pkg"), "junction");
+      expect(foreignLinks(slots.live, await readPackageLinks(slots.live))).toEqual([]);
+
+      await adoptLive(slots);
+      const links = await readPackageLinks(slots.a);
+      expect(links).toHaveLength(3);
+      // Each link still names the live path. After a swap to slot b, it names slot b.
+      expect(foreignLinks(slots.a, links)).toHaveLength(3);
+    });
+
+    it("reads no link from a slot with no node_modules", async () => {
+      await mkdir(join(top, "empty"));
+      expect(await readPackageLinks(join(top, "empty"))).toEqual([]);
+    });
   });
 });
 
@@ -231,5 +421,153 @@ describe("the load step of a stage (AL-89)", () => {
 
   it("throws with the name and the exit code of a failed step", async () => {
     await expect(runStep("load", process.execPath, ["-e", "process.exit(3)"], tmpdir())).rejects.toThrow('The step "load" failed with the code 3.');
+  });
+});
+
+describe("the fold version of a slot (AL-153)", () => {
+  it("reads FOLD_VERSION from the fold file of this checkout", async () => {
+    const text = await readFile(new URL(`../../../${FOLD_FILE}`, import.meta.url), "utf8");
+    expect(foldVersionOf(text)).toBe(FOLD_VERSION);
+  });
+
+  it("gives no version for no text or a text with no version line", () => {
+    expect(foldVersionOf(undefined)).toBeUndefined();
+    expect(foldVersionOf("export const OTHER = 3;\n")).toBeUndefined();
+    expect(foldVersionOf("// export const FOLD_VERSION = 4;\n")).toBeUndefined();
+  });
+
+  it("tells a change of the version with the steps, and nothing for the same version", () => {
+    expect(foldChange(2, 2)).toBeUndefined();
+    expect(foldChange(undefined, undefined)).toBeUndefined();
+    const line = foldChange(1, 2) ?? "";
+    expect(line).toContain("from 1 to 2");
+    expect(line).toContain("deploy.ts fold");
+    expect(foldChange(undefined, 2)).toContain("from none to 2");
+  });
+
+  it("folds with the live slot on the live home, with the profile of the supervised runtime", () => {
+    const runtime = join("slot-b", "packages", "runtime");
+    const home = join(tmpdir(), "alerts-home");
+    const step = foldStep(runtime, home, "/usr/bin/node", "good");
+    expect(step.args).toEqual([join(runtime, "src", "main.ts"), "fold", "good"]);
+    expect(step.env).toEqual({ ALERTS_HOME: home, SERVICE_PROFILE: "daemon" });
+  });
+});
+
+describe("the heap limit of the fold (AL-175)", () => {
+  const MEMINFO = ["MemTotal:         987720 kB", "MemFree:           80000 kB", "MemAvailable:     616448 kB", "SwapTotal:       2097148 kB", "SwapFree:        1837804 kB", ""].join("\n");
+
+  it("reads the available memory and the free swap of /proc/meminfo in MiB", () => {
+    expect(memInfoOf(MEMINFO)).toEqual({ available: 602, swap: 1794 });
+    expect(memInfoOf("MemAvailable:     616448 kB\n")).toEqual({ available: 602, swap: 0 });
+    expect(memInfoOf("MemTotal:         987720 kB\n")).toBeUndefined();
+  });
+
+  it("gives the free memory and swap less the reserve, when that is above the default limit", () => {
+    const memory = { available: 602, swap: 1794 };
+    expect(foldHeapLimit(memory, 530)).toBe(602 + 1794 - FOLD_HEAP_RESERVE);
+  });
+
+  it("keeps the default limit of node when the host gives no more", () => {
+    expect(foldHeapLimit({ available: 3000, swap: 0 }, 4144)).toBeUndefined();
+    expect(foldHeapLimit({ available: 530 + FOLD_HEAP_RESERVE, swap: 0 }, 530)).toBeUndefined();
+    expect(foldHeapLimit({ available: 531 + FOLD_HEAP_RESERVE, swap: 0 }, 530)).toBe(531);
+  });
+
+  it("puts the limit before the entry of the fold step", () => {
+    const runtime = join("slot-a", "packages", "runtime");
+    expect(foldStep(runtime, "home", "node", "files", 2268).args).toEqual(["--max-old-space-size=2268", join(runtime, "src", "main.ts"), "fold", "files"]);
+  });
+});
+
+describe("the key step of a stage (AL-169)", () => {
+  it("runs the mode key of the slot on the live home with the profile daemon", () => {
+    const step = keyStep(join("slot", "packages", "runtime"), "home", "node");
+    expect(step).toEqual({ program: "node", args: [join("slot", "packages", "runtime", "src", "main.ts"), "key"], env: { ALERTS_HOME: "home", SERVICE_PROFILE: "daemon" } });
+  });
+
+  it("reads the last line of the output, and refuses another form", () => {
+    expect(startKeysOf('a line\n{"files":"3:a","good":null}\n')).toEqual({ files: "3:a", good: null });
+    expect(startKeysOf('{"files":"3:a","good":"3:b"}')).toEqual({ files: "3:a", good: "3:b" });
+    expect(startKeysOf("")).toBeUndefined();
+    expect(startKeysOf("not json")).toBeUndefined();
+    expect(startKeysOf('{"files":3,"good":null}')).toBeUndefined();
+    expect(startKeysOf('{"files":"3:a","good":1}')).toBeUndefined();
+    expect(startKeysOf("null")).toBeUndefined();
+  });
+
+  it("tells a change of the key of each set, and no line for the same keys", () => {
+    const keys = { files: "3:a", good: "3:b" };
+    expect(keyChange(keys, keys)).toEqual([]);
+    expect(keyChange(keys, { files: "3:c", good: "3:b" })[0]).toContain("for the private files:");
+    expect(keyChange(keys, { files: "3:a", good: "3:c" })[0]).toContain("for the last good set:");
+    expect(keyChange(keys, { files: "3:c", good: "3:d" })[0]).toContain("the private files and the last good set");
+    expect(keyChange(keys, { files: "3:c", good: "3:d" })[1]).toContain("deploy.ts fold");
+    expect(keyChange({ files: "3:a", good: null }, { files: "3:a", good: null })).toEqual([]);
+  });
+
+  it("tells when a slot gave no keys", () => {
+    expect(keyChange(undefined, { files: "3:a", good: null })[0]).toContain("cannot tell");
+    expect(keyChange({ files: "3:a", good: null }, undefined)[0]).toContain("gave no key");
+  });
+});
+
+describe("the one deploy command (AL-186)", () => {
+  it("reads the arguments of a deploy", () => {
+    expect(parseDeployArgs(["f998797"])).toEqual({ commit: "f998797", page: false, alone: false });
+    expect(parseDeployArgs(["f998797", "--alone", "--page"])).toEqual({ commit: "f998797", page: true, alone: true });
+    expect(parseDeployArgs([])).toBeUndefined();
+    expect(parseDeployArgs(["main"])).toBeUndefined();
+    expect(parseDeployArgs(["f998797", "--page", "--page"])).toBeUndefined();
+    expect(parseDeployArgs(["f998797", "--fast"])).toBeUndefined();
+  });
+
+  it("stops the runtime before the stage only on a host with too little free memory", () => {
+    expect(stopBeforeStage({ available: STAGE_MEMORY_FLOOR - 1, swap: 2000 })).toBe(true);
+    expect(stopBeforeStage({ available: STAGE_MEMORY_FLOOR, swap: 0 })).toBe(false);
+  });
+
+  it("reads the reads of the other copies from the status", () => {
+    expect(copyReadsOf({ at: 1 })).toEqual([]);
+    // A status of an older build has no field unsteadySince, thus the copy reads as steady (AL-204).
+    expect(copyReadsOf({ copies: [{ copy: "b", readAt: 5 }, { copy: "c", readAt: null, unsteadySince: 4 }] })).toEqual([
+      { copy: "b", readAt: 5, unsteadySince: null },
+      { copy: "c", readAt: null, unsteadySince: 4 },
+    ]);
+    expect(copyReadsOf({ copies: [{ copy: "b", readAt: "5" }] })).toBeUndefined();
+    expect(copyReadsOf({ copies: [{ copy: "b", readAt: 5, unsteadySince: "4" }] })).toBeUndefined();
+    expect(copyReadsOf({ copies: {} })).toBeUndefined();
+    expect(copyReadsOf("text")).toBeUndefined();
+  });
+
+  it("stops the runtime only when each other copy had a recent read", () => {
+    const now = 1_000_000;
+    const read = (copy: string, readAt: number | null, unsteadySince: number | null = null): CopyReadStatus => ({ copy, readAt, unsteadySince });
+    expect(stopRefusal([read("b", now - 10_000)], now, 60_000, false)).toBeUndefined();
+    expect(stopRefusal([read("b", now - 10_000), read("c", now - 61_000)], now, 60_000, false)).toContain("The copies c had no read");
+    expect(stopRefusal([read("b", null)], now, 60_000, true)).toContain("The copies b had no read");
+    // A copy that started a short time ago is not steady, thus the second copy does not deploy yet (AL-204).
+    expect(stopRefusal([read("b", now - 10_000), read("c", now - 5_000, now - 120_000)], now, 60_000, false)).toContain("The copies c are not steady");
+    expect(stopRefusal([read("c", now - 5_000, now - 120_000)], now, 60_000, true)).toContain("not steady");
+    // A runtime that does not answer is no copy that sends. A bad status refuses.
+    expect(stopRefusal("down", now, 60_000, false)).toBeUndefined();
+    expect(stopRefusal(undefined, now, 60_000, true)).toContain("no good list");
+    // The only copy stops only with the consent of the operator.
+    expect(stopRefusal([], now, 60_000, false)).toContain("--alone");
+    expect(stopRefusal([], now, 60_000, true)).toBeUndefined();
+  });
+
+  it("stops a running runtime only for a fold", () => {
+    expect(stepsAfterStage(true, false)).toEqual(["swap", "restart"]);
+    expect(stepsAfterStage(true, true)).toEqual(["stop", "swap", "fold", "start"]);
+    expect(stepsAfterStage(false, true)).toEqual(["swap", "fold", "start"]);
+    expect(stepsAfterStage(false, false)).toEqual(["swap", "start"]);
+  });
+
+  it("checks the other copies before the swap when the steps take the runtime down, also for a restart (AL-204)", () => {
+    expect(takesDown(stepsAfterStage(true, false))).toBe(true);
+    expect(takesDown(stepsAfterStage(true, true))).toBe(true);
+    expect(takesDown(stepsAfterStage(false, true))).toBe(false);
+    expect(takesDown(stepsAfterStage(false, false))).toBe(false);
   });
 });

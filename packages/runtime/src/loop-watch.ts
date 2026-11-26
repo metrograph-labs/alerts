@@ -3,7 +3,7 @@
  * `@mark1russell7/lag/node`, and it keeps each block of `LOOP_BLOCK_LIMIT` or longer for `LOOP_BLOCK_WINDOW`. Each pass
  * writes the new blocks into the log, and the system report of the blocks reads the log.
  */
-import { blockSizeText, LOOP_BLOCK_LIMIT, LOOP_BLOCK_WINDOW, type Duration, type Instant, type LoopBlock } from "@mark1russell7/alerts";
+import { blockCauseText, blockSizeText, blockCause, LOOP_BLOCK_LIMIT, LOOP_BLOCK_WINDOW, type Duration, type Instant, type LoopBlock } from "@mark1russell7/alerts";
 import type { LoopSpan } from "@mark1russell7/lag/node";
 import { envelope, type LoopEvent } from "./events.ts";
 
@@ -61,7 +61,13 @@ export function startLoopWatch(options: LoopWatchOptions): LoopWatch {
     const wall = options.wall();
     const found = blocks
       .filter((block) => block.durationMs >= LOOP_BLOCK_LIMIT)
-      .map((block) => ({ at: Math.round(wall - (mono - block.startedAt)), size: Math.round(block.durationMs) }));
+      .map((block): LoopBlock => ({
+        at: Math.round(wall - (mono - block.startedAt)),
+        size: Math.round(block.durationMs),
+        ...(block.cpuMs === undefined ? {} : { cpu: Math.round(block.cpuMs) }),
+        ...(block.majorFaults === undefined ? {} : { faults: block.majorFaults }),
+        ...(block.gcMs === undefined ? {} : { gc: Math.round(block.gcMs) }),
+      }));
     kept = [...kept.filter((block) => wall - block.at < LOOP_BLOCK_WINDOW), ...found];
     for (const block of found) options.onBlock?.(block);
     return found;
@@ -95,10 +101,11 @@ export function startLoopWatch(options: LoopWatchOptions): LoopWatch {
  * log one time.
  */
 export function blockEvent(block: LoopBlock, run: string): LoopEvent {
-  return { ...envelope("loop", `loop:${run}:${String(block.at)}:${String(block.size)}`, block.at), size: block.size };
+  return { ...envelope("loop", `loop:${run}:${String(block.at)}:${String(block.size)}`, block.at), ...blockCause(block), size: block.size };
 }
 
 /** This function gives the line of the output for a block. */
 export function blockLine(block: LoopBlock): string {
-  return `The event loop of the runtime was blocked for ${blockSizeText(block.size)} from ${new Date(block.at).toISOString()}.`;
+  const cause = blockCauseText(block);
+  return `The event loop of the runtime was blocked for ${blockSizeText(block.size)} from ${new Date(block.at).toISOString()}.${cause === undefined ? "" : ` ${cause}`}`;
 }

@@ -6,7 +6,7 @@ import { RANK_DELAY_LIMIT } from "./escalation.ts";
 import { DRILL_SUBJECT } from "./system-reports.ts";
 import type { Expectation } from "./lateness.ts";
 import { composeInterests, placesLayer, servicesLayer, workLayer } from "./interest-defaults.ts";
-import { personConfigSchema, rankDelaysSchema } from "./schemas.ts";
+import { alertConfigSchema, personConfigSchema, rankDelaysSchema } from "./schemas.ts";
 
 const SEEDS = seedsFrom(process.env["SEED"], [1, 2, 3, 4, 5, 6, 7, 8]);
 const MINUTE = 60_000;
@@ -227,6 +227,27 @@ describe("loadConfig", () => {
     expect(contactChannels(only, "person-3" as PersonId, CHANNELS)).toEqual([]);
   });
 
+  it("reads each contact one time for the channels of all the persons, not one time for each person (AL-136)", () => {
+    // Each read of the field person of a contact counts. A filter for each person reads the square of the persons.
+    const count = 300;
+    let reads = 0;
+    const people = Array.from({ length: count }, (_, index) => `person-${String(index + 1)}` as PersonId);
+    const all = people.flatMap((one) =>
+      contacts(one).map(
+        (contact) =>
+          new Proxy(contact, {
+            get(target, key, receiver) {
+              if (key === "person") reads += 1;
+              return Reflect.get(target, key, receiver) as unknown;
+            },
+          }),
+      ),
+    );
+    const listed = { contacts: all };
+    for (const one of people) expect(contactChannels(listed, one, CHANNELS)).toHaveLength(2);
+    expect(reads).toBeLessThanOrEqual(2 * all.length);
+  });
+
   it("finds an unknown work, a service that is not an entity and a changed default, and keeps the watch", () => {
     const work = person(p1, [home], { defaults: { works: ["astronomy"] } });
     const service = person(p1, [home], { defaults: { services: [`place:${home}` as NodeKey] } });
@@ -348,6 +369,14 @@ describe("loadConfig", () => {
       "Two watches of a limit have the id github:example/actions.",
       "The watch of the limit github:someone/actions is for the account of a user, and it has no monthly limit.",
     ]);
+  });
+
+  it("takes a bound of the reports that is an integer of 1 or more (AL-145)", () => {
+    const parse = (reportLimit: number) => alertConfigSchema.safeParse({ format: CONFIG_FORMAT, places: [], people: [], contacts: [], policies: [], reportLimit });
+    expect(parse(10_000).success).toBe(true);
+    expect(parse(1).success).toBe(true);
+    expect(parse(0).error?.issues.map((issue) => issue.message)).toEqual(["The bound of the reports is 1 or more."]);
+    expect(parse(2.5).success).toBe(false);
   });
 
   it("checks the table of rank delays: the schema refuses an unknown level, and the load refuses a value out of its bounds", () => {
@@ -516,6 +545,16 @@ describe("the places of a configuration", () => {
   it("give each position for the matching on the machine of the instance", () => {
     expect(localPlaces(config()).map((place) => place.at)).toEqual([HOME_AT, PLACES[1]!.at]);
     expect(localPlaces(config()).some((place) => "label" in place || "sharePosition" in place)).toBe(false);
+  });
+
+  it("keep a moving place out of the local places, give its codes with no position to a source, and check its rule (AL-40)", () => {
+    const moving: PlaceConfig = { id: "place-3" as PlaceId, label: "Here", codes: [{ system: "state", code: "KS" }], bufferKm: 1, moving: { device: "ph", maxAgeMinutes: 30 } };
+    const places = [...PLACES, moving];
+    expect(localPlaces(config({ places })).map((place) => place.id)).toEqual([home, work]);
+    expect(sourcePlaces(config({ places }), nws).at(-1)).toEqual({ id: moving.id, codes: moving.codes, bufferKm: 1 });
+    expect(alertConfigSchema.safeParse(config({ places })).success).toBe(true);
+    const bad = { ...moving, at: HOME_AT };
+    expect(loadConfig(config({ places: [...PLACES, bad] }), CHANNELS, store).problems).toContain(`The moving place ${moving.id} has a position. A moving place gets its position only from its fixes.`);
   });
 
   it("give each label by the node key of its place, for the why line on the machine of the instance", () => {

@@ -17,17 +17,22 @@ import {
   interestsPayload,
   linkRule,
   localPlaces,
+  passPlaces,
+  staleMovingPlaces,
   mapPayload,
   ONLY_COPY,
   optedIn,
   placeLabels,
   placeCodesWithContaining,
+  policyWithPriors,
+  policyWithSoftware,
   sendLimitsOf,
   throttleOf,
   sourceCovers,
   sourcePlaces,
   STORE_FILL_WINDOW,
   type Address,
+  type AlertConfig,
   type ChannelDescriptor,
   type ChannelId,
   type ChannelProcedures,
@@ -42,10 +47,17 @@ import {
   type HistoryPayload,
   type InterestsPayload,
   type Instant,
+  type PlaceConfig,
+  type Position,
+  type PositionFix,
+  type RegionCode,
+  type StalePlace,
+  type WatchedPlace,
   type MapPayload,
   type NodeKey,
   type OptInRecord,
   type ParsedConfig,
+  type Report,
   type ScorePriors,
   type SecretLookup,
   type SourceDescriptor,
@@ -74,17 +86,26 @@ import {
   type TwilioCredentials,
   type TwilioFetch,
 } from "@mark1russell7/alerts-channel-twilio";
+import { createWebhookChannel, parseWebhookSecrets, WEBHOOK_CHANNEL, webhookDescriptor, type WebhookFetch, type WebhookSecret } from "@mark1russell7/alerts-channel-webhook";
+import { commandSounder, createSounderChannel, SOUNDER_CHANNEL, sounderDescriptor, sounderProblems, type CommandRunner, type SounderChannelOptions } from "@mark1russell7/alerts-channel-sounder";
 import { CHANNEL_ID, createPushoverChannel, isPushoverKey, pushoverDescriptor, PUSHOVER_REPEAT_MS, PUSHOVER_TIMEOUT_MS, type PushoverChannelOptions } from "@mark1russell7/alerts-channel-pushover";
 import { createEmscSource, EMSC_DESCRIPTOR } from "@mark1russell7/alerts-source-emsc";
 import { createIpawsSource, IPAWS_DESCRIPTOR, WEA_EXPECTATION } from "@mark1russell7/alerts-source-ipaws";
 import { createShapeStore, type ShapeCache, type ShapeStore } from "@mark1russell7/alerts-shapes-nws";
 import { createNwsSource, NWS_DESCRIPTOR } from "@mark1russell7/alerts-source-nws-api";
 import { COPY_EXPECTATION, createNwwsSource, SOURCE_ID as NWWS_SOURCE, type NwwsAccount, type OpenSession } from "@mark1russell7/alerts-source-nwws";
-import { createGfzSource, GFZ_DESCRIPTOR } from "@mark1russell7/alerts-source-gfz";
-import { createCatalogFetch, createGtfsSource, type GtfsFeed, type GtfsFetchOptions } from "@mark1russell7/alerts-source-gtfs-alerts";
+import { createOsvSource, OSV_PROVIDERS, osvDescriptor, type OsvFetchOptions } from "@mark1russell7/alerts-source-osv";
+import { createGfzSource, createIndexSource, GFZ_DESCRIPTOR, HP30_DESCRIPTOR, HP30_INDEX, type GfzFetchOptions } from "@mark1russell7/alerts-source-gfz";
+import { createCatalogFetch, createGtfsSource, type CatalogCopy, type GtfsFeed, type GtfsFetchOptions } from "@mark1russell7/alerts-source-gtfs-alerts";
 import { createEnergyChartsSource, ENERGY_CHARTS_DESCRIPTOR } from "@mark1russell7/alerts-source-energy-charts";
 import { createEia930Source, type Eia930FetchOptions } from "@mark1russell7/alerts-source-eia-930";
+import { createFaaSource, FAA_DESCRIPTOR } from "@mark1russell7/alerts-source-faa";
+import { createNdwSource, NDW_DESCRIPTOR } from "@mark1russell7/alerts-source-ndw";
+import { createRailSource, RAIL_DESCRIPTOR } from "@mark1russell7/alerts-source-digitraffic-rail";
 import { createKevSource, KEV_DESCRIPTOR } from "@mark1russell7/alerts-source-cisa-kev";
+import { CERT_PROVIDERS, certDescriptor, createCertSource, type CertFetchOptions } from "@mark1russell7/alerts-source-cert-feeds";
+import { createCsafSource, CSAF_PROVIDERS, csafDescriptor, type CsafFetchOptions } from "@mark1russell7/alerts-source-csaf";
+import { createGdeltSource, GDELT_DESCRIPTOR } from "@mark1russell7/alerts-source-gdelt";
 import { createRadarAnomaliesSource, createRadarOutagesSource, type RadarSourceOptions } from "@mark1russell7/alerts-source-cloudflare-radar";
 import { AWS_DOMAIN, AWS_KIND, createAwsSource } from "@mark1russell7/alerts-source-aws";
 import { AZURE_DOMAIN, AZURE_KIND, createAzureSource } from "@mark1russell7/alerts-source-azure";
@@ -99,8 +120,15 @@ import type { WorkerLoop } from "@mark1russell7/service";
 import type { Pace, QuotaStore, Transport } from "polite-crawler/api";
 import { DEFAULT_POLICY, HostScheduler, type PolitenessPolicy } from "polite-crawler/politeness";
 import type { RestTransport } from "@procedures/gh";
+import type { Meter } from "@opentelemetry/api";
+import type { UseRead } from "@mark1russell7/stack-spend";
 import { limitProblems, limitWatches, type LimitWatch } from "./use.ts";
+import { jointReader, jointWatch, type JointWatch } from "./joint.ts";
+import { commandRunner, driftWatch, type DriftRunner, type DriftWatch } from "./drift.ts";
+import { billingWatch, type BillingWatch } from "./billing.ts";
+import { chainProblems, chainWatch, readChain } from "./chain.ts";
 import { balanceWatch, SPEND_UNIT, spendEntryOf, spendGates, spendQuota, spendUnits, spendWatch, type BalanceWatch, type SpendGates, type SpendWatch } from "./balance.ts";
+import { spendUseReads } from "./spend-use.ts";
 import { replyWatch, type ReplyWatch } from "./replies.ts";
 import { parseSecrets, requireKey, SECRETS_FILE, type FileText, type InstanceCheck } from "./config.ts";
 import { CLOCK_SKEW_LIMIT, COPY_FILE, COPY_TOKEN_KEY, EXCHANGE_EVERY, EXCHANGE_LIMIT } from "./copy.ts";
@@ -108,13 +136,15 @@ import { overdueLimit, type DeliveryOptions } from "./delivery.ts";
 import { copyDrills, watchedDrills } from "./drills.ts";
 import type { RuntimeLog } from "./log.ts";
 import { createLoop, loopTimes, shortestFetchLimit, type LoopTimes, type RuntimeLoop } from "./loop.ts";
+import { runtimeMetrics } from "./metrics.ts";
 import { outageDeploy, outageDeployWorker, outageSetup, type OutageDeployWorker } from "./outage.ts";
 import { exchangeLoop, exchangeWorker, type EntriesSource, type ExchangeCall, type ExchangeRound, type ExchangeWorker } from "./peers.ts";
 import { channelQuota } from "./quota.ts";
-import { openRuntime, type Pass, type Runtime, type RuntimeOptions } from "./runtime.ts";
-import { START_SNAPSHOT_EVERY, START_SNAPSHOT_FLOOR } from "./start-snapshot.ts";
-import { addZoneCodes, keepShapes, placeCodesKey, refreshUntil, shapeSources, type InstanceShapes, type ShapeOutcome, type ZoneCodeCounts } from "./shapes.ts";
-import { chooseFeeds, feedsKey, keepTransit, type InstanceTransit, type TransitCache, type TransitOutcome } from "./transit.ts";
+import { keptPass, openRuntime, type CopyChecks, type KeptPass, type Pass, type Runtime, type RuntimeOptions } from "./runtime.ts";
+import { contextKey, START_SNAPSHOT_EVERY, START_SNAPSHOT_FLOOR } from "./start-snapshot.ts";
+import { addZoneCodes, codesAtFix, keepShapes, placeCodesKey, refreshUntil, shapeSources, type InstanceShapes, type ShapeOutcome, type ZoneCodeCounts } from "./shapes.ts";
+import { chooseFeeds, feedsKey, keepTransit, type ChosenFeeds, type InstanceTransit, type TransitCache, type TransitOutcome } from "./transit.ts";
+import { fixReads, type PositionIntake } from "./position-intake.ts";
 import { tellSource, type TellIntake } from "./tell-intake.ts";
 import { DELAY_LIMITS, nextFetch } from "./view.ts";
 
@@ -144,7 +174,7 @@ export const LOUD_STEADY: Duration = 5 * 60_000;
  * This function tells if a start is steady: its passes span `LOUD_STEADY` or more (AL-108). It is the rule of the first
  * success ping to the loud check. The answer of the exchange tells it to each other copy.
  */
-export const steadyPasses = (first: Pass | undefined, last: Pass | undefined): boolean => first !== undefined && last !== undefined && last.at - first.at >= LOUD_STEADY;
+export const steadyPasses = (first: Pick<Pass, "at"> | undefined, last: Pick<Pass, "at"> | undefined): boolean => first !== undefined && last !== undefined && last.at - first.at >= LOUD_STEADY;
 
 /**
  * This function gives the key of `secrets.env` with the address of the first check of a copy. Each copy has its own
@@ -181,8 +211,9 @@ export function pingTargets(secret: (key: string) => string | undefined, copy: C
 }
 
 /**
- * The name of the key of `secrets.env` that holds the key of the management API of Healthchecks.io. Only
- * the status of `install.ts` reads it. The runtime does not use it.
+ * The name of the key of `secrets.env` that holds the key of the management API of Healthchecks.io. The status of
+ * `install.ts` reads it. The runtime reads the joint down time of the copies with it (AL-148). With no key or no
+ * `LOUD_PING_URL_KEY`, the runtime has no watch of the joint down time and no line of it.
  */
 export const CHECKS_KEY = "HEALTHCHECKS_API_KEY";
 
@@ -228,7 +259,7 @@ export { DELAY_LIMITS };
  * recipient against this list: the channel of each step, and the fields of each address. Thus the loader
  * and the instance agree on the channels.
  */
-export const INSTANCE_CHANNELS: readonly ChannelDescriptor[] = [pushoverDescriptor(), twilioCallDescriptor(), twilioTextDescriptor()];
+export const INSTANCE_CHANNELS: readonly ChannelDescriptor[] = [pushoverDescriptor(), twilioCallDescriptor(), twilioTextDescriptor(), webhookDescriptor(), sounderDescriptor()];
 
 /**
  * The names of the keys of `secrets.env` for the Twilio call channel. The secret is the secret of an API key
@@ -241,6 +272,27 @@ export const TWILIO_KEYS = { accountSid: "TWILIO_ACCOUNT_SID", keySid: "TWILIO_A
  * needs a registered sender: the phone of a 10DLC campaign or a verified toll-free phone. Without the key, the instance sends no text.
  */
 export const TWILIO_TEXT_FROM_KEY = "TWILIO_TEXT_FROM";
+
+/**
+ * The name of the key of `secrets.env` that holds the secrets of the webhook channel (AL-55), in the `whsec_` form of
+ * Standard Webhooks. A space splits two secrets, thus a receiver can change its secret with no gap. Without the key, the
+ * instance has no webhook channel.
+ */
+export const WEBHOOK_SECRET_KEY = "WEBHOOK_SECRET";
+
+/** The User-Agent of each request of the webhook channel. A receiver gets no contact of the configuration. */
+export const WEBHOOK_USER_AGENT = "alerts-runtime";
+
+/**
+ * This function gives the secrets of the webhook channel from the secret store. With no value of `WEBHOOK_SECRET_KEY`, it
+ * gives `undefined`. A bad value gives a problem that names the key and no value.
+ */
+export function webhookSetup(secret: SecretLookup): Result<readonly WebhookSecret[] | undefined, readonly string[]> {
+  const text = secret(WEBHOOK_SECRET_KEY) ?? "";
+  if (text.trim() === "") return ok(undefined);
+  const parsed = parseWebhookSecrets(text);
+  return parsed.ok ? ok(parsed.secrets) : err([`The value of ${WEBHOOK_SECRET_KEY} is not a list of secrets of Standard Webhooks. ${parsed.problem}`]);
+}
 
 /** The setup of the Twilio channels: the credentials of the account, the number that calls and the number that texts. */
 export interface TwilioSetup {
@@ -310,14 +362,54 @@ function accountProblems(copy: CopySettings): string[] {
     .map((id) => `The file ${COPY_FILE}: the field accounts names the source ${id}. Only these sources have an account: ${ACCOUNT_SOURCES.join(", ")}.`);
 }
 
+/** This function gives the problems of the field `leaveChannels` of a copy: each id that is not a channel of the instance. */
+function leaveProblems(copy: CopySettings): string[] {
+  const known = INSTANCE_CHANNELS.map((descriptor) => descriptor.id as string);
+  return (copy.leaveChannels ?? [])
+    .filter((id) => !known.includes(id))
+    .map((id) => `The file ${COPY_FILE}: the field leaveChannels names the channel ${id}. The channels of the instance are ${known.join(", ")}.`);
+}
+
+/**
+ * This function gives the options of the sounder channel of a copy (AL-41), or `undefined` when the copy has no field
+ * `sounder`. Each device starts its programs with the runner `run`, with no shell.
+ */
+export function sounderOptions(copy: CopySettings, run: CommandRunner, now: () => Instant = Date.now): SounderChannelOptions | undefined {
+  const sounder = copy.sounder;
+  if (sounder === undefined) return undefined;
+  const sounders = Object.fromEntries(
+    Object.entries(sounder.devices).map(([name, device]) => [
+      name,
+      commandSounder({ sound: device.sound, run, ...(device.levels === undefined ? {} : { levels: device.levels }), ...(device.probe === undefined ? {} : { probe: device.probe }) }),
+    ]),
+  );
+  return { sounders, now, ...(sounder.sounds === undefined ? {} : { sounds: sounder.sounds }), ...(sounder.gapMs === undefined ? {} : { gapMs: sounder.gapMs }) };
+}
+
+/**
+ * This function gives the problems of the field `sounder` of a copy (AL-41). These are the problems of `sounderProblems`.
+ * Also, a copy with a sounder does not leave the channel to the other copies. The problems name no program and no argument.
+ */
+export function copySounderProblems(copy: CopySettings): string[] {
+  const options = sounderOptions(copy, () => Promise.resolve({ exitCode: 0 }));
+  if (options === undefined) return [];
+  const left = (copy.leaveChannels ?? []).includes(SOUNDER_CHANNEL)
+    ? [`The file ${COPY_FILE}: the copy has the field sounder, and its field leaveChannels names the channel ${SOUNDER_CHANNEL}. Remove one of the two.`]
+    : [];
+  return [...sounderProblems(options).map((problem) => `The file ${COPY_FILE}: the field sounder: ${problem}`), ...left];
+}
+
 /**
  * This function gives the channels that the instance sends on. Pushover is always one. The Twilio call channel needs the keys of
- * `TWILIO_KEYS`, and the text channel also needs `TWILIO_TEXT_FROM_KEY`. A step on another channel of `INSTANCE_CHANNELS` stops the start.
+ * `TWILIO_KEYS`, and the text channel also needs `TWILIO_TEXT_FROM_KEY`. The webhook channel needs `WEBHOOK_SECRET_KEY`. The sounder channel
+ * needs the field `sounder` of the copy (AL-41). A step on another channel of `INSTANCE_CHANNELS` stops the start.
  */
-export function instanceSenders(secret: SecretLookup): readonly ChannelId[] {
+export function instanceSenders(secret: SecretLookup, copy: CopySettings = ONLY_COPY): readonly ChannelId[] {
+  const webhook = webhookSetup(secret);
+  const hooks = [...(webhook.tag === "ok" && webhook.value !== undefined ? [WEBHOOK_CHANNEL] : []), ...(copy.sounder === undefined ? [] : [SOUNDER_CHANNEL])];
   const twilio = twilioSetup(secret);
-  if (twilio.tag === "err" || twilio.value === undefined) return [CHANNEL_ID];
-  return twilio.value.textFrom === undefined ? [CHANNEL_ID, TWILIO_CHANNEL] : [CHANNEL_ID, TWILIO_CHANNEL, TEXT_CHANNEL_ID];
+  if (twilio.tag === "err" || twilio.value === undefined) return [CHANNEL_ID, ...hooks];
+  return twilio.value.textFrom === undefined ? [CHANNEL_ID, TWILIO_CHANNEL, ...hooks] : [CHANNEL_ID, TWILIO_CHANNEL, TEXT_CHANNEL_ID, ...hooks];
 }
 
 /** The tsunami warning centers of the NWS. Each center is a source of its own, with its own health. */
@@ -404,12 +496,22 @@ const PROVIDER_FEEDS = [
  * The two tsunami warning centers give the tsunami messages. The SWPC gives the space weather messages.
  *
  * GFZ gives the index Kp, a second origin of the geomagnetic storms. Merge rule 3 joins its storms to the storms of the SWPC.
+ * GFZ also gives the index Hp30 of each 30 minutes, as the source `gfz-hp30`. It shows a storm before the end of its interval of Kp.
  *
  * Energy-Charts gives the grid frequency of Continental Europe as indicator readings, and no event. The store of the
  * readings keeps them.
  *
  * CISA KEV gives the known exploited flaws of software, with no area. The work `software` of `WORK_DEFAULTS` in the core
  * names their kind.
+ *
+ * The CSAF providers (`source-csaf`) give the security advisories of CISA and of vendors of control systems, with no
+ * area. No work names their kinds: a person gets an advisory when the person names its CVE id or its kind.
+ *
+ * The CERT feeds (`source-cert-feeds`) give the alerts and reports of national CERTs, with no area. Only the work
+ * `software` names one of their kinds: a flaw that attackers use at this time.
+ *
+ * The OSV sources (`source-osv`) give the records of malicious packages, with no area. A person gets a record when the
+ * person names its package as a purl subject or names its kind. Each new source starts in the observe mode.
  *
  * The instance also reads the status pages that one of its persons can get (`pagesFor` of `source-statuspage`). They are
  * not in this list, because the persons choose them. The feeds of Google Cloud (`source-gcp`), AWS (`source-aws`)
@@ -427,8 +529,15 @@ export const INSTANCE_SOURCES: readonly SourceDescriptor[] = [
   ...TSUNAMI.map((center) => tsunamiDescriptor(center)),
   SWPC_DESCRIPTOR,
   GFZ_DESCRIPTOR,
+  HP30_DESCRIPTOR,
   ENERGY_CHARTS_DESCRIPTOR,
+  FAA_DESCRIPTOR,
+  NDW_DESCRIPTOR,
+  RAIL_DESCRIPTOR,
   KEV_DESCRIPTOR,
+  ...CSAF_PROVIDERS.map((provider) => csafDescriptor(provider)),
+  ...CERT_PROVIDERS.map((provider) => certDescriptor(provider)),
+  ...OSV_PROVIDERS.map((provider) => osvDescriptor(provider)),
 ];
 
 /**
@@ -523,14 +632,18 @@ export const RANK_FLOOR: Duration = DELIVERY_TIMES.callLimit + 3 * EXCHANGE_EVER
  *
  * - a missing token, or a token with a bad form
  * - some keys of Twilio and not all, or a key of Twilio with a bad form
+ * - a value of `WEBHOOK_SECRET_KEY` that is not a list of secrets of Standard Webhooks
  * - one key of the NWWS-OI account of the copy and not the other, or an account of the copy with no keys
  * - an id of a source with no account in the field `accounts` of the copy
- * - a step of a policy on a channel with no sender
+ * - an id in the field `leaveChannels` of the copy that is not a channel of `INSTANCE_CHANNELS`
+ * - each problem of `copySounderProblems`: a bad field `sounder` of the copy (AL-41)
+ * - a step of a policy on a channel with no sender, when the copy does not leave the channel to the other copies
  * - a step on a channel with a cost, when the configuration has no spend entry for its provider
  * - a place that no regional source covers. A source with the coverage `global` covers each place, with no code.
  * - an outage call with no keys of Twilio, no token `OUTAGE_TOKEN` or a bad list
  * - a setting of an unknown expectation, or a `since` after the time `at`
  * - each problem of `limitProblems`.
+ * - each problem of `chainProblems`: a stack of the alert chain with a fault (AL-90).
  *
  * The message names ids, fields and the names of secrets, and no value.
  *
@@ -548,15 +661,20 @@ export function instanceProblems(parsed: ParsedConfig, secret: SecretLookup, des
   // Bad keys of Twilio fail each call. Thus they stop the start, before the first alert.
   const twilio = twilioSetup(secret);
   const twilioProblems = twilio.tag === "err" ? twilio.error : [];
+  // A bad secret of the webhook channel fails each send. Thus it stops the start, before the first alert.
+  const webhook = webhookSetup(secret);
+  const webhookProblems = webhook.tag === "err" ? webhook.error : [];
   // A half of a key pair of NWWS-OI is a fault of the secret store, not a choice of no stream. Thus it stops the start.
   const nwws = nwwsSetup(secret, copy);
   const nwwsProblems = nwws.tag === "err" ? nwws.error : [];
-  // A step on a channel with no sender fails each send of the step. Thus it stops the start.
-  const senders = instanceSenders(secret);
+  // A step on a channel with no sender fails each send of the step. Thus it stops the start. A copy sends nothing on a
+  // channel that it leaves to the other copies (AL-55). Thus such a step needs no sender of this copy.
+  const senders = instanceSenders(secret, copy);
+  const left = new Set<string>(copy.leaveChannels ?? []);
   const senderProblems = parsed.recipients.flatMap((recipient) =>
     recipient.policies.flatMap((policy) =>
       policy.steps.flatMap((step, index) =>
-        senders.includes(step.channel)
+        senders.includes(step.channel) || left.has(step.channel)
           ? []
           : [`Step ${index} of ${policy.level} of ${recipient.watch.person} uses the channel ${step.channel}, and the instance has no sender on it.`],
       ),
@@ -565,7 +683,7 @@ export function instanceProblems(parsed: ParsedConfig, secret: SecretLookup, des
   // A send on a channel with a cost needs a cap. Without it, a fault of a loop can spend all the money of the account.
   const used = new Set(parsed.recipients.flatMap((recipient) => recipient.policies.flatMap((policy) => policy.steps.map((step) => step.channel))));
   const spendProblems = INSTANCE_CHANNELS.flatMap((descriptor) =>
-    senders.includes(descriptor.id) && used.has(descriptor.id) && (descriptor.costUsd ?? 0) > 0 && spendEntryOf(descriptor, parsed.config.spend) === undefined
+    senders.includes(descriptor.id) && !left.has(descriptor.id) && used.has(descriptor.id) && (descriptor.costUsd ?? 0) > 0 && spendEntryOf(descriptor, parsed.config.spend) === undefined
       ? [`The channel ${descriptor.id} costs money, and the configuration has no spend entry for its provider. Give an entry with a monthly cap.`]
       : [],
   );
@@ -586,14 +704,18 @@ export function instanceProblems(parsed: ParsedConfig, secret: SecretLookup, des
   return [
     ...tokenProblems,
     ...twilioProblems,
+    ...webhookProblems,
     ...nwwsProblems,
     ...accountProblems(copy),
+    ...leaveProblems(copy),
+    ...copySounderProblems(copy),
     ...senderProblems,
     ...spendProblems,
     ...placeProblems,
     ...outageProblems,
     ...expectationProblems(parsed.config.expectations, INSTANCE_EXPECTATIONS, at),
     ...limitProblems(parsed.config.limits ?? [], secret),
+    ...chainProblems(parsed.config.chain),
   ];
 }
 
@@ -689,6 +811,11 @@ export interface InstanceOptions {
    * Its fetch folds the messages of the intake into the lines of the reports of the merge state.
    */
   readonly tell?: TellIntake;
+  /**
+   * The intake of the fixes of the moving places (AL-40, `position-intake.ts`). With it, each pass has each moving place at
+   * its last fresh fix, and the health route tells the age of each last fix. The fixes stay on this copy.
+   */
+  readonly position?: PositionIntake;
   /** The fetch of the Pushover channel. */
   readonly pushover: PushoverChannelOptions["fetch"];
   /**
@@ -703,8 +830,30 @@ export interface InstanceOptions {
    * secrets have the keys of Twilio.
    */
   readonly twilio?: TwilioFetch;
+  /** The fetch of the webhook channel (AL-55). The instance needs it when the secrets have the key `WEBHOOK_SECRET_KEY`. */
+  readonly webhook?: WebhookFetch;
   /** The transport of the billing reads of GitHub (AL-111). The default is the transport of `@procedures/gh`. A test gives a fake. */
   readonly github?: RestTransport;
+  /**
+   * The transport of the reads of the management API of Healthchecks.io (AL-148). The default is `transport`. A test gives a
+   * fake. The instance reads only when the secrets have `CHECKS_KEY` and `LOUD_PING_URL_KEY`.
+   */
+  readonly checks?: Transport;
+  /**
+   * The runner of the commands of the drift checks (AL-139). The default is `commandRunner` of `drift.ts`. A test gives a
+   * fake. The instance starts the commands only when the settings of the copy have the field `drift`.
+   */
+  readonly driftRunner?: DriftRunner;
+  /**
+   * The runner of the billing reads of the hosts of the other copies (AL-70). The default is `commandRunner` of `drift.ts`.
+   * A test gives a fake. The instance starts a read only for a peer with the field `billing`, when the copy is down.
+   */
+  readonly billingRunner?: DriftRunner;
+  /**
+   * The runner of the programs of the sounders of the copy (AL-41). The default is `commandRunner` of `drift.ts`. A test
+   * gives a fake. The instance starts a program only when the copy has the field `sounder`.
+   */
+  readonly sounderRunner?: CommandRunner;
   /** The store of the file of the outage bundles. The entry gives the file of the slot. Without it, each deploy makes the bundles. */
   readonly outageBundles?: BundleStore;
   /**
@@ -750,8 +899,18 @@ export interface InstanceOptions {
    * it, the instance reads no transit feed and no catalog. The instance reads each feed of the copy whose box meets a place.
    */
   readonly transit?: TransitCache;
+  /**
+   * The most transit feeds of the instance. The default is `MAX_TRANSIT_FEEDS`. A measure of the capacity models gives a
+   * higher limit. Thus it measures the cost of each polled source past the limit of a live copy (AL-126).
+   */
+  readonly transitLimit?: number;
   /** The instance gives each read of the transit catalog to this function. */
   readonly onTransit?: (outcome: TransitOutcome) => void;
+  /**
+   * The meter of the live metrics (AL-132): the counts of the new reports and the levels of the instance. The instruments
+   * have the names of the series of `capacity-app.json`. Without a meter, the instance has no metrics. The lab gives a meter.
+   */
+  readonly meter?: Meter;
   /**
    * The instance starts this function one time, when a new copy of the transit catalog changes the feeds of the places. The
    * entry of the profile `daemon` stops the runtime, and the supervisor starts it again with the new feeds.
@@ -766,7 +925,7 @@ export interface InstanceOptions {
   readonly onReadingsFault?: RuntimeOptions["onReadingsFault"];
   /**
    * The store of the snapshot of the start (AL-105). The open of the runtime reads it. After the good start, a pass writes it
-   * at most once in each `START_SNAPSHOT_EVERY` of the wall clock. The entry gives the file `snapshot.sqlite` next to the log.
+   * at most once in each `START_SNAPSHOT_EVERY` of the wall clock. The entry gives the folder `snapshots` next to the log, with one file for each key (AL-169).
    */
   readonly startSnapshot?: RuntimeOptions["startSnapshot"];
   /** The instance gives each fault of a write of the snapshot of the start to this function. The pass continues. */
@@ -828,10 +987,21 @@ export interface Instance {
   readonly balances: readonly BalanceWatch[];
   /** The watches of the use of the hard limits of the paid provider accounts (AL-111). */
   readonly uses: readonly LimitWatch[];
+  /** The watch of the joint down time of the copies (AL-148), when the secrets have `CHECKS_KEY` and `LOUD_PING_URL_KEY`. */
+  readonly joint?: JointWatch;
+  /** The drift watch of the host of this copy (AL-139), when `copy.json` has the field `drift`. */
+  readonly drift?: DriftWatch;
+  /** The billing watch of the hosts of the other copies (AL-70), when a peer of `copy.json` has the field `billing`. */
+  readonly billing?: BillingWatch;
   /** The watch of the STOP and START replies of the texts, when the instance has the text channel and an opt-in list. */
   readonly replies?: ReplyWatch;
   /** The watch of the spend that Twilio reports for the month of the cap, when the configuration has a spend entry for Twilio. */
   readonly spend?: SpendWatch;
+  /**
+   * This function gives the use reads of the cap of Twilio at the time of the call (AL-91). The reads are the cost of the
+   * sends of this copy and the last spend of the account that Twilio gave. A configuration with no spend entry for Twilio has none.
+   */
+  readonly useReads?: () => readonly UseRead[];
   /**
    * This function gives the map payload of the last pass: the live incidents with the level of each person, the places and
    * the basemap. The first read after a change of the store simplifies the basemap of the watched states.
@@ -856,30 +1026,37 @@ export interface Instance {
 }
 
 /**
- * This function makes the instance. It throws when the configuration or the secret store has a
- * problem. A problem is a missing token, a key with a bad form, or a place that no regional source covers.
- * The message names ids, fields and the names of secrets, and no value.
- *
- * - The sources are the NWS API, IPAWS, the USGS, EMSC, the two tsunami warning centers, the SWPC, GFZ,
- *   Energy-Charts and CISA KEV. The stream of NWWS-OI is a source when the secrets have the keys of the account of the
- *   copy (`nwwsSetup`). BoM is a source when the secrets have its key (`BOM_SWS_KEY`), and so is EIA-930 (`EIA_KEY`). The outages and the traffic
- *   anomalies of Cloudflare Radar are sources when the secrets have its token (`CLOUDFLARE_RADAR_KEY`). Each status page that one of the
- *   persons can get is a source (`pagesFor`). The feed of Google Cloud, AWS or Azure is a source when one of the persons
- *   can get its reports (`watchReads`). Each transit feed of the copy of the catalog whose box meets a place is a source.
- * - Each source gets the codes of the places. It gets the position of a place only when the place shares it with that
- *   source. The USGS, EMSC, the centers, the SWPC, GFZ, BoM, Energy-Charts, EIA-930, CISA KEV, Radar, Google Cloud, AWS, Azure
- *   and the status pages ask for no place. The transit feeds also ask for no place.
- * - The channels are Pushover, and the Twilio call channel when the secrets have its keys. Each time of the delivery comes
- *   from a fact of the channels.
- * - A spend entry of a channel gives its cap and the watch of the balance of its account.
- * - The times of the loop come from the limits of the runtime.
+ * This function tells if the instance reads the events of GDELT: when a place shares its position with the source. The
+ * fetch keeps only the events near a place with a position, and no request holds a place. With no such place, each
+ * fetch gives no event, thus the instance does not read the source. A change of the configuration applies at the next start.
  */
-export function openInstance(options: InstanceOptions): Instance {
-  const { clock } = options;
-  // A change of the wall clock of CLOCK_STEP_ABOVE or less is a drift. A larger change is a step of the clock.
-  const wall = frameClock(options.wall, clock, { driftLimit: CLOCK_STEP_ABOVE });
+export function readsGdelt(config: AlertConfig): boolean {
+  return sourcePlaces(config, GDELT_DESCRIPTOR.id).some((place) => place.at !== undefined);
+}
+
+/** The options of the build of the sources of an instance (AL-169). The key mode of the start builds the same sources. */
+export type SourceBuildOptions = Pick<InstanceOptions, "config" | "secret" | "transport" | "transit" | "transitLimit" | "copy" | "nwwsOpen" | "tell">;
+
+/** The sources of an instance, and the parts of their build that the instance uses again (AL-169). */
+export interface InstanceSourceBuild {
+  readonly transitCopy: CatalogCopy | undefined;
+  readonly chosen: ChosenFeeds;
+  readonly pace: Pace & { readonly scheduler: HostScheduler };
+  readonly agent: string;
+  readonly copy: CopySettings;
+  readonly sources: readonly SourceProcedures[];
+  readonly descriptors: readonly SourceDescriptor[];
+}
+
+/**
+ * This function builds the sources of an instance, and the parts of the build that the instance uses again (AL-169). The
+ * function `reports` gives the merge reports to the source of the messages of the operator. The build sends no request.
+ */
+export function instanceSources(options: SourceBuildOptions, clock: Clock, wall: WallClock, reports: () => readonly Report[]): InstanceSourceBuild {
   // A report of a status page has no area. Thus the instance reads only the pages that one of its persons can get.
-  const watches = options.config.recipients.map((recipient) => recipient.watch);
+  // The stack of the alert chain reads the pages and the feeds of its subjects too (AL-90).
+  const chainConfig = options.config.config.chain;
+  const watches = [...options.config.recipients.map((recipient) => recipient.watch), ...(chainConfig === undefined ? [] : [chainWatch(chainConfig)])];
   const pages = pagesFor(watches);
   // The feeds of the cloud providers have no area either. Their domains and their kinds choose them with the same rule.
   const feeds = PROVIDER_FEEDS.filter((feed) => watches.some((watch) => watchReads(watch, feed)));
@@ -891,7 +1068,7 @@ export function openInstance(options: InstanceOptions): Instance {
   const radarToken = options.secret(CLOUDFLARE_RADAR_KEY) ?? "";
   // The transit feeds come from the copy of the catalog. Only this choice reads the positions of the places, and no request holds them.
   const transitCopy = options.transit?.read();
-  const chosen = chooseFeeds(transitCopy, localPlaces(options.config.config));
+  const chosen = chooseFeeds(transitCopy, localPlaces(options.config.config), options.transitLimit);
   const factories = [
     createNwsSource,
     createIpawsSource,
@@ -900,10 +1077,18 @@ export function openInstance(options: InstanceOptions): Instance {
     ...TSUNAMI.map((center) => tsunamiFactory(center)),
     createSwpcSource,
     createGfzSource,
+    (fetchOptions: GfzFetchOptions) => createIndexSource(HP30_INDEX, fetchOptions),
     ...(bomKey === "" ? [] : [bomFactory(bomKey)]),
     createEnergyChartsSource,
+    createFaaSource,
+    createNdwSource,
+    createRailSource,
     ...(eiaKey === "" ? [] : [eiaFactory(eiaKey)]),
     createKevSource,
+    ...CSAF_PROVIDERS.map((provider) => (fetchOptions: CsafFetchOptions) => createCsafSource(provider, fetchOptions)),
+    ...CERT_PROVIDERS.map((provider) => (fetchOptions: CertFetchOptions) => createCertSource(provider, fetchOptions)),
+    ...OSV_PROVIDERS.map((provider) => (fetchOptions: OsvFetchOptions) => createOsvSource(provider, fetchOptions)),
+    ...(readsGdelt(options.config.config) ? [createGdeltSource] : []),
     ...(radarToken === "" ? [] : radarFactories(radarToken)),
     ...feeds.map((feed) => feed.create),
     ...pages.map((page) => statusPageFactory(page)),
@@ -922,10 +1107,54 @@ export function openInstance(options: InstanceOptions): Instance {
       ? createNwwsSource({ account: account.value, clock: wall, ...(options.nwwsOpen === undefined ? {} : { open: options.nwwsOpen }) })
       : undefined;
   // The source of the messages of the operator reads the merge state of the runtime at each fetch. The first fetch is after the start.
-  const intake = options.tell === undefined ? undefined : tellSource(options.tell, () => runtime.state().merge.reports, () => wall.now());
-  const sources: readonly SourceProcedures[] = [...polled, ...(stream === undefined ? [] : [stream]), ...(intake === undefined ? [] : [intake])];
+  const intake = options.tell === undefined ? undefined : tellSource(options.tell, reports, () => wall.now());
+  // A copy does not read a source that it leaves to the other copies (AL-160). The exchange gives it their reports. The
+  // pace keeps a place for each made source, thus a left source only gives one more free place.
+  const leftSources = new Set<string>(copy.leaveSources ?? []);
+  const sources: readonly SourceProcedures[] = [...polled, ...(stream === undefined ? [] : [stream]), ...(intake === undefined ? [] : [intake])].filter(
+    (source) => !leftSources.has(source.describe().id),
+  );
 
   const descriptors = sources.map((source) => source.describe());
+  return { transitCopy, chosen, pace, agent, copy, sources, descriptors };
+}
+
+/**
+ * This function gives the context key of the fold of an instance with these options (AL-169). It builds the sources and the
+ * fold fields of the view as `openInstance` does, with no log and no store. A gate test pins it to the key of the runtime.
+ */
+export function instanceContextKey(options: SourceBuildOptions, clock: Clock, wall: WallClock): string {
+  const { descriptors } = instanceSources(options, clock, wall, () => []);
+  const { config } = options.config;
+  // The runtime adds the descriptors and the retention to the view (`openRuntime`). The instance gives no retention.
+  return contextKey({ sources: descriptors, retention: {}, expectations: instanceExpectations(config.expectations, descriptors), ...(config.link === undefined ? {} : { link: config.link }) });
+}
+
+/**
+ * This function makes the instance. It throws when the configuration or the secret store has a
+ * problem. A problem is a missing token, a key with a bad form, or a place that no regional source covers.
+ * The message names ids, fields and the names of secrets, and no value.
+ *
+ * - The sources are the NWS API, IPAWS, the USGS, EMSC, the two tsunami warning centers, the SWPC, GFZ (Kp and Hp30),
+ *   Energy-Charts and CISA KEV. The stream of NWWS-OI is a source when the secrets have the keys of the account of the
+ *   copy (`nwwsSetup`). The events of GDELT are a source when a place shares its position with it (`readsGdelt`). BoM is a source when the secrets have its key (`BOM_SWS_KEY`), and so is EIA-930 (`EIA_KEY`). The outages and the traffic
+ *   anomalies of Cloudflare Radar are sources when the secrets have its token (`CLOUDFLARE_RADAR_KEY`). Each status page that one of the
+ *   persons can get is a source (`pagesFor`). The feed of Google Cloud, AWS or Azure is a source when one of the persons
+ *   can get its reports (`watchReads`). The stack of the alert chain reads the pages and the feeds of its subjects too (`chainWatch`). Each transit feed of the copy of the catalog whose box meets a place is a source.
+ * - Each source gets the codes of the places. It gets the position of a place only when the place shares it with that
+ *   source. The USGS, EMSC, the centers, the SWPC, GFZ, BoM, Energy-Charts, EIA-930, CISA KEV, GDELT, Radar, Google Cloud, AWS, Azure
+ *   and the status pages ask for no place. GDELT keeps only the events near the places on the machine of the instance. The transit feeds also ask for no place.
+ * - The channels are Pushover, and the Twilio call channel when the secrets have its keys. Each time of the delivery comes
+ *   from a fact of the channels.
+ * - A spend entry of a channel gives its cap and the watch of the balance of its account.
+ * - The times of the loop come from the limits of the runtime.
+ * - The copy does not read a source of the field `leaveSources` of its settings (AL-160).
+ */
+export function openInstance(options: InstanceOptions): Instance {
+  const { clock } = options;
+  // A change of the wall clock of CLOCK_STEP_ABOVE or less is a drift. A larger change is a step of the clock.
+  const wall = frameClock(options.wall, clock, { driftLimit: CLOCK_STEP_ABOVE });
+  const { transitCopy, chosen, pace, agent, copy, sources, descriptors } = instanceSources(options, clock, wall, () => runtime.state().merge.reports);
   const kinds = [...new Set(descriptors.flatMap((descriptor) => descriptor.kinds))];
 
   const { config, recipients } = options.config;
@@ -944,6 +1173,35 @@ export function openInstance(options: InstanceOptions): Instance {
   const start = store === undefined ? undefined : zoned(store);
   const placed = start?.config ?? config;
   const places = localPlaces(placed);
+  // The moving places (AL-40). Each pass has each moving place at its last fresh fix, with the zone codes near the fix.
+  // The store of shapes and the keeper of the transit catalog get only the fixed places. Thus a fix changes no fetch.
+  const position = options.position;
+  // The codes of each fix, until the store gets new outlines. Thus a pass does not search the outlines again for the same fix.
+  let fixCodes = new WeakMap<PositionFix, readonly RegionCode[]>();
+  const codesAt = (place: PlaceConfig, at: Position): readonly RegionCode[] => {
+    const fix = position?.fixes().get(place.id);
+    if (fix === undefined || store === undefined) return place.codes;
+    const known = fixCodes.get(fix);
+    if (known !== undefined) return known;
+    const codes = codesAtFix(place, at, fix.accuracyKm, (state) => [...store.basemap(state), ...store.fireZones(state)]);
+    fixCodes.set(fix, codes);
+    return codes;
+  };
+  const passAt = position === undefined ? undefined : (at: Instant): readonly WatchedPlace[] => passPlaces(placed, position.fixes(), at, codesAt);
+  // A stale moving place is a report only on a copy that took a fix of the place. Thus a copy with no phone tells nothing.
+  const staleAt =
+    position === undefined
+      ? undefined
+      : (at: Instant): readonly StalePlace[] => {
+          const fixes = position.fixes();
+          return staleMovingPlaces(placed, fixes, at)
+            .filter((id) => fixes.has(id))
+            .map((id) => ({
+              place: id,
+              label: placed.places.find((place) => place.id === id)?.label ?? id,
+              persons: recipients.filter(({ watch }) => watch.places.includes(id) || (watch.mandatory ?? []).some((rule) => rule.place === id)).map(({ watch }) => watch.person),
+            }));
+        };
   // New outlines can change the codes of a place. The check is after a refresh with requests, when no task is due.
   const opened = placeCodesKey(placed);
   let fresh = false;
@@ -958,6 +1216,8 @@ export function openInstance(options: InstanceOptions): Instance {
     options.onPlaceCodes?.();
   };
   const onShapes = (outcome: ShapeOutcome): void => {
+    // New outlines can change the codes of a fix.
+    if (outcome.ok && outcome.refreshed.requests > 0) fixCodes = new WeakMap();
     try {
       checkCodes(outcome);
     } finally {
@@ -977,6 +1237,7 @@ export function openInstance(options: InstanceOptions): Instance {
             now: () => wall.now(),
             places,
             opened: feedsKey(chosen.feeds),
+            limit: options.transitLimit,
             onFeeds: options.onTransitFeeds,
             onTransit: options.onTransit,
           }),
@@ -992,6 +1253,9 @@ export function openInstance(options: InstanceOptions): Instance {
     ...(options.pushoverReserveNotices === undefined ? {} : { reserveNotices: options.pushoverReserveNotices }),
   });
   const twilio = twilioChannel(options, config.spend, options.config.optIn);
+  const webhook = webhookChannel(options, () => wall.now());
+  const sounding = sounderOptions(copy, options.sounderRunner ?? commandRunner, () => wall.now());
+  const sounder = sounding === undefined ? undefined : createSounderChannel(sounding);
   // The worker of the exchange reads the runtime only in its rounds, after the start of the service. Thus it gets the runtime through a function.
   const peers = copy.peers ?? [];
   const worker =
@@ -1010,33 +1274,70 @@ export function openInstance(options: InstanceOptions): Instance {
   ];
   const balances = twilio?.watch === undefined ? [] : [twilio.watch];
   const uses = limitWatches(config.limits ?? [], options.secret, options.github);
+  const joint = jointOf(options, clock, wall);
+  // The drift checks are a setting of the copy (copy.json), not of the configuration: a mirror takes the configuration of another host.
+  const drift = copy.drift === undefined ? undefined : driftWatch({ commands: copy.drift.commands, ...(options.driftRunner === undefined ? {} : { run: options.driftRunner }) });
+  // The billing watch reads the host of a down copy (AL-70). The loop exists before the first read, and only a pass starts a read.
+  const billing =
+    worker === undefined || !peers.some((peer) => peer.billing !== undefined)
+      ? undefined
+      : billingWatch({ peers, copies: worker, ...(options.billingRunner === undefined ? {} : { run: options.billingRunner }), onRead: () => loop.wake() });
+  // The watches of the copies in the view have the billing reads. The worker keeps its own times and its ready state.
+  const copyChecks: CopyChecks | undefined =
+    worker === undefined || billing === undefined ? worker : { watches: () => billing.watches(), shift: (size) => worker.shift(size), ready: () => worker.ready() };
   const replies = twilio?.replies;
   const spent = twilio?.spend;
   const reads = [...(replies === undefined ? [] : [replies]), ...(spent === undefined ? [] : [spent])];
   // The text channel takes its units from the gates of the call channel. Thus the quota of the call channel counts the texts too.
-  const channels = twilio === undefined ? [pushover] : [pushover, twilio.channel, ...(twilio.text === undefined ? [] : [twilio.text])];
+  const channels = [
+    pushover,
+    ...(twilio === undefined ? [] : [twilio.channel, ...(twilio.text === undefined ? [] : [twilio.text])]),
+    ...(webhook === undefined ? [] : [webhook]),
+    ...(sounder === undefined ? [] : [sounder]),
+  ];
   // The labels of the places go only into the why line of each message. The policy of the configuration replaces the default policy of the core.
+  // A person with a score rule needs the priors in the policy (AL-31). With no score rule, the policy stays the same.
+  // The software of the stack goes into the policy (AL-197). Each assessment matches the advisories to it again.
+  const assess = policyWithSoftware(
+    policyWithPriors(
+      config.assess,
+      recipients.map((recipient) => recipient.watch),
+      options.priors,
+    ),
+    config.software,
+  );
   const delivery: DeliveryOptions = {
     recipients,
     channels,
     labels: placeLabels(placed),
-    ...(config.assess === undefined ? {} : { assess: config.assess }),
+    ...(assess === undefined ? {} : { assess }),
     // The sources of this copy: a report of only other sources came from another copy, maybe of a newer build (AL-76).
     sources: new Set(descriptors.map((descriptor) => descriptor.id)),
     ...(options.priors === undefined ? {} : { priors: options.priors }),
     ...DELIVERY_TIMES,
     rank: copy.rank,
     rankDelay: RANK_DELAY,
+    ...(copy.leaveChannels === undefined ? {} : { leaveChannels: copy.leaveChannels }),
     ...(config.rankDelay === undefined ? {} : { rankDelays: config.rankDelay }),
     rankFloor: config.rankFloor ?? RANK_FLOOR,
     sendLimits: sendLimitsOf(config.sendLimit),
     throttle: throttleOf(config.throttle),
   };
 
-  // The last pass of the runtime, from the loop or from a direct call of `pass`. The map reads it.
-  let latest: Pass | undefined;
-  // The first pass of this start. The answer of the exchange tells that the copy is steady after `LOUD_STEADY` of passes (AL-108).
-  let first: Pass | undefined;
+  // The kept part of the last pass of the runtime, from the loop or from a direct call of `pass`. The map reads it. It has
+  // no routes: they grow with the live incidents and the persons (AL-145).
+  let latest: KeptPass | undefined;
+  // The time of the first pass of this start. The answer of the exchange tells that the copy is steady after `LOUD_STEADY` of passes (AL-108).
+  let first: Pick<Pass, "at"> | undefined;
+  // The live metrics (AL-132). Each collection reads the levels: the feeds of the start, the persons and the open incidents of the routes of the last pass.
+  const metrics =
+    options.meter === undefined
+      ? undefined
+      : runtimeMetrics(options.meter, () => ({
+          feeds: chosen.feeds.length,
+          persons: options.config.recipients.length,
+          incidents: latest?.open ?? 0,
+        }));
   // The start of this instance. Each family of a store gets its first entry in its window after this time (AL-86).
   const startedAt = wall.now();
   // The wall time of the last write of the snapshot of the start. A start that read a snapshot counts from its start, thus it
@@ -1046,6 +1347,9 @@ export function openInstance(options: InstanceOptions): Instance {
   // A write of the snapshot is in progress (AL-115). A pass in the write starts no second write.
   let snapshotting = false;
   const snapshotFloor = options.startSnapshotFloor ?? START_SNAPSHOT_FLOOR;
+  // The stack of the alert chain (AL-90). `instanceProblems` refuses a stack with a fault, thus a read that fails gives no chain.
+  const chainRead = config.chain === undefined ? undefined : readChain(config.chain);
+  const chain = chainRead?.ok === true ? chainRead.chain : undefined;
   const runtime: Runtime = openRuntime({
     log: options.log,
     clock: wall,
@@ -1059,10 +1363,15 @@ export function openInstance(options: InstanceOptions): Instance {
       ...(config.link === undefined ? {} : { link: config.link }),
       ...(config.channelDown === undefined ? {} : { channelDown: config.channelDown }),
       ...(config.sourceClear === undefined ? {} : { sourceClear: config.sourceClear }),
+      ...(chain === undefined ? {} : { chain }),
     },
+    ...(passAt === undefined ? {} : { places: passAt }),
+    ...(staleAt === undefined ? {} : { stale: staleAt }),
     run: options.run,
     copy: copy.id,
     delivery,
+    // The bound of the reports of the state (AL-145). Without the field, the runtime gives `REPORT_LIMIT`.
+    ...(config.reportLimit === undefined ? {} : { reportLimit: config.reportLimit }),
     // The drills of the live paths that this copy starts (AL-43). Each person keeps the quiet window of the configuration.
     drills: copyDrills(config.drills ?? [], recipients, copy.id, copy.rank),
     // The drills of the other copies, in the watch of this copy. A copy that stops for a full window tells nothing.
@@ -1074,25 +1383,32 @@ export function openInstance(options: InstanceOptions): Instance {
     balances,
     // Each level of the use of a hard limit is a line of system reports (AL-111).
     ...(uses.length === 0 ? {} : { uses }),
+    // Each stage of the joint down time of the copies is a line of system reports (AL-148).
+    ...(joint === undefined ? {} : { joint }),
+    // Each stage of a drift check of a copy host is a line of system reports (AL-139).
+    ...(drift === undefined ? {} : { drift }),
     // Each family of a store with no entry at the end of its window after the start is a line of system reports (AL-86).
     stores: () => shapes.fill(startedAt, STORE_FILL_WINDOW, shapeSources(runtime.config.sources).map((source) => source.id)),
     // Each block of the event loop of 1 s or more is a line of system reports (AL-88).
     ...(options.loopBlocks === undefined ? {} : { blocks: options.loopBlocks }),
     // Each pass reads the replies of the texts and the spend of Twilio when each read is due.
-    ...(reads.length === 0 ? {} : { reads }),
+    // The billing watch reads the billing of a down copy (AL-70).
+    ...(reads.length === 0 && billing === undefined ? {} : { reads: [...reads, ...(billing === undefined ? [] : [billing])] }),
     // Each pass waits for the first round of the exchange, and its view has a line for each fault of another copy.
-    ...(worker === undefined ? {} : { copies: worker }),
+    ...(copyChecks === undefined ? {} : { copies: copyChecks }),
     // The readings of each fetch go to their store, not to the log.
     ...(options.readings === undefined ? {} : { readings: options.readings }),
     ...(options.onReadingsFault === undefined ? {} : { onReadingsFault: options.onReadingsFault }),
+    // The new reports of each fetch go to the counters of the live metrics.
+    ...(metrics === undefined ? {} : { onReports: (reports) => metrics.reports(reports) }),
     ...(options.startSnapshot === undefined ? {} : { startSnapshot: options.startSnapshot }),
     // After each pass, the store of shapes gets the outlines that are due, and it ends before the next fetch from its host (AL-33).
     // The keeper of the transit catalog reads the catalog when its copy is due. The pass does not wait for the two.
     // The two start at a pass after the good start (AL-75). The entry marks the start after this function, thus the pass that
     // makes the start good starts neither of them.
     onPass: async (pass) => {
-      latest = pass;
-      first ??= pass;
+      latest = keptPass(pass);
+      first ??= { at: pass.at };
       if (options.startGood?.() ?? true) {
         shapes.afterPass(pass.view.incidents, refreshUntil(runtime.config.sources, (descriptor) => nextFetch(runtime.state(), descriptor)));
         transit?.afterPass();
@@ -1138,10 +1454,13 @@ export function openInstance(options: InstanceOptions): Instance {
       ...(delivery.assess === undefined ? {} : { policy: delivery.assess }),
       ...(options.priors === undefined ? {} : { priors: options.priors }),
       foreign: foreignIncidents(runtime.state().merge.reports, delivery.sources),
-      shape: shapes.lookup,
+      // The basemap comes first: the display lookup gives its simplified shapes (AL-176).
       basemap: shapes.basemap(),
+      shape: shapes.display,
       // The breadth of the indicator signals of the last pass. A runtime with no store of the readings has none.
       ...(latest?.breadth === undefined ? {} : { breadth: latest.breadth }),
+      // The surprise of the signals of the last pass (AL-24). A fault of the history of the units gives none.
+      ...(latest?.surprise === undefined ? {} : { surprise: latest.surprise }),
     });
   };
   // The health reads the view of the last pass. The watches of the copies, the balances and the channels are at the time of the read.
@@ -1155,7 +1474,13 @@ export function openInstance(options: InstanceOptions): Instance {
       copies: worker?.watches() ?? [],
       quotas: quotas(),
       balances: balances.flatMap((watch) => watch.balance() ?? []),
-      reads: [...reads, ...uses].map((watch) => watch.health()),
+      reads: [
+        ...[...reads, ...uses, ...(joint === undefined ? [] : [joint])].map((watch) => watch.health()),
+        ...(drift?.health() ?? []),
+        ...(billing?.health() ?? []),
+        // The age of the last fix of each moving place, with no position (AL-40).
+        ...(position === undefined ? [] : fixReads(placed, position.fixes(), position.refusals(), wall.now())),
+      ],
       channels: runtime.channels(),
       channelDown: channelDownPolicy(runtime.config.channelDown),
     });
@@ -1171,7 +1496,7 @@ export function openInstance(options: InstanceOptions): Instance {
       places: placed.places,
       ...(delivery.assess === undefined ? {} : { policy: delivery.assess }),
       sources: delivery.sources,
-      shape: shapes.lookup,
+      shape: shapes.display,
       link,
     });
   // A round that imports an event or changes the stage of a copy starts a pass soon.
@@ -1200,8 +1525,12 @@ export function openInstance(options: InstanceOptions): Instance {
     quotas,
     balances,
     uses,
+    ...(joint === undefined ? {} : { joint }),
+    ...(drift === undefined ? {} : { drift }),
+    ...(billing === undefined ? {} : { billing }),
     ...(replies === undefined ? {} : { replies }),
     ...(spent === undefined ? {} : { spend: spent }),
+    ...(twilio?.useReads === undefined ? {} : { useReads: useReadsAt(twilio.useReads, options.wall) }),
     map,
     health,
     history,
@@ -1209,6 +1538,21 @@ export function openInstance(options: InstanceOptions): Instance {
     ...(outage === undefined ? {} : { outage }),
     ...(copies === undefined ? {} : { copies }),
   };
+}
+
+// The watch of the joint down time of the copies (AL-148). It needs the key of the management API and the loud check.
+// The host of the API has a scheduler of its own, on the clocks of the instance.
+function jointOf(options: InstanceOptions, clock: Clock, wall: WallClock): JointWatch | undefined {
+  const key = options.secret(CHECKS_KEY) ?? "";
+  const url = options.secret(LOUD_PING_URL_KEY) ?? "";
+  if (key === "" || url === "") return undefined;
+  const read = jointReader({ key, url, pace: sourcePace(clock, wall, 1), transport: options.checks ?? options.transport, userAgent: USER_AGENT_NAME });
+  return jointWatch({ read });
+}
+
+/** This function gives the use reads of the cap at the time of each call. */
+function useReadsAt(reads: (at: number) => readonly UseRead[], wall: WallClock): () => readonly UseRead[] {
+  return () => reads(wall.now());
 }
 
 /**
@@ -1246,6 +1590,19 @@ interface TwilioParts {
   readonly watch?: BalanceWatch;
   readonly replies?: ReplyWatch;
   readonly spend?: SpendWatch;
+  /** This function gives the use reads of the cap at an instant (AL-91). */
+  readonly useReads?: (at: number) => readonly UseRead[];
+}
+
+/**
+ * This function makes the webhook channel when the secrets have its key (AL-55). A bad value stops the start in
+ * `instanceProblems`, thus this function makes no channel for it.
+ */
+function webhookChannel(options: InstanceOptions, now: () => Instant): ChannelProcedures | undefined {
+  const setup = webhookSetup(options.secret);
+  if (setup.tag === "err" || setup.value === undefined) return undefined;
+  if (options.webhook === undefined) throw new Error("The secret store has the key of the webhook channel, and the instance has no fetch for it.");
+  return createWebhookChannel({ secrets: setup.value, fetch: options.webhook, userAgent: WEBHOOK_USER_AGENT, now });
 }
 
 /**
@@ -1288,5 +1645,7 @@ function twilioChannel(options: InstanceOptions, spend: readonly SpendConfig[] |
   // The watch of the spend adds the other usage of the account to the count of the gates (AL-57).
   const spent = spendWatch({ provider: entry.provider, gates, timeZone: entry.timeZone, read: (start, signal) => readTwilioSpend({ credentials, fetch, from: start, to: now() }, signal) });
   const channel = createTwilioCallChannel({ credentials, from, fetch, now, spend: { ...gates, units: spendUnits(TWILIO_CALL_COST_USD) } });
-  return { channel, gates, watch, spend: spent, ...text(gates), ...watched };
+  // The gate of the own count gives the count read of this copy, and the watch of the spend gives the read of the account (AL-91).
+  const uses = { provider: entry.provider, copy: (options.copy ?? ONLY_COPY).id, timeZone: entry.timeZone, own: gates.own, spend: () => spent.spend() };
+  return { channel, gates, watch, spend: spent, useReads: (at) => spendUseReads(uses, at), ...text(gates), ...watched };
 }

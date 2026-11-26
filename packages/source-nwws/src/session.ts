@@ -114,6 +114,7 @@ export const openXmppSession: OpenSession = (options, handlers) => {
   });
   // The supervisor decides each new session, so the client does not reconnect.
   xmpp.reconnect.stop();
+  dropLateData(xmpp);
   let done = false;
   let joined = false;
   let keepalive: Cancel | undefined;
@@ -135,6 +136,8 @@ export const openXmppSession: OpenSession = (options, handlers) => {
   xmpp.on("error", (error) => end(`the connection failed: ${errorMessage(error)}`, failureKind(error)));
   // The client tells `disconnect` at each close of the socket, also at a close of TCP with no close of the stream.
   xmpp.on("disconnect", ({ clean }) => end(clean ? "the server closed the connection" : "the connection broke"));
+  // The client tells `close` at the end of the stream. The client then has no parser, thus the session reads no more product.
+  xmpp.on("close", () => end("the server closed the stream"));
   xmpp.on("stanza", (stanza) => {
     if (done) return;
     if (stanza.is("presence") && bareJid(stanza.attrs["from"]) === options.room) {
@@ -170,6 +173,26 @@ export const openXmppSession: OpenSession = (options, handlers) => {
     },
   };
 };
+
+// The part of a connection of `@xmpp/connection` 0.14.0 that `dropLateData` changes.
+interface DataHandler {
+  parser: unknown;
+  _onData(data: Buffer): void;
+}
+
+/**
+ * This function makes the client drop the data of the socket after the parser is gone (AL-140). In `@xmpp/connection`
+ * 0.14.0, the end of the stream and an error of the parser remove the parser before the socket closes. Then the next data
+ * throws a TypeError out of the listener of the socket, and that error stops the process. The function changes the handler
+ * before the first connect, because the connection binds the handler at its first socket.
+ */
+export function dropLateData(xmpp: XmppClient): void {
+  const connection = xmpp as unknown as DataHandler;
+  const onData = connection._onData;
+  connection._onData = function (this: DataHandler, data: Buffer): void {
+    if (this.parser !== null && this.parser !== undefined) onData.call(this, data);
+  };
+}
 
 const NOT_SECURE = "the link is not secure: the server did not start TLS";
 

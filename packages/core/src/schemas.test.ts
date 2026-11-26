@@ -85,9 +85,13 @@ import {
   addressValueSchema,
   alertConfigSchema,
   configPartSchema,
+  driftCommandConfigSchema,
+  driftConfigSchema,
   drillConfigSchema,
   expectationConfigSchema,
   limitConfigSchema,
+  chainConfigSchema,
+  chainSubjectSchema,
   outageConfigSchema,
   outagePersonConfigSchema,
   spendConfigSchema,
@@ -106,6 +110,7 @@ import {
   checkWith,
   contactConfigSchema,
   copyListenSchema,
+  copyBillingConfigSchema,
   copyPeerSchema,
   copySettingsSchema,
   correlationKeySchema,
@@ -419,6 +424,8 @@ const SCHEMA_NAMES = [
   "categorySchema",
   "cellResourceSchema",
   "certaintySchema",
+  "chainConfigSchema",
+  "chainSubjectSchema",
   "channelDescriptorSchema",
   "channelDownConfigSchema",
   "channelFailureKindSchema",
@@ -428,12 +435,15 @@ const SCHEMA_NAMES = [
   "channelRunSchema",
   "configPartSchema",
   "contactConfigSchema",
+  "copyBillingConfigSchema",
   "copyHealthSchema",
   "copyIdSchema",
   "copyListenSchema",
   "copyPeerSchema",
   "copyReadSchema",
   "copySettingsSchema",
+  "copySounderDeviceSchema",
+  "copySounderSchema",
   "copyStageSchema",
   "correlationKeySchema",
   "coverageSchema",
@@ -442,6 +452,8 @@ const SCHEMA_NAMES = [
   "deliveryStateSchema",
   "deliveryStatusSchema",
   "dimensionIdSchema",
+  "driftCommandConfigSchema",
+  "driftConfigSchema",
   "drillConfigSchema",
   "drillPathSchema",
   "drillWindowSchema",
@@ -469,6 +481,7 @@ const SCHEMA_NAMES = [
   "incidentSchema",
   "indicatorAreaKindSchema",
   "indicatorAreaSchema",
+  "installedPackageSchema",
   "instantSchema",
   "interestDefaultsConfigSchema",
   "interestEdgeSchema",
@@ -530,12 +543,16 @@ const SCHEMA_NAMES = [
   "responseTypeSchema",
   "scoreFactorSchema",
   "scorePriorsSchema",
+  "scoreRuleSchema",
   "secretRefSchema",
   "sendLimitConfigSchema",
   "sendOutcomeSchema",
   "severitySchema",
   "shadowScoreSchema",
   "significanceSchema",
+  "softwareMatchSchema",
+  "softwarePartSchema",
+  "softwareStackSchema",
   "sourceClearConfigSchema",
   "sourceDescriptorSchema",
   "sourceHealthSchema",
@@ -729,10 +746,11 @@ describe("the round trip of real values", () => {
 });
 
 describe("the value rules", () => {
-  it("a report has one area or more, or one subject or more", () => {
-    fails(reportSchema, { ...WARNING, areas: [], about: [] });
+  it("a report with no area, no subject and no address has no place, and the schema accepts it (AL-157)", () => {
     holds(reportSchema, { ...WARNING, areas: [{ type: "code", system: "ugc", code: "KSZ083" }], about: [] });
     holds(reportSchema, { ...WARNING, areas: [], about: [{ system: SOURCE_SUBJECT, id: "nws-api" }] });
+    holds(reportSchema, { ...WARNING, areas: [], about: [] });
+    holds(reportSchema, { ...WARNING, areas: [], about: [], op: "cancel", references: ["KEY-1"] });
   });
 
   it("a private report has one address or more, and the addresses replace the area (AL-92)", () => {
@@ -916,6 +934,23 @@ describe("the private configuration", () => {
     holds(drillConfigSchema, { ...drill, copies: ["home"] });
   });
 
+  it("accepts the drift checks in the settings of a copy, and refuses a bad name, an empty argv, an unknown kind and two checks with one name (AL-139)", () => {
+    const command = { name: "host-a", kind: "setup", argv: ["check-host", "--check"] } as const;
+    const copy: CopySettings = { format: COPY_FORMAT, id: "home", rank: 0 };
+    holds(copySettingsSchema, { ...copy, drift: { commands: [command, { name: "plan.b", kind: "tofu", argv: ["plan-host"] }] } });
+    // The checks are a setting of each copy. The shared configuration refuses them, because a mirror takes it from another host.
+    fails(alertConfigSchema, { ...CONFIG, drift: { commands: [command] } });
+    for (const drift of [{ commands: [] }, { commands: [command, { ...command, kind: "tofu" }] }, { commands: [{ ...command, argv: [] }] }, { commands: [{ ...command, name: "host a" }] }, { commands: [command], extra: 1 }]) fails(copySettingsSchema, { ...copy, drift });
+    fails(driftCommandConfigSchema, { ...command, name: "host a" });
+    fails(driftCommandConfigSchema, { ...command, name: "" });
+    fails(driftCommandConfigSchema, { ...command, argv: [] });
+    fails(driftCommandConfigSchema, { ...command, argv: [""] });
+    fails(driftCommandConfigSchema, { ...command, kind: "shell" });
+    fails(driftCommandConfigSchema, { ...command, shell: "check-host --check" });
+    fails(driftConfigSchema, { commands: [] });
+    fails(driftConfigSchema, { commands: [command, { ...command, kind: "tofu" }] });
+  });
+
   it("checks the failure of a drill with the policy of a subject, and a real notice keeps its policy", () => {
     const drill = { id: "push-weekly", person: PERSON, path: { kind: "channel", channel: PUSHOVER }, every: 6 * 86_400_000, window: { zone: "America/Chicago", start: "11:00", end: "17:00", days: [6] }, ackWithin: 1_800_000 } as const;
     const watcher = { watch: { person: PERSON, places: [KANSAS.id], rules: [], subjects: [{ system: DRILL_SUBJECT }] }, label: "Person A" };
@@ -981,6 +1016,14 @@ describe("the private configuration", () => {
     for (const bad of [{ products: [] }, { products: [""] }, { accountKind: "team" }, { monthlyUsd: 0 }, { levels: [] }, { levels: [0] }, { levels: [Number.POSITIVE_INFINITY] }, { id: "" }, { extra: 1 }, { tokenKey: "" }, { tokenKey: "github_token" }, { tokenKey: "1TOKEN" }, { tokenKey: "A-B" }]) fails(limitConfigSchema, { ...limit, ...bad });
   });
 
+  it("checks the form of the stack of the alert chain, and leaves the stack document to the runtime (AL-90)", () => {
+    const chain = { stack: { schema: "stack/1", parts: [] }, subjects: [{ system: "domain", id: "status.example.net", part: "texts" }] };
+    holds(alertConfigSchema, { ...CONFIG, chain });
+    holds(chainConfigSchema, { ...chain, subjects: [] });
+    for (const bad of [{ system: "" }, { id: "" }, { part: "" }, { extra: 1 }]) fails(chainSubjectSchema, { ...chain.subjects[0], ...bad });
+    for (const bad of [{ stack: [] }, { stack: "stack/1" }, { subjects: undefined }, { extra: 1 }]) fails(chainConfigSchema, { ...chain, ...bad });
+  });
+
   it("checks the form of the outage call, and leaves the people and the channels to the load", () => {
     const outage = { people: [{ person: PERSON, chain: { steps: ["twilio-call", "twilio-call"] } }] };
     holds(alertConfigSchema, { ...CONFIG, outage });
@@ -1000,12 +1043,32 @@ describe("the private configuration", () => {
     holds(copySettingsSchema, { ...home, accounts: { nwws: 2 } });
     holds(copySettingsSchema, { ...home, configFrom: "cloud" });
     for (const configFrom of ["Cloud", "", 2]) fails(copySettingsSchema, { ...home, configFrom });
+    holds(copySettingsSchema, { ...home, leaveChannels: ["webhook"] });
+    for (const leaveChannels of ["webhook", [""], [2]]) fails(copySettingsSchema, { ...home, leaveChannels });
+    holds(copySettingsSchema, { ...home, leaveSources: ["gdelt"] });
+    for (const leaveSources of ["gdelt", [""], [2]]) fails(copySettingsSchema, { ...home, leaveSources });
+    // The sounder of a copy (AL-41): each device has a program, and each count is a whole number.
+    const desk = { sound: ["beep-tool", "--short"] };
+    holds(copySettingsSchema, { ...home, sounder: { devices: { desk } } });
+    holds(copySettingsSchema, { ...home, sounder: { devices: { desk: { ...desk, levels: { "life-safety": ["beep-tool", "--long"] }, probe: ["beep-tool", "--check"] } }, sounds: { urgent: 0 }, gapMs: 500 } });
+    for (const sounder of [{ devices: {} }, { devices: { desk: { sound: [] } } }, { devices: { desk: { sound: [""] } } }, { devices: { desk: { ...desk, levels: { loud: ["x"] } } } }, { devices: { desk }, sounds: { urgent: 1.5 } }, { devices: { desk }, gapMs: -1 }, { devices: { desk }, extra: 1 }])
+      fails(copySettingsSchema, { ...home, sounder });
     for (const accounts of [{ nwws: 0 }, { nwws: 1.5 }, { nwws: "2" }, { "": 2 }, []]) fails(copySettingsSchema, { ...home, accounts });
     holds(copyListenSchema, { host: "home.example.ts.net", port: 65535 });
     holds(copyPeerSchema, { id: "c-2", url: "https://[fd7a:115c::1]:4751/exchange" });
     for (const bad of [{ format: "alerts-copy/2" }, { id: "Home" }, { id: "" }, { id: "-home" }, { id: "a".repeat(33) }, { rank: -1 }, { rank: 0.5 }, { pingKey: "lower" }, { pingKey: "" }, { extra: 1 }]) fails(copySettingsSchema, { ...home, ...bad });
     for (const bad of [{ port: 0 }, { port: 65536 }, { port: 1.5 }, { host: "" }]) fails(copyListenSchema, { host: "100.64.0.1", port: 4751, ...bad });
     for (const url of ["ftp://cloud.example:4751", "http://user@cloud.example:4751", "http://cloud.example:4751/?q=1", "http://cloud.example:4751/#f", "cloud.example:4751", "http://", "http://-cloud.example"]) fails(copyPeerSchema, { id: "cloud", url });
+  });
+
+  it("checks the billing read of the host of another copy (AL-70)", () => {
+    const billing = { argv: ["cloudctl", "billing", "describe", "--format=json"], field: "billing.enabled", stoppedWhen: [false] };
+    const peer = { id: "cloud", url: "http://cloud.example.ts.net:4751", billing };
+    holds(copyPeerSchema, peer);
+    holds(copySettingsSchema, { format: COPY_FORMAT, id: "home", rank: 0, peers: [peer] });
+    holds(copyBillingConfigSchema, { ...billing, field: "state", stoppedWhen: ["CLOSED", "SUSPENDED", 0] });
+    for (const bad of [{ argv: [] }, { argv: [""] }, { argv: "cloudctl" }, { field: "" }, { field: "a..b" }, { field: ".a" }, { field: "a b" }, { field: "a[0]" }, { stoppedWhen: [] }, { stoppedWhen: [null] }, { stoppedWhen: [{}] }, { stoppedWhen: false }, { extra: 1 }]) fails(copyBillingConfigSchema, { ...billing, ...bad });
+    fails(copyPeerSchema, { ...peer, billing: { argv: ["cloudctl"] } });
   });
 
   it("finds the problems of the ranks, the ids and the address of a copy, and the problems hold no URL", () => {
@@ -1018,6 +1081,20 @@ describe("the private configuration", () => {
     expect(copyProblems({ ...base, configFrom: "cloud" })).toEqual([]);
     expect(copyProblems({ ...base, configFrom: "home" })).toEqual(["configFrom: the id is not the id of a copy in peers."]);
     expect(copyProblems({ ...base, configFrom: "other" })).toHaveLength(1);
+    // A copy leaves a channel only to other copies, and it names each channel one time (AL-55).
+    const webhook = "webhook" as ChannelId;
+    expect(copyProblems({ ...base, leaveChannels: [webhook] })).toEqual([]);
+    expect(copyProblems({ ...base, leaveChannels: [webhook, PUSHOVER, webhook] })).toEqual(["leaveChannels[2]: the channel webhook is in the list already."]);
+    expect(copyProblems({ format: COPY_FORMAT, id: "home", rank: 0, leaveChannels: [webhook] })).toEqual([
+      "leaveChannels: a copy with no other copies sends on each channel. Thus it leaves no channel.",
+    ]);
+    // A copy leaves a source only to other copies, and it names each source one time (AL-160).
+    const gdelt = "gdelt" as SourceId;
+    expect(copyProblems({ ...base, leaveSources: [gdelt] })).toEqual([]);
+    expect(copyProblems({ ...base, leaveSources: [gdelt, gdelt] })).toEqual(["leaveSources[1]: the source gdelt is in the list already."]);
+    expect(copyProblems({ format: COPY_FORMAT, id: "home", rank: 0, leaveSources: [gdelt] })).toEqual([
+      "leaveSources: a copy with no other copies reads each source. Thus it leaves no source.",
+    ]);
     // A rank is lower than the count of the copies.
     expect(copyProblems({ ...base, rank: 2 })).toHaveLength(1);
     expect(copyProblems({ format: COPY_FORMAT, id: "home", rank: 1 })).toHaveLength(1);

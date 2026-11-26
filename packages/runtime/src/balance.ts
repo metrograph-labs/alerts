@@ -282,22 +282,35 @@ export function spendUnits(costUsd: number): number {
   return Math.ceil(Math.round(costUsd * 1_000_000) / 10_000);
 }
 
-/** The two gates of one cap of the spend. They count the same units. */
+/** The two gates of one cap of the spend, and the gate of the own count. */
 export interface SpendGates {
   /** The gate of each message below `life-safety`. It keeps the reserve of the cap. */
   readonly gate: QuotaGate;
-  /** The gate of a `life-safety` message. It has no reserve. */
+  /** The gate of a `life-safety` message. It has no reserve. It counts the same units as `gate`. */
   readonly lifeSafety: QuotaGate;
+  /**
+   * The gate of the own count (AL-91). It counts each send of the channels, and the watch of the spend gives it no read.
+   * Thus its count is the cost of the sends of this copy alone. It refuses no send.
+   */
+  readonly own: QuotaGate;
 }
 
 /**
  * This function makes the two gates of one quota of the spend. The gates have one name, one key and one store,
  * thus they keep one record. Only the gate of `life-safety` takes the units of the reserve.
  *
+ * The gate of the own count has the key `<key>:own` in the same store. Thus it keeps a second record, and a restart keeps it.
+ *
  * @throws Error when the quota is not valid.
  */
 export function spendGates(quota: Quota, options: QuotaGateOptions): SpendGates {
-  return { gate: quotaGate(quota, options), lifeSafety: quotaGate({ ...quota, reserve: 0 }, options) };
+  const full = { ...quota, reserve: 0 };
+  return { gate: quotaGate(quota, options), lifeSafety: quotaGate(full, options), own: quotaGate(full, { ...options, key: ownKey(options.key) }) };
+}
+
+/** This function gives the key of the gate of the own count of a cap. */
+function ownKey(key: string): string {
+  return `${key}:own`;
 }
 
 function cents(usd: number): number {

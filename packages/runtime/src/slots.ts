@@ -10,12 +10,18 @@
  *   Windows cannot rename a link over a junction, thus the swap removes the junction and makes the new one. A start
  *   in that short gap fails, and the supervisor starts the runtime again.
  * - The supervisor loads its own files only at its start. Thus a change of them needs a restart of the boot task.
+ * - A supervisor older than AL-89 starts each runtime from the real path of its slot, not through the link. Thus it
+ *   starts the old code until the restart of the boot task.
+ * - The package links of a slot must resolve in the slot (AL-144). On Windows, pnpm makes junctions with absolute
+ *   targets. Thus `adopt` installs slot a again at its new path, and a swap refuses a slot with a link outside it.
  */
 import { createHash } from "node:crypto";
 import type { Stats } from "node:fs";
-import { lstat, readlink, rename, rmdir, symlink, unlink } from "node:fs/promises";
+import { lstat, mkdir, readdir, readlink, rename, rmdir, symlink, unlink } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { runCommand, type CommandResult } from "@procedures/shell/command";
+import { isRecord } from "@mark1russell7/optional/read";
+import { acquireInstanceLock, type HostPorts } from "@mark1russell7/service/host";
 
 /** The names of the two slots. */
 export const SLOT_NAMES = ["a", "b"] as const;
@@ -33,6 +39,22 @@ export interface Slots {
 /** This function gives the slots of a live path: the folders `<live>-a` and `<live>-b` next to it. */
 export function slotsOf(live: string): Slots {
   return { live, a: `${live}-a`, b: `${live}-b` };
+}
+
+/**
+ * This function gives the slots of a checkout (AL-169). A process that starts in a slot folder has the real path of the
+ * slot, not the live path. An example is a service unit with the live path as its folder: the operating system resolves
+ * the link. The name of a slot checkout ends with `-a` or `-b`. When the path without that end is a link to the
+ * checkout, the live path is that link. Each other checkout is a live path.
+ */
+export async function slotsOfCheckout(checkout: string, platform: NodeJS.Platform = process.platform): Promise<Slots> {
+  const match = /^(.+)-([ab])$/u.exec(basename(checkout));
+  if (match?.[1] !== undefined) {
+    const slots = slotsOf(join(dirname(checkout), match[1]));
+    const live = await readLive(slots, platform).catch(() => undefined);
+    if (live?.kind === "link" && live.slot === match[2]) return slots;
+  }
+  return slotsOf(checkout);
 }
 
 /** This function gives the other slot. */
@@ -209,22 +231,133 @@ export function withMark(file: DeployFile, slot: SlotName, mark: StageMark | und
   return { format: 1, marks };
 }
 
-/** The facts that decide a swap: the live slot, the mark of the target slot, its commit and its changes. */
+/** A package link of a slot: the path of the link, and its target as `readlink` gives it. */
+export interface PackageLink {
+  readonly path: string;
+  readonly target: string;
+}
+
+/**
+ * This function tells if `path` is the folder `folder` or a path in it. On Windows, the case and a long-path prefix do
+ * not count.
+ */
+export function insideFolder(folder: string, path: string, platform: NodeJS.Platform = process.platform): boolean {
+  const plain = (value: string): string => {
+    const full = resolve(value.replace(/^\\\\\?\\/u, "")).replace(/(.)[\\/]+$/u, "$1");
+    return platform === "win32" ? full.toLowerCase().replace(/\//gu, "\\") : full;
+  };
+  const root = plain(folder);
+  const full = plain(path);
+  const separator = platform === "win32" ? "\\" : "/";
+  return full === root || full.startsWith(root.endsWith(separator) ? root : `${root}${separator}`);
+}
+
+/**
+ * This function gives the package links of a slot that resolve outside the folder of the slot (AL-144). A relative
+ * target starts at the folder of the link. On Windows, pnpm makes junctions with absolute targets. Thus a checkout that
+ * moves to a slot keeps links to its old path, and a link at that path can name the other slot.
+ */
+export function foreignLinks(slot: string, links: readonly PackageLink[], platform: NodeJS.Platform = process.platform): readonly PackageLink[] {
+  return links.filter((link) => !insideFolder(slot, resolve(dirname(link.path), link.target.replace(/^\\\\\?\\/u, "")), platform));
+}
+
+/**
+ * This function reads the package links of a slot. They are the links in `node_modules` of the checkout and of each
+ * package, also in each scope folder. It does not go into the store of pnpm.
+ */
+export async function readPackageLinks(slot: string): Promise<readonly PackageLink[]> {
+  const folders = [join(slot, "node_modules")];
+  for (const name of await namesIn(join(slot, "packages"))) folders.push(join(slot, "packages", name, "node_modules"));
+  const links: PackageLink[] = [];
+  const add = async (path: string): Promise<boolean> => {
+    const stat = await lstatOrNone(path);
+    if (stat?.isSymbolicLink() !== true) return false;
+    links.push({ path, target: await readlink(path) });
+    return true;
+  };
+  for (const folder of folders) {
+    for (const name of await namesIn(folder)) {
+      if (name.startsWith(".")) continue;
+      const path = join(folder, name);
+      if ((await add(path)) || !name.startsWith("@")) continue;
+      for (const inner of await namesIn(path)) await add(join(path, inner));
+    }
+  }
+  return links;
+}
+
+/** This function gives the names in a folder, or no name when the folder does not exist. */
+async function namesIn(folder: string): Promise<readonly string[]> {
+  try {
+    return await readdir(folder);
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT" || code === "ENOTDIR") return [];
+    throw error;
+  }
+}
+
+/** The package links of the two slots that resolve outside their own slot (`foreignLinks`). */
+export interface ForeignLinks {
+  readonly live: readonly PackageLink[];
+  readonly target: readonly PackageLink[];
+}
+
+/**
+ * The target of a swap (AL-167): the slot that the live link names after the swap, and the start of its commit. The swap
+ * compares the two with the slots before it changes the link. Thus a second swap of the same target, or a stage after
+ * the read of the operator, changes nothing.
+ */
+export interface SwapTarget {
+  readonly slot: SlotName;
+  readonly commit: string;
+}
+
+/** This function reads the target of a swap from the arguments `<a|b> <commit>`, or gives undefined for bad arguments. */
+export function parseSwapTarget(args: readonly string[]): SwapTarget | undefined {
+  const [slot, commit, ...rest] = args;
+  if (rest.length > 0 || (slot !== "a" && slot !== "b") || commit === undefined || !/^[0-9a-f]{7,40}$/u.test(commit)) return undefined;
+  return { slot, commit };
+}
+
+/** The facts that decide a swap: the target, the live slot, the mark of the target slot, its commit, its changes and the foreign links. */
 export interface SwapFacts {
+  readonly target: SwapTarget;
   readonly live: LiveState;
   readonly mark: StageMark | undefined;
   readonly head: string | undefined;
   readonly clean: boolean;
+  readonly foreign?: ForeignLinks | undefined;
 }
+
+/** This function gives one example of a foreign link for a message. */
+const linkExample = (links: readonly PackageLink[]): string => {
+  const first = links[0];
+  return first === undefined ? "" : `, for example ${first.path} -> ${first.target}`;
+};
 
 /**
  * This function gives the reason that a swap to the other slot cannot go, or undefined. The live path must be a link to
  * a slot. The other slot needs a mark of its present commit with each check, and no change in its tree.
+ * No package link of the two slots can resolve outside its own slot (AL-144). After a swap, such a link names the
+ * other slot, and a start from that slot fails.
  */
 export function swapRefusal(facts: SwapFacts): string | undefined {
   if (facts.live.kind !== "link" || facts.live.slot === undefined) return "The live path is not a link to a slot. Start `deploy.ts adopt` first.";
-  const slot = otherSlot(facts.live.slot);
+  const from = facts.live.slot;
+  const slot = otherSlot(from);
+  if (facts.target.slot === from) return `The live path is a link to slot ${from} already. Another deploy swapped it, or the swap is done. Read \`deploy.ts status\`.`;
+  const foreign = facts.foreign;
+  if (foreign !== undefined && foreign.target.length > 0) {
+    return `Slot ${slot} has ${foreign.target.length} package links outside its folder${linkExample(foreign.target)}. Start \`deploy.ts relink\` first.`;
+  }
+  if (foreign !== undefined && foreign.live.length > 0) {
+    return `Slot ${from} has ${foreign.live.length} package links outside its folder${linkExample(foreign.live)}. After the swap, a start from slot ${from} fails. Stop the boot task, start \`deploy.ts relink ${from}\`, and start the task.`;
+  }
   if (facts.head === undefined) return `Slot ${slot} has no checkout. Start \`deploy.ts stage <commit>\` first.`;
+  if (!facts.head.startsWith(facts.target.commit)) {
+    return `Slot ${slot} has the commit ${facts.head.slice(0, 7)}, not ${facts.target.commit}. Another stage changed it. Read \`deploy.ts status\`.`;
+  }
   if (facts.mark === undefined || facts.mark.sha !== facts.head) return `Slot ${slot} has no stage of its commit. Start \`deploy.ts stage <commit>\` first.`;
   const missing = STAGE_CHECKS.filter((check) => !facts.mark?.checks.includes(check));
   if (missing.length > 0) return `The stage of slot ${slot} did not pass these checks: ${missing.join(", ")}.`;
@@ -232,8 +365,30 @@ export function swapRefusal(facts: SwapFacts): string | undefined {
   return undefined;
 }
 
+/** The name of the deploy lock in the host folder (AL-167). */
+export const DEPLOY_LOCK_FILE = "deploy.lock";
+
+/**
+ * This function does `work` while this process holds the deploy lock at `path` (AL-167). A stage, a swap, a relink and a
+ * fold each take the lock. Thus two deploys on one host do not cross. A lock of a process that stopped is stale, and
+ * the take removes it. The function throws when a live process holds the lock, and the work does not start.
+ */
+export async function withDeployLock<T>(path: string, ports: HostPorts, work: () => Promise<T>): Promise<T> {
+  await mkdir(dirname(path), { recursive: true });
+  const result = await acquireInstanceLock(path, ports);
+  if (result.kind === "held") {
+    throw new Error(`The process ${String(result.owner.pid)} holds the deploy lock: another deploy runs. Wait for its end, then read \`deploy.ts status\`.`);
+  }
+  if (result.kind === "failed") throw new Error(`The deploy lock is not free: ${result.problem.split(dirname(path)).join("<host>")}`);
+  try {
+    return await work();
+  } finally {
+    await result.lock.release();
+  }
+}
+
 /** The files of the supervisor, from the checkout. The supervisor loads them only at its own start. */
-export const SUPERVISOR_FILES = ["packages/runtime/src/supervise.ts", "packages/runtime/src/host.ts", "packages/runtime/src/start-times.ts"] as const;
+export const SUPERVISOR_FILES = ["packages/runtime/src/supervise.ts", "packages/runtime/src/host.ts"] as const;
 
 /** The name of the service package. Its version is a part of the supervisor too. */
 export const SERVICE_PACKAGE = "@mark1russell7/service";
@@ -303,6 +458,212 @@ export interface StageStep {
  */
 export function loadStep(runtime: string, scratch: string, node: string): StageStep {
   return { program: node, args: [join(runtime, "src", "main.ts"), "load"], env: { ALERTS_HOME: scratch } };
+}
+
+/** The file of a slot that holds `FOLD_VERSION` (AL-153). */
+export const FOLD_FILE = "packages/runtime/src/start-snapshot.ts";
+
+/** This function reads `FOLD_VERSION` from the text of `FOLD_FILE`. It gives undefined for no text or a text with no version. */
+export function foldVersionOf(text: string | undefined): number | undefined {
+  const match = text === undefined ? null : /^export const FOLD_VERSION = (\d+);$/m.exec(text);
+  return match?.[1] === undefined ? undefined : Number(match[1]);
+}
+
+/**
+ * This function gives the line about the fold version from the live slot to the other slot. It gives undefined for the same
+ * version. A new version makes the next start ignore the snapshot of the old fold. Then the fold of the whole log can take
+ * longer than the ready window (AL-153).
+ */
+export function foldChange(live: number | undefined, next: number | undefined): string | undefined {
+  if (live === next) return undefined;
+  return [
+    `The fold version changes from ${live === undefined ? "none" : String(live)} to ${next === undefined ? "none" : String(next)}.`,
+    "If the new code does not upgrade the old snapshot, the next start folds the whole log.",
+    "Stop the runtime, swap, start `deploy.ts fold`, and then start the runtime.",
+  ].join(" ");
+}
+
+/**
+ * This function gives the fold step: `main.ts fold <set>` of the live slot on the live home. The profile is the profile of
+ * the supervised runtime, thus the fold has the configuration and the key of a start with that set (AL-169).
+ */
+export function foldStep(runtime: string, home: string, node: string, set: "files" | "good", heap?: number): StageStep {
+  const limit = heap === undefined ? [] : [`--max-old-space-size=${String(heap)}`];
+  return { program: node, args: [...limit, join(runtime, "src", "main.ts"), "fold", set], env: { ALERTS_HOME: home, SERVICE_PROFILE: "daemon" } };
+}
+
+/** The memory in MiB that the fold leaves to the host (AL-175). */
+export const FOLD_HEAP_RESERVE = 128;
+
+/** The free memory of a host in MiB, for the heap limit of the fold (AL-175). */
+export interface FoldMemory {
+  /** The memory that the host gives with no swap: `MemAvailable` on Linux, the free memory on other hosts. */
+  readonly available: number;
+  /** The free swap. A host with no reading has 0. */
+  readonly swap: number;
+}
+
+/**
+ * This function reads the free memory of a Linux host from the text of `/proc/meminfo` (AL-175). It gives `undefined` when
+ * the text has no `MemAvailable` line. A text with no `SwapFree` line gives a swap of 0.
+ */
+export function memInfoOf(text: string): FoldMemory | undefined {
+  const mib = (name: string): number | undefined => {
+    const match = new RegExp(`^${name}:\\s+(\\d+) kB$`, "m").exec(text);
+    return match?.[1] === undefined ? undefined : Math.floor(Number(match[1]) / 1024);
+  };
+  const available = mib("MemAvailable");
+  return available === undefined ? undefined : { available, swap: mib("SwapFree") ?? 0 };
+}
+
+/**
+ * This function gives the heap limit of the fold in MiB, from the free memory and swap of the host (AL-175). It gives
+ * `undefined` when the default limit of node is as large. The runtime is stopped during the fold, thus the fold can use
+ * the free memory and swap, less `FOLD_HEAP_RESERVE`.
+ *
+ * - A heap limit below the need of the fold makes the garbage collector work with no end. On 2026-11-24 a small host
+ *   with the default limit of 530 MB did not fold a log of 287 000 events in 12 min.
+ * - A limit above the memory of the host moves the end of the heap into swap. That is slow, but the fold ends.
+ */
+export function foldHeapLimit(memory: FoldMemory, defaultLimit: number): number | undefined {
+  const limit = Math.floor(memory.available + memory.swap - FOLD_HEAP_RESERVE);
+  return limit > defaultLimit ? limit : undefined;
+}
+
+/** The memory in MiB that a stage needs next to the live runtime (AL-186). On a host with less, the deploy stops the runtime first. */
+export const STAGE_MEMORY_FLOOR = 400;
+
+/** This function tells if the deploy stops the runtime before the stage, because the host has too little free memory (AL-186). */
+export const stopBeforeStage = (memory: FoldMemory): boolean => memory.available < STAGE_MEMORY_FLOOR;
+
+/** The read of another copy in the status of the live runtime (AL-186). `readAt` is the time of the last read, or `null`. */
+export interface CopyReadStatus {
+  readonly copy: string;
+  readonly readAt: number | null;
+  /** The first read that told that the copy is not steady, or `null` (AL-204). A status of an older build gives `null`. */
+  readonly unsteadySince: number | null;
+}
+
+/**
+ * This function reads the reads of the other copies from the answer of `GET /status` (AL-186). A status with no field
+ * `copies` has no other copy. A bad answer gives `undefined`.
+ */
+export function copyReadsOf(value: unknown): readonly CopyReadStatus[] | undefined {
+  if (!isRecord(value)) return undefined;
+  const copies = value["copies"];
+  if (copies === undefined) return [];
+  if (!Array.isArray(copies)) return undefined;
+  const reads: CopyReadStatus[] = [];
+  for (const item of copies as unknown[]) {
+    if (!isRecord(item) || typeof item["copy"] !== "string") return undefined;
+    const readAt = item["readAt"];
+    if (readAt !== null && typeof readAt !== "number") return undefined;
+    const unsteadySince = item["unsteadySince"] ?? null;
+    if (unsteadySince !== null && typeof unsteadySince !== "number") return undefined;
+    reads.push({ copy: item["copy"], readAt, unsteadySince });
+  }
+  return reads;
+}
+
+/**
+ * This function gives the reason that the deploy does not stop the live runtime, or `undefined` (AL-186). A stop is safe
+ * when each other copy had a read in the last `maxAge`. Then another copy sends the alerts during the stop.
+ *
+ * - `"down"` is a runtime that does not answer. A stop of it removes no copy, thus the function gives `undefined`.
+ * - A host with no other copy stops only with `alone`: no copy sends the alerts during the stop.
+ * - Each other copy must be steady (AL-204). A copy that started a short time ago is not steady. Thus a deploy of the
+ *   second copy waits until the first copy has its passes and its heartbeats again. One bad release then stops one copy only.
+ */
+export function stopRefusal(copies: readonly CopyReadStatus[] | "down" | undefined, now: number, maxAge: number, alone: boolean): string | undefined {
+  if (copies === "down") return undefined;
+  if (copies === undefined) return "The status of the live runtime has no good list of the other copies. The deploy does not stop the runtime.";
+  if (copies.length === 0) return alone ? undefined : "This runtime has no other copy, thus a stop leaves no copy up. Add `--alone` to accept the gap.";
+  const old = copies.filter((read) => read.readAt === null || now - read.readAt > maxAge).map((read) => read.copy);
+  if (old.length > 0) {
+    return `The copies ${old.join(", ")} had no read in the last ${String(Math.round(maxAge / 1000))} s, thus a stop can leave no copy up. The deploy does not stop the runtime.`;
+  }
+  const unsteady = copies.filter((read) => read.unsteadySince !== null).map((read) => read.copy);
+  if (unsteady.length === 0) return undefined;
+  return `The copies ${unsteady.join(", ")} are not steady: they started a short time ago. The deploy does not stop the runtime. Deploy again when they are steady.`;
+}
+
+/** The arguments of `deploy.ts deploy` (AL-186): the commit, the build of the page, and the consent to a stop with no other copy. */
+export interface DeployArgs {
+  readonly commit: string;
+  readonly page: boolean;
+  readonly alone: boolean;
+}
+
+/** This function reads the arguments `<commit> [--page] [--alone]` of a deploy, or gives undefined for bad arguments. */
+export function parseDeployArgs(args: readonly string[]): DeployArgs | undefined {
+  const [commit, ...flags] = args;
+  if (commit === undefined || !/^[0-9a-f]{7,40}$/u.test(commit)) return undefined;
+  if (flags.some((flag) => flag !== "--page" && flag !== "--alone") || new Set(flags).size !== flags.length) return undefined;
+  return { commit, page: flags.includes("--page"), alone: flags.includes("--alone") };
+}
+
+/** A step of the deploy after the stage (AL-186). `restart` is the restart of `install.ts`: the runtime stops and starts on the new code. */
+export type DeployStep = "stop" | "swap" | "fold" | "start" | "restart";
+
+/**
+ * This function gives the steps of the deploy after the stage (AL-186). A fold needs a stopped runtime, because the fold
+ * holds the lock of the home folder. With no fold, a running runtime takes the new code with one restart.
+ */
+export function stepsAfterStage(running: boolean, fold: boolean): readonly DeployStep[] {
+  if (!running) return fold ? ["swap", "fold", "start"] : ["swap", "start"];
+  return fold ? ["stop", "swap", "fold", "start"] : ["swap", "restart"];
+}
+
+/** This function tells if the steps take a running runtime down: a stop, or a restart for its start (AL-204). */
+export const takesDown = (steps: readonly DeployStep[]): boolean => steps.includes("stop") || steps.includes("restart");
+
+/**
+ * This function gives the key step: `main.ts key` of a slot on the live home (AL-169). The step holds no lock and writes no
+ * file, thus it runs next to the live runtime. The profile is the profile of the supervised runtime, as in `foldStep`.
+ */
+export function keyStep(runtime: string, home: string, node: string): StageStep {
+  return { program: node, args: [join(runtime, "src", "main.ts"), "key"], env: { ALERTS_HOME: home, SERVICE_PROFILE: "daemon" } };
+}
+
+/** The context keys of the fold of the two sets of a start, from the mode key. The key of the good set is null with no good set. */
+export interface StartKeys {
+  readonly files: string;
+  readonly good: string | null;
+}
+
+/** This function reads the last line of the output of the mode key. An output of another form gives undefined. */
+export function startKeysOf(stdout: string): StartKeys | undefined {
+  const line = stdout.trim().split("\n").at(-1);
+  if (line === undefined) return undefined;
+  let value: unknown;
+  try {
+    value = JSON.parse(line);
+  } catch {
+    return undefined;
+  }
+  if (typeof value !== "object" || value === null) return undefined;
+  const { files, good } = value as Record<string, unknown>;
+  if (typeof files !== "string" || (good !== null && typeof good !== "string")) return undefined;
+  return { files, good };
+}
+
+/**
+ * This function gives the lines about the context keys of the fold from the live slot to the other slot (AL-169). A changed
+ * key makes the next start fold the whole log. On a small host, that fold takes longer than the ready window. No change
+ * gives no line. With no keys of the live slot, the line tells that the stage cannot compare.
+ */
+export function keyChange(live: StartKeys | undefined, next: StartKeys | undefined): string[] {
+  if (next === undefined) return ["The new code gave no key of the fold. Look at the output of `main.ts key` of the slot."];
+  if (live === undefined) return ["The live code gave no key of the fold, thus the stage cannot tell if the next start folds the whole log."];
+  const changed = [
+    ...(live.files === next.files ? [] : ["the private files"]),
+    ...(next.good === null || live.good === next.good ? [] : ["the last good set"]),
+  ];
+  if (changed.length === 0) return [];
+  return [
+    `The snapshot key changes for ${changed.join(" and ")}: a source, an expectation, the link policy, the retention or the fold version changes.`,
+    "The next start folds the whole log. On a small host, stop the runtime, swap, start `deploy.ts fold`, and then start the runtime.",
+  ];
 }
 
 /**

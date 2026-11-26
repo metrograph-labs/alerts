@@ -1,7 +1,7 @@
 import { random, seedsFrom } from "@mark1russell7/rigor-generators";
 import { describe, expect, it } from "vitest";
 import type { Area, HealthState, PlaceId, RegionCode, SourceDescriptor, SourceHealth, SourceId, WatchedPlace } from "./contracts.ts";
-import { coverage, coverageShort, DEFAULT_COVERAGE_POLICY, failureDomains, MAX_PLACE_CODES, placeCodesWithContaining, requiredFor, sourceCovers } from "./coverage.ts";
+import { coverage, coverageCandidates, coverageShort, DEFAULT_COVERAGE_POLICY, failureDomains, MAX_PLACE_CODES, placeCodesWithContaining, requiredFor, sourceCovers } from "./coverage.ts";
 
 const SEEDS = seedsFrom(process.env["SEED"], [1, 2, 3, 4, 5, 6, 7, 8]);
 const TORNADO = "met.tornado";
@@ -236,6 +236,33 @@ describe("the codes that contain the codes of a place", () => {
     const [withCodes, marine] = coverage({ sources: [API], health, places: [ZONE_ONLY, MARINE], kinds: [TORNADO], containing });
     expect(withCodes!.sources).toEqual(["api"]);
     expect(marine!.sources).toEqual([]);
+  });
+
+  it("gives the candidates of each place and kind, with the sources that are down, and the codes that contain a code", () => {
+    const water = source("water", { kinds: ["hydro"] });
+    expect(coverageCandidates({ sources: [API, RADIO, water], places: [ZONE_ONLY, MARINE], kinds: [TORNADO, "hydro"], containing })).toEqual([
+      { place: "place:z", kind: TORNADO, sources: ["api", "radio"] },
+      { place: "place:z", kind: "hydro", sources: ["water"] },
+      { place: "place:m", kind: TORNADO, sources: [] },
+      { place: "place:m", kind: "hydro", sources: [] },
+    ]);
+  });
+
+  it.each(SEEDS)("gives in coverage exactly the candidates that are up and not late (seed %i)", (seed) => {
+    const r = random(seed);
+    const states: HealthState[] = ["healthy", "slow", "failing", "unknown", "silent", "changed"];
+    const areas: Area[][] = [US, [{ type: "code", system: "state", code: "KS" }], [{ type: "code", system: "state", code: "TX" }], [{ type: "code", system: "ugc", code: "KSZ083" }]];
+    const kinds = ["met", TORNADO, "hydro", "met.tornado.warning"];
+    for (let round = 0; round < 100; round += 1) {
+      const sources = Array.from({ length: r.int(0, 6) }, (_, n) => source(`s${n}`, { kinds: [kinds[r.int(0, kinds.length - 1)]!], coverage: areas[r.int(0, areas.length - 1)]! }));
+      const health = sources.map((entry) => healthOf(entry.id, states[r.int(0, states.length - 1)]!));
+      const late = sources.filter(() => r.chance(0.2)).map((entry) => entry.id);
+      const input = { sources, health, late, places: [KANSAS, TEXAS, ZONE_ONLY], kinds: [TORNADO, "hydro"], containing };
+      const candidates = coverageCandidates(input);
+      const up = new Set(sources.filter((_, n) => ["healthy", "slow"].includes(health[n]!.state) && !late.includes(sources[n]!.id)).map((entry) => entry.id));
+      const label = `seed ${seed} round ${round}`;
+      expect(coverage(input).map((entry) => [entry.place, entry.kind, entry.sources]), label).toEqual(candidates.map((entry) => [entry.place, entry.kind, entry.sources.filter((id) => up.has(id))]));
+    }
   });
 
   it("refuses a function that gives codes with no end", () => {

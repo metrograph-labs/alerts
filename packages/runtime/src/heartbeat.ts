@@ -350,11 +350,15 @@ export interface CheckTimes {
   readonly grace: Duration;
 }
 
-/**
- * This function finds the check of the ping URL in the answer of `checksRequest`. It gives a problem
- * when it finds no such check. A key that can only read gives no ping URL, thus it finds no check.
- * A problem names no URL and no key.
- */
+/** A check of Healthchecks.io that `checkOfPingUrl` found: its times and its id. */
+export interface FoundCheck extends CheckTimes {
+  /**
+   * The id of the check in the management API: the field `uuid`, or else the last part of the path of its ping URL. It is
+   * empty when the answer gives neither. No message holds it.
+   */
+  readonly id: string;
+}
+
 // The text with no slash at its end. A loop is linear. The regular expression `/\/+$/` is quadratic on a long run of
 // slashes before another character, and the text can come from the answer of a server (CodeQL js/polynomial-redos).
 function withoutEndSlashes(text: string): string {
@@ -363,7 +367,12 @@ function withoutEndSlashes(text: string): string {
   return text.slice(0, end);
 }
 
-export function checkOfPingUrl(body: string, url: string): { readonly ok: true; readonly check: CheckTimes } | { readonly ok: false; readonly problem: string } {
+/**
+ * This function finds the check of the ping URL in the answer of `checksRequest`. It gives a problem
+ * when it finds no such check. A key that can only read gives no ping URL, thus it finds no check.
+ * A problem names no URL and no key.
+ */
+export function checkOfPingUrl(body: string, url: string): { readonly ok: true; readonly check: FoundCheck } | { readonly ok: false; readonly problem: string } {
   let checks: unknown;
   try {
     checks = (JSON.parse(body) as { readonly checks?: unknown }).checks;
@@ -375,9 +384,20 @@ export function checkOfPingUrl(body: string, url: string): { readonly ok: true; 
   const records = checks.filter((entry: unknown): entry is Record<string, unknown> => typeof entry === "object" && entry !== null);
   const check = records.find((entry) => plain(entry["ping_url"]) === plain(url));
   if (check === undefined) return { ok: false, problem: "No check of the key has the ping URL of secrets.env. The key must be able to write, and the ping URL must be the URL with the id of the check." };
-  const { timeout, grace, status } = check;
+  const { timeout, grace, status, uuid } = check;
   if (typeof timeout !== "number" || typeof grace !== "number") return { ok: false, problem: "The check has a cron schedule. The heartbeat needs a check with a period." };
-  return { ok: true, check: { status: typeof status === "string" ? status : "unknown", timeout: timeout * 1000, grace: grace * 1000 } };
+  const id = typeof uuid === "string" && uuid !== "" ? uuid : lastPathPart(plain(check["ping_url"]) ?? "");
+  return { ok: true, check: { status: typeof status === "string" ? status : "unknown", timeout: timeout * 1000, grace: grace * 1000, id } };
+}
+
+// The last part of the path of a URL, or an empty text for a text that is not a URL.
+function lastPathPart(text: string): string {
+  try {
+    const path = withoutEndSlashes(new URL(text).pathname);
+    return decodeURIComponent(path.slice(path.lastIndexOf("/") + 1));
+  } catch {
+    return "";
+  }
 }
 
 /** This function gives the problem of the times of a check, or `undefined`. The period plus the grace must be `gap` or more. */

@@ -7,6 +7,7 @@ import { compareCodeUnits } from "@mark1russell7/text/order";
 import { assess, higherLevel, matchPlaces, reachedAssessment } from "./assess.ts";
 import { isPrivate } from "./audience.ts";
 import type { IndicatorBreadth } from "./breadth.ts";
+import type { IndicatorSurprise } from "./threat.ts";
 import {
   ASSESSED_LEVELS,
   type Area,
@@ -143,6 +144,11 @@ export interface MapPayload {
    * of the readings has no field. The breadth is of the last pass, thus a past map of the history has no breadth.
    */
   readonly breadth?: IndicatorBreadth;
+  /**
+   * The surprise of the indicator signals of the last pass, in the world and at each place (AL-24). A runtime with no
+   * store of the readings has no field. A fault of the history of the units also gives no field.
+   */
+  readonly surprise?: IndicatorSurprise;
 }
 
 /** The name of the format of the map payload. A change that breaks a reader gets a new name. */
@@ -167,6 +173,8 @@ export interface MapPayloadInput extends Omit<MapInput, "assessments"> {
   readonly foreign?: ((incident: Pick<Incident, "anchor" | "reports">) => boolean) | undefined;
   /** The breadth of the indicator signals of the last pass. Without it, the payload has no field `breadth`. */
   readonly breadth?: IndicatorBreadth;
+  /** The surprise of the indicator signals of the last pass. Without it, the payload has no field `surprise`. */
+  readonly surprise?: IndicatorSurprise;
 }
 
 // The view with the shadow score of each incident that reaches a person. The score does not change the level.
@@ -185,13 +193,13 @@ function withShadow(view: MapView, live: readonly Incident[], priors: ScorePrior
  * With the priors, each incident that reaches a person gets its shadow score.
  */
 export function mapPayload(input: MapPayloadInput): MapPayload {
-  const { at, people, policy, basemap, priors, breadth, foreign, ...given } = input;
+  const { at, people, policy, basemap, priors, breadth, surprise, foreign, ...given } = input;
   // Each viewer of the page sees the map, so it shows no private incident (AL-92, `audience.ts`).
   const view = { ...given, incidents: given.incidents.filter((incident) => !isPrivate(incident)) };
   const live = view.incidents.filter((incident) => incident.live);
   const assessments = live.flatMap((incident) => people.map((person) => reachedAssessment(assess(incident, person, view.places, policy, at ?? undefined, foreign?.(incident) ?? false))));
   const drawn = mapView({ ...view, assessments });
-  return { format: MAP_FORMAT, at, view: priors === undefined ? drawn : withShadow(drawn, live, priors), basemap, ...(breadth === undefined ? {} : { breadth }) };
+  return { format: MAP_FORMAT, at, view: priors === undefined ? drawn : withShadow(drawn, live, priors), basemap, ...(breadth === undefined ? {} : { breadth }), ...(surprise === undefined ? {} : { surprise }) };
 }
 
 /** The severities, from the highest. The map and the history sort by this order. */

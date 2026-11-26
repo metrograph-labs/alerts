@@ -121,6 +121,24 @@ const summary = (routes: readonly Route[]) =>
   routes.map((entry) => ({ level: entry.policy.level, state: entry.plan.state, fresh: entry.fresh, sends: entry.plan.sends.map((send) => send.step), cancels: entry.plan.cancels.map((d) => d.key) }));
 
 describe("route", () => {
+  it("reads the parts of each person one time, not one time for each person (AL-136)", () => {
+    // Each read of the field person of a delivery counts. A filter for each person reads the square of the persons.
+    const count = 300;
+    let reads = 0;
+    const counted = (item: Delivery): Delivery =>
+      new Proxy(item, {
+        get(target, key, receiver) {
+          if (key === "person") reads += 1;
+          return Reflect.get(target, key, receiver) as unknown;
+        },
+      });
+    const people = Array.from({ length: count }, (_, index) => `person-${String(index + 1)}` as PersonId);
+    const deliveries = people.map((one) => counted({ ...delivery("life-safety", 0, T0 - MINUTE), person: one, key: messageKey({ incident: anchor, level: "life-safety", person: one, step: 0 }) }));
+    const routes = route(input({ recipients: people.map((one) => recipient(one)), merge: { deliveries } }));
+    expect(routes).toHaveLength(count);
+    expect(reads).toBeLessThanOrEqual(4 * count);
+  });
+
   it("starts a new escalation at the assessed level, and sends its first step", () => {
     const routes = route(input());
     expect(summary(routes)).toEqual([{ level: "life-safety", state: "sent", fresh: true, sends: [0], cancels: [] }]);
@@ -1097,6 +1115,20 @@ describe("messageOf", () => {
     // The why line of the channel goes into its own field. An empty line gives no field.
     expect(messageOf(members, reports, send, "Why: your place is in the area").why).toBe("Why: your place is in the area");
     expect("why" in messageOf(members, reports, send, "")).toBe(false);
+  });
+
+  it("puts each match of the software and the severity at the top of the body (AL-197)", () => {
+    const reports = [report(anchor, { sent: T0, headline: "An advisory", description: "A package is malicious." })];
+    const software = [
+      { part: "web", label: "The web server", purl: "pkg:npm/lib", installed: "2.3.0", verdict: "affected", fixed: "2.4.1" },
+      { part: "api", purl: "pkg:npm/lib", installed: "1.0.0", verdict: "unknown" },
+    ] as const;
+    expect(messageOf(incident(), reports, send, undefined, software).body).toBe(
+      "The part web (The web server) has pkg:npm/lib 2.3.0. The first fixed version is 2.4.1.\n" +
+        "The part api has pkg:npm/lib 1.0.0. The advisory does not tell if this version is affected.\n" +
+        `The severity of the advisory is ${incident().severity}.\n\nA package is malicious.`,
+    );
+    expect(messageOf(incident(), reports, send, undefined, []).body).toBe("A package is malicious.");
   });
 
   it("uses the label of the kind when no report of the incident is in the state", () => {

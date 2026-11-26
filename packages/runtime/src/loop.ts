@@ -2,11 +2,16 @@
  * This module holds the loop of the runtime: a worker loop of `@mark1russell7/service`. The loop
  * starts each pass at the wake time of the pass before it. The times of the loop come from the limits of the
  * runtime. No time of the loop is set by hand.
+ *
+ * Each pass is one span of OpenTelemetry with the name `pass` (AL-82). Thus each line of a pass has the trace id of the pass.
+ * Without a registered tracer provider, the span does nothing.
  */
 import type { Cancel, Clock, WallClock } from "@mark1russell7/algebra/clock";
 import type { Duration, Instant } from "@mark1russell7/alerts";
 import { workerLoop, type WorkerLoop } from "@mark1russell7/service";
-import type { Pass } from "./runtime.ts";
+import { SpanStatusCode, trace, type Tracer } from "@opentelemetry/api";
+import { keptPass, type KeptPass, type Pass } from "./runtime.ts";
+import { SERVICE_NAME } from "./telemetry.ts";
 
 const ms = (value: number) => ({ value, unit: "ms" });
 
@@ -69,7 +74,25 @@ export interface LoopOptions {
   readonly onError?: (error: unknown, failures: number) => void;
   /** This function gives the random numbers of the jitter of a wait, from 0 up to 1. */
   readonly random?: () => number;
+  /** The tracer of the span of each pass. The default is the tracer `alerts-runtime` of the global tracer provider. */
+  readonly tracer?: Tracer;
 }
+
+/**
+ * This function does one pass in a span with the name `pass`, and ends the span. A pass that throws sets the status of the span
+ * to error, with the name of the error only: its message can quote a value.
+ */
+const passInSpan = (tracer: Tracer, work: () => Promise<Pass>): Promise<Pass> =>
+  tracer.startActiveSpan("pass", async (span) => {
+    try {
+      return await work();
+    } catch (error) {
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error instanceof Error ? error.name : typeof error });
+      throw error;
+    } finally {
+      span.end();
+    }
+  });
 
 /** The loop of the runtime. */
 export interface RuntimeLoop {
@@ -82,8 +105,8 @@ export interface RuntimeLoop {
    * The runtime gets it as its option `wake`.
    */
   wake(): void;
-  /** This method gives the last pass that ended, or `undefined` before the first pass. */
-  last(): Pass | undefined;
+  /** This method gives the kept part of the last pass that ended (`keptPass`), or `undefined` before the first pass. */
+  last(): KeptPass | undefined;
   /**
    * This method tells why the loop is stuck, or it gives `undefined`. The liveness check of the
    * service reads it. The loop is stuck when a pass runs longer than `passLimit`, or when no pass
@@ -101,8 +124,9 @@ export interface RuntimeLoop {
  */
 export function createLoop(options: LoopOptions): RuntimeLoop {
   const { clock, times } = options;
+  const tracer = options.tracer ?? trace.getTracer(SERVICE_NAME);
   let timer: Cancel | undefined;
-  let last: Pass | undefined;
+  let last: KeptPass | undefined;
   // The start of the pass in flight, and the latest time for the next pass to start.
   let running: Instant | undefined;
   let due: Instant | undefined;
@@ -141,7 +165,7 @@ export function createLoop(options: LoopOptions): RuntimeLoop {
         running = clock.now();
         let pass: Pass;
         try {
-          pass = await options.pass(signal);
+          pass = await passInSpan(tracer, () => options.pass(signal));
         } catch (error) {
           // The backoff of the worker loop waits `retryCap` at most.
           due = clock.now() + times.retryCap;
@@ -149,7 +173,7 @@ export function createLoop(options: LoopOptions): RuntimeLoop {
         } finally {
           running = undefined;
         }
-        last = pass;
+        last = keptPass(pass);
         if (pass.wakeAt === undefined) return undefined;
         if (!(pass.wakeAt > pass.at)) {
           options.onError?.(new Error(`The pass at ${pass.at} gave the wake time ${pass.wakeAt}, which is not after it.`), 0);

@@ -11,8 +11,8 @@
  * its plain name and its summary here, and in no other place. A new code comes here first, in its pull request.
  */
 import { compareCodeUnits } from "@mark1russell7/text/order";
-import { BALANCE_KIND, CHANNEL_KIND, CLOCK_KIND, COPY_KIND, COVERAGE_KIND, DRILL_KIND, ESCALATION_KIND, HEALTH_KIND, LIMIT_KIND, LOG_KIND, LOOP_KIND, QUOTA_KIND, STORE_KIND, TELL_KIND, USE_KIND } from "./assess.ts";
-import type { BalanceStage, Category, CopyStage, HealthState, QuotaStage, UseStage } from "./contracts.ts";
+import { BALANCE_KIND, CHANNEL_KIND, CLOCK_KIND, COPY_KIND, COVERAGE_KIND, DRIFT_KIND, DRILL_KIND, ESCALATION_KIND, HEALTH_KIND, JOINT_KIND, LIMIT_KIND, LOG_KIND, LOOP_KIND, PLACE_KIND, QUOTA_KIND, STORE_KIND, REDUNDANCY_KIND, TELL_KIND, USE_KIND } from "./assess.ts";
+import type { BalanceStage, Category, CopyStage, DriftStage, HealthState, JointStage, QuotaStage, RedundancyStage, UseStage } from "./contracts.ts";
 
 /** One code of the taxonomy: its plain name and one plain sentence about it. */
 export interface KindEntry {
@@ -77,9 +77,27 @@ const BALANCE_ENTRIES: Readonly<Record<BalanceStage, KindEntry>> = {
 };
 
 // The use kinds of the core: one for each stage of the watch of the use of a hard limit (AL-111).
+// The redundancy kinds of the core: one for each stage of a function of the alert chain (AL-90).
+const REDUNDANCY_ENTRIES: Readonly<Record<RedundancyStage, KindEntry>> = {
+  single: entry("Function with a new single point of failure", "Down parts leave a function of the alert chain with one part whose failure alone stops it."),
+  stopped: entry("Function stopped", "Down parts stop a function of the alert chain: for example each path of the push to a person."),
+};
+
 const USE_ENTRIES: Readonly<Record<UseStage, KindEntry>> = {
   level: entry("Use of a hard limit at a level", "The used share of a hard limit of a paid provider account reached a level in the month: for example 50, 80 or 100 %."),
   unread: entry("Use of a hard limit not read", "No read of the use of a hard limit passed for the maximum age, so a level is not seen."),
+};
+
+// The joint down time kinds of the core: one for each stage of the watch of the joint down time of the copies (AL-148).
+const JOINT_ENTRIES: Readonly<Record<JointStage, KindEntry>> = {
+  over: entry("Joint down time over its limit", "In the window of the watch, no copy of the alert system could tell the person for longer than the limit."),
+  unread: entry("Joint down time not read", "No read of the joint down time of the copies passed for the maximum age, so a long down time is not seen."),
+};
+
+// The drift kinds of the core: one for each stage of the drift check of a copy host (AL-139).
+const DRIFT_ENTRIES: Readonly<Record<DriftStage, KindEntry>> = {
+  changed: entry("Drift of a copy host", "The daily check of a copy host found a step or a resource that does not agree with its code."),
+  unread: entry("Drift of a copy host not read", "No drift check of a copy host passed for the maximum age, so a drift is not seen."),
 };
 
 // The copy kinds of the core: one for each stage of the watch of another copy of the system.
@@ -223,6 +241,7 @@ export const TAXONOMY: Readonly<Record<string, KindEntry>> = {
   "security.law-enforcement": entry("Law enforcement warning", "Police warn an area of a danger, for example an armed person, a manhunt or a bomb threat."),
   "security.maritime-threat": entry("Attack or threat to shipping", "Piracy, armed robbery, missile or drone attacks and boarding of ships in a sea area."),
   "security.missing-person": entry("Missing and endangered person", "Police ask the public to look for a missing person who is in danger, for example an older person with dementia."),
+  "security.nuclear-war": entry("Nuclear war", "An armed conflict in which states use nuclear weapons, or an official warning of a nuclear attack."),
   "security.terrorism": entry("Terrorism threat or attack", "A government warning of a terrorist threat, or a terrorist attack that has happened."),
   "security.travel-advisory": entry("Government travel advisory", "A government changes its advice on travel to a country or region for safety, health or security reasons."),
 
@@ -243,6 +262,7 @@ export const TAXONOMY: Readonly<Record<string, KindEntry>> = {
   "health.medical-emergency": entry("Medical emergency", "A person needs emergency medical care now, for example after a fall, an injury, a stroke or a heart attack at home."),
   "health.outbreak": entry("Disease outbreak", "An unusual cluster or spread of an infectious disease, reported by a public health agency."),
   "health.outbreak.foodborne": entry("Foodborne illness outbreak", "Illnesses linked to a food product, under investigation, often before or with a recall."),
+  "health.outbreak.pandemic": entry("Pandemic", "An infectious disease spreads between people in many countries, and a public health agency declares a pandemic or a global emergency."),
   "health.travel-notice": entry("Travel health notice", "A health notice for travellers to a country, from usual precautions to avoid all travel."),
   "health.wastewater-signal": entry("Wastewater pathogen signal", "A rise in a virus or bacterium measured in sewage, an early sign of community spread."),
 
@@ -299,9 +319,11 @@ export const TAXONOMY: Readonly<Record<string, KindEntry>> = {
   "infra.postal": entry("Postal service", "The mail and parcel services."),
   "infra.postal.disruption": entry("Postal service disruption", "Mail and parcel delays or suspensions from weather, facility closures or strikes."),
   "infra.power": entry("Electric power", "The supply of electric power from the grid to its customers."),
+  "infra.power.grid-collapse": entry("Collapse of the power grid", "A wide failure of a power grid cuts the power of a large region, with a slow restart of the grid."),
   "infra.power.grid-emergency": entry("Grid emergency or conservation appeal", "A grid operator warns that supply is short, asks people to save power, or orders rotating outages."),
   "infra.power.load-shedding": entry("Scheduled load shedding", "Rotating power cuts by a published schedule and stage when a national grid lacks supply."),
   "infra.power.outage": entry("Power outage", "Loss of electric power to customers in an area, with counts of customers out and restoration estimates."),
+  "infra.power.physical-attack": entry("Physical attack on the power grid", "Gunfire, sabotage, vandalism or theft at a substation or a power line cuts the power of an area."),
   "infra.power.psps": entry("Planned power shutoff for wildfire safety", "A utility turns off power in an area ahead of high wind to prevent its lines from starting fires."),
   "infra.saas": entry("Online services", "The web services, apps and platforms that people use."),
   "infra.saas.outage": entry("Online service outage", "An outage of a web service, app or platform that a person uses, from its own status page or user reports."),
@@ -309,6 +331,7 @@ export const TAXONOMY: Readonly<Record<string, KindEntry>> = {
   "infra.structure.collapse": entry("Building or bridge collapse", "A building, bridge, tunnel or other structure fails, often with casualties and closures around it."),
   "infra.supply-chain": entry("Supply chains", "The ports, routes and suppliers that move goods."),
   "infra.supply-chain.disruption": entry("Supply chain or shipping chokepoint disruption", "A block at a port, canal or strait, or a supplier failure, that delays goods and raises prices."),
+  "infra.supply-chain.food": entry("Food supply disruption", "A failure in the production, transport or sale of food leaves the stores of a wide area short of food."),
   "infra.telecom": entry("Telephone and network", "The phone, mobile and emergency call networks."),
   "infra.telecom.911-outage": entry("911 outage", "Emergency calls to 911 do not connect in an area, with an alternate number to call."),
   "infra.telecom.outage": entry("Phone or mobile network outage", "Loss of mobile, landline or cable service in an area, from storms, cuts or carrier faults."),
@@ -317,8 +340,10 @@ export const TAXONOMY: Readonly<Record<string, KindEntry>> = {
   "infra.water.outage": entry("Water service outage", "Loss of water pressure or supply to an area after a main break, pump failure or plant fault."),
 
   "cbrne.biological": entry("Biological agent incident", "A deliberate or accidental release of a dangerous pathogen or toxin."),
+  "cbrne.emp": entry("Electromagnetic pulse", "A pulse from a nuclear burst high in the atmosphere, or from a weapon, damages electronics and power lines over an area."),
   "cbrne.explosion": entry("Industrial explosion", "An explosion at a plant, depot or storage site, with fire, blast damage and smoke."),
   "cbrne.hazardous-materials": entry("Hazardous materials", "A release of toxic gas or liquid from a plant, a vehicle or an attack that endangers people nearby."),
+  "cbrne.nuclear-detonation": entry("Nuclear detonation", "A nuclear weapon or device explodes, with blast, heat, radiation and fallout downwind."),
   "cbrne.nuclear-plant": entry("Nuclear power plant", "An event at a nuclear plant reported to the regulator, from a minor fault up to an emergency classification."),
   "cbrne.radiological": entry("Radiological hazard", "Raised radiation levels or loss of a radioactive source, with protective actions."),
 
@@ -327,6 +352,7 @@ export const TAXONOMY: Readonly<Record<string, KindEntry>> = {
   "cyber.campaign": entry("Active threat campaign advisory", "A joint government advisory on an active attacker group, its methods and the steps defenders take now."),
   "cyber.data-breach": entry("Data breach", "Personal data stolen from an organization, which can expose the accounts and identity of the people in it."),
   "cyber.ddos": entry("Large denial-of-service attack", "A flood of traffic that takes a service, a network or a country offline for a period."),
+  "cyber.infrastructure-attack": entry("Cyber attack on critical infrastructure", "An attack on the computer systems of a utility, a hospital or another critical service stops or damages that service."),
   "cyber.ransomware": entry("Ransomware", "Ransomware attacks and the groups that do them."),
   "cyber.ransomware.victim": entry("Ransomware attack on an organization", "A ransomware group claims an organization as a victim, which can stop services that people depend on."),
   "cyber.software": entry("Software lifecycle", "The facts of the lifecycle of a software product that change its risk."),
@@ -379,8 +405,10 @@ export const TAXONOMY: Readonly<Record<string, KindEntry>> = {
   "market.release.fomc": entry("FOMC decision or minutes", "The Federal Open Market Committee publishes a rate decision, statement or minutes."),
   "market.release.macro": entry("Macro data release", "A government agency publishes a scheduled economic number, for example CPI, jobs or GDP."),
 
+  "civic.ai-collapse": entry("Wide disruption from artificial intelligence", "A failure or a misuse of artificial intelligence systems disrupts jobs, services or public order over a wide area."),
   "civic.court-ruling": entry("Court ruling or docket change", "A court rules or a docket changes in a case that matters to the person."),
   "civic.economy": entry("Government economic actions", "A government takes an economic action, for example sanctions or a fiscal step, that touches a person."),
+  "civic.economy.collapse": entry("Economic collapse", "The economy of a country falls into a deep crisis, for example a run on the banks, very high inflation or a depression."),
   "civic.economy.enforcement": entry("Financial enforcement action", "A financial regulator takes an enforcement action against a firm."),
   "civic.economy.fiscal": entry("Federal fiscal stress", "Federal cash or debt data shows a debt-limit squeeze or another fiscal stress."),
   "civic.election": entry("Election date or voting change", "Election dates, registration deadlines, polling place changes and results that affect a voter."),
@@ -428,10 +456,19 @@ export const TAXONOMY: Readonly<Record<string, KindEntry>> = {
   [`${TELL_KIND}.done-you-asked`]: entry("Done", "A message of the operator: a request of the person is done."),
   [`${TELL_KIND}.live`]: entry("Live", "A message of the operator: a change is live."),
   [`${STORE_KIND}.empty`]: entry("Empty store", "A family of a store has no entry in the time after a start. Each feature that reads the family works without it."),
+  [`${STORE_KIND}.full`]: entry("Full store", "A store is at its bound. The new entries of low priority wait outside it until it has space again."),
   [LIMIT_KIND]: entry("Send limit of the system", "The most new alerts that one person gets in one window. The digest tells each alert that the limit holds."),
   [`${LIMIT_KIND}.held`]: entry("Alerts held", "The send limit holds new alerts for the person. The next digest tells each one. The limit does not hold a life-safety warning."),
   [USE_KIND]: entry("Use of a hard limit", "The used amount of a month of a paid provider account, as a share of its hard limit."),
   ...Object.fromEntries(Object.entries(USE_ENTRIES).map(([stage, value]) => [`${USE_KIND}.${stage}`, value])),
+  [JOINT_KIND]: entry("Joint down time of the copies", "The time in a window in which no copy of the alert system could tell the person."),
+  ...Object.fromEntries(Object.entries(JOINT_ENTRIES).map(([stage, value]) => [`${JOINT_KIND}.${stage}`, value])),
+  [DRIFT_KIND]: entry("Drift check of the copy hosts", "A daily check that a copy host agrees with its code: its setup steps and its OpenTofu plan."),
+  ...Object.fromEntries(Object.entries(DRIFT_ENTRIES).map(([stage, value]) => [`${DRIFT_KIND}.${stage}`, value])),
+  [REDUNDANCY_KIND]: entry("Redundancy of the alert chain", "The paths of a function of the alert chain, from the open incidents of its parts."),
+  ...Object.fromEntries(Object.entries(REDUNDANCY_ENTRIES).map(([stage, value]) => [`${REDUNDANCY_KIND}.${stage}`, value])),
+  [PLACE_KIND]: entry("Watch of a place", "The watch of a place of a person. A moving place gets its position from the fixes of a phone."),
+  [`${PLACE_KIND}.stale`]: entry("Stale moving place", "The phone of a moving place sent no good fix in its age limit. No alert at the position of the phone reaches the person."),
   [`${ESCALATION_KIND}.exhausted`]: entry("Exhausted escalation", "A person did not acknowledge a real warning in the time of the policy. The people who watch the person get this report."),
 };
 

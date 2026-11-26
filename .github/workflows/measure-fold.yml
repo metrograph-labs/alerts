@@ -2,14 +2,28 @@
 # each retention variant, one time with no profiler and one time under the CPU profiler. The records give the time, the
 # functions with the most self time and the inclusive time of the retire step. Time on a shared computer tells nothing, thus
 # the measure runs in CI only. It is a measure, not a gate.
+#
+# The pair jobs (AL-116) compare two builds in each job: a checkout of the commit `base` and the build of the run. Separate
+# runners differ by up to 40 %, thus only a pair in one job gives a ratio. A dispatch with a base starts 5 pair jobs and
+# their verdict: gh workflow run measure-fold.yml --ref <branch> -f base=<commit> -f limits=168=0.75
+#
+# A pull request that changes the core or the runtime gets the pair jobs as a gate (AL-138). The base is the base commit of
+# the pull request, and the limit of each variant is PR_LIMITS. Thus a change that makes the rebuild slow again fails.
 name: Measure fold
 
 on:
-  # A pull request that changes the measure gets a run of the default size.
+  # A pull request that changes the measure, the core or the runtime gets a run of the default size and the pair gate.
   pull_request:
     paths:
       - packages/testkit/scripts/fold-profile.ts
+      - packages/testkit/scripts/fold-pair.ts
       - .github/workflows/measure-fold.yml
+      - packages/core/src/**
+      - packages/core/package.json
+      - packages/runtime/src/**
+      - packages/runtime/package.json
+      - pnpm-lock.yaml
+      - "!packages/*/src/**/*.test.ts"
   # A person starts a run of another size: gh workflow run measure-fold.yml -f size=96 -f variants=off,168,6
   workflow_dispatch:
     inputs:
@@ -19,12 +33,25 @@ on:
       variants:
         description: The retention variants, as a comma list (off, or a quiet horizon in hours)
         default: "off,168,6"
+      base:
+        description: The base commit of the pair jobs. With no base, the run only profiles the build.
+        default: ""
+      limits:
+        description: The ratio limit of each variant of the pair jobs, as variant=limit pairs. With no limit, the verdict only reports.
+        default: ""
 
 permissions:
   contents: read
 
+env:
+  # The limit of the ratio head / base of each variant on a pull request. Five paired runs with no change of the rebuild
+  # (45386091865, 45386164301, 45386184475, 45388527206 and 45388578253, 5 jobs each) gave the bounds of each variant.
+  # The limit is the worst bound plus the spread of the bounds, rounded up: off 1.0378, 168 1.0600, 6 1.0614.
+  PR_LIMITS: off=1.04,168=1.07,6=1.07
+
+# A new push to a pull request stops its old run. Each dispatch is a measure of its own, thus no dispatch stops another.
 concurrency:
-  group: measure-fold-${{ github.ref }}
+  group: measure-fold-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || 'push' }}
   cancel-in-progress: true
 
 defaults:
@@ -33,6 +60,7 @@ defaults:
 
 jobs:
   measure:
+    if: github.event_name == 'pull_request' || inputs.base == ''
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -52,7 +80,7 @@ jobs:
           VARIANTS: ${{ inputs.variants || 'off,168,6' }}
         run: |
           mkdir -p "$GITHUB_WORKSPACE/fold"
-          node scripts/fold-profile.ts "$RUNNER_TEMP/seed" "$SIZE" "$VARIANTS" | tee "$GITHUB_WORKSPACE/fold/records.jsonl"
+          node --expose-gc scripts/fold-profile.ts "$RUNNER_TEMP/seed" "$SIZE" "$VARIANTS" | tee "$GITHUB_WORKSPACE/fold/records.jsonl"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
@@ -60,3 +88,70 @@ jobs:
           path: fold/
           if-no-files-found: error
           retention-days: 90
+
+  pair:
+    if: github.event_name == 'pull_request' || inputs.base != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        run: [1, 2, 3, 4, 5]
+    steps:
+      # The checkout of the base commit needs the full history.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Pair the base and the build on each variant
+        working-directory: packages/testkit
+        env:
+          RUN: ${{ matrix.run }}
+          BASE: ${{ inputs.base }}
+          SIZE: ${{ inputs.size || '192' }}
+          VARIANTS: ${{ inputs.variants || 'off,168,6' }}
+        run: |
+          # On a pull request, the checkout is the merge commit. Its first parent is the base branch of the merge.
+          if [ -z "$BASE" ]; then BASE=$(git rev-parse HEAD^1); fi
+          mkdir -p "$GITHUB_WORKSPACE/pair"
+          node scripts/fold-pair.ts measure "$RUN" "$RUNNER_TEMP/seed" "$BASE" "$VARIANTS" "$SIZE" | tee "$GITHUB_WORKSPACE/pair/records-$RUN.jsonl"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: measure-fold-pair-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.run }}
+          path: pair/
+          if-no-files-found: error
+          retention-days: 90
+
+  pair-verdict:
+    needs: pair
+    if: always() && (github.event_name == 'pull_request' || inputs.base != '')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: measure-fold-pair-${{ github.run_id }}-${{ github.run_attempt }}-*
+          path: pair/
+          merge-multiple: true
+      - name: Read the ratio of each variant over the five jobs
+        working-directory: packages/testkit
+        env:
+          FOLD_RATIO_LIMITS: ${{ github.event_name == 'pull_request' && env.PR_LIMITS || inputs.limits }}
+        run: node scripts/fold-pair.ts verdict "$GITHUB_WORKSPACE/pair"

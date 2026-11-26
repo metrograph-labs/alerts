@@ -7,7 +7,7 @@ import { localTime } from "@mark1russell7/algebra/clock";
 import { err, ok, type Result } from "@mark1russell7/optional";
 import { canonicalHash } from "@mark1russell7/rigor-generators";
 import { compareCodeUnits } from "@mark1russell7/text/order";
-import type { Address, AssessPolicy, ChannelDescriptor, ChannelId, ContactServices, Duration, EscalationPolicy, Instant, InterestGraph, NodeKey, PersonId, PersonWatch, PlaceId, Position, RegionCode, SourceId, WatchedPlace } from "./contracts.ts";
+import type { Address, AssessPolicy, ChannelDescriptor, ChannelId, ContactServices, Duration, EscalationPolicy, Instant, InterestGraph, Level, NodeKey, PersonId, PersonWatch, PlaceId, Position, RegionCode, SourceId, WatchedPlace } from "./contracts.ts";
 import { assess, CHANNEL_KIND, DEFAULT_ASSESS_POLICY, DRILL_KIND, matchSubjects, reachedAssessment } from "./assess.ts";
 import type { ChannelDownConfig } from "./channel-down.ts";
 import { policyFor, recipientProblems, ruleSteps, type ChannelRule, type Recipient } from "./delivery.ts";
@@ -17,12 +17,14 @@ import { incidents, normalize } from "./merge.ts";
 import { optInFields, resolveOptIn, type OptInConfig, type OptInRecord } from "./opt-in.ts";
 import { CHANNEL_SUBJECT, DRILL_SUBJECT, NO_SYSTEM_LINES, OPERATOR_SYSTEMS, REPORT_SYSTEMS, systemReports, type SourceClearConfig } from "./system-reports.ts";
 import type { TryChain } from "./chain.ts";
+import type { SoftwareStack } from "./software.ts";
 import type { Expectation } from "./lateness.ts";
 import { rankDelayProblems, rankFloorProblems, type RankDelays } from "./escalation.ts";
 import { sendLimitProblems, type SendLimitConfig } from "./send-limit.ts";
 import { throttleProblems, type ThrottleConfig } from "./throttle.ts";
 import type { LinkPolicy } from "./link.ts";
 import { kindOfNode, placeNode, placeOfNode, type WhyLabels } from "./why.ts";
+import { movingProblems } from "./moving.ts";
 
 /** The name of the format of a configuration. A change that breaks a configuration gets a new name. */
 export const CONFIG_FORMAT = "alerts-config/1";
@@ -49,6 +51,21 @@ export interface PlaceConfig {
   readonly bufferKm: number;
   /** The sources that get the position of the place. When it is absent, no source gets it. */
   readonly sharePosition?: readonly SourceId[];
+  /**
+   * The rule of a moving place (AL-40). A moving place gets its position from the fixes of a phone, not from `at`. Its
+   * `codes` give the states and the country where the person can be. `movingPlace` gives the place at a fix.
+   */
+  readonly moving?: MovingRule;
+}
+
+/** The rule of a moving place: the device that sends its fixes, and the age limit of a fix. */
+export interface MovingRule {
+  /** The id that the phone sends with each fix, for example the tracker id of OwnTracks. */
+  readonly device: string;
+  /** A fix older than this limit gives no place. */
+  readonly maxAgeMinutes: number;
+  /** A fix with a greater doubt keeps the last good fix. The default is `DEFAULT_MAX_ACCURACY_KM`. */
+  readonly maxAccuracyKm?: number;
 }
 
 /**
@@ -132,6 +149,58 @@ export const LIMIT_ACCOUNT_KINDS: readonly ["user", "organization"] = ["user", "
 
 /** The kind of an account of a provider in a watch of a limit. */
 export type LimitAccountKind = (typeof LIMIT_ACCOUNT_KINDS)[number];
+
+/**
+ * The kinds of the command of a drift check (AL-139):
+ *
+ * - `setup`: a setup check in check mode. It writes a line `check: <step>: <reason>` for each step that changes, and it exits with 0.
+ * - `tofu`: a plan with `-detailed-exitcode`. The exit code 0 tells no change, and 2 tells one change or more.
+ */
+export const DRIFT_COMMAND_KINDS: readonly ["setup", "tofu"] = ["setup", "tofu"];
+
+/** The kind of the command of a drift check. */
+export type DriftCommandKind = (typeof DRIFT_COMMAND_KINDS)[number];
+
+/** The pattern of the name of a drift check: letters, digits, `.`, `_` and `-`, up to 64 characters. */
+export const DRIFT_NAME: RegExp = /^[A-Za-z0-9._-]{1,64}$/u;
+
+/** One command of the drift checks (AL-139). The values are private. Only the settings of the copy hold them. */
+export interface DriftCommandConfig {
+  /** The name of the check in the reports, for example `host-a`. It is unique in the list. */
+  readonly name: string;
+  readonly kind: DriftCommandKind;
+  /** The program and its arguments. The runtime starts the program with no shell. */
+  readonly argv: readonly string[];
+}
+
+/**
+ * The drift checks of the host of one copy (AL-139). The runtime starts each command one time in each day, and a change
+ * or a failed read for 2 days gives a system report. The field `drift` of `CopySettings` holds them.
+ */
+export interface DriftConfig {
+  readonly commands: readonly DriftCommandConfig[];
+}
+
+/** One subject of the sources that tells the state of a part of the stack of the alert chain (AL-90). */
+export interface ChainSubject {
+  /** The system of the subject: for example `domain` for a status page. */
+  readonly system: string;
+  /** The id of the subject in its system. */
+  readonly id: string;
+  /** The id of the part in the stack. A live incident about the subject tells that the part is down. */
+  readonly part: string;
+}
+
+/**
+ * The stack of the alert chain, for the redundancy reports (AL-90). The values are private. Only the configuration holds them.
+ * The core holds the stack as a JSON value. The runtime reads it with the schemas of the stack and of its layer of risks.
+ */
+export interface ChainConfig {
+  /** The stack document (`stack/1`), with the layer of risks (`risk/1`) in its layers. Each goal of the layer is a function. */
+  readonly stack: Readonly<Record<string, unknown>>;
+  /** The subjects of the sources that tell the state of the parts. */
+  readonly subjects: readonly ChainSubject[];
+}
 
 /**
  * The watch of the use of one hard limit of a paid provider account (AL-111). The values are private. Only the
@@ -248,6 +317,13 @@ export interface AlertConfig {
   readonly spend?: readonly SpendConfig[];
   /** The watches of the use of the hard limits of the paid provider accounts (AL-111). */
   readonly limits?: readonly LimitConfig[];
+  /** The stack of the alert chain, for the redundancy reports (AL-90). Without it, the instance gives no redundancy report. */
+  readonly chain?: ChainConfig;
+  /**
+   * The software of the stack (AL-197): the installed packages of each part. With it, an advisory that names an installed
+   * version reaches each person who watches the subject `software.part`. The values are private.
+   */
+  readonly software?: SoftwareStack;
   /** The policy of the link rule of the merge. Without it, the instance uses `DEFAULT_LINK_POLICY`. */
   readonly link?: LinkPolicy;
   /** The outage call. Without it, an outage of the instance calls no person. */
@@ -264,6 +340,11 @@ export interface AlertConfig {
    * default. A phone takes one call at a time. Thus a copy with rank 1 waits for the call of rank 0 in its ledger.
    */
   readonly rankFloor?: Duration;
+  /**
+   * The bound of the count of the reports in the state of the runtime (AL-145). At the bound, a new report of low priority
+   * waits outside the state. Without it, the runtime gives its default, `REPORT_LIMIT` of the runtime.
+   */
+  readonly reportLimit?: number;
   /**
    * The policy of the assessment: the statuses, the tables of the levels and the relevance policy. When it is absent,
    * the default policy of the core applies. A policy here replaces the full default policy.
@@ -383,12 +464,58 @@ export interface CopyListen {
   readonly port: number;
 }
 
+/** The pattern of the field of a billing read: one name or more with dots between them, each name of letters, digits, `_` and `-`. */
+export const BILLING_FIELD: RegExp = /^[A-Za-z0-9_-]{1,64}(?:\.[A-Za-z0-9_-]{1,64}){0,15}$/u;
+
+/**
+ * The billing read of the host of another copy (AL-70). The values are private. Only `copy.json` holds them.
+ *
+ * - The runtime starts the program with no shell, only when the copy reaches `unread`. The program prints one JSON value.
+ * - The field is a path of names with dots between them, for example `billing.enabled`.
+ * - A value of the field in `stoppedWhen` tells a billing stop. Each other text, number or boolean tells that the billing is on.
+ */
+export interface CopyBillingConfig {
+  /** The program and its arguments, for example the command of the provider that prints the billing of the host as JSON. */
+  readonly argv: readonly string[];
+  /** The path of the field with the billing state in the JSON output. */
+  readonly field: string;
+  /** The values of the field that tell a billing stop. The list has one value or more. */
+  readonly stoppedWhen: readonly (string | number | boolean)[];
+}
+
 /** Another copy of the system, as one copy sees it. */
 export interface CopyPeer {
   /** The id of the other copy. */
   readonly id: string;
   /** The URL of the exchange of the other copy, with `http` or `https`. */
   readonly url: string;
+  /** The billing read of the host of the other copy (AL-70). Without it, the alarm of a down copy has no billing state. */
+  readonly billing?: CopyBillingConfig;
+}
+
+/**
+ * The programs of one sounder of a copy (AL-41). The values are private. Only `copy.json` holds them.
+ *
+ * - The runtime starts each program with no shell. The program of one sound ends when the sound ends.
+ * - A level with a program in `levels` has its own sound. Each other level has the program `sound`.
+ */
+export interface CopySounderDevice {
+  /** The program of one sound and its arguments. */
+  readonly sound: readonly string[];
+  /** The program of the sound of a level, for a level with a sound of its own. */
+  readonly levels?: Partial<Readonly<Record<Level, readonly string[]>>>;
+  /** The program that examines the device with no sound. An exit code of 0 is a pass. */
+  readonly probe?: readonly string[];
+}
+
+/** The sounder channel of a copy (AL-41): the devices in the home of the copy, and the counts of the sounds. */
+export interface CopySounder {
+  /** The programs of each device, by the name of the device. The channel checks the form of each name. */
+  readonly devices: Readonly<Record<string, CopySounderDevice>>;
+  /** The most sounds of one message at a level. A level with no value has the count of the channel. */
+  readonly sounds?: Partial<Readonly<Record<Level, number>>>;
+  /** The wait between two sounds of a message. The default of the channel is 1 second. */
+  readonly gapMs?: Duration;
 }
 
 /**
@@ -417,6 +544,28 @@ export interface CopySettings {
    * keeps its own files. The id is the id of a copy of `peers`. Each copy keeps its own `secrets.env` and `copy.json`.
    */
   readonly configFrom?: string;
+  /**
+   * The channels that this copy leaves to the other copies (AL-55). The copy keeps each step on them in its plans, and
+   * it sends, cancels and polls nothing on them. Thus it needs no sender on them, and it counts no failure of them.
+   * An example is a receiver that only the loopback of one computer reaches.
+   */
+  readonly leaveChannels?: readonly ChannelId[];
+  /**
+   * The sources that this copy leaves to the other copies (AL-160). The copy does not read them, and the exchange gives
+   * it their reports. An example is a source with a cost of memory that the host of the copy cannot hold.
+   * An id that names no source of the instance changes nothing.
+   */
+  readonly leaveSources?: readonly SourceId[];
+  /**
+   * The sounder channel of this copy (AL-41). A copy with no field sends nothing on the channel sounder. Thus a step on
+   * that channel needs the channel in `leaveChannels`, or the start stops.
+   */
+  readonly sounder?: CopySounder;
+  /**
+   * The drift checks of the host of this copy (AL-139). Without them, the copy starts no drift check. A command has the
+   * paths and the programs of one host. Thus the checks are a setting of the copy, and a mirror does not take them.
+   */
+  readonly drift?: DriftConfig;
 }
 
 /** The settings of a runtime with no file `copy.json`: the only copy, with rank 0 and no exchange. */
@@ -433,6 +582,8 @@ const ALL_INTERFACES: ReadonlySet<string> = new Set(["0.0.0.0", "::", "[::]", "*
  * - The other copies have different ids and URLs, and no other copy has the id of this copy.
  * - A copy with other copies has the address `listen`, and the address is not an address of all interfaces.
  * - The field `configFrom` names a copy of `peers`.
+ * - The field `leaveChannels` names each channel one time, and only a copy with other copies has it.
+ * - The field `leaveSources` names each source one time, and only a copy with other copies has it.
  */
 /**
  * This function gives the problems of the watches of the system subjects (AL-121). Each system of `OPERATOR_SYSTEMS`
@@ -470,6 +621,16 @@ export function copyProblems(settings: CopySettings): string[] {
     urls.add(peer.url);
   });
   if (settings.configFrom !== undefined && !peers.some((peer) => peer.id === settings.configFrom)) problems.push("configFrom: the id is not the id of a copy in peers.");
+  const left = settings.leaveChannels ?? [];
+  if (left.length > 0 && peers.length === 0) problems.push("leaveChannels: a copy with no other copies sends on each channel. Thus it leaves no channel.");
+  left.forEach((channel, at) => {
+    if (left.indexOf(channel) < at) problems.push(`leaveChannels[${String(at)}]: the channel ${channel} is in the list already.`);
+  });
+  const leftSources = settings.leaveSources ?? [];
+  if (leftSources.length > 0 && peers.length === 0) problems.push("leaveSources: a copy with no other copies reads each source. Thus it leaves no source.");
+  leftSources.forEach((source, at) => {
+    if (leftSources.indexOf(source) < at) problems.push(`leaveSources[${String(at)}]: the source ${source} is in the list already.`);
+  });
   if (peers.length > 0 && settings.listen === undefined) problems.push("A copy with other copies needs the address listen of its exchange.");
   if (settings.listen !== undefined && ALL_INTERFACES.has(settings.listen.host)) problems.push("listen.host: the exchange does not listen on all the interfaces. Give the tailnet address of the computer.");
   return problems;
@@ -555,6 +716,7 @@ export function loadConfig(config: AlertConfig, channels: readonly ChannelDescri
     places.add(place.id);
     // The core matches by the region codes only, until the home of geography has the tests of shapes.
     if (place.codes.length === 0) problems.push(`The place ${place.id} has no region code, so no incident matches it.`);
+    problems.push(...movingProblems(place, config.places));
   }
 
   const people = new Set<string>();
@@ -803,6 +965,19 @@ export interface ContactLookup {
   readonly services: ContactServices;
 }
 
+// The contacts of each person, one index for each list of contacts. A start reads the channels of each person, thus a
+// filter of the whole list for each person costs the square of the persons (AL-136).
+const contactIndex = new WeakMap<readonly ContactConfig[], ReadonlyMap<string, readonly ContactConfig[]>>();
+
+function contactsOf(contacts: readonly ContactConfig[], person: PersonId): readonly ContactConfig[] {
+  let index = contactIndex.get(contacts);
+  if (index === undefined) {
+    index = Map.groupBy(contacts, (contact) => contact.person as string);
+    contactIndex.set(contacts, index);
+  }
+  return index.get(person) ?? [];
+}
+
 /**
  * This function gives the channels of the contacts of a person, in the order of `channels`. Each such descriptor has a
  * contact of the person in the configuration. The layer `delivery` takes the services of these channels.
@@ -817,7 +992,7 @@ export function contactChannels(
   channels: readonly ChannelDescriptor[],
   lookup?: ContactLookup,
 ): readonly ChannelDescriptor[] {
-  const contacts = config.contacts.filter((contact) => contact.person === person);
+  const contacts = contactsOf(config.contacts, person);
   const ids = new Set<string>(contacts.map((contact) => contact.channel));
   const found = channels.filter((channel) => ids.has(channel.id));
   if (lookup === undefined) return found;
@@ -884,7 +1059,7 @@ function relevanceProblems(watch: PersonWatch, own: ReadonlySet<string>): string
  * instance, with each position. Do not give these places to a source: use `sourcePlaces`.
  */
 export function localPlaces(config: AlertConfig): WatchedPlace[] {
-  return config.places.map((place) => watchedPlace(place, true));
+  return config.places.filter((place) => place.moving === undefined).map((place) => watchedPlace(place, true));
 }
 
 /** This function gives the places of the configuration for one source. A place has a position only when it shares it with that source. */

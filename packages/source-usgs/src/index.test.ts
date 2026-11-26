@@ -1,6 +1,6 @@
 import { HostScheduler } from "polite-crawler/politeness";
 import { describe, expect, it } from "vitest";
-import { createUsgsSource, EARTHQUAKE_KIND, SOURCE_ID, USGS_BASE_URL, USGS_DESCRIPTOR, USGS_ORIGIN } from "./index.ts";
+import { createUsgsSource, EARTHQUAKE_KIND, NUCLEAR_KIND, SOURCE_ID, USGS_BASE_URL, USGS_DESCRIPTOR, USGS_ORIGIN } from "./index.ts";
 
 const clock = { now: () => 0, sleep: async () => {} };
 
@@ -22,7 +22,7 @@ describe("createUsgsSource", () => {
       id: "usgs",
       origins: [USGS_ORIGIN],
       dependsOn: ["provider:usgs", "cdn:cloudfront"],
-      kinds: [EARTHQUAKE_KIND],
+      kinds: [EARTHQUAKE_KIND, NUCLEAR_KIND],
       transport: "poll",
       interval: 60_000,
       auth: "none",

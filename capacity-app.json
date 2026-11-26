@@ -1,0 +1,238 @@
+{
+  "format": "capacity-app/1",
+  "id": "alerts-runtime",
+  "title": "The alerts runtime: a seeded log, fake keys, and the NWS alerts of a fake of the feeds at the rates of the workload",
+  "repository": "https://github.com/metrograph-labs/alerts.git",
+  "variables": [
+    {
+      "id": "log",
+      "title": "The bytes of the log runtime.sqlite at the start",
+      "kind": "store",
+      "unit": "B",
+      "min": 2000000,
+      "max": 400000000,
+      "scale": "log"
+    },
+    {
+      "id": "feeds",
+      "title": "The transit feeds near the place: each one is a polled source of the start",
+      "kind": "level",
+      "unit": "{feed}",
+      "min": 1,
+      "max": 10000,
+      "scale": "log"
+    },
+    {
+      "id": "persons",
+      "title": "The persons of the configuration that watch the place",
+      "kind": "level",
+      "unit": "{person}",
+      "min": 1,
+      "max": 10000,
+      "scale": "log"
+    },
+    {
+      "id": "incidents",
+      "title": "The incidents that are open at the place at the start",
+      "kind": "level",
+      "unit": "{incident}",
+      "min": 0,
+      "max": 1000,
+      "scale": "linear"
+    },
+    {
+      "id": "gdelt",
+      "title": "The place shares its position with GDELT: 1, and each start and each 15 minutes read one event file of the real size",
+      "kind": "level",
+      "unit": "{place}",
+      "min": 0,
+      "max": 1,
+      "scale": "linear"
+    },
+    {
+      "id": "score",
+      "title": "The persons with a score rule, from the first person",
+      "kind": "level",
+      "unit": "{person}",
+      "min": 0,
+      "max": 10000,
+      "scale": "linear"
+    },
+    {
+      "id": "chain",
+      "title": "The configuration has the stack of an alert chain of 11 parts: 1, and each view gives the states of its goal",
+      "kind": "level",
+      "unit": "{stack}",
+      "min": 0,
+      "max": 1,
+      "scale": "linear"
+    },
+    {
+      "id": "eventBytes",
+      "title": "The bytes of the description of one version of an alert",
+      "kind": "request",
+      "unit": "B",
+      "min": 200,
+      "max": 100000,
+      "scale": "log"
+    },
+    {
+      "id": "routes",
+      "title": "The routes of a pass: one for each live incident and each person",
+      "kind": "run",
+      "unit": "{route}",
+      "min": 1,
+      "max": 100000000,
+      "scale": "log"
+    },
+    {
+      "id": "holds",
+      "title": "The holds of the send limit in the state after a pass: each one is an event of the log",
+      "kind": "run",
+      "unit": "{hold}",
+      "min": 1,
+      "max": 100000000,
+      "scale": "log"
+    },
+    {
+      "id": "suppressions",
+      "title": "The suppressions of the throttle in the state after a pass: each one is an event of the log",
+      "kind": "run",
+      "unit": "{suppression}",
+      "min": 1,
+      "max": 10000000,
+      "scale": "log"
+    }
+  ],
+  "classes": [
+    {
+      "id": "event",
+      "title": "A new alert of the NWS API: the first version of an alert",
+      "rate": { "unit": "{event}/s", "min": 0, "max": 100, "scale": "linear" },
+      "request": ["eventBytes"],
+      "entry": { "kind": "service", "service": "feeds" }
+    },
+    {
+      "id": "update",
+      "title": "An update of the NWS API: a new version of a live alert, with a reference to its last version",
+      "rate": { "unit": "{event}/s", "min": 0, "max": 100, "scale": "linear" },
+      "request": ["eventBytes"],
+      "entry": { "kind": "service", "service": "feeds" }
+    }
+  ],
+  "start": {
+    "install": {
+      "argv": ["pnpm", "install", "--frozen-lockfile"],
+      "cwd": ".",
+      "env": {}
+    },
+    "seed": {
+      "argv": ["node", "scripts/seed-home.ts", "{store}", "{variable.log}", "{variable.feeds}", "{variable.persons}", "{variable.incidents}", "{variable.gdelt}", "{variable.score}", "{variable.chain}"],
+      "cwd": "packages/testkit",
+      "env": {}
+    },
+    "run": {
+      "argv": ["node", "scripts/lab-runtime.ts", "{store}", "{service.feeds}", "{service.channels}"],
+      "cwd": "packages/testkit",
+      "env": {},
+      "ready": {
+        "kind": "line",
+        "text": "\"ev\":\"lab-ready\""
+      },
+      "lines": [
+        { "kind": "pass", "ev": "lab-pass", "title": "The end of a pass of the loop" },
+        { "kind": "write", "ev": "lab-snapshot-write", "title": "A write of the start snapshot" },
+        { "kind": "amounts", "ev": "lab-amounts", "title": "The routes, the holds and the suppressions after a pass" },
+        { "kind": "readings", "ev": "lab-readings", "title": "A collection of the live metrics" }
+      ]
+    }
+  },
+  "services": [
+    {
+      "id": "feeds",
+      "title": "The fake of the feeds: the NWS alerts of the classes event and update, the canary, empty transit feeds and the event files of GDELT",
+      "fake": {
+        "argv": ["node", "scripts/fake-feeds.ts", "{port}", "{workload}"],
+        "cwd": "packages/testkit",
+        "env": {},
+        "ready": {
+          "kind": "line",
+          "text": "\"ev\":\"fake-ready\",\"service\":\"feeds\""
+        }
+      }
+    },
+    {
+      "id": "channels",
+      "title": "The fake of the channels: the answers of the Pushover API, with no send",
+      "fake": {
+        "argv": ["node", "scripts/fake-channels.ts", "{port}"],
+        "cwd": "packages/testkit",
+        "env": {},
+        "ready": {
+          "kind": "line",
+          "text": "\"ev\":\"fake-ready\",\"service\":\"channels\""
+        }
+      }
+    }
+  ],
+  "metrics": [
+    {
+      "id": "alerts.reports.event",
+      "kind": "counter",
+      "unit": "{event}",
+      "of": {
+        "rate": "event"
+      }
+    },
+    {
+      "id": "alerts.reports.event.description",
+      "kind": "counter",
+      "unit": "B",
+      "of": {
+        "total": "eventBytes",
+        "class": "event"
+      }
+    },
+    {
+      "id": "alerts.reports.update",
+      "kind": "counter",
+      "unit": "{event}",
+      "of": {
+        "rate": "update"
+      }
+    },
+    {
+      "id": "alerts.reports.update.description",
+      "kind": "counter",
+      "unit": "B",
+      "of": {
+        "total": "eventBytes",
+        "class": "update"
+      }
+    },
+    {
+      "id": "alerts.feeds",
+      "kind": "gauge",
+      "unit": "{feed}",
+      "of": {
+        "level": "feeds"
+      }
+    },
+    {
+      "id": "alerts.persons",
+      "kind": "gauge",
+      "unit": "{person}",
+      "of": {
+        "level": "persons"
+      }
+    },
+    {
+      "id": "alerts.incidents.open",
+      "kind": "gauge",
+      "unit": "{incident}",
+      "of": {
+        "level": "incidents"
+      }
+    }
+  ]
+}

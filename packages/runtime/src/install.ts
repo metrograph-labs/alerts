@@ -38,15 +38,19 @@ import { errorMessage } from "@mark1russell7/text";
 import { redactSecrets } from "@mark1russell7/text/redact";
 import { fetchTransport, send, statusLine } from "polite-crawler/api";
 import { HostScheduler, realClock } from "polite-crawler/politeness";
+import { createPrinter } from "@mark1russell7/text/print";
 import { pageWarning, readPageState } from "./api.ts";
 import { alertsHome, configPath, readText, SECRETS_FILE } from "./config.ts";
 import { readCopySettings } from "./copy.ts";
 import { checkOfPingUrl, checksRequest, checkTimesProblem, heartbeatGap } from "./heartbeat.ts";
-import { discoveryPid, hostReadyWindow, hostTask, readinessProbe, RUNTIME_GRACE, runtimeDiscovery, supervisorDiscovery } from "./host.ts";
-import { hostFileText } from "./start-times.ts";
+import { discoveryPid, hostFileText, hostFolder, hostReadyWindow, hostTask, PROBE_TIMEOUT, readinessProbe, RUNTIME_GRACE, runtimeDiscovery, supervisorDiscovery } from "./host.ts";
 import { checksKeys, daemonCheck, INSTANCE_TIMES, LOUD_STEADY, USER_AGENT_NAME } from "./instance.ts";
 import { checkStart, GOOD_FILE, privateFiles, readStartTexts, requestRestart, restartUse, type RestartOutcome } from "./reload.ts";
-import { liveRoot } from "./slots.ts";
+import { codeReport, readRunningCode } from "./running.ts";
+import { checkoutOf, liveRoot, readLive, slotsOfCheckout } from "./slots.ts";
+
+// The output of this command for a person goes through one printer, which removes the shapes of tokens (no raw console).
+const print = createPrinter({ out: process.stdout, err: process.stderr });
 
 const ACTIONS = ["install", "remove", "status", "restart"] as const;
 const action = process.argv[2];
@@ -64,22 +68,22 @@ const discovery = supervisorDiscovery(home);
 function report(outcome: ServiceOutcome): number {
   switch (outcome.kind) {
     case "done":
-      console.log(`Done. The files: ${outcome.files.join(", ") || "none"}.`);
+      print.line(`Done. The files: ${outcome.files.join(", ") || "none"}.`);
       return 0;
     case "failed":
-      console.error(`The command failed: ${outcome.problem}`);
+      print.error(`The command failed: ${outcome.problem}`);
       return 1;
     case "refused":
-      console.error(`The spec has these problems:\n- ${outcome.problems.join("\n- ")}`);
+      print.error(`The spec has these problems:\n- ${outcome.problems.join("\n- ")}`);
       return 1;
     case "unsupported":
-      console.error(`The platform ${outcome.platform} has no service host.`);
+      print.error(`The platform ${outcome.platform} has no service host.`);
       return 1;
   }
 }
 
-// The longest time of one readiness probe of the status.
-const PROBE_TIMEOUT_MS = 2000;
+// The longest time of one readiness probe of the status: the time of each probe of the supervisor.
+const PROBE_TIMEOUT_MS = valueIn(PROBE_TIMEOUT, "ms");
 
 // The ready window of the supervisor: the window of the measured starts of this host.
 const READY_WINDOW_MS = hostReadyWindow(home, hostFileText).ms;
@@ -91,26 +95,26 @@ const RESTART_WAIT_MS = heartbeatGap(INSTANCE_TIMES) + valueIn(RUNTIME_GRACE, "m
 function reportRestart(outcome: RestartOutcome): number {
   switch (outcome.kind) {
     case "refused":
-      console.error(`The private files have problems with the code of this checkout. No restart request was written:\n- ${outcome.problems.join("\n- ")}`);
+      print.error(`The private files have problems with the code of this checkout. No restart request was written:\n- ${outcome.problems.join("\n- ")}`);
       return 1;
     case "no-runtime":
-      console.error("No runtime runs: its discovery file has no process ID. Then read: node src/install.ts status");
+      print.error("No runtime runs: its discovery file has no process ID. Then read: node src/install.ts status");
       return 1;
     case "no-restart":
-      console.error(`The runtime (process ${outcome.pid}) did not restart in ${Math.round(RESTART_WAIT_MS / 1000)} s. The request stays, and the next pass of the runtime reads it.`);
+      print.error(`The runtime (process ${outcome.pid}) did not restart in ${Math.round(RESTART_WAIT_MS / 1000)} s. The request stays, and the next pass of the runtime reads it.`);
       return 1;
     case "restarted": {
       const restarted = `The runtime restarted (process ${outcome.from}, then ${outcome.to})`;
       if (!outcome.ready) {
-        console.error(`${restarted}, and it is not ready. Then read: node src/install.ts status`);
+        print.error(`${restarted}, and it is not ready. Then read: node src/install.ts status`);
         return 1;
       }
       if (outcome.use === "files") {
-        console.log(`Done. ${restarted}, it is ready, and it uses the private files.`);
+        print.line(`Done. ${restarted}, it is ready, and it uses the private files.`);
         return 0;
       }
       // A runtime on the last good set sends alerts, but the deploy did not get its files. Its output tells the reason.
-      console.error(
+      print.error(
         outcome.use === "good"
           ? `${restarted}, and it is ready. Its start stopped with the private files, thus it uses the last good set ${GOOD_FILE}. The output of the runtime tells the reason.`
           : `${restarted}, and it is ready. Its start is not marked good in ${Math.round(RESTART_WAIT_MS / 1000)} s. Then read the output of the runtime.`,
@@ -157,7 +161,7 @@ async function outsideCheck(key: string, url: string, secrets: readonly string[]
 
 if (action === "install") {
   const code = report(await installService(spec, ports, { start: true }));
-  if (code === 0) console.log(`The runtime is ready in ${String(Math.ceil(READY_WINDOW_MS / 1000))} s or less. Then start: node src/install.ts status`);
+  if (code === 0) print.line(`The runtime is ready in ${String(Math.ceil(READY_WINDOW_MS / 1000))} s or less. Then start: node src/install.ts status`);
   process.exitCode = code;
 } else if (action === "remove") {
   process.exitCode = report(await uninstallService(spec, ports, { discovery }));
@@ -179,11 +183,11 @@ if (action === "install") {
   const next = checkStart(await readStartTexts(files), daemonCheck);
   const start = { use: restartUse(await readText(() => readFile(files.marker, "utf8"))), files: next.tag === "ok" ? [] : next.error };
   const page = await readPageState(root);
-  console.log(JSON.stringify({ task: await serviceStatus(spec, ports, { discovery }), readiness, heartbeat, ...loud, start, page }, null, 2));
+  print.line(JSON.stringify({ task: await serviceStatus(spec, ports, { discovery }), readiness, heartbeat, ...loud, start, page }, null, 2));
   const pageLine = pageWarning(page);
-  if (pageLine !== undefined) console.error(pageLine);
-  if (start.use !== "files") console.error(`The runtime does not use the private files (${start.use}). Read the output of the runtime.`);
-  if (start.files.length > 0) console.error(`The private files have problems, thus the next start uses the last good set ${GOOD_FILE}.`);
+  if (pageLine !== undefined) print.error(pageLine);
+  if (start.use !== "files") print.error(`The runtime does not use the private files (${start.use}). Read the output of the runtime.`);
+  if (start.files.length > 0) print.error(`The private files have problems, thus the next start uses the last good set ${GOOD_FILE}.`);
   const startOk = start.use === "files" && start.files.length === 0;
   if (!readiness.ok || !heartbeat.ok || ("loud" in loud && !loud.loud.ok) || !startOk) process.exitCode = 1;
 } else if (action === "restart") {
@@ -201,9 +205,17 @@ if (action === "install") {
     },
   );
   process.exitCode = reportRestart(outcome);
+  // A ready runtime can run the other slot, when a swap crossed this restart (AL-167). Its record of its start tells it.
+  if (outcome.kind === "restarted" && outcome.ready) {
+    const code = codeReport(await readLive(await slotsOfCheckout(checkoutOf(root))), await readRunningCode(hostFolder(home)), outcome.to);
+    if (code.kind === "other") {
+      print.error(code.line);
+      process.exitCode = 1;
+    } else print.line(code.line);
+  }
   const pageLine = pageWarning(await readPageState(root));
-  if (pageLine !== undefined) console.error(pageLine);
+  if (pageLine !== undefined) print.error(pageLine);
 } else {
-  console.error(`The action is one of: ${ACTIONS.join(", ")}.`);
+  print.error(`The action is one of: ${ACTIONS.join(", ")}.`);
   process.exitCode = 2;
 }

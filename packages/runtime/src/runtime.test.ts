@@ -2,16 +2,18 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fakeWallClock, type WallClock } from "@mark1russell7/algebra/clock";
-import { reportId, type ChannelId, type ChannelProcedures, type ChannelQuota, type Expectation, LOOP_BLOCK_WINDOW, type LoopBlock, type FetchOutcome, type FetchSignal, type Observation, type ObservationId, type PlaceId, type Report, type SourceDescriptor, type SourceId, type SourceProcedures, type Watch, type WatchedPlace } from "@mark1russell7/alerts";
+import { reportId, type ChannelId, type ChannelProcedures, type ChannelQuota, type Expectation, LOOP_BLOCK_WINDOW, type LoopBlock, type FetchOutcome, type FetchSignal, type MeasureDeclaration, type Observation, type ObservationId, type PersonId, type PlaceId, type Reading, type Report, type SourceDescriptor, type SourceId, type SourceProcedures, type Watch, type WatchedPlace } from "@mark1russell7/alerts";
 import { random, seedsFrom } from "@mark1russell7/rigor-generators";
 import { openFoldSnapshot, type FoldSnapshot } from "@mark1russell7/sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import { balanceWatch, type BalanceReading } from "./balance.ts";
 import { limitWatch, type UseReading } from "./use.ts";
-import { FOLD_TYPES, type RuntimeEvent } from "./events.ts";
+import { DRIFT_LIMIT, driftWatch, type DriftRunner } from "./drift.ts";
+import { envelope, EVENT_TYPES, FOLD_TYPES, type RuntimeEvent } from "./events.ts";
 import { openRuntimeLog, type RuntimeLog } from "./log.ts";
-import { openRuntime, type Pass, type RuntimeOptions } from "./runtime.ts";
-import type { StartRead } from "./start-snapshot.ts";
+import type { ReadingStore } from "./readings.ts";
+import { keepsAtBound, openRuntime, REPORT_LIMIT, type Pass, type RuntimeOptions } from "./runtime.ts";
+import { snapshotKey, type StartRead } from "./start-snapshot.ts";
 import { rebuild, type RuntimeState } from "./state.ts";
 import type { ViewConfig } from "./view.ts";
 
@@ -328,6 +330,63 @@ describe("a restart from the snapshot of the start (AL-105)", () => {
     }
   });
 
+  it("folds the whole log for a snapshot of an old fold with no upgrade to the fold of FOLD_VERSION (AL-153, AL-172)", async () => {
+    const seed = SEEDS[0]!;
+    // A snapshot of the fold after 20 passes, written again as a snapshot of version 1: the rows of version 2 less the rows of the blocks.
+    const oldSnapshot = async (place: string, loop: boolean): Promise<{ readonly log: RuntimeLog; readonly store: ReturnType<typeof openFoldSnapshot>; readonly head: number }> => {
+      const clock = fakeWallClock(T0);
+      const store = openFoldSnapshot(join(place, "snapshot.sqlite"));
+      const sources = [worldSource(API, MINUTE, seed, warningsOf(seed), clock)];
+      let log = openRuntimeLog(join(place, "runtime.sqlite"));
+      if (loop) log.appendAll([{ ...envelope("loop", "loop:run-0:1", T0), size: 1500 }], () => undefined);
+      const runtime = openRuntime({ log, clock, sources, watch: () => ({ places: [KANSAS], kinds: ["met"] }), view: VIEW, run: "run-0", startSnapshot: store });
+      for (let at = 0; at < 20; at += 1) {
+        await runtime.pass();
+        await clock.advance(MINUTE);
+      }
+      expect(await runtime.writeStartSnapshot()).toBeGreaterThan(0);
+      const first = [...log.entries({ after: 0, types: EVENT_TYPES, limit: 1 })][0]!.event.id;
+      const key = snapshotKey(runtime.config, { first, recoveries: 0 });
+      const read = store.read(key, log, (mark, rows) => ({ mark, rows: [...rows] }))!;
+      store.write({ ...key, version: 1 }, read.mark, read.rows.filter((row) => !["state.blocks", "state.blocks[]"].includes(row.part.replace(/^~/u, ""))));
+      await runtime.close();
+      log.close();
+      log = openRuntimeLog(join(place, "runtime.sqlite"));
+      return { log, store, head: read.mark.seq };
+    };
+    const reopen = (log: RuntimeLog, store: FoldSnapshot) => {
+      // The same sources: they are a part of the key of the snapshot.
+      const clock = fakeWallClock(T0 + 30 * MINUTE);
+      return openRuntime({ log, clock, sources: [worldSource(API, MINUTE, seed, warningsOf(seed), clock)], watch: () => ({ places: [KANSAS], kinds: ["met"] }), view: VIEW, run: "run-1", startSnapshot: store });
+    };
+
+    // No loop event: the upgrade of version 1 gave version 2, and version 3 has no upgrade. Thus the start folds the whole log.
+    let { log, store } = await oldSnapshot(folder(), false);
+    try {
+      const count = [...log.read(FOLD_TYPES)].length;
+      const whole = reopen(log, store);
+      expect(whole.start).toEqual({ events: count });
+      expect(whole.state()).toEqual(rebuild(log.read(FOLD_TYPES), whole.config));
+      await whole.close();
+    } finally {
+      log.close();
+      store.close();
+    }
+
+    // A loop event at or before the mark: the old fold did not read it, thus the upgrade is not exact, and the start folds the whole log.
+    ({ log, store } = await oldSnapshot(folder(), true));
+    try {
+      const count = [...log.read(FOLD_TYPES)].length;
+      const whole = reopen(log, store);
+      expect(whole.start).toEqual({ events: count });
+      expect(whole.state().blocks).toHaveLength(1);
+      await whole.close();
+    } finally {
+      log.close();
+      store.close();
+    }
+  });
+
   it("writes one cut of the state when passes add events in the pauses of the write (AL-115)", async () => {
     const place = folder();
     const path = join(place, "runtime.sqlite");
@@ -399,6 +458,131 @@ describe("a restart from the snapshot of the start (AL-105)", () => {
       store.close();
       log.close();
     }
+  });
+});
+
+describe("the bound of the reports (AL-145)", () => {
+  // The body of a fake report: its key, the code of its area, and the key of the report that it updates.
+  interface Body {
+    readonly key: string;
+    readonly code: string;
+    readonly updates?: string;
+  }
+  const bodyOf = (key: string, code: string, updates?: string): Body => ({ key, code, ...(updates === undefined ? {} : { updates }) });
+  const reportOf = (seen: Observation): Report => {
+    const body = JSON.parse(seen.body) as Body;
+    const made = report(seen.source, body.key, T0, seen);
+    const references = body.updates === undefined ? [] : [reportId({ source: seen.source, key: body.updates, sent: T0 })];
+    return { ...made, references, areas: [{ type: "code", system: "ugc", code: body.code }] };
+  };
+  // A source that gives the bodies of the list at each fetch.
+  function listed(read: () => readonly Body[]): SourceProcedures {
+    return {
+      describe: () => descriptor(API, MINUTE),
+      fetch: () => Promise.resolve({ ok: true, observations: read().map((body) => observation(API, body.key, T0, body)), complete: true }),
+      map: ({ observation: seen }) => ({ reports: [reportOf(seen)], problems: [] }),
+    };
+  }
+  // The keys of the reports of the source. The merge state also has the system reports, and the bound counts them too.
+  const sourceKeys = (state: RuntimeState) => state.merge.reports.filter((entry) => entry.source === API).map((entry) => entry.key);
+  const fullLines = (state: RuntimeState) => Object.values(state.lines.open).filter((line) => line.kind.code === "system.store.full");
+
+  it("keeps out a new report of another area at the bound, takes an update and a report of a watched place, and tells the waiting reports", async () => {
+    const log = openRuntimeLog(":memory:");
+    let bodies: Body[] = [bodyOf("far-1", "KSZ001"), bodyOf("far-2", "KSZ002")];
+    const clock = fakeWallClock(T0);
+    const options = { log, clock, sources: [listed(() => bodies)], watch: () => ({ places: [KANSAS], kinds: ["met"] as const }), view: VIEW, run: "run-0" };
+    try {
+      const runtime = openRuntime({ ...options, reportLimit: 2 });
+      const first = await runtime.pass();
+      expect(sourceKeys(runtime.state()).sort()).toEqual(["far-1", "far-2"]);
+      // The state is at its bound, thus the line opens. A change of the counts alone gives no update of the line.
+      const full = first.view.step.reports.filter((entry) => entry.kind.code === "system.store.full");
+      expect(full.map((entry) => entry.parameters)).toEqual([{ entries: ["2"], limit: ["2"], waiting: ["0"] }]);
+      expect(fullLines(runtime.state()).map((line) => JSON.parse(line.facts) as unknown)).toEqual([{ store: "state", family: "reports" }]);
+
+      bodies = [...bodies, bodyOf("far-3", "KSZ003"), bodyOf("near-1", "KSZ083"), bodyOf("update-1", "KSZ001", "far-1")];
+      await clock.advance(MINUTE);
+      await runtime.pass();
+      expect(sourceKeys(runtime.state()).sort()).toEqual(["far-1", "far-2", "near-1", "update-1"]);
+      expect(log.has(`${API}:far-3` as ObservationId)).toBe(false);
+      expect(fullLines(runtime.state())).toHaveLength(1);
+
+      // A runtime with a higher bound reads the same log. The waiting report is new to it, thus it goes in at the first fetch.
+      await clock.advance(MINUTE);
+      const wider = openRuntime({ ...options, run: "run-1" });
+      await wider.pass();
+      expect(sourceKeys(wider.state())).toContain("far-3");
+      expect(fullLines(wider.state())).toEqual([]);
+    } finally {
+      log.close();
+    }
+  });
+
+  it("takes over the bound each observation with no report: its readings go to the store, and its cursor moves (AL-171)", async () => {
+    const GAUGES = "gauges" as SourceId;
+    const LEVEL: MeasureDeclaration = { id: "level", dimension: "river-levels", title: "River level", unit: "m", area: "point", moves: "rise", baseline: "none", cadence: MINUTE };
+    const added: Reading[] = [];
+    const store: ReadingStore = {
+      add: (readings) => added.push(...readings),
+      series: () => [],
+      refs: () => [],
+      addUnitReads: () => 0,
+      unitReads: () => [],
+      prune: () => 0,
+      count: () => added.length,
+      close: () => undefined,
+    };
+    // Each fetch gives one new observation with one reading and no report, and a cursor with the time of the fetch.
+    const clock = fakeWallClock(T0);
+    const gauges: SourceProcedures = {
+      describe: () => ({ ...descriptor(GAUGES, MINUTE), kinds: [], measures: [LEVEL] }),
+      fetch: () => Promise.resolve({ ok: true, observations: [observation(GAUGES, `level-${clock.now()}`, clock.now(), {})], complete: true, cursor: { seen: String(clock.now()) } }),
+      map: ({ observation: seen }) => ({
+        reports: [],
+        problems: [],
+        readings: [{ source: GAUGES, measure: LEVEL.id, series: "station-1", at: seen.fetched, value: 4, area: { type: "point", at: [-95.68, 39.05] }, observation: seen.id }],
+      }),
+    };
+    const log = openRuntimeLog(":memory:");
+    try {
+      // Two reports of a watched place go in also at the bound. With the line of the full store, the state is over its bound of 1.
+      const runtime = openRuntime({ log, clock, sources: [listed(() => [bodyOf("near-1", "KSZ083"), bodyOf("near-2", "KSZ083")]), gauges], watch: () => ({ places: [KANSAS], kinds: ["met"] as const }), view: VIEW, run: "run-0", reportLimit: 1, readings: store });
+      await runtime.pass();
+      await clock.advance(MINUTE);
+      const second = await runtime.pass();
+      expect(runtime.state().merge.reports.length).toBeGreaterThan(1);
+      expect(fullLines(runtime.state())).toHaveLength(1);
+      expect(added.map((reading) => reading.at)).toEqual([T0, T0 + MINUTE]);
+      expect(log.has(`${GAUGES}:level-${T0 + MINUTE}` as ObservationId)).toBe(true);
+      expect(runtime.state().cursors[GAUGES]).toEqual({ seen: String(T0 + MINUTE) });
+      // The bound counts no waiting observation of the gauges.
+      const full = second.view.step.reports.filter((entry) => entry.kind.code === "system.store.full");
+      expect(full.flatMap((entry) => entry.parameters["waiting"] ?? [])).not.toContain("1");
+    } finally {
+      log.close();
+    }
+  });
+
+  it("refuses a bound that is not an integer of 1 or more, and gives the default of 10,000", () => {
+    const log = openRuntimeLog(":memory:");
+    try {
+      expect(() => openRuntime({ log, clock: fakeWallClock(T0), sources: [], watch: () => ({ places: [KANSAS], kinds: ["met"] }), view: VIEW, run: "run-0", reportLimit: 0 })).toThrow(
+        "The bound of the reports is 0, not an integer of 1 or more.",
+      );
+    } finally {
+      log.close();
+    }
+    expect(REPORT_LIMIT).toBe(10_000);
+  });
+
+  it("takes at the bound an update, a report for named persons and a report of a watched place, and no other report", () => {
+    const seen = observation(API, "far-1", T0, bodyOf("far-1", "KSZ001"));
+    const far = reportOf(seen);
+    expect(keepsAtBound(far, [KANSAS])).toBe(false);
+    expect(keepsAtBound({ ...far, references: ["an earlier report"] }, [KANSAS])).toBe(true);
+    expect(keepsAtBound({ ...far, addresses: ["person:a" as PersonId] }, [KANSAS])).toBe(true);
+    expect(keepsAtBound({ ...far, areas: [{ type: "code", system: "ugc", code: "KSZ083" }] }, [KANSAS])).toBe(true);
   });
 });
 
@@ -527,6 +711,68 @@ describe("one pass of the runtime", () => {
     expect(useReports(await runtime.pass())).toEqual([]);
     expect(reads).toBe(2);
     expect(() => open([], { uses: [watch, watch] })).toThrow("the same id");
+    log.close();
+  });
+
+  it("starts the drift checks in a pass with no wait, and gives the line of a drift at the next pass (AL-139)", async () => {
+    let output = { exitCode: 0, stdout: "check: step.one: the file differs\nok: step.two\n" };
+    let release: () => void = () => undefined;
+    let runs = 0;
+    const run = async () => {
+      runs += 1;
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return output;
+    };
+    const watch = driftWatch({ commands: [{ name: "host-a", kind: "setup", argv: ["check-host"] }], run, every: 60_000 });
+    const driftReports = (pass: Pass) => pass.view.step.reports.filter((report) => report.kind.code.startsWith("system.drift.")).map((report) => [report.op, report.kind.code, report.headline]);
+    const { clock, runtime, log } = open([], { drift: watch });
+    // The command runs on after the pass. The wake of the pass is the latest end of the command.
+    const first = await runtime.pass();
+    expect(runs).toBe(1);
+    expect(driftReports(first)).toEqual([]);
+    expect(watch.nextReadAt()).toBe(T0 + DRIFT_LIMIT);
+    release();
+    await watch.settled();
+    expect(driftReports(await runtime.pass())).toEqual([["alert", "system.drift.changed", "The host check host-a found 1 change: step.one."]]);
+    output = { exitCode: 0, stdout: "ok: step.one\n" };
+    await clock.advance(60_000);
+    await runtime.pass();
+    release();
+    await watch.settled();
+    expect(driftReports(await runtime.pass())).toEqual([["cancel", "system.drift.changed", "Drift of a copy host: the condition ended."]]);
+    expect(runs).toBe(2);
+    log.close();
+  });
+
+  // The service gives each pass the signal of its round, and the round scope closes at the end of the pass (AL-139).
+  it("keeps a drift check in the background after the signal of its pass ends, and ends it at the close", async () => {
+    let release: () => void = () => undefined;
+    const signals: AbortSignal[] = [];
+    const run: DriftRunner = (_argv, signal) =>
+      new Promise((resolve) => {
+        signals.push(signal);
+        release = () => resolve({ exitCode: 0, stdout: "check: step.one: the file differs\n" });
+        signal.addEventListener("abort", () => resolve({ exitCode: 1, stdout: "" }), { once: true });
+      });
+    const watch = driftWatch({ commands: [{ name: "host-a", kind: "setup", argv: ["check-host"] }], run, every: 60_000 });
+    const { clock, runtime, log } = open([], { drift: watch });
+    const round = new AbortController();
+    await runtime.pass(round.signal);
+    round.abort(new Error("The scope of the round is closed."));
+    expect(signals[0]?.aborted).toBe(false);
+    release();
+    await watch.settled();
+    expect(watch.health()).toEqual([{ what: "drift of host-a", at: T0, failed: false, next: T0 + 60_000 }]);
+    // At the close of the runtime, a command in flight ends, and its read is not a failure.
+    await clock.advance(60_000);
+    await runtime.pass(new AbortController().signal);
+    expect(signals).toHaveLength(2);
+    await runtime.close();
+    expect(signals[1]?.aborted).toBe(true);
+    await watch.settled();
+    expect(watch.failure("host-a")).toBeUndefined();
     log.close();
   });
 
@@ -711,6 +957,33 @@ describe("one pass of the runtime", () => {
     expect(got).toEqual([pass]);
     expect(pass.wakeAt).toBe(T0 + MINUTE);
     log.close();
+  });
+
+  it("gives the hook each new report of a fetch one time, and a fault of the hook does not stop the pass (AL-132)", async () => {
+    let page = 0;
+    // Each fetch gives new observations. The second fetch gives the report w-1 again, in a new observation, and w-2.
+    const fetch = async (): Promise<FetchOutcome> => {
+      page += 1;
+      const warnings = page === 1 ? [{ key: "w-1", issued: T0 - MINUTE }] : [{ key: "w-1", issued: T0 - MINUTE }, { key: "w-2", issued: T0 }];
+      return { ok: true, observations: warnings.map((warning) => observation(API, `${warning.key}:${String(page)}`, T0, warning)), complete: true };
+    };
+    const got: string[][] = [];
+    const { clock, runtime, log } = open([scripted(API, fetch)], { onReports: (reports) => void got.push(reports.map((report) => report.key)) });
+    await runtime.pass();
+    await clock.advance(MINUTE);
+    await runtime.pass();
+    expect(got).toEqual([["w-1"], ["w-2"]]);
+    log.close();
+    page = 0;
+    const failing = open([scripted(API, fetch)], {
+      onReports: () => {
+        throw new Error("The meter failed.");
+      },
+    });
+    const pass = await failing.runtime.pass();
+    expect(pass.fetched).toEqual([API]);
+    expect(failing.runtime.state().merge.reports.filter((report) => report.source === API).map((report) => report.key)).toEqual(["w-1"]);
+    failing.log.close();
   });
 
   it("gives a wake after the pass when a source comes due during the fetches of the pass, and fetches it in the next pass", async () => {

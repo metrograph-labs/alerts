@@ -1,0 +1,113 @@
+# The measure of the CPU time of a start with live alerts and persons (AL-150). Each case starts one fresh process of
+# `live-heap.ts --profile`: it seeds a small home with the persons, the fake feeds give the live alerts, and the open of the
+# home runs under the CPU profiler. The records give the time of the open, the routes of the first pass, the routes with
+# a send, the functions with the most self time and the inclusive time of each function of the delivery step. Time on a
+# shared computer tells nothing, thus the measure runs in CI only. It is a measure, not a gate.
+#
+# The second step measures the memory of the watch of long blocks (AL-119): a worker thread with its own V8 isolate. Each
+# round starts the case 0x1 with and without `--block-watch` in fresh processes (`block-watch-memory.ts`). The summary of the
+# job gives the change of the resident memory, of its peak and of the heap in each round.
+#
+# The third step measures the parts of a live configuration at the size of a small host (AL-160): GDELT, the score
+# rules and the alert chain. Each case runs in a container with a quota of 0.25 of a CPU and 1 GB of memory. The line of
+# each case gives the time of the open, the time of each later pass and the self time of the functions of the profile.
+# The case score-risk=1000000 has score rules with a risk that no alert reaches: the cost of the score with the sends
+# of the base (AL-168). The column of the writes gives the transactions and the events of each later pass.
+name: Measure start
+
+on:
+  # A pull request that changes the measure gets a run of the default cases.
+  pull_request:
+    paths:
+      - packages/testkit/scripts/live-heap.ts
+      - packages/testkit/src/cpu-profile.ts
+      - packages/testkit/scripts/block-watch-memory.ts
+      - packages/testkit/src/fake-gdelt.ts
+      - packages/testkit/src/seed-home.ts
+      - packages/runtime/src/block-watch.ts
+      - packages/runtime/src/log.ts
+      - packages/runtime/src/measured-start.ts
+      - .github/workflows/measure-start.yml
+  # A person starts a run of other cases: gh workflow run measure-start.yml -f cases="4000x1 4000x10"
+  workflow_dispatch:
+    inputs:
+      cases:
+        description: The cases, as a list of <alerts>x<persons> or <alerts>x<persons>x<feeds> with spaces
+        default: "0x1 1000x1 1000x10 4000x1 4000x10"
+      parts:
+        description: The cases at the size of a small host, as <alerts>x<persons>:<flags> with spaces. Flags are gdelt, score=<n>, score-risk=<x>, chain, log=<bytes> and observe, with commas.
+        default: "200x2 200x2:gdelt 200x2:score=1 200x2:score=1,score-risk=1000000 200x2:chain 200x2:gdelt,score=1,chain"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: measure-start-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Profile the start of each case
+        working-directory: packages/testkit
+        env:
+          CASES: ${{ inputs.cases || '0x1 1000x1 1000x10 4000x1 4000x10' }}
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/start"
+          for case in $CASES; do
+            IFS=x read -r alerts persons feeds <<< "$case"
+            node --expose-gc scripts/live-heap.ts "$alerts" "$persons" --profile --feeds="${feeds:-0}" | tee -a "$GITHUB_WORKSPACE/start/records.jsonl"
+          done
+      - name: Measure the memory of the watch of long blocks
+        working-directory: packages/testkit
+        run: |
+          node scripts/block-watch-memory.ts "$GITHUB_WORKSPACE/start" 4
+      - name: Measure the parts of a live configuration at the size of a small host
+        env:
+          PARTS: ${{ inputs.parts || '200x2 200x2:gdelt 200x2:score=1 200x2:score=1,score-risk=1000000 200x2:chain 200x2:gdelt,score=1,chain' }}
+          NODE_IMAGE: node:26-bookworm-slim
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/start"
+          for case in $PARTS; do
+            size="${case%%:*}"
+            IFS=x read -r alerts persons <<< "$size"
+            args=(--profile --passes=5)
+            if [ "$case" != "$size" ]; then
+              IFS=, read -r -a flags <<< "${case#*:}"
+              for flag in "${flags[@]}"; do args+=("--$flag"); done
+            fi
+            # The quota of a small host: 0.25 of a CPU, 1 GB of memory and 1 GB of swap.
+            docker run --rm --cpus=0.25 --memory=1g --memory-swap=2g \
+              -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -w "$GITHUB_WORKSPACE/packages/testkit" "$NODE_IMAGE" \
+              node --expose-gc scripts/live-heap.ts "$alerts" "$persons" "${args[@]}" \
+              | jq -c --arg case "$case" '{case: $case, quota: "0.25cpu-1g"} + .' | tee -a "$GITHUB_WORKSPACE/start/parts.jsonl"
+          done
+          {
+            echo "### The parts of a live configuration at the size of a small host"
+            echo
+            echo "| Case | Open ms | Pass ms | Pass writes | GDELT files | Peak RSS MB |"
+            echo "| --- | --- | --- | --- | --- | --- |"
+            jq -r '"| \(.case) | \(.ms) | \(.passMs | map(tostring) | join(" ")) | \(.passWrites | map("\(.transactions)t/\(.events)e") | join(" ")) | \(.gdeltFiles) | \(.peakRss / 1048576 | floor) |"' "$GITHUB_WORKSPACE/start/parts.jsonl"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: measure-start-${{ github.run_id }}-${{ github.run_attempt }}
+          path: start/
+          if-no-files-found: error
+          retention-days: 90

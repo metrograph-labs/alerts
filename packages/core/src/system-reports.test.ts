@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { assess, PERSON_SUBJECT } from "./assess.ts";
 import { CONFIG_FORMAT } from "./config.ts";
 import { messageOf } from "./delivery.ts";
-import type { ChannelId, ChannelQuota, CopyRead, CopyWatch, Coverage, HealthState, Incident, Observation, PersonId, PersonWatch, PlaceId, LimitUse, ProviderBalance, Report, ReportId, SourceDescriptor, SourceHealth, SourceId, WatchedPlace } from "./contracts.ts";
+import type { ChannelId, ChannelQuota, CopyRead, CopyWatch, Coverage, DriftCheck, HealthState, Incident, JointDown, Observation, PersonId, PersonWatch, PlaceId, LimitUse, ProviderBalance, RedundancyState, Report, ReportId, SourceDescriptor, SourceHealth, SourceId, WatchedPlace } from "./contracts.ts";
 import { SYSTEM_SOURCE } from "./contracts.ts";
 import { DRILL_WATCH_GRACE, type DrillConfig, type DrillRun, type DrillWatch } from "./drill.ts";
 import type { Lateness } from "./lateness.ts";
@@ -14,6 +14,8 @@ import {
   balanceStages,
   balanceFloorsBelow,
   balanceUnreadAt,
+  blockCause,
+  blockCauseText,
   blockClass,
   blockSizeText,
   CHANNEL_SUBJECT,
@@ -28,7 +30,13 @@ import {
   copyUnreadAt,
   copyUnsteadyAt,
   drillWatchAt,
+  DRIFT_STEPS_SHOWN,
+  driftStages,
+  driftUnreadAt,
+  FUNCTION_SUBJECT,
   gapGrade,
+  jointStages,
+  jointUnreadAt,
   HELD_SHOWN,
   heldText,
   latestIn,
@@ -38,10 +46,12 @@ import {
   LOOP_BLOCK_LIMIT,
   LOOP_BLOCK_WINDOW,
   NO_SYSTEM_LINES,
+  PLACE_SUBJECT,
   quotaStages,
   recentBlocks,
   recentRecovery,
   recentStep,
+  redundancyStage,
   reportsShared,
   SHARED_HANDOVER,
   sourceClearAt,
@@ -52,6 +62,7 @@ import {
   STORE_FILL_WINDOW,
   STORE_SUBJECT,
   storeEmptyAt,
+  atBound,
   stepSizeText,
   systemReports,
   threats,
@@ -59,6 +70,8 @@ import {
   useStages,
   useUnreadAt,
   type LogRecovery,
+  type StalePlace,
+  type StoreBound,
   type StoreFill,
   type SystemLines,
   type SystemSnapshot,
@@ -682,6 +695,194 @@ describe("the use reports (AL-111)", () => {
   });
 });
 
+describe("the joint reports (AL-148)", () => {
+  const MINUTE = 60_000;
+  const HOUR = 60 * MINUTE;
+  const START = Date.UTC(2026, 10, 15, 12);
+  const WATCHER: PersonWatch = { ...NEIGHBOR, subjects: [{ system: COPY_SUBJECT }] };
+  const codes = (reports: readonly Report[]) => reports.map((report) => [report.op, report.kind.code]);
+  const joint = (read?: { readonly down: number; readonly spans?: number; readonly at?: number }, fields: Partial<JointDown> = {}): JointDown => ({
+    window: 7 * 24 * HOUR,
+    limit: 10 * MINUTE,
+    maxAge: 6 * HOUR,
+    since: START,
+    ...(read === undefined ? {} : { read: { down: read.down, spans: read.spans ?? 1, at: read.at ?? START } }),
+    ...fields,
+  });
+  const copyWatch = (copy: string, read: number): CopyWatch => ({ copy, skewLimit: 2_000, maxAge: 60_000, since: START, read: { at: read, skew: 0, sameConfig: true } });
+
+  it("reaches over above the limit, and unread at the maximum age", () => {
+    expect(jointStages(joint({ down: 10 * MINUTE }), START)).toEqual([]);
+    expect(jointStages(joint({ down: 10 * MINUTE + 1 }), START)).toEqual(["over"]);
+    // The age counts from the last read, or from the start of the watch with no read. An old read keeps its stage.
+    expect(jointStages(joint(), START + 6 * HOUR - 1)).toEqual([]);
+    expect(jointStages(joint(), START + 6 * HOUR)).toEqual(["unread"]);
+    expect(jointStages(joint({ down: HOUR }), START + 7 * HOUR)).toEqual(["over", "unread"]);
+    expect(jointUnreadAt(joint({ down: 0, at: START + HOUR }))).toBe(START + 7 * HOUR);
+    expect(unknownKinds(["system.joint", "system.joint.over", "system.joint.unread"])).toEqual([]);
+  });
+
+  it("gives one alert over the limit, no update for a new sum, and a cancel under the limit", () => {
+    const over = systemReports(NO_SYSTEM_LINES, snapshot({ joint: joint({ down: 816 * MINUTE, spans: 3 }) }), START);
+    expect(over.reports).toMatchObject([
+      {
+        op: "alert",
+        status: "system",
+        kind: { code: "system.joint.over", label: "Joint down time over its limit" },
+        severity: "moderate",
+        urgency: "expected",
+        areas: [],
+        about: [{ system: COPY_SUBJECT, id: "all" }],
+        headline: "No copy could tell the person for 816.0 min in the last 7 days. The limit is 10.0 min.",
+        parameters: { stage: ["over"], down: [String(816 * MINUTE)], spans: ["3"], limit: [String(10 * MINUTE)] },
+      },
+    ]);
+    expect(Object.keys(over.lines.open)).toEqual(["joint/over"]);
+    // A new sum over the limit is no new fact.
+    expect(systemReports(over.lines, snapshot({ joint: joint({ down: 20 * MINUTE, at: START + HOUR }) }), START + HOUR).reports).toEqual([]);
+    const under = systemReports(over.lines, snapshot({ joint: joint({ down: 9 * MINUTE, at: START + 2 * HOUR }) }), START + 2 * HOUR);
+    expect(codes(under.reports)).toEqual([["cancel", "system.joint.over"]]);
+    expect(under.lines.open).toEqual({});
+    const rebuilt = addSystemReports(NO_SYSTEM_LINES, [...over.reports, ...under.reports], [...over.observations, ...under.observations]);
+    expect(rebuilt.open).toEqual(under.lines.open);
+  });
+
+  it("gives the unread line when no read passes, ends it at the next read, and ends each line with no watch", () => {
+    const unread = systemReports(NO_SYSTEM_LINES, snapshot({ joint: joint() }), START + 6 * HOUR);
+    expect(unread.reports).toMatchObject([
+      { op: "alert", kind: { code: "system.joint.unread" }, headline: `The joint down time of the copies has no read since the start of the watch at ${new Date(START).toISOString()}.` },
+    ]);
+    const read = systemReports(unread.lines, snapshot({ joint: joint({ down: 0, at: START + 6 * HOUR }) }), START + 6 * HOUR);
+    expect(codes(read.reports)).toEqual([["cancel", "system.joint.unread"]]);
+    const over = systemReports(NO_SYSTEM_LINES, snapshot({ joint: joint({ down: HOUR }) }), START);
+    // With no field, the open line stays. With no watch, it ends.
+    expect(systemReports(over.lines, snapshot(), START + 1).reports).toEqual([]);
+    expect(codes(systemReports(over.lines, snapshot({ joint: null }), START + 1).reports)).toEqual([["cancel", "system.joint.over"]]);
+  });
+
+  it("keeps the open line over with no read, thus a restart sends nothing", () => {
+    const over = systemReports(NO_SYSTEM_LINES, snapshot({ joint: joint({ down: HOUR }) }), START);
+    const restarted = systemReports(over.lines, snapshot({ joint: joint(undefined, { since: START + HOUR }) }), START + HOUR);
+    expect(restarted.reports).toEqual([]);
+    expect(restarted.lines.open).toEqual(over.lines.open);
+    // The stage unread of the restarted watch comes next to the open line over.
+    expect(codes(systemReports(restarted.lines, snapshot({ joint: joint(undefined, { since: START + HOUR }) }), START + 7 * HOUR).reports)).toEqual([["alert", "system.joint.unread"]]);
+  });
+
+  it("gives the line over in one copy and the unread line in each copy", () => {
+    const over = joint({ down: HOUR });
+    expect(codes(systemReports(NO_SYSTEM_LINES, snapshot({ joint: over, copy: "copy-a", copies: [copyWatch("copy-b", START)] }), START).reports)).toEqual([["alert", "system.joint.over"]]);
+    expect(systemReports(NO_SYSTEM_LINES, snapshot({ joint: over, copy: "copy-b", copies: [copyWatch("copy-a", START)] }), START).reports).toEqual([]);
+    const unread = systemReports(NO_SYSTEM_LINES, snapshot({ joint: joint(), copy: "copy-b", copies: [copyWatch("copy-a", START + 6 * HOUR)] }), START + 6 * HOUR);
+    expect(codes(unread.reports)).toEqual([["alert", "system.joint.unread"]]);
+  });
+
+  it("goes at notice at most to the person who watches the copies", () => {
+    const over = systemReports(NO_SYSTEM_LINES, snapshot({ joint: joint({ down: HOUR }) }), START);
+    expect(levels(over.reports, WATCHER, START)).toEqual(["notice"]);
+    expect(levels(over.reports, OPERATOR, START)).toEqual(["none"]);
+  });
+});
+
+describe("the drift reports (AL-139)", () => {
+  const HOUR = 3_600_000;
+  const START = Date.UTC(2026, 10, 15, 12);
+  const MAX_AGE = 48 * HOUR;
+  const WATCHER: PersonWatch = { ...NEIGHBOR, subjects: [{ system: COPY_SUBJECT }] };
+  const codes = (reports: readonly Report[]) => reports.map((report) => [report.op, report.kind.code]);
+  const check = (read?: { readonly changes: number; readonly steps?: readonly string[]; readonly at?: number }, fields: Partial<DriftCheck> = {}): DriftCheck => ({
+    name: "host-a",
+    maxAge: MAX_AGE,
+    since: START,
+    ...(read === undefined ? {} : { read: { changes: read.changes, steps: read.steps ?? [], at: read.at ?? START } }),
+    ...fields,
+  });
+  const copyWatch = (copy: string, read: number): CopyWatch => ({ copy, skewLimit: 2_000, maxAge: 60_000, since: START, read: { at: read, skew: 0, sameConfig: true } });
+
+  it("reaches changed at one change, and unread at the maximum age", () => {
+    expect(driftStages(check({ changes: 0 }), START)).toEqual([]);
+    expect(driftStages(check({ changes: 1 }), START)).toEqual(["changed"]);
+    expect(driftStages(check(), START + MAX_AGE - 1)).toEqual([]);
+    expect(driftStages(check(), START + MAX_AGE)).toEqual(["unread"]);
+    expect(driftStages(check({ changes: 2 }), START + MAX_AGE)).toEqual(["changed", "unread"]);
+    expect(driftUnreadAt(check({ changes: 0, at: START + HOUR }))).toBe(START + HOUR + MAX_AGE);
+    expect(unknownKinds(["system.drift", "system.drift.changed", "system.drift.unread"])).toEqual([]);
+  });
+
+  it("gives one alert for a drift, an update for a new list of changes, and a cancel with no change", () => {
+    const changed = systemReports(NO_SYSTEM_LINES, snapshot({ drift: [check({ changes: 2, steps: ["step.one", "step.two"] })] }), START);
+    expect(changed.reports).toMatchObject([
+      {
+        op: "alert",
+        status: "system",
+        kind: { code: "system.drift.changed", label: "Drift of a copy host" },
+        severity: "moderate",
+        urgency: "expected",
+        areas: [],
+        about: [{ system: COPY_SUBJECT, id: "host-a" }],
+        headline: "The host check host-a found 2 changes: step.one, step.two.",
+        parameters: { stage: ["changed"], check: ["host-a"], changes: ["2"], steps: ["step.one", "step.two"] },
+      },
+    ]);
+    expect(Object.keys(changed.lines.open)).toEqual(["drift/host-a/changed"]);
+    // The same list is no new fact. A new list gives an update.
+    expect(systemReports(changed.lines, snapshot({ drift: [check({ changes: 2, steps: ["step.one", "step.two"], at: START + HOUR })] }), START + HOUR).reports).toEqual([]);
+    const more = systemReports(changed.lines, snapshot({ drift: [check({ changes: 3, steps: ["step.one"], at: START + 2 * HOUR })] }), START + 2 * HOUR);
+    expect(more.reports).toMatchObject([{ op: "update", headline: "The host check host-a found 3 changes: step.one and 2 more." }]);
+    const clean = systemReports(more.lines, snapshot({ drift: [check({ changes: 0, at: START + 3 * HOUR })] }), START + 3 * HOUR);
+    expect(codes(clean.reports)).toEqual([["cancel", "system.drift.changed"]]);
+    expect(clean.lines.open).toEqual({});
+    const rebuilt = addSystemReports(NO_SYSTEM_LINES, [...changed.reports, ...more.reports, ...clean.reports], [...changed.observations, ...more.observations, ...clean.observations]);
+    expect(rebuilt.open).toEqual(clean.lines.open);
+  });
+
+  it("shows at most the first names in the headline, and a count with no name", () => {
+    const steps = Array.from({ length: DRIFT_STEPS_SHOWN + 2 }, (_, index) => `step.${String(index).padStart(2, "0")}`);
+    const many = systemReports(NO_SYSTEM_LINES, snapshot({ drift: [check({ changes: steps.length, steps })] }), START);
+    expect(many.reports[0]?.headline).toBe(`The host check host-a found 12 changes: ${steps.slice(0, DRIFT_STEPS_SHOWN).join(", ")} and 2 more.`);
+    expect(many.reports[0]?.parameters?.["steps"]).toEqual(steps);
+    const unnamed = systemReports(NO_SYSTEM_LINES, snapshot({ drift: [check({ changes: 1 })] }), START);
+    expect(unnamed.reports[0]?.headline).toBe("The host check host-a found 1 change.");
+  });
+
+  it("gives the unread line when no read passes, ends it at the next read, and ends each line with no drift check", () => {
+    const unread = systemReports(NO_SYSTEM_LINES, snapshot({ drift: [check()] }), START + MAX_AGE);
+    expect(unread.reports).toMatchObject([{ op: "alert", kind: { code: "system.drift.unread" }, headline: `The host check host-a has no good read since the start of the watch at ${new Date(START).toISOString()}.` }]);
+    const read = systemReports(unread.lines, snapshot({ drift: [check({ changes: 0, at: START + MAX_AGE })] }), START + MAX_AGE);
+    expect(codes(read.reports)).toEqual([["cancel", "system.drift.unread"]]);
+    const changed = systemReports(NO_SYSTEM_LINES, snapshot({ drift: [check({ changes: 1 })] }), START);
+    // With no field, the open line stays. With no drift check, or with no entry of its name, it ends.
+    expect(systemReports(changed.lines, snapshot(), START + 1).reports).toEqual([]);
+    expect(codes(systemReports(changed.lines, snapshot({ drift: null }), START + 1).reports)).toEqual([["cancel", "system.drift.changed"]]);
+    expect(codes(systemReports(changed.lines, snapshot({ drift: [check({ changes: 0 }, { name: "host-b" })] }), START + 1).reports)).toEqual([["cancel", "system.drift.changed"]]);
+  });
+
+  it("keeps the open line changed with no read, thus a restart sends nothing", () => {
+    const changed = systemReports(NO_SYSTEM_LINES, snapshot({ drift: [check({ changes: 2, steps: ["step.one"] })] }), START);
+    const restarted = systemReports(changed.lines, snapshot({ drift: [check(undefined, { since: START + HOUR })] }), START + HOUR);
+    expect(restarted.reports).toEqual([]);
+    expect(restarted.lines.open).toEqual(changed.lines.open);
+    expect(codes(systemReports(restarted.lines, snapshot({ drift: [check(undefined, { since: START + HOUR })] }), START + HOUR + MAX_AGE).reports)).toEqual([["alert", "system.drift.unread"]]);
+  });
+
+  it("gives each line of a drift in each copy, because each copy has its own checks", () => {
+    const changed = [check({ changes: 1 })];
+    expect(codes(systemReports(NO_SYSTEM_LINES, snapshot({ drift: changed, copy: "copy-a", copies: [copyWatch("copy-b", START)] }), START).reports)).toEqual([["alert", "system.drift.changed"]]);
+    expect(codes(systemReports(NO_SYSTEM_LINES, snapshot({ drift: changed, copy: "copy-b", copies: [copyWatch("copy-a", START)] }), START).reports)).toEqual([["alert", "system.drift.changed"]]);
+    // A restart with no read keeps the open line changed in each copy.
+    const opened = systemReports(NO_SYSTEM_LINES, snapshot({ drift: changed, copy: "copy-b", copies: [copyWatch("copy-a", START)] }), START);
+    expect(systemReports(opened.lines, snapshot({ drift: [check(undefined, { since: START + HOUR })], copy: "copy-b", copies: [copyWatch("copy-a", START + HOUR)] }), START + HOUR).reports).toEqual([]);
+    const unread = systemReports(NO_SYSTEM_LINES, snapshot({ drift: [check()], copy: "copy-b", copies: [copyWatch("copy-a", START + MAX_AGE)] }), START + MAX_AGE);
+    expect(codes(unread.reports)).toEqual([["alert", "system.drift.unread"]]);
+  });
+
+  it("goes at notice at most to the person who watches the copies", () => {
+    const changed = systemReports(NO_SYSTEM_LINES, snapshot({ drift: [check({ changes: 1 })] }), START);
+    expect(levels(changed.reports, WATCHER, START)).toEqual(["notice"]);
+    expect(levels(changed.reports, OPERATOR, START)).toEqual(["none"]);
+  });
+});
+
 describe("the facts of a shared account (AL-62)", () => {
   const DAY = 86_400_000;
   const START = Date.UTC(2026, 10, 15, 12);
@@ -897,6 +1098,37 @@ describe("the copy reports", () => {
     expect(codes(read.reports)).toEqual([["cancel", "system.copy.unread"]]);
   });
 
+  it("names a billing stop of the host in an update of the unread line, and keeps the text when the billing is on (AL-70)", () => {
+    const at = START + MINUTE;
+    const since = `No read of the copy cloud passed since the start of the watch at ${new Date(START).toISOString()}.`;
+    // The alarm goes out at once, before the billing read ends.
+    const down = systemReports(NO_SYSTEM_LINES, snapshot({ copies: [watch()] }), at);
+    expect(down.reports).toMatchObject([{ op: "alert", kind: { code: "system.copy.unread" }, headline: since }]);
+    expect(down.reports[0]?.parameters["billing"]).toBeUndefined();
+    // The billing state on is not a fact: the text stays, and no update goes out.
+    expect(systemReports(down.lines, snapshot({ copies: [watch(undefined, { billing: { state: "on", at } })] }), at).reports).toEqual([]);
+    // A billing stop is a new fact: an update of the same line names it.
+    const stopped = systemReports(down.lines, snapshot({ copies: [watch(undefined, { billing: { state: "stopped", at } })] }), at);
+    expect(stopped.reports).toMatchObject([
+      {
+        op: "update",
+        kind: { code: "system.copy.unread" },
+        headline: `The copy cloud is down because of a billing stop of its host. ${since}`,
+        instruction: "Examine the billing account of the host. Start the billing again, then start the copy.",
+        parameters: { stage: ["unread"], billing: ["stopped"] },
+      },
+    ]);
+    expect(Object.keys(stopped.lines.open)).toEqual(["copy/cloud/unread"]);
+    // A failed read keeps the text of a down copy and tells that the billing state is unread.
+    const unread = systemReports(down.lines, snapshot({ copies: [watch(undefined, { billing: { state: "unread", at } })] }), at);
+    expect(unread.reports).toMatchObject([{ op: "update", headline: `${since} The billing state of its host is unread.`, parameters: { billing: ["unread"] } }]);
+    // A billing state that is known at the start of the line goes into the first alert.
+    expect(systemReports(NO_SYSTEM_LINES, snapshot({ copies: [watch(undefined, { billing: { state: "stopped", at } })] }), at).reports).toMatchObject([{ op: "alert", parameters: { billing: ["stopped"] } }]);
+    // The billing state changes only the line unread, and a read of the copy ends the line.
+    expect(systemReports(NO_SYSTEM_LINES, snapshot({ copies: [watch({ skew: 9_000 }, { billing: { state: "stopped", at: START } })] }), START).reports).toMatchObject([{ headline: "The clock of the copy cloud differs from the clock of this copy by 9.0 s." }]);
+    expect(codes(systemReports(stopped.lines, snapshot({ copies: [watch({ at })] }), at).reports)).toEqual([["cancel", "system.copy.unread"]]);
+  });
+
   it("keeps each open line of a copy when the snapshot has no copies, and ends the lines of a copy that the snapshot does not have", () => {
     const skewed = systemReports(NO_SYSTEM_LINES, snapshot({ copies: [watch({ skew: 9_000 })], balances: [] }), START);
     expect(systemReports(skewed.lines, snapshot(), START + 1).reports).toEqual([]);
@@ -1036,6 +1268,19 @@ describe("the loop reports", () => {
     expect(codes(systemReports(kept.lines, snapshot({ blocks: late, copy: "cloud" }), end).reports)).toEqual([["cancel", "system.loop.block"]]);
   });
 
+  it("tells the cause of the longest block, and a new cause of the same class gives no update (AL-180)", () => {
+    const work = { at: START, size: 2_400, cpu: 2_300, faults: 0, gc: 900 };
+    expect(blockCauseText(work)).toBe("The block had 2.3 s of processor time, 0 page reads from the disk and 0.9 s of pauses of the garbage collector. Thus the block was mostly work of the processor.");
+    expect(blockCauseText({ at: START, size: 2_000, faults: 3 })).toBe("The block had 3 page reads from the disk.");
+    expect(blockCauseText({ at: START, size: 2_000 })).toBeUndefined();
+    expect(blockCause({ cpu: 1, gc: 0 })).toEqual({ cpu: 1, gc: 0 });
+    const opened = systemReports(NO_SYSTEM_LINES, snapshot({ blocks: [work], copy: "cloud" }), START + 5_000);
+    expect(opened.reports).toMatchObject([{ op: "alert", parameters: { longest: ["2400"], cpu: ["2300"], faults: ["0"], gc: ["900"] } }]);
+    expect(opened.reports[0]?.description).toContain("In the longest block: The block had 2.3 s of processor time");
+    const wait = [work, { at: START + 60_000, size: 2_600, cpu: 100, faults: 400 }];
+    expect(systemReports(opened.lines, snapshot({ blocks: wait, copy: "cloud" }), START + 65_000).reports).toEqual([]);
+  });
+
   it("names this copy when the snapshot has no copy", () => {
     const opened = systemReports(NO_SYSTEM_LINES, snapshot({ blocks: [{ at: START, size: 2_000 }] }), START);
     expect(opened.reports).toMatchObject([{ about: [{ system: COPY_SUBJECT, id: "this", label: "This copy" }] }]);
@@ -1165,6 +1410,123 @@ describe("the store reports (AL-86)", () => {
   });
 });
 
+describe("the bound reports (AL-145)", () => {
+  const AT = Date.UTC(2026, 10, 24, 12);
+  const state: StoreBound = { store: "state", family: "reports", entries: 9_000, limit: 10_000, waiting: 0, sources: [] };
+  const codes = (reports: readonly Report[]) => reports.map((report) => [report.op, report.kind.code, report.about[0]!.id]);
+
+  it("gives an alert when the store reaches its bound or an entry waits, and no update for a new count", () => {
+    expect(unknownKinds(["system.store.full"])).toEqual([]);
+    expect(atBound(state)).toBe(false);
+    expect(atBound({ ...state, entries: 10_000 })).toBe(true);
+    expect(atBound({ ...state, waiting: 1 })).toBe(true);
+    expect(systemReports(NO_SYSTEM_LINES, snapshot({ bounds: [state] }), AT).reports).toEqual([]);
+    const full = systemReports(NO_SYSTEM_LINES, snapshot({ bounds: [{ ...state, entries: 10_000, waiting: 250, sources: [API.id] }] }), AT);
+    expect(full.reports).toMatchObject([
+      {
+        op: "alert",
+        status: "system",
+        kind: { code: "system.store.full", label: "Full store" },
+        severity: "moderate",
+        urgency: "expected",
+        areas: [],
+        about: [
+          { system: STORE_SUBJECT, id: "state/reports" },
+          { system: SOURCE_SUBJECT, id: API.id, label: "The API" },
+        ],
+        headline: "The store state is at its bound of 10,000 entries of the family reports.",
+        parameters: { entries: ["10000"], limit: ["10000"], waiting: ["250"] },
+      },
+    ]);
+    expect(Object.keys(full.lines.open)).toEqual(["bound/state/reports"]);
+    // A new count is not a fact. Thus the line gives no update.
+    expect(systemReports(full.lines, snapshot({ bounds: [{ ...state, entries: 10_000, waiting: 900 }] }), AT + 60_000).reports).toEqual([]);
+    // With no list, the line stays open.
+    expect(systemReports(full.lines, snapshot(), AT + 120_000).reports).toEqual([]);
+    // Space in the store and no entry that waits end the line.
+    expect(codes(systemReports(full.lines, snapshot({ bounds: [state] }), AT + 180_000).reports)).toEqual([["cancel", "system.store.full", "state/reports"]]);
+  });
+
+  it("goes as a notice to the person who watches a source of the waiting entries or the store", () => {
+    const step = systemReports(NO_SYSTEM_LINES, snapshot({ bounds: [{ ...state, waiting: 1, sources: [API.id] }] }), AT);
+    expect(levels(step.reports, OPERATOR, AT)).toEqual(["notice"]);
+    expect(levels(step.reports, NEIGHBOR, AT)).toEqual(["none"]);
+    expect(levels(step.reports, { ...NEIGHBOR, subjects: [{ system: STORE_SUBJECT }] }, AT)).toEqual(["notice"]);
+  });
+});
+
+describe("the redundancy reports (AL-90)", () => {
+  const AT = Date.UTC(2026, 10, 23, 20);
+  const push = { id: "push", name: "The push to a person" };
+  const pushover = { id: "pushover", name: "Pushover" };
+  const twilio = { id: "twilio", name: "Twilio" };
+  const carriers = { id: "carriers", name: "The carriers of the texts" };
+  const full: RedundancyState = { function: push, works: true, points: [], down: [] };
+  const single: RedundancyState = { function: push, works: true, points: [pushover], down: [carriers] };
+  const stopped: RedundancyState = { function: push, works: false, points: [], down: [carriers, pushover] };
+  const codes = (reports: readonly Report[]) => reports.map((report) => [report.op, report.kind.code, report.about[0]!.id]);
+
+  it("gives the stage of a function from its state", () => {
+    expect(unknownKinds(["system.redundancy", "system.redundancy.single", "system.redundancy.stopped"])).toEqual([]);
+    expect(redundancyStage(full)).toBeUndefined();
+    expect(redundancyStage(single)).toBe("single");
+    expect(redundancyStage(stopped)).toBe("stopped");
+    // A function that does not work is stopped, also with points in its state.
+    expect(redundancyStage({ works: false, points: [pushover] })).toBe("stopped");
+  });
+
+  it("gives an alert for a new single point of failure, and no report for a function with its full redundancy", () => {
+    expect(systemReports(NO_SYSTEM_LINES, snapshot({ redundancy: [full] }), AT).reports).toEqual([]);
+    const step = systemReports(NO_SYSTEM_LINES, snapshot({ redundancy: [single] }), AT);
+    expect(step.reports).toMatchObject([
+      {
+        op: "alert",
+        status: "system",
+        kind: { code: "system.redundancy.single", label: "Function with a new single point of failure" },
+        severity: "moderate",
+        urgency: "expected",
+        areas: [],
+        about: [{ system: FUNCTION_SUBJECT, id: "push", label: "The push to a person" }],
+        headline: "The push to a person has a single point of failure: Pushover.",
+        description: "The open incidents tell that these parts are down: The carriers of the texts. A failure of this point alone stops The push to a person.",
+        parameters: { stage: ["single"], points: ["pushover"], down: ["carriers"] },
+      },
+    ]);
+    expect(Object.keys(step.lines.open)).toEqual(["redundancy/push/single"]);
+    expect(addSystemReports(NO_SYSTEM_LINES, step.reports, step.observations)).toEqual(step.lines);
+  });
+
+  it("moves from single to stopped and back, and ends each line at the full redundancy", () => {
+    const first = systemReports(NO_SYSTEM_LINES, snapshot({ redundancy: [single] }), AT);
+    // A new down part that leaves the same points is not a new fact.
+    const same = systemReports(first.lines, snapshot({ redundancy: [{ ...single, down: [carriers, twilio] }] }), AT + 1);
+    expect(same.reports).toEqual([]);
+    const stop = systemReports(first.lines, snapshot({ redundancy: [stopped] }), AT + 2);
+    expect(codes(stop.reports)).toEqual([
+      ["cancel", "system.redundancy.single", "push"],
+      ["alert", "system.redundancy.stopped", "push"],
+    ]);
+    expect(stop.reports[1]).toMatchObject({ severity: "severe", urgency: "immediate", headline: "The push to a person does not work." });
+    const back = systemReports(stop.lines, snapshot({ redundancy: [full] }), AT + 3);
+    expect(codes(back.reports)).toEqual([["cancel", "system.redundancy.stopped", "push"]]);
+    expect(back.lines.open).toEqual({});
+  });
+
+  it("updates the line when the points change, and keeps each open line with no list", () => {
+    const first = systemReports(NO_SYSTEM_LINES, snapshot({ redundancy: [single] }), AT);
+    const more = systemReports(first.lines, snapshot({ redundancy: [{ ...single, points: [twilio, pushover] }] }), AT + 1);
+    expect(more.reports).toMatchObject([{ op: "update", references: [first.reports[0]!.key], parameters: { points: ["pushover", "twilio"] } }]);
+    // With no list, as when the stack of the chain is not in the configuration, the line stays open.
+    expect(systemReports(first.lines, snapshot(), AT + 2).reports).toEqual([]);
+  });
+
+  it("goes as a notice to the person who watches the functions of the chain, and to no other person", () => {
+    const step = systemReports(NO_SYSTEM_LINES, snapshot({ redundancy: [single] }), AT);
+    expect(levels(step.reports, NEIGHBOR, AT)).toEqual(["none"]);
+    expect(levels(step.reports, { ...NEIGHBOR, subjects: [{ system: FUNCTION_SUBJECT }] }, AT)).toEqual(["notice"]);
+  });
+});
+
 describe("the notices of the send limit (AL-81)", () => {
   const AT = Date.UTC(2026, 10, 18, 12);
   const WINDOW = 60 * 60_000;
@@ -1245,6 +1607,52 @@ describe("the notices of the send limit (AL-81)", () => {
     const count = (copy: string, other: string): number =>
       systemReports(NO_SYSTEM_LINES, snapshot({ held: [held(OPERATOR)], copy, copies: [watch(other)] }), AT).reports.filter((report) => report.kind.code === "system.limit.held").length;
     expect([count("a", "b"), count("b", "a")]).toEqual([1, 0]);
+  });
+});
+
+describe("the reports of the stale moving places (AL-40)", () => {
+  const AT = Date.UTC(2026, 10, 24, 12);
+  const stale = (persons: readonly PersonId[] = [OPERATOR.person]): StalePlace => ({ place: "place:moving" as PlaceId, label: "Phone", persons });
+
+  it("gives one private notice to the persons of the place, with the label and no position", () => {
+    expect(unknownKinds(["system.place", "system.place.stale"])).toEqual([]);
+    const step = systemReports(NO_SYSTEM_LINES, snapshot({ stale: [stale()], copy: "home" }), AT);
+    expect(step.reports).toMatchObject([
+      {
+        op: "alert",
+        status: "system",
+        kind: { code: "system.place.stale", label: "Stale moving place" },
+        severity: "moderate",
+        urgency: "expected",
+        areas: [],
+        about: [{ system: PLACE_SUBJECT, id: "place:moving", label: "Phone" }],
+        addresses: [OPERATOR.person],
+        headline: "The watch of the moving place Phone stopped.",
+      },
+    ]);
+    expect(step.reports.every((report) => reportSchema.safeParse(report).success)).toBe(true);
+    expect(levels(step.reports, OPERATOR, AT)).toEqual(["notice"]);
+    expect(levels(step.reports, NEIGHBOR, AT)).toEqual(["none"]);
+  });
+
+  it("gives no report for a place with no person, keeps the line with no list, and cancels it at the next good fix", () => {
+    expect(systemReports(NO_SYSTEM_LINES, snapshot({ stale: [stale([])] }), AT).reports).toEqual([]);
+    const first = systemReports(NO_SYSTEM_LINES, snapshot({ stale: [stale()], copy: "home" }), AT);
+    expect(systemReports(first.lines, snapshot({ stale: [stale()], copy: "home" }), AT + 60_000).reports).toEqual([]);
+    expect(systemReports(first.lines, snapshot({ copy: "home" }), AT + 60_000).reports).toEqual([]);
+    const ended = systemReports(first.lines, snapshot({ stale: [], copy: "home" }), AT + 120_000);
+    expect(ended.reports.map((report) => [report.op, report.kind.code, report.addresses])).toEqual([["cancel", "system.place.stale", [OPERATOR.person]]]);
+    expect(ended.lines.open).toEqual({});
+  });
+
+  it("keeps a line of each copy apart", () => {
+    const home = systemReports(NO_SYSTEM_LINES, snapshot({ stale: [stale()], copy: "home" }), AT);
+    // Another copy with no stale place keeps the line of this copy open.
+    const lines = addSystemReports(NO_SYSTEM_LINES, home.reports, home.observations);
+    expect(lines).toEqual(home.lines);
+    expect(systemReports(lines, snapshot({ stale: [stale()], copy: "cloud" }), AT).reports.map((report) => report.op)).toEqual(["alert"]);
+    // Another copy with an empty list ends none of the lines of this copy.
+    expect(systemReports(lines, snapshot({ stale: [], copy: "cloud" }), AT).reports).toEqual([]);
   });
 });
 
@@ -1334,10 +1742,12 @@ describe("the drill reports", () => {
       ["cancel", "system.drill.run", "drill/home/push-weekly"],
       ["alert", "system.drill.failed", "drill/home/push-weekly/failed"],
     ]);
-    expect(failed.reports[1]!.headline).toBe("The drill push-weekly failed: no acknowledgment came.");
+    expect(failed.reports[1]!.headline).toBe("The drill push-weekly failed: no acknowledgment came in 30 minutes.");
+    // A call says the description, thus the time is in words, not an ISO time (AL-188).
+    expect(failed.reports[1]!.description).toContain("The drill message went out at 17:00 UTC on 21 November 2026 on the channel ");
     const late = systemReports(failed.lines, snapshot(drills({ acked: START + 40 * MINUTE })), START + 40 * MINUTE);
     expect(codes(late.reports)).toEqual([["update", "system.drill.failed", "drill/home/push-weekly/failed"]]);
-    expect(late.reports[0]!.headline).toBe("The drill push-weekly failed: the acknowledgment came late.");
+    expect(late.reports[0]!.headline).toBe("The drill push-weekly failed: the acknowledgment came after 30 minutes.");
     // The next run ends the failed line, and its own verdict decides again.
     const next = systemReports(late.lines, snapshot(drills({ at: START + DRILL.every + DAY })), START + DRILL.every + DAY);
     expect(codes(next.reports)).toEqual([

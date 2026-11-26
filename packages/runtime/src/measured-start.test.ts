@@ -1,12 +1,12 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { CONFIG_FORMAT, type AlertConfig, type ChannelId, type EscalationPolicy, type PersonId, type PlaceId } from "@mark1russell7/alerts";
+import { CONFIG_FORMAT, type AlertConfig, type ChannelId, type EscalationPolicy, type PersonId, type PlaceId, type SpendConfig } from "@mark1russell7/alerts";
 import { fakeWallClock, wallClock } from "@mark1russell7/algebra/clock";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HomeHeld } from "./home-lock.ts";
 import { openRuntimeLog } from "./log.ts";
-import { openMeasuredRuntime, type MeasuredRuntime } from "./measured-start.ts";
+import { fakeBase, fakeUrl, longestPartWork, MEASURE_KEYS, MEASURE_NOW_HEADER, openMeasuredRuntime, type MeasuredRuntime, type SnapshotWriteTime } from "./measured-start.ts";
 import { START_SNAPSHOT_EVERY, START_SNAPSHOT_FLOOR } from "./start-snapshot.ts";
 
 const MINUTE = 60_000;
@@ -83,7 +83,8 @@ describe("openMeasuredRuntime", { timeout: 30_000 }, () => {
   });
 
   it("times each write of the snapshot with the option timeSnapshot, and keeps no record without it", async () => {
-    const timed = await openMeasuredRuntime(home, { startSnapshot: true, timeSnapshot: true, snapshotFloor: 1 });
+    const heard: SnapshotWriteTime[] = [];
+    const timed = await openMeasuredRuntime(home, { startSnapshot: true, timeSnapshot: true, snapshotFloor: 1, onSnapshotWrite: (write) => heard.push(write) });
     opened.push(timed);
     // The first pass makes the start good. The next pass writes the snapshot, and the pass ends after the write.
     expect(timed.snapshotWrites).toEqual([]);
@@ -91,6 +92,8 @@ describe("openMeasuredRuntime", { timeout: 30_000 }, () => {
     expect(before).toBeGreaterThan(0);
     await timed.pass();
     expect(timed.snapshotWrites).toHaveLength(1);
+    // The function onSnapshotWrite gets the same record at the end of the write (CAP-65).
+    expect(heard).toEqual(timed.snapshotWrites);
     const [write] = timed.snapshotWrites;
     expect(write!.rows).toBeGreaterThan(0);
     expect(write!.chars).toBeGreaterThan(0);
@@ -103,6 +106,10 @@ describe("openMeasuredRuntime", { timeout: 30_000 }, () => {
     expect(write!.longestCpuMs).toBeGreaterThanOrEqual(0);
     expect(write!.longestWaitMs).toBeGreaterThanOrEqual(0);
     expect(write!.longestWaitMs).toBeLessThanOrEqual(write!.longestMs);
+    // The record has each part of the write, in order (AL-174).
+    expect(write!.parts).toHaveLength(write!.chunks);
+    expect(Math.max(...write!.parts.map((part) => part.ms))).toBeCloseTo(write!.longestMs, 6);
+    expect(Math.max(...write!.parts.map((part) => part.cpuMs))).toBeCloseTo(write!.longestCpuMs, 6);
     // The mark of the write is the last event of the log at the cut.
     expect(timed.instance.runtime.eventsAfterSnapshot()).toBeLessThan(before);
     // A pass in the same period of the snapshot does not write again.
@@ -165,11 +172,91 @@ describe("openMeasuredRuntime", { timeout: 30_000 }, () => {
     expect(time).toBeLessThan(start + MINUTE);
   });
 
+  it("sends each fetch to the fake of the feeds, with the instant of the wall clock (AL-131)", async () => {
+    const start = Date.UTC(2020, 0, 1);
+    const measured = await openMeasuredRuntime(home, { wall: wallClock({ start }), services: { feeds: "http://127.0.0.1:9/", channels: "http://localhost:9" } });
+    opened.push(measured);
+    // The fake of the test refuses each request. The calls of the global fetch are the requests of the transport and of the
+    // channel. A start with no feed has incidents of the system, thus the first pass also sends to the fake of the channels.
+    const calls = requests.mock.calls as unknown as [string, { readonly headers: Readonly<Record<string, string>> }][];
+    const feeds = calls.filter(([url]) => url.startsWith("http://127.0.0.1:9/"));
+    const channels = calls.filter(([url]) => url.startsWith("http://localhost:9/"));
+    expect(feeds.length).toBeGreaterThan(0);
+    expect(feeds.length + channels.length).toBe(calls.length);
+    for (const [url] of channels) expect(url.startsWith("http://localhost:9/api.pushover.net/")).toBe(true);
+    for (const [, init] of calls) {
+      const now = Number(init.headers[MEASURE_NOW_HEADER]);
+      expect(now).toBeGreaterThanOrEqual(start);
+      expect(now).toBeLessThan(start + MINUTE);
+    }
+    expect(feeds.some(([url]) => url.startsWith("http://127.0.0.1:9/api.weather.gov/alerts"))).toBe(true);
+  });
+
+  it("gives the URL of a request at a fake, and refuses a fake that is not on this computer", async () => {
+    expect(fakeUrl(fakeBase("http://127.0.0.1:4100/", "feeds"), "https://api.weather.gov/alerts/active?area=KS")).toBe("http://127.0.0.1:4100/api.weather.gov/alerts/active?area=KS");
+    expect(fakeUrl(fakeBase("http://localhost:4101/base", "channels"), "https://api.pushover.net/1/messages.json")).toBe("http://localhost:4101/base/api.pushover.net/1/messages.json");
+    for (const text of ["https://127.0.0.1:4100", "http://example.org", "http://127.0.0.1:4100/?key=1", "not a URL"]) {
+      expect(() => fakeBase(text, "feeds")).toThrow(RangeError);
+    }
+    await expect(openMeasuredRuntime(home, { services: { channels: "http://example.org" } })).rejects.toThrow(RangeError);
+    // The refusal comes before the lock. Thus a start after it opens the folder.
+    const measured = await open();
+    expect(measured.first.fetched.length).toBeGreaterThan(0);
+  });
+
+  it("opens a configuration with the Twilio call channel and a spend entry, and sends no call (AL-202)", async () => {
+    const call = "twilio-call" as ChannelId;
+    // Fake keys and a fake number: the country code +999 has no country.
+    const keys = {
+      ...MEASURE_KEYS,
+      TWILIO_ACCOUNT_SID: `AC${"0".repeat(32)}`,
+      TWILIO_API_KEY_SID: `SK${"1".repeat(32)}`,
+      TWILIO_API_KEY_SECRET: "s".repeat(32),
+      TWILIO_FROM: "+99900000001",
+      PHONE: "+99900000002",
+    };
+    const spend: SpendConfig = { provider: "provider:twilio", monthlyUsd: 10, reserveUsd: 3, floor: 5, timeZone: "America/Chicago" };
+    const base = config();
+    const calling: AlertConfig = {
+      ...base,
+      contacts: [...base.contacts, { person, channel: call, address: { to: { secret: "PHONE" } } }],
+      policies: base.policies.map((entry) => ({ ...entry, steps: [...entry.steps, { channel: call, at: 0 }] })),
+      spend: [spend],
+    };
+    writeFileSync(join(home, "config.json"), JSON.stringify(calling));
+    const measured = await openMeasuredRuntime(home, { keys });
+    opened.push(measured);
+    expect(measured.first.fetched.length).toBeGreaterThan(0);
+    await measured.pass();
+    expect(requests).not.toHaveBeenCalled();
+  });
+
   it("refuses private files that do not pass the check, and frees the lock", async () => {
     writeFileSync(join(home, "config.json"), JSON.stringify(config("NOT_A_MEASURE_KEY")));
     await expect(openMeasuredRuntime(home)).rejects.toThrow(/do not pass the check/);
     writeFileSync(join(home, "config.json"), JSON.stringify(config()));
     const measured = await open();
     expect(measured.first.fetched.length).toBeGreaterThan(0);
+  });
+});
+
+describe("the work of the parts of a snapshot write (AL-174)", () => {
+  it("takes the pauses of the garbage collector out of the CPU time of each part, with the part of a pause inside the part", () => {
+    const parts = [
+      { at: 0, ms: 60, cpuMs: 55 },
+      { at: 100, ms: 20, cpuMs: 14 },
+      { at: 200, ms: 30, cpuMs: 4 },
+    ];
+    // One pause of 45 ms inside the first part, one across the start of the second part, and one outside each part.
+    const pauses = [
+      { startTime: 10, duration: 45 },
+      { startTime: 95, duration: 10 },
+      { startTime: 150, duration: 30 },
+    ];
+    expect(longestPartWork(parts, pauses)).toEqual({ workMs: 10, gcMs: 45 });
+    expect(longestPartWork(parts, [])).toEqual({ workMs: 55, gcMs: 0 });
+    // A pause longer than the CPU time of its part gives no work below 0.
+    expect(longestPartWork([{ at: 0, ms: 10, cpuMs: 2 }], [{ startTime: 0, duration: 9 }])).toEqual({ workMs: 0, gcMs: 9 });
+    expect(longestPartWork([], pauses)).toEqual({ workMs: 0, gcMs: 0 });
   });
 });

@@ -5,29 +5,34 @@
  * that it gets.
  */
 import { isFrameClock, type WallClock } from "@mark1russell7/algebra/clock";
-import { channelDownPolicy, DEFAULT_SEND_LIMITS, downChannels, heldPersons, indicatorBreadth, limitShare, observeConditions, ONLY_COPY, type ChannelQuota, type ChannelSnapshot, type CopyWatch, type DrillWatch, type Duration, type EntryTimes, type Exhaustion, type FetchOutcome, type HeldPerson, type Incident, type IndicatorBreadth, type Instant, type LatenessFolds, type LoopBlock, type MergeState, type ObserveCondition, type ReportId, type SourceDescriptor, type SourceId, type StoreFill, type SourceProcedures, type Watch, type ZoneRegions } from "@mark1russell7/alerts";
+import { bucketOf, channelDownPolicy, DEFAULT_SEND_LIMITS, downChannels, heldPersons, indicatorBreadth, indicatorSurprise, indicatorUnits, knowsReport, MIN_READS, limitShare, matchPlaces, observeConditions, ONLY_COPY, type PlaceId, type StalePlace, type StoreBound, type WatchedPlace, type ChannelQuota, type ChannelSnapshot, type CopyWatch, type DrillWatch, type Duration, type EntryTimes, type Exhaustion, type FetchOutcome, type HeldPerson, type Incident, type IndicatorBreadth, type IndicatorSurprise, type Instant, type LatenessFolds, type LoopBlock, type MergeState, type ObserveCondition, type Report, type ReportId, type SourceDescriptor, type SourceId, type StoreFill, type SourceProcedures, type Watch, type ZoneRegions, type JointDown, type DriftCheck } from "@mark1russell7/alerts";
 import type { ChunkOptions, FoldMark, FoldSnapshot } from "@mark1russell7/sqlite";
 import { errorMessage } from "@mark1russell7/text";
+import { compareCodeUnits } from "@mark1russell7/text/order";
 import type { BalanceWatch } from "./balance.ts";
+import type { JointWatch } from "./joint.ts";
+import type { DriftWatch } from "./drift.ts";
 import type { LimitWatch } from "./use.ts";
 import { channelWatch, lastFetchSuccess } from "./channel-watch.ts";
 import { createDispatcher, type DeliveryOptions, type DeliveryStep } from "./delivery.ts";
 import { drillStarts, drillStep, type CopyDrill } from "./drills.ts";
 import { entryIndex } from "./entries.ts";
-import { envelope, EVENT_TYPES, FOLD_TYPES, unknownEvents, type RuntimeEvent } from "./events.ts";
+import { callsEvent, envelope, EVENT_TYPES, FOLD_TYPES, unknownEvents, type RuntimeEvent } from "./events.ts";
 import { blockEvent } from "./loop-watch.ts";
 import { importPage, sharePage, type ExchangePage, type ReceivedPage } from "./exchange.ts";
 import { fetchStep } from "./fetch.ts";
+import { openIncidents } from "./metrics.ts";
 import { limited } from "./limit.ts";
 import type { RuntimeLog } from "./log.ts";
 import { cutIncidents, modeEvents, modeStatus, observeStep, type ModeStatus, type ObserveParts } from "./observe.ts";
 import { READING_RETENTION, type ReadingStore } from "./readings.ts";
 import { SNAPSHOT_MISSES, snapshotStep } from "./snapshot.ts";
-import { readSnapshot, snapshotKey, snapshotRows, type StartRead, type StartSnapshot } from "./start-snapshot.ts";
+import { contextKey, FOLD_VERSION, readSnapshot, SNAPSHOT_UPGRADES, snapshotKey, snapshotRows, type StartRead, type StartSnapshot } from "./start-snapshot.ts";
 import { retention, type RetentionOptions } from "./retention.ts";
 import type { ReadWatch } from "./schedule.ts";
 import { seriesReads } from "./series-reads.ts";
-import { fold, rebuild, type ExchangeCursor, type RuntimeState } from "./state.ts";
+import { unitHistory } from "./unit-history.ts";
+import { fold, foldScratch, rebuild, recordBatch, recordScratch, type ExchangeCursor, type RecordScratch, type RuntimeState } from "./state.ts";
 import { earliest, nextFetch, systemEvent, systemView, type SystemView, type ViewConfig } from "./view.ts";
 
 /** The parts of the worker of the exchange that a pass reads (AL-16). `exchangeWorker` gives them. */
@@ -60,6 +65,14 @@ export interface RuntimeOptions {
   readonly watch: (source: SourceDescriptor) => Watch;
   /** The configuration of the views, other than the descriptors of the sources. */
   readonly view: Omit<ViewConfig, "sources">;
+  /**
+   * This function gives the places of a pass at its start (AL-40): the fixed places, then each moving place at its last fix.
+   * The default is the places of `view`. The coverage, the threats, the admission, the observe mode and the delivery of the
+   * pass read them. The watch of each source and the log do not.
+   */
+  readonly places?: (at: Instant) => readonly WatchedPlace[];
+  /** This function gives the stale moving places of this copy at the time of the view (AL-40). Each one is a private system report. */
+  readonly stale?: (at: Instant) => readonly StalePlace[];
   /** The id of this run. Each start of the process has a new id. */
   readonly run: string;
   /** The id of this copy of the system (AL-16). The default is the id of `ONLY_COPY`. */
@@ -71,6 +84,11 @@ export interface RuntimeOptions {
    * default is `SNAPSHOT_MISSES`.
    */
   readonly snapshotMisses?: number;
+  /**
+   * The bound of the count of the reports in the merge state (AL-145). The default is `REPORT_LIMIT`. At the bound, a fetch
+   * keeps out each new observation of low priority (`keepsAtBound`), and the view has the line `system.store.full`.
+   */
+  readonly reportLimit?: number;
   /**
    * The retention of old incidents (AL-47). The fold retires on a cadence of the event time (AL-109), thus the retention goes
    * into the context of the fold, `config`. The defaults come from the core.
@@ -109,6 +127,16 @@ export interface RuntimeOptions {
    */
   readonly uses?: readonly LimitWatch[];
   /**
+   * The watch of the joint down time of the copies (AL-148). Each pass starts its `check`, next to its fetches. Each stage
+   * of the joint down time is a line of system reports. With no watch, each open line of the joint down time ends.
+   */
+  readonly joint?: JointWatch;
+  /**
+   * The drift watch of the copy hosts (AL-139). Each pass starts its `check`, and the check does not wait for the commands.
+   * Each stage of a drift check is a line of system reports. With no watch, each open line of a drift ends.
+   */
+  readonly drift?: DriftWatch;
+  /**
    * The other watches that read on a schedule: for example the watch of the replies of the texts. Each pass starts
    * `check` of each watch, next to its fetches. A step of the wall clock moves their times.
    */
@@ -143,6 +171,12 @@ export interface RuntimeOptions {
    */
   readonly onReadingsFault?: (error: unknown, action: ReadingsAction) => void;
   /**
+   * The runtime gives this hook the new reports of each fetch, after the write of the log (AL-132). The live metrics count
+   * them. A failed write gives the hook nothing, thus the next fetch gives the reports again. A fault of the hook does not
+   * stop the pass, because the alerts do not need the metrics.
+   */
+  readonly onReports?: (reports: readonly Report[]) => void;
+  /**
    * The regions of the zones of the indicator areas, from a table of the atlas. The breadth of a place reads them. Without
    * the table, a series with the area of a zone is in the list `unplaced` of the breadth.
    */
@@ -156,6 +190,27 @@ export interface RuntimeOptions {
 
 /** The action of the store of the readings that gave a fault: a write, a delete or a read of the series. */
 export type ReadingsAction = "add" | "prune" | "read";
+
+/**
+ * The default bound of the count of the reports in the merge state (AL-145). A report and its parts take approximately
+ * 9 to 11 kB of the heap. The measure used the fake feeds of the testkit and 1 to 10 persons. A pass also makes one route of
+ * approximately 1.2 kB for each live incident and each person. With 10 persons, 10,000 reports take approximately 230 MB
+ * at the peak of a pass. That is less than half of the heap of a host with 1 GB of memory.
+ */
+export const REPORT_LIMIT = 10_000;
+
+/** The store and the family of the bound of the reports in the line `system.store.full` (AL-145). */
+export const STATE_STORE = "state";
+export const REPORT_FAMILY = "reports";
+
+/**
+ * This function tells if a new report goes into a state at its bound (AL-145). An update or a cancel of an earlier report
+ * goes in. A report for named persons goes in. A report with an area that covers a watched place (`matchPlaces`) goes in. Thus a
+ * full state keeps out only the new reports of other areas: the reports that the delivery sends to no person.
+ */
+export function keepsAtBound(report: Report, places: readonly WatchedPlace[]): boolean {
+  return report.references.length > 0 || (report.addresses?.length ?? 0) > 0 || matchPlaces(report, places).length > 0;
+}
 
 /** The result of one pass. */
 export interface Pass {
@@ -183,8 +238,34 @@ export interface Pass {
    * runtime has a store of the readings and the read of the store passed. It gives counts and no decision.
    */
   readonly breadth?: IndicatorBreadth;
+  /**
+   * The surprise of the indicator signals at `at`, in the world and in each watched place (AL-24). The base rate of each
+   * unit comes from the hours before the hour of `at`. It is present when the breadth is present and the read of the
+   * history passed. It gives no decision.
+   */
+  readonly surprise?: IndicatorSurprise;
   /** The mode of each source with a mode (AL-73), with the verdict of each source that observes. It has no person. */
   readonly modes?: readonly ModeStatus[];
+}
+
+/**
+ * The part of a pass that a reader keeps after the pass ends (AL-145). It has the routes of the delivery step only as a
+ * count: `open`. The routes are one for each live incident and each person, thus a kept list of them grows with the
+ * product of the two. The next pass makes its routes again from the state.
+ */
+export interface KeptPass extends Omit<Pass, "delivery"> {
+  /** The delivery step of the pass with no routes, when the runtime has a delivery. */
+  readonly delivery?: Omit<DeliveryStep, "routes">;
+  /** The count of the open incidents of the routes of the pass (`openIncidents`). It is 0 with no delivery. */
+  readonly open: number;
+}
+
+/** This function gives the part of a pass that a reader keeps (`KeptPass`). It does not change the pass. */
+export function keptPass(pass: Pass): KeptPass {
+  const { delivery, ...rest } = pass;
+  if (delivery === undefined) return { ...rest, open: 0 };
+  const { routes, ...step } = delivery;
+  return { ...rest, delivery: step, open: openIncidents(routes) };
 }
 
 /** The result of `take`: the import of one page of another copy. */
@@ -226,6 +307,8 @@ export interface Runtime {
    * the write fails. Then the old snapshot stays. The close of the runtime waits for a write in progress.
    */
   writeStartSnapshot(chunks?: ChunkOptions): Promise<number>;
+  /** This function gives the context key of the fold of this runtime (AL-169). The key mode of the start gives the same key. */
+  contextKey(): string;
   /**
    * This function gives the count of the events of the log after the mark of the last snapshot that this runtime read or
    * wrote (AL-115). With no such snapshot, it gives the position of the last event of the log.
@@ -276,7 +359,13 @@ export function openRuntime(options: RuntimeOptions): Runtime {
   // The fold retires on a cadence of the event time (AL-109). Thus the retention is a part of the context of the fold.
   const config: ViewConfig = { ...options.view, sources: options.sources.map((source) => source.describe()), retention: options.retention ?? {} };
   const ids = config.sources.map((source) => source.id);
-  const repeated = ids.find((id, at) => ids.indexOf(id) !== at);
+  // A set finds a repeated id in O(n) (AL-136).
+  const known = new Set<string>();
+  const repeated = ids.find((id) => {
+    if (known.has(id)) return true;
+    known.add(id);
+    return false;
+  });
   if (repeated !== undefined) throw new Error(`Two sources have the id ${repeated}.`);
 
   // The index of the times of entry is a fold of the same events as the state. The start reads only the types of the fold
@@ -297,18 +386,43 @@ export function openRuntime(options: RuntimeOptions): Runtime {
     resumed.snapshot?.state,
   );
   const skipped = unknownEvents(counts);
-  const start: StartRead = { events: folded, ...(resumed.mark === undefined ? {} : { snapshot: resumed.mark }), ...(resumed.fault === undefined ? {} : { fault: resumed.fault }) };
+  const start: StartRead = { events: folded, ...(resumed.mark === undefined ? {} : { snapshot: resumed.mark }), ...(resumed.fault === undefined ? {} : { fault: resumed.fault }), ...(resumed.upgraded === undefined ? {} : { upgraded: resumed.upgraded }) };
 
   // The fold runs on a draft before each write. The state changes only when the transaction commits.
-  const append = (events: readonly RuntimeEvent[]): readonly string[] => {
+  // The new reports of the fetch events that the log accepted go to the hook of the metrics. A report is new when the own
+  // merge did not know its id before the write. A feed that gives a report again in a new observation adds no count.
+  const reported = (accepted: readonly RuntimeEvent[], before: MergeState): void => {
+    if (options.onReports === undefined) return;
+    const seen = new Set<string>();
+    const reports = accepted
+      .flatMap((event) => (event.type === "fetch" ? event.reports : []))
+      .filter((report) => !seen.has(report.id) && !knowsReport(before, report.id) && Boolean(seen.add(report.id)));
+    if (reports.length === 0) return;
+    try {
+      options.onReports(reports);
+    } catch {
+      // A fault of the metrics does not stop the pass.
+    }
+  };
+  // The record scratch of the fetches of the pass in progress (AL-136). Without a pass, each batch has its own record scratch.
+  // RULE: a reader that keeps a state across a pause ends this scope first (`writeStartSnapshot`). Thus no fold changes a record of the kept state.
+  let passRecords: RecordScratch | undefined;
+  const append = (events: readonly RuntimeEvent[], kept?: (accepted: readonly RuntimeEvent[], before: MergeState) => void): readonly string[] => {
+    const before = state.own.merge;
     let draft = state;
+    // Only the last state of the batch becomes the state. Thus the folds of the batch grow its lists in place (AL-150).
+    const scratch = foldScratch();
+    const records = passRecords ?? recordScratch();
     const accepted: RuntimeEvent[] = [];
     // The merge state after each retirement of the fold, with the position of its event.
     const retirements: { readonly at: number; readonly merge: Pick<MergeState, "reports"> }[] = [];
-    const conflicts = log.appendAll(events, (event) => {
-      draft = fold(draft, event, config, (merge) => retirements.push({ at: accepted.length, merge }));
-      accepted.push(event);
-    });
+    // A failed write puts back each record that the batch changed in place. Thus the state stays as it was.
+    const conflicts = recordBatch(records, () =>
+      log.appendAll(events, (event) => {
+        draft = fold(draft, event, config, (merge) => retirements.push({ at: accepted.length, merge }), scratch, records);
+        accepted.push(event);
+      }),
+    );
     state = draft;
     // The index gets the events only after the write. Thus a failed write, and the write again, move no stamp two times.
     // The rebuild gives the index each event before its fold, thus each prune comes after the event of its retirement.
@@ -317,6 +431,7 @@ export function openRuntime(options: RuntimeOptions): Runtime {
       entries.add(event);
       for (; next < retirements.length && retirements[next]!.at === at; next += 1) entries.prune(retirements[next]!.merge);
     });
+    kept?.(accepted, before);
     return conflicts;
   };
 
@@ -329,12 +444,17 @@ export function openRuntime(options: RuntimeOptions): Runtime {
   const logId = recovery === undefined ? (firstEventId(log) ?? `started:${options.run}`) : `recovered:${recovery.quarantine}`;
   // The position of the next read of each other copy. It starts at the position of the log, and it moves at each page.
   const positions = new Map<string, ExchangeCursor>();
+  // The places of the pass in progress (AL-40). Each pass reads them at its start. Thus each part of one pass reads the same places.
+  let places: readonly WatchedPlace[] = config.places;
+  const fixedIds = new Set<PlaceId>(config.places.map((place) => place.id));
 
   const copies = options.copies;
   // The parts of the observe mode of the new sources (AL-73). With no delivery, no person watches. Thus each verdict passes after its window.
   const observeParts: ObserveParts = {
     people: options.delivery?.recipients.map((recipient) => recipient.watch) ?? [],
-    places: config.places,
+    get places() {
+      return places;
+    },
     assess: options.delivery?.assess,
     limits: options.delivery?.sendLimits,
     ...(copies === undefined ? {} : { share: (at: Instant) => limitShare(copies.watches(), at) }),
@@ -348,7 +468,11 @@ export function openRuntime(options: RuntimeOptions): Runtime {
   const dispatcher = options.delivery === undefined ? undefined : createDispatcher(options.delivery, {
           clock,
           run: options.run,
-          places: config.places,
+          get places() {
+            return places;
+          },
+          // A place of the pass that is not a fixed place of the view is a moving place (AL-40). It gets the holds of the route.
+          ...(options.places === undefined ? {} : { moving: (id: PlaceId) => !fixedIds.has(id) }),
           link: config.link,
           state: () => state,
           append,
@@ -394,10 +518,33 @@ export function openRuntime(options: RuntimeOptions): Runtime {
   };
   // The reads of the indicator series between the passes. A pass reads from the store only the changed series.
   const indicatorReads = store === undefined ? undefined : seriesReads({ store, sources: config.sources });
+  // The history of the signal units (AL-24): one read of each unit in each hour, in the store of the readings.
+  const unitReads = store === undefined ? undefined : unitHistory(store);
   const zones = options.zones ?? [];
 
   const limit = options.snapshotMisses ?? SNAPSHOT_MISSES;
   if (!Number.isInteger(limit) || limit < 1) throw new Error(`The count of snapshot misses is ${limit}, not an integer of 1 or more.`);
+  const reportLimit = options.reportLimit ?? REPORT_LIMIT;
+  if (!Number.isInteger(reportLimit) || reportLimit < 1) throw new Error(`The bound of the reports is ${reportLimit}, not an integer of 1 or more.`);
+  // The count of the new observations of each source that wait outside the log at its last fetch that passed (AL-145).
+  const waiting = new Map<SourceId, number>();
+  // The admission of one fetch. It counts the reports of the state and the reports that the fetch took before. An
+  // observation with no report adds no entry to the bound, thus it always goes in: its readings, its head and the cursor of
+  // its source do not wait (AL-171).
+  const admission = (): ((reports: readonly Report[]) => boolean) => {
+    let count = state.merge.reports.length;
+    return (reports) => {
+      if (reports.length === 0) return true;
+      if (count + reports.length > reportLimit && !reports.some((report) => keepsAtBound(report, places))) return false;
+      count += reports.length;
+      return true;
+    };
+  };
+  const readBounds = (): StoreBound[] => {
+    const sources = [...waiting].filter(([, count]) => count > 0).map(([source]) => source);
+    const count = sources.reduce((sum, source) => sum + (waiting.get(source) ?? 0), 0);
+    return [{ store: STATE_STORE, family: REPORT_FAMILY, entries: state.merge.reports.length, limit: reportLimit, waiting: count, sources: sources.sort(compareCodeUnits) }];
+  };
 
   const fetchOne = async (source: SourceProcedures, descriptor: SourceDescriptor, stop: AbortSignal | undefined): Promise<readonly string[]> => {
     const started = clock.now();
@@ -420,19 +567,21 @@ export function openRuntime(options: RuntimeOptions): Runtime {
     // A failure after the stop is the stop, not a fault of the source. The log keeps no fetch, and the cursor stays.
     if (stopped && !outcome.ok) return [];
     const ended = clock.now();
-    const fetched = fetchStep({ source: descriptor.id, descriptor, procedures: source, started, ended, outcome, known: (id) => log.has(id), frame: state.steps.length });
+    const fetched = fetchStep({ source: descriptor.id, descriptor, procedures: source, started, ended, outcome, known: (id) => log.has(id), frame: state.steps.length, admit: admission() });
+    if (outcome.ok) waiting.set(descriptor.id, fetched.waiting);
     // The readings go first. A failed write of the log leaves the observations new, thus the next fetch gives their readings
     // again, and the store keeps each key once.
     if (fetched.readings.length > 0) {
       guarded("add", (readings) => readings.add(fetched.readings));
       indicatorReads?.note(fetched.readings);
     }
-    const conflicts = append(fetched.events);
+    const conflicts = append(fetched.events, reported);
     if (descriptor.listing !== "snapshot") return conflicts;
     // The step reads the merge state after the fetch, thus a new report of the fetch has no miss. It reads only the own
     // merge state: a report that only another copy sees does not end or come back in this copy.
     const step = snapshotStep({ source: descriptor.id, started, ended, outcome, merge: state.own.merge, misses: misses.get(descriptor.id) ?? new Map(), limit, frame: state.steps.length });
-    const more = append(step.events);
+    // A step with no event writes no transaction (AL-165).
+    const more = step.events.length === 0 ? [] : append(step.events);
     // The counts change only after the write. A failed write leaves the old counts, thus the end comes later.
     misses.set(descriptor.id, step.misses);
     return [...conflicts, ...more];
@@ -444,7 +593,7 @@ export function openRuntime(options: RuntimeOptions): Runtime {
   // Each watch that reads on a schedule: the balance watches and the other reads.
   const uses = options.uses ?? [];
   if (new Set(uses.map((watch) => watch.id)).size !== uses.length) throw new Error("Two watches of a limit have the same id. Give one watch to each limit.");
-  const scheduled: readonly ReadWatch[] = [...watches, ...uses, ...(options.reads ?? [])];
+  const scheduled: readonly ReadWatch[] = [...watches, ...uses, ...(options.joint === undefined ? [] : [options.joint]), ...(options.drift === undefined ? [] : [options.drift]), ...(options.reads ?? [])];
 
   // A fault of the store of a gate ends no line of a quota. The notes of the heartbeat tell of the fault.
   const readQuotas = (): readonly ChannelQuota[] | undefined => {
@@ -496,18 +645,24 @@ export function openRuntime(options: RuntimeOptions): Runtime {
 
   // The close of the sources, one time. A source that throws in its close does not stop the close of the other sources.
   let closed: Promise<void> | undefined;
+  // The life of the runtime: the reads in the background use it, not the signal of a pass (AL-139). The scope of a pass
+  // closes at the end of the pass, and its signal then cuts each read in the background.
+  const life = new AbortController();
   // The mark of the last snapshot that this runtime read or wrote, and the write of the snapshot in progress (AL-115).
   let snapshotMark: FoldMark | undefined = resumed.mark;
   let snapshotWrite: Promise<number> | undefined;
   // The close waits for a write of the snapshot in progress. Thus the entry closes the store of the snapshot after the write.
-  const close = (): Promise<void> =>
-    (closed ??= Promise.allSettled([...options.sources.map((source) => Promise.resolve().then(() => source.close?.())), snapshotWrite]).then(() => undefined));
+  const close = (): Promise<void> => {
+    if (!life.signal.aborted) life.abort(new Error("The runtime is closed."));
+    return (closed ??= Promise.allSettled([...options.sources.map((source) => Promise.resolve().then(() => source.close?.())), snapshotWrite]).then(() => undefined));
+  };
 
   return {
     config,
     state: () => state,
     skipped,
     start,
+    contextKey: () => contextKey(config),
     async writeStartSnapshot(chunks) {
       const store = options.startSnapshot;
       if (store === undefined) throw new Error("The runtime has no store of the snapshot.");
@@ -521,7 +676,10 @@ export function openRuntime(options: RuntimeOptions): Runtime {
       if (last === undefined || last.seq !== head || first === undefined) throw new Error("The last event of the log has a type that this build does not know.");
       const key = snapshotKey(config, { first, recoveries: log.counts().get("recovered") ?? 0 });
       // The cut: the mark, the state and a copy of the index, in this turn of the loop. A fold gives a new state and does not
-      // change the state before it, thus the rows of the cut do not change in the pauses of the write.
+      // change the state before it, thus the rows of the cut do not change in the pauses of the write. The folds of a pass
+      // change the records of each source of the last state in place (AL-136). Thus the cut ends the record scratch of the
+      // pass: the next fold copies each record one time, and the records of the cut do not change.
+      if (passRecords !== undefined) passRecords = recordScratch();
       const mark: FoldMark = { seq: head, id: last.event.id };
       const cut = { state, entries: entries.snapshot() };
       const write = store.writeInChunks(key, mark, snapshotRows(cut), chunks);
@@ -539,16 +697,24 @@ export function openRuntime(options: RuntimeOptions): Runtime {
       if (closed !== undefined) throw new Error("The runtime is closed: its sources have no session.");
       const stepped = followStep();
       const start = clock.now();
+      places = options.places?.(start) ?? config.places;
       const due = options.sources.flatMap((source, at) => {
         const descriptor = config.sources[at]!;
         return nextFetch(state, descriptor) <= start ? [{ source, descriptor }] : [];
       });
       // A watch reads only when it is due, and its check does not throw. It runs next to the fetches.
-      const checks = Promise.all(scheduled.map((watch) => watch.check(clock, stop)));
+      const checks = Promise.all(scheduled.map((watch) => watch.check(clock, stop, life.signal)));
       // The probes of the down channels run next to the fetches. A probe does not throw, and it ends at the call limit.
       const probes = channels?.probe(start, lastFetchSuccess(state.health));
       // Each fetch ends before the pass ends, also when one of them fails. Thus no fetch of a pass runs on in the next pass.
-      const settled = await Promise.allSettled(due.map(({ source, descriptor }) => fetchOne(source, descriptor, stop)));
+      // The fetches of the pass share one record scratch (AL-136). Thus n fetches of n sources copy each record of the sources one time, not n times.
+      passRecords = recordScratch();
+      let settled: PromiseSettledResult<readonly string[]>[];
+      try {
+        settled = await Promise.allSettled(due.map(({ source, descriptor }) => fetchOne(source, descriptor, stop)));
+      } finally {
+        passRecords = undefined;
+      }
       await checks;
       await probes;
       await options.copies?.ready();
@@ -559,7 +725,11 @@ export function openRuntime(options: RuntimeOptions): Runtime {
       const at = clock.now();
       // The breadth of the indicator signals at the time of the view. A fault of the store gives no breadth, and the pass continues.
       const signals = indicatorReads === undefined ? undefined : guarded("read", () => indicatorReads.signals(at));
-      const breadth = signals === undefined ? undefined : indicatorBreadth(signals, config.places, zones);
+      const breadth = signals === undefined ? undefined : indicatorBreadth(signals, places, zones);
+      // The surprise reads the history of the hours before this hour. Then the first pass of the hour writes its units.
+      // A fault of the store gives no surprise or no write, and the pass continues.
+      const surprise = breadth === undefined || unitReads === undefined ? undefined : guarded("read", () => indicatorSurprise(breadth, unitReads.histories(bucketOf(at)), MIN_READS, unitReads.pairs(bucketOf(at))));
+      if (breadth !== undefined) guarded("add", () => unitReads?.record(at, indicatorUnits(breadth)));
       // Each due drill starts before the view. Thus the system fold of the view gives its run, and the delivery step sends it.
       const drills = options.drills ?? [];
       const started = drillStarts(state, drills, self, at);
@@ -575,7 +745,8 @@ export function openRuntime(options: RuntimeOptions): Runtime {
       const stores = readStores();
       // The persons with a hold of the send limit (AL-81). With no delivery, no person has a hold, and each open line stays.
       const held = dispatcher === undefined ? undefined : heldOf(at);
-      const view = systemView(state, config, at, { drills: drilled.snapshots, ...(quotas === undefined ? {} : { quotas }), ...(stores === undefined ? {} : { stores }), balances: watches.flatMap((watch) => watch.balance() ?? []), uses: uses.flatMap((watch) => watch.use() ?? []), ...(options.copies === undefined ? {} : { copies: options.copies.watches(), copy: self, drillWatches: options.drillWatches ?? [] }), ...(folds === undefined ? {} : { folds }), ...(exhausted === undefined ? {} : { exhausted }), ...(held === undefined ? {} : { held }), ...(channels === undefined ? {} : { channels: channels.snapshots() }), ...(observing === undefined ? {} : { observing }) });
+      const stale = options.stale?.(at);
+      const view = systemView(state, places === config.places ? config : { ...config, places }, at, { ...(stale === undefined ? {} : { stale }), drills: drilled.snapshots, ...(quotas === undefined ? {} : { quotas }), ...(stores === undefined ? {} : { stores }), bounds: readBounds(), balances: watches.flatMap((watch) => watch.balance() ?? []), uses: uses.flatMap((watch) => watch.use() ?? []), ...jointPart(options.joint), ...driftPart(options.drift), ...(options.copies === undefined ? {} : { copies: options.copies.watches(), copy: self, drillWatches: options.drillWatches ?? [] }), ...(folds === undefined ? {} : { folds }), ...(exhausted === undefined ? {} : { exhausted }), ...(held === undefined ? {} : { held }), ...(channels === undefined ? {} : { channels: channels.snapshots() }), ...(observing === undefined ? {} : { observing }) });
       folds = view.folds;
       const event = systemEvent(view);
       if (event !== undefined) conflicts.push(...append([event]));
@@ -594,6 +765,9 @@ export function openRuntime(options: RuntimeOptions): Runtime {
       const heldChanged = held !== undefined && delivery !== undefined && personsOf(heldOf(clock.now())) !== personsOf(held);
       // A run that starts to open a line, or an accepted send on a down channel, changes a line in the view of the next pass.
       const down = delivery !== undefined && channels !== undefined && channels.step(delivery, clock.now(), downChannels(state.lines, self), lastFetchSuccess(state.health));
+      // The calls of the probes and of the step go into the log (AL-147). The placement measures each shared channel from them.
+      const calls = channels?.calls() ?? [];
+      if (calls.length > 0) conflicts.push(...append([callsEvent(self, calls, clock.now(), lastFetchSuccess(state.health))]));
       // The conditions of the observe mode go into the view of the next pass. A new condition brings that pass at once. A new
       // reason with the same facts does not, because the system reports keep no reason as a fact.
       const since = new Map(Object.entries(state.modes).flatMap(([source, track]) => (track.since === undefined ? [] : [[source as SourceId, track.since] as const])));
@@ -610,6 +784,7 @@ export function openRuntime(options: RuntimeOptions): Runtime {
         guarded("prune", (readings) => {
           readings.prune(at - keep);
           indicatorReads?.pruned(at - keep);
+          unitReads?.pruned(at - keep);
         });
       }
 
@@ -627,6 +802,7 @@ export function openRuntime(options: RuntimeOptions): Runtime {
         ...(delivery === undefined ? {} : { delivery }),
         ...(wakeAt === undefined ? {} : { wakeAt }),
         ...(breadth === undefined ? {} : { breadth }),
+        ...(surprise === undefined ? {} : { surprise }),
         modes: modeStatus(state, observed.verdicts),
       };
       await options.onPass?.(pass);
@@ -647,6 +823,14 @@ export function openRuntime(options: RuntimeOptions): Runtime {
   };
 }
 
+// True when the log has an event of one of the types at or before the position. The counts of the log skip the read of a type with no event.
+function newEventsUpTo(log: RuntimeLog, counts: ReadonlyMap<string, number>, types: readonly RuntimeEvent["type"][], seq: number): boolean {
+  const present = types.filter((type) => (counts.get(type) ?? 0) > 0);
+  if (present.length === 0) return false;
+  const first = [...log.entries({ after: 0, types: present, limit: 1 })][0];
+  return first !== undefined && first.seq <= seq;
+}
+
 // The id of the first event of the log of a type that this build knows, or undefined for an empty log.
 function firstEventId(log: RuntimeLog): string | undefined {
   return [...log.entries({ after: 0, types: EVENT_TYPES, limit: 1 })][0]?.event.id;
@@ -657,16 +841,27 @@ interface StartResume {
   readonly snapshot?: StartSnapshot;
   readonly mark?: FoldMark;
   readonly fault?: string;
+  readonly upgraded?: number;
 }
 
 // The snapshot of a store for the open of a log (AL-105). A snapshot of another key, of another log or of a broken file is not used.
+// With no snapshot of the fold, a snapshot of an old fold with an upgrade is used (AL-153).
 function readStart(store: FoldSnapshot | undefined, log: RuntimeLog, config: ViewConfig, counts: ReadonlyMap<string, number>): StartResume {
   if (store === undefined) return {};
   const first = firstEventId(log);
   if (first === undefined) return {};
   try {
-    const key = snapshotKey(config, { first, recoveries: counts.get("recovered") ?? 0 });
-    return store.read(key, log, (mark, rows) => ({ mark, snapshot: readSnapshot(rows) })) ?? {};
+    const snapshotLog = { first, recoveries: counts.get("recovered") ?? 0 };
+    const key = snapshotKey(config, snapshotLog);
+    const current = store.read(key, log, (mark, rows) => ({ mark, snapshot: readSnapshot(rows) }));
+    if (current !== undefined) return current;
+    for (const [version, upgrade] of Object.entries(SNAPSHOT_UPGRADES)) {
+      const from = Number(version);
+      if (from === FOLD_VERSION) continue;
+      const old = store.read({ ...key, version: from }, log, (mark, rows) => ({ mark, snapshot: readSnapshot(rows) }));
+      if (old !== undefined && !newEventsUpTo(log, counts, upgrade.since, old.mark.seq)) return { mark: old.mark, snapshot: upgrade.upgrade(old.snapshot), upgraded: from };
+    }
+    return {};
   } catch (error) {
     return { fault: error instanceof Error ? error.name : typeof error };
   }
@@ -693,4 +888,18 @@ function* counted<T>(events: Iterable<T>, each: (event: T) => void): Generator<T
     each(event);
     yield event;
   }
+}
+
+// The joint down time in the view: `null` with no watch, thus each open line ends. Before the first check, no field keeps each open line.
+function jointPart(watch: JointWatch | undefined): { readonly joint?: JointDown | null } {
+  if (watch === undefined) return { joint: null };
+  const joint = watch.joint();
+  return joint === undefined ? {} : { joint };
+}
+
+// The drift checks in the view: `null` with no watch, thus each open line ends. Before the first check, no field keeps each open line.
+function driftPart(watch: DriftWatch | undefined): { readonly drift?: readonly DriftCheck[] | null } {
+  if (watch === undefined) return { drift: null };
+  const drift = watch.drift();
+  return drift === undefined ? {} : { drift };
 }

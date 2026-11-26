@@ -4,11 +4,12 @@
  */
 
 import type { Area, SourceDescriptor } from "@mark1russell7/alerts";
-import { EARTHQUAKE_KIND, SOURCE_ID, USGS_ORIGIN } from "./map.ts";
+import { EARTHQUAKE_KIND, NUCLEAR_KIND, SOURCE_ID, USGS_ORIGIN } from "./map.ts";
 
 /**
  * The countries and territories where the networks of the USGS find each felt event, as ISO 3166 codes. The feed
- * is global, but outside these areas it does not have each small event that people feel.
+ * is global, but outside these areas it does not have each small event that people feel. The feed also has the
+ * nuclear tests outside these areas. The coverage is one list for the two kinds, so it keeps the smaller areas.
  */
 const COVERAGE: readonly Area[] = ["US", "PR", "VI", "GU", "MP", "AS"].map((code) => ({ type: "code", system: "iso3166", code }));
 
@@ -23,7 +24,7 @@ export const USGS_DESCRIPTOR: SourceDescriptor = {
   origins: [USGS_ORIGIN],
   dependsOn: ["provider:usgs", "cdn:cloudfront"],
   uses: ["internet", "dns", "power"],
-  kinds: [EARTHQUAKE_KIND],
+  kinds: [EARTHQUAKE_KIND, NUCLEAR_KIND],
   coverage: COVERAGE,
   transport: "poll",
   interval: 60_000,

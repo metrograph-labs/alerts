@@ -137,6 +137,10 @@ describe("the declaration of the service", () => {
     expect(routes(undefined, undefined, undefined, () => EMPTY_INTERESTS)).toEqual([["api", ["GET /status", "GET /interests"]]]);
   });
 
+  it("ends the shutdown of each profile with the stage that stops the context of the traces (AL-133)", () => {
+    for (const [name, profile] of Object.entries(PROFILES)) expect([name, profile.phases?.at(-1)?.name]).toEqual([name, "flush the output"]);
+  });
+
   it("declares the worker of the deploy of the outage call beside the passes, and each rule still holds", () => {
     const loop = loopOf();
     const outage = outageDeployWorker({ deploy: async () => ({ ok: false, stage: "service", errors: ["The test makes no deploy."] }), clock: realClock, wall: wallClock(), limit: loop.times.passLimit });
@@ -155,6 +159,14 @@ describe("the declaration of the service", () => {
     // The status shows the files of the start, thus a runtime on the last good set is plain to see.
     expect(statusOf(loop, outage, { use: "good", reasons: 1 }).start).toEqual({ use: "good", reasons: 1 });
     expect("start" in statusOf(loop, outage)).toBe(false);
+    // The status shows the last read of each other copy, thus a deploy can tell if another copy is up (AL-186).
+    const watch = { copy: "b", skewLimit: 2_000, maxAge: 60_000, since: 1, read: { at: 9, skew: 0, sameConfig: true } };
+    // It also shows a copy that is not steady, thus a deploy waits until the copy is steady (AL-204).
+    expect(statusOf(loop, outage, undefined, { watches: () => [watch, { copy: "c", skewLimit: 2_000, maxAge: 60_000, since: 1, unsteadySince: 7 }] }).copies).toEqual([
+      { copy: "b", readAt: 9, unsteadySince: null },
+      { copy: "c", readAt: null, unsteadySince: 7 },
+    ]);
+    expect("copies" in statusOf(loop, outage)).toBe(false);
   });
 
   it("declares the worker and the host of the exchange together, as a copy with peers and a listener has them", () => {
@@ -185,7 +197,7 @@ describe("the lifecycle of the service", () => {
     // embeddedProcess() adds no signal handler and does not end the process of the test
     const loop = loopOf();
     let closes = 0;
-    // The shutdown ends the sessions of the sources first, then it closes the log, and last it releases the lock of the home folder.
+    // The shutdown ends the sessions of the sources first, then it closes the log and releases the lock of the home folder.
     const closed: string[] = [];
     const log = {
       close: () => {
@@ -205,6 +217,13 @@ describe("the lifecycle of the service", () => {
         return Promise.resolve();
       },
     };
+    // The context of the traces stops in the last stage, flush the output, after the lock of the home folder (AL-82).
+    const telemetry = {
+      shutdown: () => {
+        closed.push("telemetry");
+        return Promise.resolve();
+      },
+    };
     // A built page with one file. The path / gives it.
     const page = await mkdtemp(join(tmpdir(), "alerts-page-"));
     await writeFile(join(page, PAGE_INDEX), "<!doctype html><title>the map</title>");
@@ -214,7 +233,7 @@ describe("the lifecycle of the service", () => {
       asked.push(since);
       return historyOf(since);
     };
-    const life = await declare({ port, probePort, profile: localDev, loop, log, home, sources, map: () => EMPTY_MAP, health: () => EMPTY_HEALTH, history, interests: () => EMPTY_INTERESTS, page }).run({ process: embeddedProcess() });
+    const life = await declare({ port, probePort, profile: localDev, loop, log, home, sources, telemetry, map: () => EMPTY_MAP, health: () => EMPTY_HEALTH, history, interests: () => EMPTY_INTERESTS, page }).run({ process: embeddedProcess() });
     try {
       // The probe answers after the start of each transport. The worker starts the first pass at the start of the service.
       await waitUntil(() => answers(`http://127.0.0.1:${probePort}/readiness`), "the readiness probe");
@@ -263,6 +282,6 @@ describe("the lifecycle of the service", () => {
     expect(await life.done).toBe(0);
     expect(life.errors).toEqual([]);
     expect(closes).toBe(1);
-    expect(closed).toEqual(["sources", "log", "home"]);
+    expect(closed).toEqual(["sources", "log", "home", "telemetry"]);
   }, 3 * WAIT_LIMIT_MS);
 });

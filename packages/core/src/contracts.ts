@@ -5,6 +5,8 @@
  * crosses a procedure call, a log row and a copy of the system without a change.
  */
 
+import type { SoftwareMatch, SoftwareStack } from "./software.ts";
+
 // =============================================================================
 // Time, ids and references
 // =============================================================================
@@ -143,6 +145,11 @@ export interface Subject {
   /** The id in that system, for example `aws/us-east-1`. */
   readonly id: string;
   readonly label?: string;
+  /**
+   * The ranges of the affected versions of a package, as `vers` texts, for example `vers:npm/<4.17.21`. Only a subject of
+   * the system `purl` has them. A version in one range is affected. Absent: the source gives no range.
+   */
+  readonly ranges?: readonly string[];
 }
 
 /**
@@ -209,7 +216,10 @@ export interface Report {
   readonly expires?: Instant;
   /** The time at which the event ends, when the source tells it apart from `expires`. */
   readonly ends?: Instant;
-  /** The areas of the event. An empty list: the event has no place. */
+  /**
+   * The areas of the event. An empty list: the event has no place, for example a cancel or a space weather event of
+   * the whole Earth. Such a report reaches no person by a place.
+   */
   readonly areas: readonly Area[];
   readonly areaText?: string;
   readonly about: readonly Subject[];
@@ -922,6 +932,22 @@ export interface CopyRead {
   readonly sameConfig: boolean;
 }
 
+/**
+ * The billing state of the host of another copy (AL-70). The watch reads it only when the copy reaches `unread`:
+ *
+ * - `stopped`: the account of the host stopped its billing. Then the host and the copy stopped.
+ * - `on`: the billing of the host is on. Then the copy is down for a different cause.
+ * - `unread`: the read failed. The command failed, took too long, or gave no value that the watch can read.
+ */
+export type CopyBillingState = "stopped" | "on" | "unread";
+
+/** One billing read of the host of another copy (AL-70). */
+export interface CopyBilling {
+  readonly state: CopyBillingState;
+  /** The end of the read, on the clock of this copy. */
+  readonly at: Instant;
+}
+
 /** The watch of another copy of the system, at one time. */
 export interface CopyWatch {
   /** The id of the other copy. */
@@ -944,6 +970,11 @@ export interface CopyWatch {
    * read ends it. A failed read keeps it. A copy of an older build tells nothing, thus its watch has none.
    */
   readonly unsteadySince?: Instant;
+  /**
+   * The last billing read of the host of the copy in this stage `unread` (AL-70). The watch reads only when the copy has a
+   * billing read in `copy.json`. A read that passes for the copy ends the billing read.
+   */
+  readonly billing?: CopyBilling;
 }
 
 /** The watch of the balance of one provider account, at one time. */
@@ -1009,6 +1040,106 @@ export interface LimitUse {
   readonly since: Instant;
   /** The last read that passed. */
   readonly read?: LimitUseRead;
+}
+
+/**
+ * The stages of the joint down time of the copies (AL-148). Each stage is a line of system reports:
+ *
+ * - `over`: the joint down time in the window of the last read is longer than the limit.
+ * - `unread`: no read passed for the maximum age or longer. Then the watch cannot see the joint down time.
+ */
+export type JointStage = "over" | "unread";
+
+/** One read of the joint down time of the copies that passed (AL-148). */
+export interface JointDownRead {
+  /** The joint down time in the window before the read: the time in which no copy could tell the person. */
+  readonly down: Duration;
+  /** The count of the down spans in the window. */
+  readonly spans: number;
+  readonly at: Instant;
+}
+
+/**
+ * The watch of the joint down time of the copies, at one time (AL-148). The copies share one outside check. The check
+ * gets only the success pings of each copy, thus it is down only when no copy can tell the person.
+ */
+export interface JointDown {
+  /** The window of the sum before each read: for example 7 days. */
+  readonly window: Duration;
+  /** The longest joint down time in the window. Above it, the stage is `over`. */
+  readonly limit: Duration;
+  /** The longest time with no read that passed. After it, the stage is `unread`. */
+  readonly maxAge: Duration;
+  /** The start of the watch. With no read, the time of `unread` counts from it. */
+  readonly since: Instant;
+  /** The last read that passed. */
+  readonly read?: JointDownRead;
+}
+
+/**
+ * The stages of the drift check of one copy host (AL-139). Each stage is a line of system reports:
+ *
+ * - `changed`: the last read that passed found one change or more. Then the host does not agree with its code.
+ * - `unread`: no read passed for the maximum age or longer. Then the watch cannot see a drift of the host.
+ */
+export type DriftStage = "changed" | "unread";
+
+/** One read of the drift check of a copy host that passed (AL-139). */
+export interface DriftRead {
+  /** The count of the changes that the check found: steps of the setup or resources of a plan. The value 0 tells no drift. */
+  readonly changes: number;
+  /**
+   * The names of the changes, sorted, each one time. A name has only letters, digits, `.`, `_` and `-`. The list holds no
+   * other name, thus it can be shorter than `changes`. It holds no other text of the output of the command.
+   */
+  readonly steps: readonly string[];
+  readonly at: Instant;
+}
+
+/** The drift check of one copy host, at one time (AL-139). The private configuration names its command. */
+export interface DriftCheck {
+  /** The name of the check in the configuration. It has only letters, digits, `.`, `_` and `-`. */
+  readonly name: string;
+  /** The longest time with no read that passed. After it, the stage is `unread`. */
+  readonly maxAge: Duration;
+  /** The start of the watch. With no read, the time of `unread` counts from it. */
+  readonly since: Instant;
+  /** The last read that passed. */
+  readonly read?: DriftRead;
+}
+
+/**
+ * The stages of a function of the alert chain (AL-90). Each stage is a line of system reports:
+ *
+ * - `single`: the down parts leave the function with a single point of failure that it did not have with no part down.
+ * - `stopped`: the down parts stop the function.
+ */
+export type RedundancyStage = "single" | "stopped";
+
+/** A part of the stack of the alert chain, with its name for a text. */
+export interface ChainPart {
+  /** The id of the part in the stack. */
+  readonly id: string;
+  /** The name of the part in a text: for example `Pushover`. */
+  readonly name: string;
+}
+
+/**
+ * The state of one function of the alert chain at one time (AL-90). The runtime gives it from the open incidents of the parts
+ * of the stack. A function is a part with a goal of the layer of risks: for example the push to a person.
+ */
+export interface RedundancyState {
+  /** The function: its part in the stack. */
+  readonly function: ChainPart;
+  /** This value tells that the function works with the parts of `down` down. */
+  readonly works: boolean;
+  /**
+   * The new single points of failure. A failure of each point alone stops the function, and it did not stop the function
+   * with no part down. The list is empty when the function does not work.
+   */
+  readonly points: readonly ChainPart[];
+  /** The parts that are down, from the open incidents of the sources. */
+  readonly down: readonly ChainPart[];
 }
 
 /**
@@ -1259,6 +1390,27 @@ export interface AssessPolicy {
   readonly otherwise: LevelTable;
   /** The policy of the relevance for a person with an interest graph. When it is absent, the assessment uses `DEFAULT_RELEVANCE_POLICY`. */
   readonly relevance?: RelevancePolicy;
+  /**
+   * The priors of the score rules of the persons (`PersonWatch.score`, AL-31). With no priors, a score rule has no
+   * read, and the table decides. `policyWithPriors` sets them only when a person has a score rule.
+   */
+  readonly priors?: ScorePriors;
+  /**
+   * The software of the stack (AL-197). With it, each match of an advisory to a part (`softwareMatches`) gives the subject
+   * `software.part` of the part. A person who watches that system gets the advisory. `policyWithSoftware` sets it.
+   */
+  readonly software?: SoftwareStack;
+}
+
+/**
+ * The score rule of a person (AL-31). An incident gets the level `life-safety` when its expected deaths in one place
+ * (`shadowScore`) reach `risk`. The table stays the floor: the rule does not lower a level.
+ */
+export interface ScoreRule {
+  /** The lowest expected deaths in one county or zone under one alert of the kind that raise the level. It is above 0. */
+  readonly risk: number;
+  /** The prefixes of the taxonomy codes that the rule does not raise, for example `met.rip-current`. The table decides them. */
+  readonly except?: readonly string[];
 }
 
 /**
@@ -1331,6 +1483,8 @@ export interface PersonWatch {
    * with no rule has the rule on, and its range is the buffer of the place.
    */
   readonly mandatory?: readonly MandatoryRule[];
+  /** The score rule of the person (AL-31). When it is absent, the table alone gives the level. */
+  readonly score?: ScoreRule;
 }
 
 /**
@@ -1523,6 +1677,8 @@ export type AssessReason =
     }
   /** The person watches a subject of the incident. */
   | { readonly kind: "subject"; readonly subject: SubjectWatch }
+  /** An advisory of the incident matches a part of the software of the stack, and the person watches the part. */
+  | { readonly kind: "software"; readonly match: SoftwareMatch }
   /**
    * The level of the table at this place is not the level of the incident. The lines of these reports hold the
    * place, and the highest table of those lines gives the level.
@@ -1550,6 +1706,12 @@ export type AssessReason =
   | { readonly kind: "rule"; readonly place?: PlaceId; readonly index: number; readonly max: AssessedLevel }
   /** The shadow score of the incident. It does not change the level. */
   | { readonly kind: "shadow"; readonly score: ShadowScore }
+  /**
+   * The score rule of the person examined the incident (AL-31). `raised` is true when the expected deaths reach `risk`
+   * and the table gives a level below `life-safety`. Then the level is `life-safety`. The score is absent when the
+   * policy has no priors.
+   */
+  | { readonly kind: "score"; readonly risk: number; readonly raised: boolean; readonly score?: ShadowScore }
   /**
    * The relevance of the incident over the interest graph of the person. `reached` holds the entries that reach the
    * person alone: the places, the areas, the subjects and the topic, in this order. `mandatory` holds the places
@@ -1617,7 +1779,8 @@ export type SubjectSystem =
   | "provider-region"
   | "ticker"
   | "lei"
-  | "purl";
+  | "purl"
+  | "software.part";
 
 /**
  * The kind of the subjects of each system. The list is closed. A new system comes with the first source or
@@ -1646,6 +1809,7 @@ export const SUBJECT_SYSTEMS: Readonly<Record<SubjectSystem, SubjectKind>> = {
   ticker: "entity",
   lei: "entity",
   purl: "entity",
+  "software.part": "entity",
 };
 
 /**

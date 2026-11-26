@@ -5,8 +5,8 @@
  * `measure-blocks.yml` starts it in CI.
  *
  * Usage: node scripts/start-blocks.ts <folder> [size in MB] [passes]. With the environment variable `BLOCK_LIMIT_MS`, the
- * script is a gate. It exits with 1 when one part of a snapshot write between two pauses has more CPU time of the thread
- * than the limit (AL-122). The wall time of a part also has the waits for the disk and for the runner. It also
+ * script is a gate. It exits with 1 when one part of a snapshot write between two pauses has more work than the limit
+ * (AL-122). The work of a part is its CPU time of the thread apart from the pauses of the garbage collector (AL-174). The wall time of a part also has the waits for the disk and for the runner. It also
  * exits with 1 when the start that folds the whole log has no snapshot write. A gate that cannot read the case is no pass.
  *
  * Each start gives one JSON line. For each phase, the line has the wall time, the CPU time, the blocks of the event loop and
@@ -14,15 +14,14 @@
  * of each write of the snapshot: the build of the rows apart from the write of SQLite. It also has the longest part between two
  * pauses of the write, the most CPU time of the thread in one part, and the wait of the longest part.
  */
-import { statSync, writeFileSync } from "node:fs";
+import { statSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { PerformanceObserver, type PerformanceEntry } from "node:perf_hooks";
-import { CONFIG_FORMAT, type AlertConfig, type ChannelId, type EscalationPolicy, type PersonId, type PlaceId } from "@mark1russell7/alerts";
-import { openMeasuredRuntime, START_SNAPSHOT_FILE, type MeasuredRuntime } from "@mark1russell7/alerts-runtime";
+import { longestPartWork, openMeasuredRuntime, START_SNAPSHOT_FILE, type MeasuredRuntime } from "@mark1russell7/alerts-runtime";
 import { wallClock } from "@mark1russell7/algebra/clock";
-import { LIVE_FILES } from "../src/seed-files.ts";
-import { seedStore } from "../src/seed-store.ts";
+import { EVENT_LOOP_RESOLUTION_MS, watchEventLoop, type LoopBlock } from "@mark1russell7/lag/node";
+import { seedHome } from "../src/seed-home.ts";
 
 const [folder, sizeText = "192", passesText = "4"] = process.argv.slice(2);
 const limitText = process.env["BLOCK_LIMIT_MS"];
@@ -33,59 +32,26 @@ const size = Number(sizeText);
 const passes = Number(passesText);
 if (!(size > 0) || !Number.isInteger(passes) || passes < 2) throw new RangeError("Give a size above 0 MB and 2 or more passes.");
 
-// The timer of the recorder ticks at this period. A gap above `LONG_MS` between two ticks is one block of the loop.
-const TICK_MS = 10;
+// The timer of the watch ticks at this period. A gap above `LONG_MS` between two ticks is one block of the loop.
+const TICK_MS = EVENT_LOOP_RESOLUTION_MS;
 const LONG_MS = 100;
-const MINUTE = 60_000;
+// The watch keeps this count of blocks in one span. The record gives the count of the blocks past it.
+const MAX_BLOCKS = 100_000;
 const round = (value: number): number => Math.round(value * 10) / 10;
-
-// A made-up configuration with one public point in McMullen County TX. No request leaves the measure.
-const pushover = "pushover" as ChannelId;
-const person = "person-1" as PersonId;
-const place = "place-1" as PlaceId;
-const policy = (level: EscalationPolicy["level"]): EscalationPolicy => ({ level, steps: [{ channel: pushover, at: 0 }], exhaustedAfter: 20 * MINUTE });
-const config: AlertConfig = {
-  format: CONFIG_FORMAT,
-  places: [
-    {
-      id: place,
-      label: "Place",
-      at: [-98.55, 28.3],
-      codes: [
-        { system: "state", code: "TX" },
-        { system: "ugc", code: "TXC311" },
-        { system: "same", code: "048311" },
-        { system: "iso3166", code: "US" },
-      ],
-      bufferKm: 5,
-    },
-  ],
-  people: [{ watch: { person, places: [place], rules: [] } }],
-  contacts: [{ person, channel: pushover, address: { user: { secret: "PUSHOVER_USER_KEY" } } }],
-  policies: [policy("life-safety"), policy("urgent"), policy("notice")],
-};
 
 /** One block of the event loop (the gap between two ticks of the timer, from the tick before), or one pause of the collector. */
 interface Block {
   readonly start: number;
   readonly ms: number;
+  /** The CPU time of the thread in the block. A pause of the collector has no CPU time. */
+  readonly cpuMs?: number | undefined;
+  /** The pause time of the collector in the block. */
+  readonly gcMs?: number | undefined;
 }
 
-// Node gives a histogram of the delay of the loop (`monitorEventLoopDelay`), but not the time of each block. The phases
-// need the time of each block, thus the recorder keeps each long gap of its own timer.
-function recordBlocks(): { readonly found: readonly Block[]; stop(): void } {
-  const found: Block[] = [];
-  let last = performance.now();
-  let timer: NodeJS.Timeout;
-  const tick = (): void => {
-    const now = performance.now();
-    if (now - last > LONG_MS) found.push({ start: last, ms: now - last });
-    last = now;
-    timer = setTimeout(tick, TICK_MS);
-  };
-  timer = setTimeout(tick, TICK_MS);
-  return { found, stop: () => clearTimeout(timer) };
-}
+// The watch of the lag package (AL-117) gives each block with its time, its CPU time and its pauses of the collector. Its
+// clock is `performance`, as the clock of the phases and of the `gc` entries.
+const blockOf = (block: LoopBlock): Block => ({ start: block.startedAt, ms: block.durationMs, cpuMs: block.cpuMs, gcMs: block.gcMs });
 
 interface Phase {
   readonly name: string;
@@ -100,7 +66,7 @@ async function phase(name: string, phases: Phase[], work: () => Promise<unknown>
   await work();
   const used = process.cpuUsage(cpu);
   const end = performance.now();
-  // A pass can end with no turn of the timers, because its promises settle as microtasks. The wait gives the recorder one
+  // A pass can end with no turn of the timers, because its promises settle as microtasks. The wait gives the watch one
   // tick, thus it keeps a block at the end of the phase.
   await new Promise((resolve) => setTimeout(resolve, 2 * TICK_MS));
   phases.push({ name, start, end, cpuMs: (used.user + used.system) / 1000 });
@@ -126,15 +92,16 @@ const fileBytes = (path: string): number => {
 const dir = join(folder, `seed-${sizeText}mb`);
 await rm(dir, { recursive: true, force: true });
 await mkdir(dir, { recursive: true });
-const seeded = await seedStore(dir, { log: size * 1_000_000, seed: "al105", shapes: LIVE_FILES.shapes, transit: LIVE_FILES.transit });
-writeFileSync(join(dir, "config.json"), JSON.stringify(config));
+const seeded = await seedHome(dir, { log: size * 1_000_000, seed: "al105" });
 
 // The parts of the snapshot writes in the start that folds the whole log, for the gate: the most CPU time of the thread in one
 // part, and the wall time and the wait of the longest part.
-let work: { readonly cpuMs: number; readonly wallMs: number; readonly waitMs: number } | undefined;
+let work: { readonly workMs: number; readonly cpuMs: number; readonly gcMs: number; readonly wallMs: number; readonly waitMs: number } | undefined;
 for (const kind of ["full", "snapshot"] as const) {
   const phases: Phase[] = [];
-  const recorder = recordBlocks();
+  const watch = watchEventLoop({ limitMs: LONG_MS, maxBlocks: MAX_BLOCKS });
+  let found: readonly Block[] = [];
+  let lostBlocks = 0;
   const pauses: PerformanceEntry[] = [];
   const collector = new PerformanceObserver((list) => pauses.push(...list.getEntries()));
   collector.observe({ entryTypes: ["gc"] });
@@ -146,13 +113,17 @@ for (const kind of ["full", "snapshot"] as const) {
     });
     for (let at = 2; at <= passes; at += 1) await phase(`pass-${String(at)}`, phases, () => measured!.pass());
   } finally {
-    recorder.stop();
+    const span = watch.span();
+    watch.stop();
+    found = span.blocks.map(blockOf);
+    lostBlocks = span.blockCount - span.blocks.length;
     pauses.push(...collector.takeRecords());
     collector.disconnect();
     await measured?.close();
   }
   const gc: Block[] = pauses.map((entry) => ({ start: entry.startTime, ms: entry.duration }));
   const writes = measured!.snapshotWrites;
+  const works = writes.map((write) => longestPartWork(write.parts, pauses));
   // A block overlaps a write when the two intervals share a point. The interval of a write has its pauses. The longest block
   // outside each write is the work of the pass apart from the snapshot.
   const inWrite = (block: Block): boolean => writes.some((write) => block.start < write.at + write.wallMs && block.start + block.ms > write.at);
@@ -164,9 +135,10 @@ for (const kind of ["full", "snapshot"] as const) {
     days: Number(((seeded.end - seeded.start) / 86_400_000).toFixed(2)),
     tickMs: TICK_MS,
     longMs: LONG_MS,
+    lostBlocks,
     openedMs: round(measured!.opened - phases[0]!.start),
     phases: phases.map((each) => {
-      const own = recorder.found.filter((block) => phaseOf(block, phases) === each);
+      const own = found.filter((block) => phaseOf(block, phases) === each);
       const outside = own.filter((block) => !inWrite(block));
       const collected = gc.filter((pause) => phaseOf(pause, phases) === each);
       return {
@@ -183,10 +155,10 @@ for (const kind of ["full", "snapshot"] as const) {
         top: [...own]
           .sort((a, b) => b.ms - a.ms)
           .slice(0, 5)
-          .map((block) => ({ atMs: round(block.start - each.start), ms: round(block.ms), write: inWrite(block) })),
+          .map((block) => ({ atMs: round(block.start - each.start), ms: round(block.ms), ...(block.cpuMs === undefined ? {} : { cpuMs: round(block.cpuMs) }), ...(block.gcMs === undefined ? {} : { gcMs: round(block.gcMs) }), write: inWrite(block) })),
       };
     }),
-    writes: writes.map((write) => ({
+    writes: writes.map((write, index) => ({
       phase: phases.find((each) => write.at >= each.start && write.at < each.end)?.name ?? "none",
       rows: write.rows,
       chars: write.chars,
@@ -197,6 +169,8 @@ for (const kind of ["full", "snapshot"] as const) {
       longestMs: round(write.longestMs),
       longestCpuMs: round(write.longestCpuMs),
       longestWaitMs: round(write.longestWaitMs),
+      longestWorkMs: round(works[index]?.workMs ?? 0),
+      longestPartGcMs: round(works[index]?.gcMs ?? 0),
       chunks: write.chunks,
     })),
     files: { snapshot: fileBytes(join(dir, START_SNAPSHOT_FILE)), wal: fileBytes(join(dir, `${START_SNAPSHOT_FILE}-wal`)) },
@@ -205,7 +179,13 @@ for (const kind of ["full", "snapshot"] as const) {
   console.log(JSON.stringify(record));
   if (kind === "full" && writes.length > 0) {
     const slowest = writes.reduce((one, other) => (other.longestMs > one.longestMs ? other : one));
-    work = { cpuMs: Math.max(...writes.map((write) => write.longestCpuMs)), wallMs: slowest.longestMs, waitMs: slowest.longestWaitMs };
+    work = {
+      workMs: Math.max(...works.map((each) => each.workMs)),
+      cpuMs: Math.max(...writes.map((write) => write.longestCpuMs)),
+      gcMs: Math.max(...works.map((each) => each.gcMs)),
+      wallMs: slowest.longestMs,
+      waitMs: slowest.longestWaitMs,
+    };
   }
 }
 await rm(dir, { recursive: true, force: true });
@@ -214,12 +194,14 @@ if (limit !== undefined) {
   if (work === undefined) {
     console.error("gate: no read. The start that folds the whole log wrote no snapshot.");
     process.exitCode = 1;
-  } else if (work.cpuMs > limit) {
-    console.error(`gate: block. One part of the snapshot write has ${String(round(work.cpuMs))} ms of CPU time of the thread, above the limit of ${String(limit)} ms.`);
+  } else if (work.workMs > limit) {
+    console.error(`gate: block. One part of the snapshot write has ${String(round(work.workMs))} ms of work of the thread, above the limit of ${String(limit)} ms.`);
     process.exitCode = 1;
   } else {
-    console.error(`gate: pass. Each part of the snapshot write has at most ${String(round(work.cpuMs))} ms of CPU time of the thread, and the limit is ${String(limit)} ms.`);
+    console.error(`gate: pass. Each part of the snapshot write has at most ${String(round(work.workMs))} ms of work of the thread, and the limit is ${String(limit)} ms.`);
     // A wait is the disk or the runner, not the work of the write. The record keeps it, and the gate does not count it.
+    // A pause of the garbage collector is not the work of the write either (AL-174). The record keeps the most CPU time and the most pause time of one part.
+    if (work.gcMs > 0) console.error(`The most CPU time of one part was ${String(round(work.cpuMs))} ms, and the most pause time of the garbage collector in one part was ${String(round(work.gcMs))} ms.`);
     if (work.wallMs > limit) console.error(`The longest part took ${String(round(work.wallMs))} ms, with ${String(round(work.waitMs))} ms of wait for the disk or the runner.`);
   }
 }

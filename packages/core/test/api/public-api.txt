@@ -13,6 +13,7 @@ AddressField: build/index.d.ts#AddressField
 AddressValue: build/index.d.ts#AddressValue
 AlertArea: build/index.d.ts#AlertArea
 AlertConfig: build/index.d.ts#AlertConfig
+AllRetirements: build/index.d.ts#AllRetirements
 Area: build/index.d.ts#Area
 AreaBlock: build/index.d.ts#AreaBlock
 AssessPolicy: build/index.d.ts#AssessPolicy
@@ -22,11 +23,13 @@ Assessment: build/index.d.ts#Assessment
 Audience: build/index.d.ts#Audience
 BALANCE_KIND: build/index.d.ts#BALANCE_KIND
 BALANCE_STAGES: build/index.d.ts#BALANCE_STAGES
+BILLING_FIELD: build/index.d.ts#BILLING_FIELD
 BalanceHealth: build/index.d.ts#BalanceHealth
 BalanceRead: build/index.d.ts#BalanceRead
 BalanceStage: build/index.d.ts#BalanceStage
 BaselinePolicy: build/index.d.ts#BaselinePolicy
 Breadth: build/index.d.ts#Breadth
+BucketReads: build/index.d.ts#BucketReads
 CAP_MESSAGE_SYSTEM: build/index.d.ts#CAP_MESSAGE_SYSTEM
 CATEGORIES: build/index.d.ts#CATEGORIES
 CATEGORY_LABELS: build/index.d.ts#CATEGORY_LABELS
@@ -58,8 +61,11 @@ Carriage: build/index.d.ts#Carriage
 Category: build/index.d.ts#Category
 CellResource: build/index.d.ts#CellResource
 Certainty: build/index.d.ts#Certainty
+ChainConfig: build/index.d.ts#ChainConfig
+ChainPart: build/index.d.ts#ChainPart
 ChainRun: build/index.d.ts#ChainRun
 ChainState: build/index.d.ts#ChainState
+ChainSubject: build/index.d.ts#ChainSubject
 ChannelCallFailure: build/index.d.ts#ChannelCallFailure
 ChannelDescriptor: build/index.d.ts#ChannelDescriptor
 ChannelDownConfig: build/index.d.ts#ChannelDownConfig
@@ -81,17 +87,23 @@ ConfigPart: build/index.d.ts#ConfigPart
 ContactConfig: build/index.d.ts#ContactConfig
 ContactLookup: build/index.d.ts#ContactLookup
 ContactServices: build/index.d.ts#ContactServices
+CopyBilling: build/index.d.ts#CopyBilling
+CopyBillingConfig: build/index.d.ts#CopyBillingConfig
+CopyBillingState: build/index.d.ts#CopyBillingState
 CopyHealth: build/index.d.ts#CopyHealth
 CopyListen: build/index.d.ts#CopyListen
 CopyMeasureOptions: build/index.d.ts#CopyMeasureOptions
 CopyPeer: build/index.d.ts#CopyPeer
 CopyRead: build/index.d.ts#CopyRead
 CopySettings: build/index.d.ts#CopySettings
+CopySounder: build/index.d.ts#CopySounder
+CopySounderDevice: build/index.d.ts#CopySounderDevice
 CopyStage: build/index.d.ts#CopyStage
 CopyTime: build/index.d.ts#CopyTime
 CopyWatch: build/index.d.ts#CopyWatch
 CorrelationKey: build/index.d.ts#CorrelationKey
 Coverage: build/index.d.ts#Coverage
+CoverageCandidates: build/index.d.ts#CoverageCandidates
 CoverageInput: build/index.d.ts#CoverageInput
 CoverageNeed: build/index.d.ts#CoverageNeed
 CoveragePolicy: build/index.d.ts#CoveragePolicy
@@ -103,6 +115,7 @@ DEFAULT_COVERAGE_POLICY: build/index.d.ts#DEFAULT_COVERAGE_POLICY
 DEFAULT_ENTRY_MAX: build/index.d.ts#DEFAULT_ENTRY_MAX
 DEFAULT_FAIL_AFTER: build/index.d.ts#DEFAULT_FAIL_AFTER
 DEFAULT_LINK_POLICY: build/index.d.ts#DEFAULT_LINK_POLICY
+DEFAULT_MAX_ACCURACY_KM: build/index.d.ts#DEFAULT_MAX_ACCURACY_KM
 DEFAULT_RELEVANCE_POLICY: build/index.d.ts#DEFAULT_RELEVANCE_POLICY
 DEFAULT_SEND_LIMITS: build/index.d.ts#DEFAULT_SEND_LIMITS
 DEFAULT_SOURCE_CLEAR: build/index.d.ts#DEFAULT_SOURCE_CLEAR
@@ -112,6 +125,11 @@ DEFAULT_THROTTLE: build/index.d.ts#DEFAULT_THROTTLE
 DIMENSIONS: build/index.d.ts#DIMENSIONS
 DIMENSION_IDS: build/index.d.ts#DIMENSION_IDS
 DOWN_STATES: build/index.d.ts#DOWN_STATES
+DRIFT_COMMAND_KINDS: build/index.d.ts#DRIFT_COMMAND_KINDS
+DRIFT_KIND: build/index.d.ts#DRIFT_KIND
+DRIFT_NAME: build/index.d.ts#DRIFT_NAME
+DRIFT_STAGES: build/index.d.ts#DRIFT_STAGES
+DRIFT_STEPS_SHOWN: build/index.d.ts#DRIFT_STEPS_SHOWN
 DRILL_KIND: build/index.d.ts#DRILL_KIND
 DRILL_PROBES: build/index.d.ts#DRILL_PROBES
 DRILL_SUBJECT: build/index.d.ts#DRILL_SUBJECT
@@ -131,6 +149,12 @@ DigestPlan: build/index.d.ts#DigestPlan
 DigestSend: build/index.d.ts#DigestSend
 DimensionCount: build/index.d.ts#DimensionCount
 DimensionId: build/index.d.ts#DimensionId
+DriftCheck: build/index.d.ts#DriftCheck
+DriftCommandConfig: build/index.d.ts#DriftCommandConfig
+DriftCommandKind: build/index.d.ts#DriftCommandKind
+DriftConfig: build/index.d.ts#DriftConfig
+DriftRead: build/index.d.ts#DriftRead
+DriftStage: build/index.d.ts#DriftStage
 DrillConfig: build/index.d.ts#DrillConfig
 DrillPath: build/index.d.ts#DrillPath
 DrillRun: build/index.d.ts#DrillRun
@@ -164,22 +188,32 @@ Exhaustion: build/index.d.ts#Exhaustion
 Expectation: build/index.d.ts#Expectation
 ExpectationConfig: build/index.d.ts#ExpectationConfig
 ExpectedHarm: build/index.d.ts#ExpectedHarm
+FEED_LAG_LEVEL: build/index.d.ts#FEED_LAG_LEVEL
+FEED_LAG_WINDOW: build/index.d.ts#FEED_LAG_WINDOW
+FIX_FUTURE_LIMIT_MS: build/index.d.ts#FIX_FUTURE_LIMIT_MS
 FLOAT_REACH: build/index.d.ts#FLOAT_REACH
 FOREIGN_TABLE: build/index.d.ts#FOREIGN_TABLE
+FUNCTION_SUBJECT: build/index.d.ts#FUNCTION_SUBJECT
+FeedLag: build/index.d.ts#FeedLag
+FeedLagOptions: build/index.d.ts#FeedLagOptions
 FetchFailure: build/index.d.ts#FetchFailure
 FetchOutcome: build/index.d.ts#FetchOutcome
 FetchRecord: build/index.d.ts#FetchRecord
 FetchSignal: build/index.d.ts#FetchSignal
+FixRefusal: build/index.d.ts#FixRefusal
+FixStep: build/index.d.ts#FixStep
 FixedCost: build/index.d.ts#FixedCost
 HEALTH_EVENTS: build/index.d.ts#HEALTH_EVENTS
 HEALTH_FORMAT: build/index.d.ts#HEALTH_FORMAT
 HEALTH_KIND: build/index.d.ts#HEALTH_KIND
 HEALTH_MACHINE: build/index.d.ts#HEALTH_MACHINE
 HELD_SHOWN: build/index.d.ts#HELD_SHOWN
+HISTORY_BUCKET: build/index.d.ts#HISTORY_BUCKET
 HISTORY_FORMAT: build/index.d.ts#HISTORY_FORMAT
 HealthOptions: build/index.d.ts#HealthOptions
 HealthPayload: build/index.d.ts#HealthPayload
 HealthPayloadInput: build/index.d.ts#HealthPayloadInput
+HealthSource: build/index.d.ts#HealthSource
 HealthState: build/index.d.ts#HealthState
 HealthStep: build/index.d.ts#HealthStep
 HealthTrack: build/index.d.ts#HealthTrack
@@ -203,6 +237,8 @@ IncidentOptions: build/index.d.ts#IncidentOptions
 IndicatorArea: build/index.d.ts#IndicatorArea
 IndicatorAreaKind: build/index.d.ts#IndicatorAreaKind
 IndicatorBreadth: build/index.d.ts#IndicatorBreadth
+IndicatorSurprise: build/index.d.ts#IndicatorSurprise
+InstalledPackage: build/index.d.ts#InstalledPackage
 Instant: build/index.d.ts#Instant
 InterestDefaultsConfig: build/index.d.ts#InterestDefaultsConfig
 InterestEdge: build/index.d.ts#InterestEdge
@@ -210,6 +246,11 @@ InterestGraph: build/index.d.ts#InterestGraph
 InterestRow: build/index.d.ts#InterestRow
 InterestsPayload: build/index.d.ts#InterestsPayload
 InterestsPerson: build/index.d.ts#InterestsPerson
+JOINT_KIND: build/index.d.ts#JOINT_KIND
+JOINT_STAGES: build/index.d.ts#JOINT_STAGES
+JointDown: build/index.d.ts#JointDown
+JointDownRead: build/index.d.ts#JointDownRead
+JointStage: build/index.d.ts#JointStage
 KIND_ALIASES: build/index.d.ts#KIND_ALIASES
 Kind: build/index.d.ts#Kind
 KindClass: build/index.d.ts#KindClass
@@ -232,11 +273,13 @@ LOOP_BLOCK_CLASSES: build/index.d.ts#LOOP_BLOCK_CLASSES
 LOOP_BLOCK_LIMIT: build/index.d.ts#LOOP_BLOCK_LIMIT
 LOOP_BLOCK_WINDOW: build/index.d.ts#LOOP_BLOCK_WINDOW
 LOOP_KIND: build/index.d.ts#LOOP_KIND
+LateOptions: build/index.d.ts#LateOptions
 Lateness: build/index.d.ts#Lateness
 LatenessFolds: build/index.d.ts#LatenessFolds
 LatenessLimit: build/index.d.ts#LatenessLimit
 LatenessState: build/index.d.ts#LatenessState
 LatenessStep: build/index.d.ts#LatenessStep
+LeavingInput: build/index.d.ts#LeavingInput
 Level: build/index.d.ts#Level
 LevelRule: build/index.d.ts#LevelRule
 LevelTable: build/index.d.ts#LevelTable
@@ -260,7 +303,9 @@ MAGNITUDE_PARAMETER: build/index.d.ts#MAGNITUDE_PARAMETER
 MAP_FORMAT: build/index.d.ts#MAP_FORMAT
 MAP_VIEW: build/index.d.ts#MAP_VIEW
 MAX_PLACE_CODES: build/index.d.ts#MAX_PLACE_CODES
+MAX_WEIGHTED_UNITS: build/index.d.ts#MAX_WEIGHTED_UNITS
 MEASURE_ID: build/index.d.ts#MEASURE_ID
+MIN_READS: build/index.d.ts#MIN_READS
 MOVES: build/index.d.ts#MOVES
 MandatoryRule: build/index.d.ts#MandatoryRule
 MapIncident: build/index.d.ts#MapIncident
@@ -274,6 +319,7 @@ MapRegion: build/index.d.ts#MapRegion
 MapResult: build/index.d.ts#MapResult
 MapShape: build/index.d.ts#MapShape
 MapView: build/index.d.ts#MapView
+MatchVerdict: build/index.d.ts#MatchVerdict
 MeasureDeclaration: build/index.d.ts#MeasureDeclaration
 MergeParts: build/index.d.ts#MergeParts
 MergeState: build/index.d.ts#MergeState
@@ -281,12 +327,14 @@ Message: build/index.d.ts#Message
 MessageKeyInput: build/index.d.ts#MessageKeyInput
 MissRecord: build/index.d.ts#MissRecord
 Move: build/index.d.ts#Move
+MovingRule: build/index.d.ts#MovingRule
 Mute: build/index.d.ts#Mute
 MuteEffect: build/index.d.ts#MuteEffect
 NEEDS: build/index.d.ts#NEEDS
 NEED_ALERT_LEVELS: build/index.d.ts#NEED_ALERT_LEVELS
 NEED_LEVELS: build/index.d.ts#NEED_LEVELS
 NO_HISTORIES: build/index.d.ts#NO_HISTORIES
+NO_HOLDS: build/index.d.ts#NO_HOLDS
 NO_LABELS: build/index.d.ts#NO_LABELS
 NO_SYSTEM_LINES: build/index.d.ts#NO_SYSTEM_LINES
 NamedPart: build/index.d.ts#NamedPart
@@ -325,10 +373,15 @@ OutageConfig: build/index.d.ts#OutageConfig
 OutagePersonConfig: build/index.d.ts#OutagePersonConfig
 OutageReach: build/index.d.ts#OutageReach
 OwnBaseline: build/index.d.ts#OwnBaseline
+PACKAGE_SYSTEM: build/index.d.ts#PACKAGE_SYSTEM
 PART_NAME: build/index.d.ts#PART_NAME
 PATH_SYSTEMS: build/index.d.ts#PATH_SYSTEMS
 PERSON_SUBJECT: build/index.d.ts#PERSON_SUBJECT
+PLACE_KIND: build/index.d.ts#PLACE_KIND
+PLACE_SUBJECT: build/index.d.ts#PLACE_SUBJECT
 PRIORS_FORMAT: build/index.d.ts#PRIORS_FORMAT
+PairHistory: build/index.d.ts#PairHistory
+PairSurprise: build/index.d.ts#PairSurprise
 ParsedConfig: build/index.d.ts#ParsedConfig
 PartText: build/index.d.ts#PartText
 PassedFetch: build/index.d.ts#PassedFetch
@@ -338,9 +391,12 @@ PersonInterests: build/index.d.ts#PersonInterests
 PersonWatch: build/index.d.ts#PersonWatch
 PlaceBreadth: build/index.d.ts#PlaceBreadth
 PlaceConfig: build/index.d.ts#PlaceConfig
+PlaceHolds: build/index.d.ts#PlaceHolds
 PlaceId: build/index.d.ts#PlaceId
 PlaceMatch: build/index.d.ts#PlaceMatch
+PlaceSurprise: build/index.d.ts#PlaceSurprise
 Position: build/index.d.ts#Position
+PositionFix: build/index.d.ts#PositionFix
 ProbeOutcome: build/index.d.ts#ProbeOutcome
 ProblemEffect: build/index.d.ts#ProblemEffect
 ProblemSink: build/index.d.ts#ProblemSink
@@ -354,9 +410,12 @@ QuietWindow: build/index.d.ts#QuietWindow
 QuotaHealth: build/index.d.ts#QuotaHealth
 QuotaStage: build/index.d.ts#QuotaStage
 RANK_DELAY_LIMIT: build/index.d.ts#RANK_DELAY_LIMIT
+REDUNDANCY_KIND: build/index.d.ts#REDUNDANCY_KIND
 REPORT_SYSTEMS: build/index.d.ts#REPORT_SYSTEMS
 RETENTION_HORIZON: build/index.d.ts#RETENTION_HORIZON
 RULED_STATUSES: build/index.d.ts#RULED_STATUSES
+RangeCheck: build/index.d.ts#RangeCheck
+RangeResult: build/index.d.ts#RangeResult
 RankDelays: build/index.d.ts#RankDelays
 ReachArithmetic: build/index.d.ts#ReachArithmetic
 ReachEnd: build/index.d.ts#ReachEnd
@@ -364,6 +423,8 @@ ReadHealth: build/index.d.ts#ReadHealth
 Reading: build/index.d.ts#Reading
 Receipt: build/index.d.ts#Receipt
 Recipient: build/index.d.ts#Recipient
+RedundancyStage: build/index.d.ts#RedundancyStage
+RedundancyState: build/index.d.ts#RedundancyState
 RegionCode: build/index.d.ts#RegionCode
 Relevance: build/index.d.ts#Relevance
 RelevanceInput: build/index.d.ts#RelevanceInput
@@ -384,7 +445,10 @@ SEND_LIMIT_MIN_WINDOW: build/index.d.ts#SEND_LIMIT_MIN_WINDOW
 SERIES_VERSION: build/index.d.ts#SERIES_VERSION
 SEVERITY_ORDER: build/index.d.ts#SEVERITY_ORDER
 SHARED_HANDOVER: build/index.d.ts#SHARED_HANDOVER
+SOFTWARE_PART_SYSTEM: build/index.d.ts#SOFTWARE_PART_SYSTEM
 SOURCE_SUBJECT: build/index.d.ts#SOURCE_SUBJECT
+STATE_FIPS: build/index.d.ts#STATE_FIPS
+STATE_POSTAL: build/index.d.ts#STATE_POSTAL
 STORE_FILL_WINDOW: build/index.d.ts#STORE_FILL_WINDOW
 STORE_KIND: build/index.d.ts#STORE_KIND
 STORE_SUBJECT: build/index.d.ts#STORE_SUBJECT
@@ -394,6 +458,8 @@ SchemaDrift: build/index.d.ts#SchemaDrift
 ScoreFactor: build/index.d.ts#ScoreFactor
 ScoreGap: build/index.d.ts#ScoreGap
 ScorePriors: build/index.d.ts#ScorePriors
+ScoreRule: build/index.d.ts#ScoreRule
+ScoreRuleReason: build/index.d.ts#ScoreRuleReason
 ScoreSource: build/index.d.ts#ScoreSource
 ScoredIncident: build/index.d.ts#ScoredIncident
 Season: build/index.d.ts#Season
@@ -414,7 +480,13 @@ Severity: build/index.d.ts#Severity
 ShadowDifference: build/index.d.ts#ShadowDifference
 ShadowScore: build/index.d.ts#ShadowScore
 ShapeLookup: build/index.d.ts#ShapeLookup
+SignalHistory: build/index.d.ts#SignalHistory
+SignalRate: build/index.d.ts#SignalRate
+SignalUnit: build/index.d.ts#SignalUnit
 Significance: build/index.d.ts#Significance
+SoftwareMatch: build/index.d.ts#SoftwareMatch
+SoftwarePart: build/index.d.ts#SoftwarePart
+SoftwareStack: build/index.d.ts#SoftwareStack
 SourceClearConfig: build/index.d.ts#SourceClearConfig
 SourceClearPolicy: build/index.d.ts#SourceClearPolicy
 SourceDescriptor: build/index.d.ts#SourceDescriptor
@@ -423,7 +495,9 @@ SourceHealthView: build/index.d.ts#SourceHealthView
 SourceId: build/index.d.ts#SourceId
 SourceProcedures: build/index.d.ts#SourceProcedures
 SpendConfig: build/index.d.ts#SpendConfig
+StalePlace: build/index.d.ts#StalePlace
 Status: build/index.d.ts#Status
+StoreBound: build/index.d.ts#StoreBound
 StoreFill: build/index.d.ts#StoreFill
 Subject: build/index.d.ts#Subject
 SubjectEntry: build/index.d.ts#SubjectEntry
@@ -433,6 +507,7 @@ SubjectSystem: build/index.d.ts#SubjectSystem
 SubjectWatch: build/index.d.ts#SubjectWatch
 Suppression: build/index.d.ts#Suppression
 SuppressionReason: build/index.d.ts#SuppressionReason
+Surprise: build/index.d.ts#Surprise
 SystemLine: build/index.d.ts#SystemLine
 SystemLines: build/index.d.ts#SystemLines
 SystemSnapshot: build/index.d.ts#SystemSnapshot
@@ -470,6 +545,7 @@ UNKNOWN_WEIGHT: build/index.d.ts#UNKNOWN_WEIGHT
 USE_KIND: build/index.d.ts#USE_KIND
 USE_STAGES: build/index.d.ts#USE_STAGES
 US_GALLON_L: build/index.d.ts#US_GALLON_L
+US_TERRITORIES: build/index.d.ts#US_TERRITORIES
 UnderPrior: build/index.d.ts#UnderPrior
 Urgency: build/index.d.ts#Urgency
 UseStage: build/index.d.ts#UseStage
@@ -477,8 +553,10 @@ WHY_FULL_COVERAGE: build/index.d.ts#WHY_FULL_COVERAGE
 WHY_LIMITS: build/index.d.ts#WHY_LIMITS
 WORK_DEFAULTS: build/index.d.ts#WORK_DEFAULTS
 WORK_DEFAULTS_DATE: build/index.d.ts#WORK_DEFAULTS_DATE
+WORLD_SCOPE: build/index.d.ts#WORLD_SCOPE
 Watch: build/index.d.ts#Watch
 WatchedPlace: build/index.d.ts#WatchedPlace
+WeightedSurprise: build/index.d.ts#WeightedSurprise
 WhyLabels: build/index.d.ts#WhyLabels
 WhyLimit: build/index.d.ts#WhyLimit
 WhyRecord: build/index.d.ts#WhyRecord
@@ -498,6 +576,7 @@ admits: build/index.d.ts#admits
 advanceHealth: build/index.d.ts#advanceHealth
 alertAreaSchema: build/index.d.ts#alertAreaSchema
 alertConfigSchema: build/index.d.ts#alertConfigSchema
+allRetirements: build/index.d.ts#allRetirements
 areaMeetsPlace: build/index.d.ts#areaMeetsPlace
 areaSchema: build/index.d.ts#areaSchema
 areasWithoutBlocks: build/index.d.ts#areasWithoutBlocks
@@ -509,6 +588,7 @@ assessWithShadow: build/index.d.ts#assessWithShadow
 assessedLevelSchema: build/index.d.ts#assessedLevelSchema
 assessmentSchema: build/index.d.ts#assessmentSchema
 assessmentWhy: build/index.d.ts#assessmentWhy
+atBound: build/index.d.ts#atBound
 audienceKey: build/index.d.ts#audienceKey
 audienceOf: build/index.d.ts#audienceOf
 balanceFloors: build/index.d.ts#balanceFloors
@@ -519,9 +599,13 @@ balanceStageSchema: build/index.d.ts#balanceStageSchema
 balanceStages: build/index.d.ts#balanceStages
 balanceUnreadAt: build/index.d.ts#balanceUnreadAt
 basemapToleranceKm: build/index.d.ts#basemapToleranceKm
+blockCause: build/index.d.ts#blockCause
+blockCauseText: build/index.d.ts#blockCauseText
 blockClass: build/index.d.ts#blockClass
 blockSizeText: build/index.d.ts#blockSizeText
 breadthOf: build/index.d.ts#breadthOf
+breadthUnits: build/index.d.ts#breadthUnits
+bucketOf: build/index.d.ts#bucketOf
 canReach: build/index.d.ts#canReach
 canaryResultSchema: build/index.d.ts#canaryResultSchema
 canonicalKind: build/index.d.ts#canonicalKind
@@ -531,8 +615,10 @@ categoryOf: build/index.d.ts#categoryOf
 categorySchema: build/index.d.ts#categorySchema
 cellResourceSchema: build/index.d.ts#cellResourceSchema
 certaintySchema: build/index.d.ts#certaintySchema
+chainConfigSchema: build/index.d.ts#chainConfigSchema
 chainNext: build/index.d.ts#chainNext
 chainRun: build/index.d.ts#chainRun
+chainSubjectSchema: build/index.d.ts#chainSubjectSchema
 channelDescriptorSchema: build/index.d.ts#channelDescriptorSchema
 channelDownConfigSchema: build/index.d.ts#channelDownConfigSchema
 channelDownPolicy: build/index.d.ts#channelDownPolicy
@@ -554,6 +640,7 @@ configuredExpectations: build/index.d.ts#configuredExpectations
 contactChannels: build/index.d.ts#contactChannels
 contactConfigSchema: build/index.d.ts#contactConfigSchema
 contextSource: build/index.d.ts#contextSource
+copyBillingConfigSchema: build/index.d.ts#copyBillingConfigSchema
 copyHealthSchema: build/index.d.ts#copyHealthSchema
 copyIdSchema: build/index.d.ts#copyIdSchema
 copyListenSchema: build/index.d.ts#copyListenSchema
@@ -562,12 +649,15 @@ copyPeerSchema: build/index.d.ts#copyPeerSchema
 copyProblems: build/index.d.ts#copyProblems
 copyReadSchema: build/index.d.ts#copyReadSchema
 copySettingsSchema: build/index.d.ts#copySettingsSchema
+copySounderDeviceSchema: build/index.d.ts#copySounderDeviceSchema
+copySounderSchema: build/index.d.ts#copySounderSchema
 copyStageSchema: build/index.d.ts#copyStageSchema
 copyStages: build/index.d.ts#copyStages
 copyUnreadAt: build/index.d.ts#copyUnreadAt
 copyUnsteadyAt: build/index.d.ts#copyUnsteadyAt
 correlationKeySchema: build/index.d.ts#correlationKeySchema
 coverage: build/index.d.ts#coverage
+coverageCandidates: build/index.d.ts#coverageCandidates
 coverageSchema: build/index.d.ts#coverageSchema
 coverageShort: build/index.d.ts#coverageShort
 cursorSchema: build/index.d.ts#cursorSchema
@@ -589,6 +679,10 @@ digestTimeOf: build/index.d.ts#digestTimeOf
 dimensionIdSchema: build/index.d.ts#dimensionIdSchema
 distinctShapes: build/index.d.ts#distinctShapes
 downChannels: build/index.d.ts#downChannels
+driftCommandConfigSchema: build/index.d.ts#driftCommandConfigSchema
+driftConfigSchema: build/index.d.ts#driftConfigSchema
+driftStages: build/index.d.ts#driftStages
+driftUnreadAt: build/index.d.ts#driftUnreadAt
 drillConfigSchema: build/index.d.ts#drillConfigSchema
 drillDue: build/index.d.ts#drillDue
 drillInCopy: build/index.d.ts#drillInCopy
@@ -616,10 +710,13 @@ expectationProblems: build/index.d.ts#expectationProblems
 expectedHarmSchema: build/index.d.ts#expectedHarmSchema
 expectedOf: build/index.d.ts#expectedOf
 failureDomains: build/index.d.ts#failureDomains
+feedLags: build/index.d.ts#feedLags
 fetchFailureSchema: build/index.d.ts#fetchFailureSchema
 fetchOutcomeSchema: build/index.d.ts#fetchOutcomeSchema
 fetchRecordSchema: build/index.d.ts#fetchRecordSchema
 fitsWhy: build/index.d.ts#fitsWhy
+fixAge: build/index.d.ts#fixAge
+fixProblems: build/index.d.ts#fixProblems
 foreignIncidents: build/index.d.ts#foreignIncidents
 gapGrade: build/index.d.ts#gapGrade
 graphLabels: build/index.d.ts#graphLabels
@@ -627,8 +724,10 @@ hasKind: build/index.d.ts#hasKind
 health: build/index.d.ts#health
 healthPayload: build/index.d.ts#healthPayload
 healthPayloadSchema: build/index.d.ts#healthPayloadSchema
+healthSource: build/index.d.ts#healthSource
 healthStateSchema: build/index.d.ts#healthStateSchema
 heldPersons: build/index.d.ts#heldPersons
+heldPlaces: build/index.d.ts#heldPlaces
 heldText: build/index.d.ts#heldText
 higherLevel: build/index.d.ts#higherLevel
 historyChangeAt: build/index.d.ts#historyChangeAt
@@ -641,6 +740,7 @@ historyRegionSchema: build/index.d.ts#historyRegionSchema
 historyTimes: build/index.d.ts#historyTimes
 historyView: build/index.d.ts#historyView
 holdKey: build/index.d.ts#holdKey
+holdPlaces: build/index.d.ts#holdPlaces
 inAudience: build/index.d.ts#inAudience
 inQuietWindow: build/index.d.ts#inQuietWindow
 incidentLineSchema: build/index.d.ts#incidentLineSchema
@@ -650,6 +750,9 @@ incidents: build/index.d.ts#incidents
 indicatorAreaKindSchema: build/index.d.ts#indicatorAreaKindSchema
 indicatorAreaSchema: build/index.d.ts#indicatorAreaSchema
 indicatorBreadth: build/index.d.ts#indicatorBreadth
+indicatorSurprise: build/index.d.ts#indicatorSurprise
+indicatorUnits: build/index.d.ts#indicatorUnits
+installedPackageSchema: build/index.d.ts#installedPackageSchema
 instantSchema: build/index.d.ts#instantSchema
 interestDefaultsConfigSchema: build/index.d.ts#interestDefaultsConfigSchema
 interestEdgeSchema: build/index.d.ts#interestEdgeSchema
@@ -668,6 +771,8 @@ isShape: build/index.d.ts#isShape
 isSignal: build/index.d.ts#isSignal
 join: build/index.d.ts#join
 joinRuns: build/index.d.ts#joinRuns
+jointStages: build/index.d.ts#jointStages
+jointUnreadAt: build/index.d.ts#jointUnreadAt
 kindClassSchema: build/index.d.ts#kindClassSchema
 kindCodeSchema: build/index.d.ts#kindCodeSchema
 kindLabel: build/index.d.ts#kindLabel
@@ -675,7 +780,9 @@ kindOfNode: build/index.d.ts#kindOfNode
 kindPriorSchema: build/index.d.ts#kindPriorSchema
 kindSchema: build/index.d.ts#kindSchema
 knownKind: build/index.d.ts#knownKind
+knowsReport: build/index.d.ts#knowsReport
 lastRun: build/index.d.ts#lastRun
+lateRetirements: build/index.d.ts#lateRetirements
 lateSources: build/index.d.ts#lateSources
 lateness: build/index.d.ts#lateness
 latenessLimitSchema: build/index.d.ts#latenessLimitSchema
@@ -683,6 +790,7 @@ latenessSchema: build/index.d.ts#latenessSchema
 latenessStateSchema: build/index.d.ts#latenessStateSchema
 latenessStep: build/index.d.ts#latenessStep
 latestIn: build/index.d.ts#latestIn
+leavingReports: build/index.d.ts#leavingReports
 levelRuleSchema: build/index.d.ts#levelRuleSchema
 levelSchema: build/index.d.ts#levelSchema
 levelTableSchema: build/index.d.ts#levelTableSchema
@@ -716,10 +824,13 @@ missRecord: build/index.d.ts#missRecord
 missedDrillAt: build/index.d.ts#missedDrillAt
 mostInWindow: build/index.d.ts#mostInWindow
 moveSchema: build/index.d.ts#moveSchema
+movingPlace: build/index.d.ts#movingPlace
+movingProblems: build/index.d.ts#movingProblems
 muteEffectSchema: build/index.d.ts#muteEffectSchema
 muteOf: build/index.d.ts#muteOf
 muteSchema: build/index.d.ts#muteSchema
 nextDrillAt: build/index.d.ts#nextDrillAt
+nextFix: build/index.d.ts#nextFix
 nodeCovers: build/index.d.ts#nodeCovers
 nodeKeySchema: build/index.d.ts#nodeKeySchema
 nodesOverlap: build/index.d.ts#nodesOverlap
@@ -741,10 +852,13 @@ outageAudit: build/index.d.ts#outageAudit
 outageConfigSchema: build/index.d.ts#outageConfigSchema
 outagePersonConfigSchema: build/index.d.ts#outagePersonConfigSchema
 ownBaselineSchema: build/index.d.ts#ownBaselineSchema
+pairHistories: build/index.d.ts#pairHistories
+pairSurprises: build/index.d.ts#pairSurprises
 parentKind: build/index.d.ts#parentKind
 parseConfig: build/index.d.ts#parseConfig
 parseCopySettings: build/index.d.ts#parseCopySettings
 partLabel: build/index.d.ts#partLabel
+passPlaces: build/index.d.ts#passPlaces
 personConfigSchema: build/index.d.ts#personConfigSchema
 personIdSchema: build/index.d.ts#personIdSchema
 personInterests: build/index.d.ts#personInterests
@@ -754,13 +868,17 @@ placeConfigSchema: build/index.d.ts#placeConfigSchema
 placeIdSchema: build/index.d.ts#placeIdSchema
 placeLabels: build/index.d.ts#placeLabels
 placeNode: build/index.d.ts#placeNode
+placeOfDevice: build/index.d.ts#placeOfDevice
 placeOfNode: build/index.d.ts#placeOfNode
+placeScope: build/index.d.ts#placeScope
 placeWhy: build/index.d.ts#placeWhy
 placesLayer: build/index.d.ts#placesLayer
 plainLabel: build/index.d.ts#plainLabel
 planDigests: build/index.d.ts#planDigests
 policyFor: build/index.d.ts#policyFor
 policyName: build/index.d.ts#policyName
+policyWithPriors: build/index.d.ts#policyWithPriors
+policyWithSoftware: build/index.d.ts#policyWithSoftware
 positionSchema: build/index.d.ts#positionSchema
 probabilitySchema: build/index.d.ts#probabilitySchema
 providerBalanceSchema: build/index.d.ts#providerBalanceSchema
@@ -786,6 +904,7 @@ recentBlocks: build/index.d.ts#recentBlocks
 recentRecovery: build/index.d.ts#recentRecovery
 recentStep: build/index.d.ts#recentStep
 recipientProblems: build/index.d.ts#recipientProblems
+redundancyStage: build/index.d.ts#redundancyStage
 regionCodeKey: build/index.d.ts#regionCodeKey
 regionCodeSchema: build/index.d.ts#regionCodeSchema
 regionContains: build/index.d.ts#regionContains
@@ -811,8 +930,11 @@ route: build/index.d.ts#route
 ruleSteps: build/index.d.ts#ruleSteps
 runOpens: build/index.d.ts#runOpens
 schemaOf: build/index.d.ts#schemaOf
+scopeOf: build/index.d.ts#scopeOf
 scoreFactorSchema: build/index.d.ts#scoreFactorSchema
 scorePriorsSchema: build/index.d.ts#scorePriorsSchema
+scoreRuleResult: build/index.d.ts#scoreRuleResult
+scoreRuleSchema: build/index.d.ts#scoreRuleSchema
 secretRefSchema: build/index.d.ts#secretRefSchema
 sendCapUsd: build/index.d.ts#sendCapUsd
 sendLimitConfigSchema: build/index.d.ts#sendLimitConfigSchema
@@ -836,8 +958,15 @@ shiftEscalationStart: build/index.d.ts#shiftEscalationStart
 shiftHealth: build/index.d.ts#shiftHealth
 shiftMerge: build/index.d.ts#shiftMerge
 shiftReport: build/index.d.ts#shiftReport
+signalHistories: build/index.d.ts#signalHistories
+signalRate: build/index.d.ts#signalRate
 significanceSchema: build/index.d.ts#significanceSchema
 simplifyBasemap: build/index.d.ts#simplifyBasemap
+softwareMatchSchema: build/index.d.ts#softwareMatchSchema
+softwareMatchText: build/index.d.ts#softwareMatchText
+softwareMatches: build/index.d.ts#softwareMatches
+softwarePartSchema: build/index.d.ts#softwarePartSchema
+softwareStackSchema: build/index.d.ts#softwareStackSchema
 sourceClearAt: build/index.d.ts#sourceClearAt
 sourceClearConfigSchema: build/index.d.ts#sourceClearConfigSchema
 sourceClearPolicy: build/index.d.ts#sourceClearPolicy
@@ -850,6 +979,7 @@ sourceHealthViewSchema: build/index.d.ts#sourceHealthViewSchema
 sourceIdSchema: build/index.d.ts#sourceIdSchema
 sourcePlaces: build/index.d.ts#sourcePlaces
 spendConfigSchema: build/index.d.ts#spendConfigSchema
+staleMovingPlaces: build/index.d.ts#staleMovingPlaces
 staleTime: build/index.d.ts#staleTime
 startHealth: build/index.d.ts#startHealth
 statusSchema: build/index.d.ts#statusSchema
@@ -860,6 +990,7 @@ subjectKindSchema: build/index.d.ts#subjectKindSchema
 subjectNode: build/index.d.ts#subjectNode
 subjectSchema: build/index.d.ts#subjectSchema
 subjectWatchSchema: build/index.d.ts#subjectWatchSchema
+surpriseOf: build/index.d.ts#surpriseOf
 systemReports: build/index.d.ts#systemReports
 tableLevel: build/index.d.ts#tableLevel
 tellConfigSchema: build/index.d.ts#tellConfigSchema
@@ -879,11 +1010,13 @@ urgencySchema: build/index.d.ts#urgencySchema
 useLevelsReached: build/index.d.ts#useLevelsReached
 useStages: build/index.d.ts#useStages
 useUnreadAt: build/index.d.ts#useUnreadAt
+versRangeCheck: build/index.d.ts#versRangeCheck
 watchProblems: build/index.d.ts#watchProblems
 watchSchema: build/index.d.ts#watchSchema
 watchedDrillMiss: build/index.d.ts#watchedDrillMiss
 watchedDrillReportAt: build/index.d.ts#watchedDrillReportAt
 watchedPlaceSchema: build/index.d.ts#watchedPlaceSchema
+watchedStates: build/index.d.ts#watchedStates
 whyLimitSchema: build/index.d.ts#whyLimitSchema
 whyLine: build/index.d.ts#whyLine
 whyRecordSchema: build/index.d.ts#whyRecordSchema
@@ -932,10 +1065,13 @@ export interface AlertConfig {
   readonly expectations?: readonly ExpectationConfig[];
   readonly spend?: readonly SpendConfig[];
   readonly limits?: readonly LimitConfig[];
+  readonly chain?: ChainConfig;
+  readonly software?: SoftwareStack;
   readonly link?: LinkPolicy;
   readonly outage?: OutageConfig;
   readonly rankDelay?: RankDelays;
   readonly rankFloor?: Duration;
+  readonly reportLimit?: number;
   readonly assess?: AssessPolicy;
   readonly drills?: readonly DrillConfig[];
   readonly optIn?: readonly OptInConfig[];
@@ -944,6 +1080,12 @@ export interface AlertConfig {
   readonly sendLimit?: SendLimitConfig;
   readonly throttle?: ThrottleConfig;
   readonly tell?: TellConfig;
+}
+
+### build/index.d.ts#AllRetirements
+export interface AllRetirements {
+  readonly whole: ReportId[];
+  readonly late: ReportId[];
 }
 
 ### build/index.d.ts#Area
@@ -972,6 +1114,8 @@ export interface AssessPolicy {
   readonly classes: readonly KindClass[];
   readonly otherwise: LevelTable;
   readonly relevance?: RelevancePolicy;
+  readonly priors?: ScorePriors;
+  readonly software?: SoftwareStack;
 }
 
 ### build/index.d.ts#AssessReason
@@ -1004,6 +1148,9 @@ export type AssessReason = {
   readonly kind: "subject";
   readonly subject: SubjectWatch;
 } | {
+  readonly kind: "software";
+  readonly match: SoftwareMatch;
+} | {
   readonly kind: "place-table";
   readonly place: PlaceId;
   readonly reports: readonly ReportId[];
@@ -1024,6 +1171,11 @@ export type AssessReason = {
 } | {
   readonly kind: "shadow";
   readonly score: ShadowScore;
+} | {
+  readonly kind: "score";
+  readonly risk: number;
+  readonly raised: boolean;
+  readonly score?: ShadowScore;
 } | {
   readonly kind: "reach";
   readonly reach: Estimate;
@@ -1063,6 +1215,9 @@ export declare const BALANCE_KIND = "system.balance";
 ### build/index.d.ts#BALANCE_STAGES
 export declare const BALANCE_STAGES: readonly BalanceStage[];
 
+### build/index.d.ts#BILLING_FIELD
+export declare const BILLING_FIELD: RegExp;
+
 ### build/index.d.ts#BalanceHealth
 export interface BalanceHealth {
   readonly balance: ProviderBalance;
@@ -1095,6 +1250,12 @@ export interface Breadth {
   readonly signals: readonly DimensionId[];
   readonly read: readonly DimensionId[];
   readonly dimensions: readonly DimensionCount[];
+}
+
+### build/index.d.ts#BucketReads
+export interface BucketReads {
+  readonly bucket: Instant;
+  readonly units: readonly SignalUnit[];
 }
 
 ### build/index.d.ts#CAP_MESSAGE_SYSTEM
@@ -1207,6 +1368,18 @@ export type CellResource = "internet" | "dns" | "power" | "receiver";
 ### build/index.d.ts#Certainty
 export type Certainty = "observed" | "likely" | "possible" | "unlikely" | "unknown";
 
+### build/index.d.ts#ChainConfig
+export interface ChainConfig {
+  readonly stack: Readonly<Record<string, unknown>>;
+  readonly subjects: readonly ChainSubject[];
+}
+
+### build/index.d.ts#ChainPart
+export interface ChainPart {
+  readonly id: string;
+  readonly name: string;
+}
+
 ### build/index.d.ts#ChainRun
 export interface ChainRun {
   readonly state: ChainState;
@@ -1226,6 +1399,13 @@ export type ChainState = {
 } | {
   readonly kind: "exhausted";
 };
+
+### build/index.d.ts#ChainSubject
+export interface ChainSubject {
+  readonly system: string;
+  readonly id: string;
+  readonly part: string;
+}
 
 ### build/index.d.ts#ChannelCallFailure
 export interface ChannelCallFailure {
@@ -1386,6 +1566,22 @@ export interface ContactLookup {
 ### build/index.d.ts#ContactServices
 export type ContactServices = (channel: ChannelId, address: Address) => readonly NodeKey[];
 
+### build/index.d.ts#CopyBilling
+export interface CopyBilling {
+  readonly state: CopyBillingState;
+  readonly at: Instant;
+}
+
+### build/index.d.ts#CopyBillingConfig
+export interface CopyBillingConfig {
+  readonly argv: readonly string[];
+  readonly field: string;
+  readonly stoppedWhen: readonly (string | number | boolean)[];
+}
+
+### build/index.d.ts#CopyBillingState
+export type CopyBillingState = "stopped" | "on" | "unread";
+
 ### build/index.d.ts#CopyHealth
 export interface CopyHealth {
   readonly copy: string;
@@ -1411,6 +1607,7 @@ export interface CopyMeasureOptions {
 export interface CopyPeer {
   readonly id: string;
   readonly url: string;
+  readonly billing?: CopyBillingConfig;
 }
 
 ### build/index.d.ts#CopyRead
@@ -1430,6 +1627,24 @@ export interface CopySettings {
   readonly pingKey?: string;
   readonly accounts?: Readonly<Record<string, number>>;
   readonly configFrom?: string;
+  readonly leaveChannels?: readonly ChannelId[];
+  readonly leaveSources?: readonly SourceId[];
+  readonly sounder?: CopySounder;
+  readonly drift?: DriftConfig;
+}
+
+### build/index.d.ts#CopySounder
+export interface CopySounder {
+  readonly devices: Readonly<Record<string, CopySounderDevice>>;
+  readonly sounds?: Partial<Readonly<Record<Level, number>>>;
+  readonly gapMs?: Duration;
+}
+
+### build/index.d.ts#CopySounderDevice
+export interface CopySounderDevice {
+  readonly sound: readonly string[];
+  readonly levels?: Partial<Readonly<Record<Level, readonly string[]>>>;
+  readonly probe?: readonly string[];
 }
 
 ### build/index.d.ts#CopyStage
@@ -1450,6 +1665,7 @@ export interface CopyWatch {
   readonly read?: CopyRead;
   readonly drills?: Readonly<Record<string, Instant>>;
   readonly unsteadySince?: Instant;
+  readonly billing?: CopyBilling;
 }
 
 ### build/index.d.ts#CorrelationKey
@@ -1468,6 +1684,13 @@ export interface Coverage {
   readonly faults: readonly string[];
   readonly commonResources: readonly CellResource[];
   readonly required: number;
+}
+
+### build/index.d.ts#CoverageCandidates
+export interface CoverageCandidates {
+  readonly place: PlaceId;
+  readonly kind: string;
+  readonly sources: readonly SourceId[];
 }
 
 ### build/index.d.ts#CoverageInput
@@ -1517,6 +1740,9 @@ export declare const DEFAULT_FAIL_AFTER = 2;
 
 ### build/index.d.ts#DEFAULT_LINK_POLICY
 export declare const DEFAULT_LINK_POLICY: LinkPolicy;
+
+### build/index.d.ts#DEFAULT_MAX_ACCURACY_KM
+export declare const DEFAULT_MAX_ACCURACY_KM = 2;
 
 ### build/index.d.ts#DEFAULT_RELEVANCE_POLICY
 export declare const DEFAULT_RELEVANCE_POLICY: RelevancePolicy;
@@ -1677,6 +1903,21 @@ export declare const DIMENSION_IDS: readonly DimensionId[];
 ### build/index.d.ts#DOWN_STATES
 export declare const DOWN_STATES: readonly HealthState[];
 
+### build/index.d.ts#DRIFT_COMMAND_KINDS
+export declare const DRIFT_COMMAND_KINDS: readonly ["setup", "tofu"];
+
+### build/index.d.ts#DRIFT_KIND
+export declare const DRIFT_KIND = "system.drift";
+
+### build/index.d.ts#DRIFT_NAME
+export declare const DRIFT_NAME: RegExp;
+
+### build/index.d.ts#DRIFT_STAGES
+export declare const DRIFT_STAGES: readonly DriftStage[];
+
+### build/index.d.ts#DRIFT_STEPS_SHOWN
+export declare const DRIFT_STEPS_SHOWN = 10;
+
 ### build/index.d.ts#DRILL_KIND
 export declare const DRILL_KIND = "system.drill";
 
@@ -1807,6 +2048,39 @@ export interface DimensionCount {
 
 ### build/index.d.ts#DimensionId
 export type DimensionId = (typeof DIMENSIONS)[number]["id"];
+
+### build/index.d.ts#DriftCheck
+export interface DriftCheck {
+  readonly name: string;
+  readonly maxAge: Duration;
+  readonly since: Instant;
+  readonly read?: DriftRead;
+}
+
+### build/index.d.ts#DriftCommandConfig
+export interface DriftCommandConfig {
+  readonly name: string;
+  readonly kind: DriftCommandKind;
+  readonly argv: readonly string[];
+}
+
+### build/index.d.ts#DriftCommandKind
+export type DriftCommandKind = (typeof DRIFT_COMMAND_KINDS)[number];
+
+### build/index.d.ts#DriftConfig
+export interface DriftConfig {
+  readonly commands: readonly DriftCommandConfig[];
+}
+
+### build/index.d.ts#DriftRead
+export interface DriftRead {
+  readonly changes: number;
+  readonly steps: readonly string[];
+  readonly at: Instant;
+}
+
+### build/index.d.ts#DriftStage
+export type DriftStage = "changed" | "unread";
 
 ### build/index.d.ts#DrillConfig
 export interface DrillConfig {
@@ -2041,11 +2315,42 @@ export interface ExpectedHarm {
   readonly injuries: Estimate;
 }
 
+### build/index.d.ts#FEED_LAG_LEVEL
+export declare const FEED_LAG_LEVEL = .95;
+
+### build/index.d.ts#FEED_LAG_WINDOW
+export declare const FEED_LAG_WINDOW: Duration;
+
+### build/index.d.ts#FIX_FUTURE_LIMIT_MS
+export declare const FIX_FUTURE_LIMIT_MS = 6e4;
+
 ### build/index.d.ts#FLOAT_REACH
 export declare const FLOAT_REACH: ReachArithmetic<number>;
 
 ### build/index.d.ts#FOREIGN_TABLE
 export declare const FOREIGN_TABLE: LevelTable;
+
+### build/index.d.ts#FUNCTION_SUBJECT
+export declare const FUNCTION_SUBJECT = "alerts.function";
+
+### build/index.d.ts#FeedLag
+export interface FeedLag {
+  readonly source: SourceId;
+  readonly count: number;
+  readonly ahead: number;
+  readonly median: Duration;
+  readonly medianLow?: Duration;
+  readonly medianHigh?: Duration;
+  readonly p90High?: Duration;
+  readonly newest: Instant;
+}
+
+### build/index.d.ts#FeedLagOptions
+export interface FeedLagOptions {
+  readonly at: Instant;
+  readonly window?: Duration;
+  readonly level?: number;
+}
 
 ### build/index.d.ts#FetchFailure
 export type FetchFailure = {
@@ -2095,6 +2400,15 @@ export interface FetchSignal {
   removeEventListener(type: "abort", listener: () => void): void;
 }
 
+### build/index.d.ts#FixRefusal
+export type FixRefusal = "problems" | "accuracy" | "older";
+
+### build/index.d.ts#FixStep
+export interface FixStep {
+  readonly fix: PositionFix | undefined;
+  readonly refused?: FixRefusal;
+}
+
 ### build/index.d.ts#FixedCost
 export interface FixedCost {
   readonly what: string;
@@ -2124,6 +2438,9 @@ export declare const HEALTH_MACHINE: Machine;
 
 ### build/index.d.ts#HELD_SHOWN
 export declare const HELD_SHOWN = 3;
+
+### build/index.d.ts#HISTORY_BUCKET
+export declare const HISTORY_BUCKET: Duration;
 
 ### build/index.d.ts#HISTORY_FORMAT
 export declare const HISTORY_FORMAT = "alerts-history/1";
@@ -2163,6 +2480,9 @@ export interface HealthPayloadInput {
   readonly channels?: readonly ChannelSnapshot[];
   readonly channelDown?: ChannelDownPolicy;
 }
+
+### build/index.d.ts#HealthSource
+export type HealthSource = Pick<SourceDescriptor, "id" | "interval" | "slowAfter" | "maxQuiet">;
 
 ### build/index.d.ts#HealthState
 export type HealthState = "unknown" | "healthy" | "slow" | "failing" | "silent" | "changed";
@@ -2359,6 +2679,18 @@ export interface IndicatorBreadth {
   readonly unplaced: readonly string[];
 }
 
+### build/index.d.ts#IndicatorSurprise
+export interface IndicatorSurprise {
+  readonly world: Surprise;
+  readonly places: readonly PlaceSurprise[];
+}
+
+### build/index.d.ts#InstalledPackage
+export interface InstalledPackage {
+  readonly purl: string;
+  readonly version: string;
+}
+
 ### build/index.d.ts#Instant
 export type Instant = number;
 
@@ -2413,6 +2745,31 @@ export interface InterestsPerson {
   readonly labels: Readonly<Record<string, string>>;
   readonly problem?: string;
 }
+
+### build/index.d.ts#JOINT_KIND
+export declare const JOINT_KIND = "system.joint";
+
+### build/index.d.ts#JOINT_STAGES
+export declare const JOINT_STAGES: readonly JointStage[];
+
+### build/index.d.ts#JointDown
+export interface JointDown {
+  readonly window: Duration;
+  readonly limit: Duration;
+  readonly maxAge: Duration;
+  readonly since: Instant;
+  readonly read?: JointDownRead;
+}
+
+### build/index.d.ts#JointDownRead
+export interface JointDownRead {
+  readonly down: Duration;
+  readonly spans: number;
+  readonly at: Instant;
+}
+
+### build/index.d.ts#JointStage
+export type JointStage = "over" | "unread";
 
 ### build/index.d.ts#KIND_ALIASES
 export declare const KIND_ALIASES: Readonly<Record<string, string>>;
@@ -2496,6 +2853,12 @@ export declare const LOOP_BLOCK_WINDOW: Duration;
 ### build/index.d.ts#LOOP_KIND
 export declare const LOOP_KIND = "system.loop";
 
+### build/index.d.ts#LateOptions
+export interface LateOptions {
+  readonly link?: LinkRule | undefined;
+  readonly keeps?: ((report: ReportId) => boolean) | undefined;
+}
+
 ### build/index.d.ts#Lateness
 export interface Lateness {
   readonly expectation: string;
@@ -2524,6 +2887,16 @@ export type LatenessState = "no-limit" | "no-data" | "met" | "late";
 export interface LatenessStep {
   readonly lateness: Lateness[];
   readonly folds: LatenessFolds;
+}
+
+### build/index.d.ts#LeavingInput
+export interface LeavingInput {
+  readonly state: MergeState;
+  readonly group: readonly ReportId[];
+  readonly order: readonly ReportId[];
+  readonly at: Instant;
+  readonly ended: ReadonlySet<ReportId>;
+  readonly link?: LinkRule | undefined;
 }
 
 ### build/index.d.ts#Level
@@ -2660,6 +3033,9 @@ export interface LogRecovery {
 export interface LoopBlock {
   readonly at: Instant;
   readonly size: Duration;
+  readonly cpu?: Duration;
+  readonly faults?: number;
+  readonly gc?: Duration;
 }
 
 ### build/index.d.ts#MAGNITUDE_PARAMETER
@@ -2678,8 +3054,14 @@ export declare const MAP_VIEW: {
 ### build/index.d.ts#MAX_PLACE_CODES
 export declare const MAX_PLACE_CODES = 1e3;
 
+### build/index.d.ts#MAX_WEIGHTED_UNITS
+export declare const MAX_WEIGHTED_UNITS: number;
+
 ### build/index.d.ts#MEASURE_ID
 export declare const MEASURE_ID: RegExp;
+
+### build/index.d.ts#MIN_READS
+export declare const MIN_READS = 30;
 
 ### build/index.d.ts#MOVES
 export declare const MOVES: readonly Move[];
@@ -2722,6 +3104,7 @@ export interface MapPayload {
   readonly view: MapView;
   readonly basemap: readonly MapRegion[];
   readonly breadth?: IndicatorBreadth;
+  readonly surprise?: IndicatorSurprise;
 }
 
 ### build/index.d.ts#MapPayloadInput
@@ -2733,6 +3116,7 @@ export interface MapPayloadInput extends Omit<MapInput, "assessments"> {
   readonly priors?: ScorePriors;
   readonly foreign?: ((incident: Pick<Incident, "anchor" | "reports">) => boolean) | undefined;
   readonly breadth?: IndicatorBreadth;
+  readonly surprise?: IndicatorSurprise;
 }
 
 ### build/index.d.ts#MapPlace
@@ -2790,6 +3174,9 @@ export interface MapView {
   readonly places: readonly MapPlace[];
   readonly unshaped: readonly RegionCode[];
 }
+
+### build/index.d.ts#MatchVerdict
+export type MatchVerdict = "affected" | "unknown";
 
 ### build/index.d.ts#MeasureDeclaration
 export interface MeasureDeclaration {
@@ -2856,6 +3243,13 @@ export interface MissRecord {
 ### build/index.d.ts#Move
 export type Move = "rise" | "drop" | "both";
 
+### build/index.d.ts#MovingRule
+export interface MovingRule {
+  readonly device: string;
+  readonly maxAgeMinutes: number;
+  readonly maxAccuracyKm?: number;
+}
+
 ### build/index.d.ts#Mute
 export interface Mute {
   readonly id: string;
@@ -2879,6 +3273,9 @@ export declare const NEED_LEVELS: readonly ["life", "health", "comfort"];
 
 ### build/index.d.ts#NO_HISTORIES
 export declare const NO_HISTORIES: Histories;
+
+### build/index.d.ts#NO_HOLDS
+export declare const NO_HOLDS: PlaceHolds;
 
 ### build/index.d.ts#NO_LABELS
 export declare const NO_LABELS: WhyLabels;
@@ -3109,6 +3506,9 @@ export interface OutageReach {
 ### build/index.d.ts#OwnBaseline
 export type OwnBaseline = "none" | "expected" | "flag";
 
+### build/index.d.ts#PACKAGE_SYSTEM
+export declare const PACKAGE_SYSTEM = "purl";
+
 ### build/index.d.ts#PART_NAME
 export declare const PART_NAME: RegExp;
 
@@ -3118,8 +3518,35 @@ export declare const PATH_SYSTEMS: readonly string[];
 ### build/index.d.ts#PERSON_SUBJECT
 export declare const PERSON_SUBJECT = "alerts.person";
 
+### build/index.d.ts#PLACE_KIND
+export declare const PLACE_KIND = "system.place";
+
+### build/index.d.ts#PLACE_SUBJECT
+export declare const PLACE_SUBJECT = "alerts.place";
+
 ### build/index.d.ts#PRIORS_FORMAT
 export declare const PRIORS_FORMAT: ScorePriors["format"];
+
+### build/index.d.ts#PairHistory
+export interface PairHistory {
+  readonly a: string;
+  readonly b: string;
+  readonly reads: number;
+  readonly signalsA: number;
+  readonly signalsB: number;
+  readonly joint: number;
+}
+
+### build/index.d.ts#PairSurprise
+export interface PairSurprise {
+  readonly a: string;
+  readonly b: string;
+  readonly reads: number;
+  readonly joint: number;
+  readonly rate: number;
+  readonly surprise: number;
+  readonly together: number;
+}
 
 ### build/index.d.ts#ParsedConfig
 export interface ParsedConfig {
@@ -3169,6 +3596,7 @@ export interface PersonWatch {
   readonly quiet?: QuietWindow;
   readonly interests?: InterestGraph;
   readonly mandatory?: readonly MandatoryRule[];
+  readonly score?: ScoreRule;
 }
 
 ### build/index.d.ts#PlaceBreadth
@@ -3184,7 +3612,11 @@ export interface PlaceConfig {
   readonly codes: readonly RegionCode[];
   readonly bufferKm: number;
   readonly sharePosition?: readonly SourceId[];
+  readonly moving?: MovingRule;
 }
+
+### build/index.d.ts#PlaceHolds
+export type PlaceHolds = ReadonlyMap<ReportId, readonly WatchedPlace[]>;
 
 ### build/index.d.ts#PlaceId
 export type PlaceId = Id<"PlaceId">;
@@ -3198,8 +3630,21 @@ export interface PlaceMatch {
   readonly zoneFallback?: true;
 }
 
+### build/index.d.ts#PlaceSurprise
+export interface PlaceSurprise extends Surprise {
+  readonly place: PlaceId;
+}
+
 ### build/index.d.ts#Position
 export type Position = readonly [lon: number, lat: number];
+
+### build/index.d.ts#PositionFix
+export interface PositionFix {
+  readonly place: PlaceId;
+  readonly at: Position;
+  readonly accuracyKm: number;
+  readonly observedAt: Instant;
+}
 
 ### build/index.d.ts#ProbeOutcome
 export type ProbeOutcome = {
@@ -3252,6 +3697,7 @@ export declare const QUOTA_STAGES: readonly QuotaStage[];
 export interface QuietRule {
   readonly horizon: Duration;
   readonly keeps?: ((incident: Incident) => boolean) | undefined;
+  readonly told?: Duration | undefined;
 }
 
 ### build/index.d.ts#QuietWindow
@@ -3273,6 +3719,9 @@ export type QuotaStage = "low" | "reserve" | "spent";
 ### build/index.d.ts#RANK_DELAY_LIMIT
 export declare const RANK_DELAY_LIMIT: Duration;
 
+### build/index.d.ts#REDUNDANCY_KIND
+export declare const REDUNDANCY_KIND = "system.redundancy";
+
 ### build/index.d.ts#REPORT_SYSTEMS
 export declare const REPORT_SYSTEMS: readonly string[];
 
@@ -3281,6 +3730,15 @@ export declare const RETENTION_HORIZON: Duration;
 
 ### build/index.d.ts#RULED_STATUSES
 export declare const RULED_STATUSES: readonly Status[];
+
+### build/index.d.ts#RangeCheck
+export type RangeCheck = (range: string, version: string) => RangeResult;
+
+### build/index.d.ts#RangeResult
+export interface RangeResult {
+  readonly affected: boolean | undefined;
+  readonly fixed?: string;
+}
 
 ### build/index.d.ts#RankDelays
 export type RankDelays = Readonly<Partial<Record<Level, Duration>>>;
@@ -3326,6 +3784,17 @@ export interface Recipient {
   readonly policies: readonly EscalationPolicy[];
   readonly addresses: Readonly<Record<string, Address>>;
   readonly channelRules?: readonly ChannelRule[];
+}
+
+### build/index.d.ts#RedundancyStage
+export type RedundancyStage = "single" | "stopped";
+
+### build/index.d.ts#RedundancyState
+export interface RedundancyState {
+  readonly function: ChainPart;
+  readonly works: boolean;
+  readonly points: readonly ChainPart[];
+  readonly down: readonly ChainPart[];
 }
 
 ### build/index.d.ts#RegionCode
@@ -3467,6 +3936,7 @@ export interface Route {
   readonly end?: EscalationEnd;
   readonly freshEnd: boolean;
   readonly why?: WhyRecord;
+  readonly software?: readonly SoftwareMatch[];
   readonly held?: EscalationHold;
   readonly imported?: true;
   readonly suppressed?: Suppression;
@@ -3478,6 +3948,7 @@ export interface RouteInput {
   readonly incidents: readonly Incident[];
   readonly recipients: readonly Recipient[];
   readonly places: readonly WatchedPlace[];
+  readonly holds?: PlaceHolds | undefined;
   readonly assess?: AssessPolicy | undefined;
   readonly sources?: ReadonlySet<string> | undefined;
   readonly starts: readonly EscalationStart[];
@@ -3513,8 +3984,17 @@ export declare const SEVERITY_ORDER: readonly Severity[];
 ### build/index.d.ts#SHARED_HANDOVER
 export declare const SHARED_HANDOVER: Duration;
 
+### build/index.d.ts#SOFTWARE_PART_SYSTEM
+export declare const SOFTWARE_PART_SYSTEM = "software.part";
+
 ### build/index.d.ts#SOURCE_SUBJECT
 export declare const SOURCE_SUBJECT = "alerts.source";
+
+### build/index.d.ts#STATE_FIPS
+export declare const STATE_FIPS: Readonly<Record<string, string>>;
+
+### build/index.d.ts#STATE_POSTAL
+export declare const STATE_POSTAL: Readonly<Record<string, string>>;
 
 ### build/index.d.ts#STORE_FILL_WINDOW
 export declare const STORE_FILL_WINDOW: Duration;
@@ -3551,6 +4031,17 @@ export interface ScorePriors {
   readonly kinds: Readonly<Record<string, KindPrior>>;
   readonly certainty: Readonly<Partial<Record<Certainty, Estimate>>>;
 }
+
+### build/index.d.ts#ScoreRule
+export interface ScoreRule {
+  readonly risk: number;
+  readonly except?: readonly string[];
+}
+
+### build/index.d.ts#ScoreRuleReason
+export type ScoreRuleReason = Extract<AssessReason, {
+  readonly kind: "score";
+}>;
 
 ### build/index.d.ts#ScoreSource
 export type ScoreSource = {
@@ -3710,8 +4201,50 @@ export type ShadowScore = {
 ### build/index.d.ts#ShapeLookup
 export type ShapeLookup = (code: RegionCode) => readonly MapShape[] | undefined;
 
+### build/index.d.ts#SignalHistory
+export interface SignalHistory {
+  readonly unit: string;
+  readonly reads: number;
+  readonly signals: number;
+}
+
+### build/index.d.ts#SignalRate
+export interface SignalRate {
+  readonly unit: string;
+  readonly rate: number;
+  readonly reads: number;
+}
+
+### build/index.d.ts#SignalUnit
+export interface SignalUnit {
+  readonly unit: string;
+  readonly signal: boolean;
+}
+
 ### build/index.d.ts#Significance
 export type Significance = "warning" | "watch" | "advisory" | "statement" | "outlook" | "observation";
+
+### build/index.d.ts#SoftwareMatch
+export interface SoftwareMatch {
+  readonly part: string;
+  readonly label?: string;
+  readonly purl: string;
+  readonly installed: string;
+  readonly verdict: MatchVerdict;
+  readonly fixed?: string;
+}
+
+### build/index.d.ts#SoftwarePart
+export interface SoftwarePart {
+  readonly part: string;
+  readonly label?: string;
+  readonly packages: readonly InstalledPackage[];
+}
+
+### build/index.d.ts#SoftwareStack
+export interface SoftwareStack {
+  readonly parts: readonly SoftwarePart[];
+}
 
 ### build/index.d.ts#SourceClearConfig
 export interface SourceClearConfig {
@@ -3797,8 +4330,25 @@ export interface SpendConfig {
   readonly timeZone: string;
 }
 
+### build/index.d.ts#StalePlace
+export interface StalePlace {
+  readonly place: PlaceId;
+  readonly label: string;
+  readonly persons: readonly PersonId[];
+}
+
 ### build/index.d.ts#Status
 export type Status = "actual" | "exercise" | "system" | "test" | "draft";
+
+### build/index.d.ts#StoreBound
+export interface StoreBound {
+  readonly store: string;
+  readonly family: string;
+  readonly entries: number;
+  readonly limit: number;
+  readonly waiting: number;
+  readonly sources: readonly SourceId[];
+}
 
 ### build/index.d.ts#StoreFill
 export interface StoreFill {
@@ -3815,6 +4365,7 @@ export interface Subject {
   readonly system: string;
   readonly id: string;
   readonly label?: string;
+  readonly ranges?: readonly string[];
 }
 
 ### build/index.d.ts#SubjectEntry
@@ -3831,7 +4382,7 @@ export type SubjectKey = Pick<Subject, "system" | "id">;
 export type SubjectKind = "place" | "topic" | "entity";
 
 ### build/index.d.ts#SubjectSystem
-export type SubjectSystem = "place" | "point" | "polygon" | "ugc" | "ugc-fire" | "same" | "fips" | "state" | "iso3166" | "geonames" | "icao" | "topic" | "iptc" | "cap-category" | "cve" | "wikidata" | "asn" | "domain" | "provider-region" | "ticker" | "lei" | "purl";
+export type SubjectSystem = "place" | "point" | "polygon" | "ugc" | "ugc-fire" | "same" | "fips" | "state" | "iso3166" | "geonames" | "icao" | "topic" | "iptc" | "cap-category" | "cve" | "wikidata" | "asn" | "domain" | "provider-region" | "ticker" | "lei" | "purl" | "software.part";
 
 ### build/index.d.ts#SubjectWatch
 export interface SubjectWatch {
@@ -3855,6 +4406,18 @@ export interface Suppression {
 
 ### build/index.d.ts#SuppressionReason
 export type SuppressionReason = "same-level" | "lower-level";
+
+### build/index.d.ts#Surprise
+export interface Surprise {
+  readonly units: number;
+  readonly signals: number;
+  readonly p: number;
+  readonly surprise: number;
+  readonly rare: readonly SignalRate[];
+  readonly noRate: readonly string[];
+  readonly weighted?: WeightedSurprise;
+  readonly pairs?: readonly PairSurprise[];
+}
 
 ### build/index.d.ts#SystemLine
 export interface SystemLine {
@@ -3882,12 +4445,15 @@ export interface SystemSnapshot {
   readonly quotas?: readonly ChannelQuota[];
   readonly balances?: readonly ProviderBalance[];
   readonly uses?: readonly LimitUse[];
+  readonly joint?: JointDown | null;
+  readonly drift?: readonly DriftCheck[] | null;
   readonly copy?: string;
   readonly copies?: readonly CopyWatch[];
   readonly steps?: readonly ClockStep[];
   readonly recoveries?: readonly LogRecovery[];
   readonly blocks?: readonly LoopBlock[];
   readonly stores?: readonly StoreFill[];
+  readonly bounds?: readonly StoreBound[];
   readonly drills?: readonly DrillSnapshot[];
   readonly drillWatches?: readonly DrillWatch[];
   readonly exhausted?: readonly Exhaustion[];
@@ -3896,6 +4462,8 @@ export interface SystemSnapshot {
   readonly channelDown?: ChannelDownConfig;
   readonly observing?: readonly ObserveCondition[];
   readonly sourceClear?: SourceClearConfig;
+  readonly redundancy?: readonly RedundancyState[];
+  readonly stale?: readonly StalePlace[];
 }
 
 ### build/index.d.ts#SystemStep
@@ -4052,6 +4620,9 @@ export declare const USE_STAGES: readonly UseStage[];
 ### build/index.d.ts#US_GALLON_L
 export declare const US_GALLON_L = 3.785411784;
 
+### build/index.d.ts#US_TERRITORIES
+export declare const US_TERRITORIES: ReadonlySet<string>;
+
 ### build/index.d.ts#UnderPrior
 export interface UnderPrior {
   readonly deaths: Estimate;
@@ -4077,6 +4648,9 @@ export declare const WORK_DEFAULTS: Readonly<Record<string, WorkDefaults>>;
 ### build/index.d.ts#WORK_DEFAULTS_DATE
 export declare const WORK_DEFAULTS_DATE = "2026-11-17";
 
+### build/index.d.ts#WORLD_SCOPE
+export declare const WORLD_SCOPE = "world";
+
 ### build/index.d.ts#Watch
 export interface Watch {
   readonly places: readonly WatchedPlace[];
@@ -4089,6 +4663,14 @@ export interface WatchedPlace {
   readonly at?: Position;
   readonly codes: readonly RegionCode[];
   readonly bufferKm: number;
+}
+
+### build/index.d.ts#WeightedSurprise
+export interface WeightedSurprise {
+  readonly weight: number;
+  readonly low: number;
+  readonly p: number;
+  readonly surprise: number;
 }
 
 ### build/index.d.ts#WhyLabels
@@ -4158,13 +4740,16 @@ export declare const addressValueSchema: z.ZodType<AddressValue, AddressValue>;
 export declare function admits(policy: AssessPolicy, incident: Pick<Incident, "status" | "kind">): boolean;
 
 ### build/index.d.ts#advanceHealth
-export declare function advanceHealth(track: HealthTrack, now: Instant, descriptor: SourceDescriptor, options?: HealthOptions): HealthStep;
+export declare function advanceHealth(track: HealthTrack, now: Instant, descriptor: HealthSource, options?: HealthOptions): HealthStep;
 
 ### build/index.d.ts#alertAreaSchema
 export declare const alertAreaSchema: z.ZodType<AlertArea, AlertArea>;
 
 ### build/index.d.ts#alertConfigSchema
 export declare const alertConfigSchema: z.ZodType<AlertConfig, AlertConfig>;
+
+### build/index.d.ts#allRetirements
+export declare function allRetirements(state: MergeState, found: readonly Incident[], at: Instant, horizon?: Duration, quiet?: QuietRule, options?: LateOptions): AllRetirements;
 
 ### build/index.d.ts#areaMeetsPlace
 export declare function areaMeetsPlace(area: IndicatorArea, place: WatchedPlace, zones?: readonly ZoneRegions[]): boolean | undefined;
@@ -4199,6 +4784,9 @@ export declare const assessmentSchema: z.ZodType<Assessment, Assessment>;
 ### build/index.d.ts#assessmentWhy
 export declare function assessmentWhy(assessment: Pick<Assessment, "reasons" | "places">): WhyRecord | undefined;
 
+### build/index.d.ts#atBound
+export declare function atBound(bound: StoreBound): boolean;
+
 ### build/index.d.ts#audienceKey
 export declare function audienceKey(item: Audience): string;
 
@@ -4229,6 +4817,12 @@ export declare function balanceUnreadAt(balance: ProviderBalance): Instant;
 ### build/index.d.ts#basemapToleranceKm
 export declare function basemapToleranceKm(regions: readonly MapRegion[]): number | undefined;
 
+### build/index.d.ts#blockCause
+export declare function blockCause(block: Pick<LoopBlock, "cpu" | "faults" | "gc">): Pick<LoopBlock, "cpu" | "faults" | "gc">;
+
+### build/index.d.ts#blockCauseText
+export declare function blockCauseText(block: LoopBlock): string | undefined;
+
 ### build/index.d.ts#blockClass
 export declare function blockClass(size: Duration): Duration;
 
@@ -4237,6 +4831,12 @@ export declare function blockSizeText(size: Duration): string;
 
 ### build/index.d.ts#breadthOf
 export declare function breadthOf(series: readonly SeriesSignal[]): Breadth;
+
+### build/index.d.ts#breadthUnits
+export declare function breadthUnits(breadth: Breadth, scope: string): SignalUnit[];
+
+### build/index.d.ts#bucketOf
+export declare function bucketOf(at: Instant, size?: Duration): Instant;
 
 ### build/index.d.ts#canReach
 export declare function canReach(input: RelevanceInput, graph: InterestGraph, policy: RelevancePolicy, options?: RelevanceOptions): boolean;
@@ -4265,11 +4865,17 @@ export declare const cellResourceSchema: z.ZodType<CellResource, CellResource>;
 ### build/index.d.ts#certaintySchema
 export declare const certaintySchema: z.ZodType<Certainty, Certainty>;
 
+### build/index.d.ts#chainConfigSchema
+export declare const chainConfigSchema: z.ZodType<ChainConfig, ChainConfig>;
+
 ### build/index.d.ts#chainNext
 export declare function chainNext(chain: TryChain, step?: number, end?: TryEnd): ChainState;
 
 ### build/index.d.ts#chainRun
 export declare function chainRun(chain: TryChain, start: Instant, ends: readonly TimedEnd[], instance: string): ChainRun;
+
+### build/index.d.ts#chainSubjectSchema
+export declare const chainSubjectSchema: z.ZodType<ChainSubject, ChainSubject>;
 
 ### build/index.d.ts#channelDescriptorSchema
 export declare const channelDescriptorSchema: z.ZodType<ChannelDescriptor, ChannelDescriptor>;
@@ -4334,6 +4940,9 @@ export declare const contactConfigSchema: z.ZodType<ContactConfig, ContactConfig
 ### build/index.d.ts#contextSource
 export declare function contextSource(source: SourceDescriptor): boolean;
 
+### build/index.d.ts#copyBillingConfigSchema
+export declare const copyBillingConfigSchema: z.ZodType<CopyBillingConfig, CopyBillingConfig>;
+
 ### build/index.d.ts#copyHealthSchema
 export declare const copyHealthSchema: z.ZodType<CopyHealth, CopyHealth>;
 
@@ -4358,6 +4967,12 @@ export declare const copyReadSchema: z.ZodType<CopyRead, CopyRead>;
 ### build/index.d.ts#copySettingsSchema
 export declare const copySettingsSchema: z.ZodType<CopySettings, CopySettings>;
 
+### build/index.d.ts#copySounderDeviceSchema
+export declare const copySounderDeviceSchema: z.ZodType<CopySounderDevice, CopySounderDevice>;
+
+### build/index.d.ts#copySounderSchema
+export declare const copySounderSchema: z.ZodType<CopySounder, CopySounder>;
+
 ### build/index.d.ts#copyStageSchema
 export declare const copyStageSchema: z.ZodType<CopyStage, CopyStage>;
 
@@ -4375,6 +4990,9 @@ export declare const correlationKeySchema: z.ZodType<CorrelationKey, Correlation
 
 ### build/index.d.ts#coverage
 export declare function coverage(input: CoverageInput, policy?: CoveragePolicy): Coverage[];
+
+### build/index.d.ts#coverageCandidates
+export declare function coverageCandidates(input: Pick<CoverageInput, "sources" | "places" | "kinds" | "containing">): CoverageCandidates[];
 
 ### build/index.d.ts#coverageSchema
 export declare const coverageSchema: z.ZodType<Coverage, Coverage>;
@@ -4438,6 +5056,18 @@ export declare function distinctShapes(shapes: readonly MapShape[]): MapShape[];
 
 ### build/index.d.ts#downChannels
 export declare function downChannels(lines: SystemLines, copy: string): ChannelId[];
+
+### build/index.d.ts#driftCommandConfigSchema
+export declare const driftCommandConfigSchema: z.ZodType<DriftCommandConfig, DriftCommandConfig>;
+
+### build/index.d.ts#driftConfigSchema
+export declare const driftConfigSchema: z.ZodType<DriftConfig, DriftConfig>;
+
+### build/index.d.ts#driftStages
+export declare function driftStages(check: DriftCheck, at: Instant): DriftStage[];
+
+### build/index.d.ts#driftUnreadAt
+export declare function driftUnreadAt(check: DriftCheck): Instant;
 
 ### build/index.d.ts#drillConfigSchema
 export declare const drillConfigSchema: z.ZodType<DrillConfig, DrillConfig>;
@@ -4520,6 +5150,9 @@ export declare function expectedOf(probability: Estimate, count: Estimate): Esti
 ### build/index.d.ts#failureDomains
 export declare function failureDomains(source: SourceDescriptor): readonly string[];
 
+### build/index.d.ts#feedLags
+export declare function feedLags(reports: readonly Report[], options: FeedLagOptions): FeedLag[];
+
 ### build/index.d.ts#fetchFailureSchema
 export declare const fetchFailureSchema: z.ZodType<FetchFailure, FetchFailure>;
 
@@ -4531,6 +5164,12 @@ export declare const fetchRecordSchema: z.ZodType<FetchRecord, FetchRecord>;
 
 ### build/index.d.ts#fitsWhy
 export declare function fitsWhy(text: string, limit: WhyLimit): boolean;
+
+### build/index.d.ts#fixAge
+export declare function fixAge(fix: PositionFix, now: Instant): number;
+
+### build/index.d.ts#fixProblems
+export declare function fixProblems(fix: PositionFix): string[];
 
 ### build/index.d.ts#foreignIncidents
 export declare function foreignIncidents(reports: readonly {
@@ -4551,7 +5190,7 @@ export declare function graphLabels(labels: WhyLabels, graph: Pick<InterestGraph
 export declare function hasKind(prefixes: readonly string[], kind: string): boolean;
 
 ### build/index.d.ts#health
-export declare function health(descriptor: SourceDescriptor, start: Instant, records: readonly FetchRecord[], now: Instant, options?: HealthOptions): HealthStep;
+export declare function health(descriptor: HealthSource, start: Instant, records: readonly FetchRecord[], now: Instant, options?: HealthOptions): HealthStep;
 
 ### build/index.d.ts#healthPayload
 export declare function healthPayload(input: HealthPayloadInput): HealthPayload;
@@ -4559,11 +5198,17 @@ export declare function healthPayload(input: HealthPayloadInput): HealthPayload;
 ### build/index.d.ts#healthPayloadSchema
 export declare const healthPayloadSchema: z.ZodType<HealthPayload, HealthPayload>;
 
+### build/index.d.ts#healthSource
+export declare function healthSource(descriptor: HealthSource): HealthSource;
+
 ### build/index.d.ts#healthStateSchema
 export declare const healthStateSchema: z.ZodType<HealthState, HealthState>;
 
 ### build/index.d.ts#heldPersons
 export declare function heldPersons(holds: readonly EscalationHold[], reports: readonly Pick<Report, "id" | "addresses" | "headline">[], window: Duration, at: Instant): HeldPerson[];
+
+### build/index.d.ts#heldPlaces
+export declare function heldPlaces(incident: Pick<Incident, "anchor" | "reports" | "areas">, places: readonly WatchedPlace[], holds: PlaceHolds): readonly WatchedPlace[];
 
 ### build/index.d.ts#heldText
 export declare function heldText(entry: Pick<HeldPerson, "alerts">): string;
@@ -4601,6 +5246,9 @@ export declare function historyView(kept: Histories, at: Instant, places: readon
 ### build/index.d.ts#holdKey
 export declare function holdKey(hold: Pick<EscalationHold, "incident" | "level" | "person" | "episode">): string;
 
+### build/index.d.ts#holdPlaces
+export declare function holdPlaces(holds: PlaceHolds, incidents: readonly Incident[], places: readonly WatchedPlace[], moving: (place: PlaceId) => boolean): PlaceHolds;
+
 ### build/index.d.ts#inAudience
 export declare function inAudience(item: Audience, person: PersonId): boolean;
 
@@ -4627,6 +5275,15 @@ export declare const indicatorAreaSchema: z.ZodType<IndicatorArea, IndicatorArea
 
 ### build/index.d.ts#indicatorBreadth
 export declare function indicatorBreadth(series: readonly SeriesSignal[], places: readonly WatchedPlace[], zones?: readonly ZoneRegions[]): IndicatorBreadth;
+
+### build/index.d.ts#indicatorSurprise
+export declare function indicatorSurprise(breadth: IndicatorBreadth, histories: readonly SignalHistory[], minReads?: number, pairs?: readonly PairHistory[]): IndicatorSurprise;
+
+### build/index.d.ts#indicatorUnits
+export declare function indicatorUnits(breadth: IndicatorBreadth): SignalUnit[];
+
+### build/index.d.ts#installedPackageSchema
+export declare const installedPackageSchema: z.ZodType<InstalledPackage, InstalledPackage>;
 
 ### build/index.d.ts#instantSchema
 export declare const instantSchema: z.ZodType<Instant, Instant>;
@@ -4682,6 +5339,12 @@ export declare function join(a: MergeState, b: MergeState): MergeState;
 ### build/index.d.ts#joinRuns
 export declare function joinRuns(a: DrillRun, b: DrillRun): DrillRun;
 
+### build/index.d.ts#jointStages
+export declare function jointStages(joint: JointDown, at: Instant): JointStage[];
+
+### build/index.d.ts#jointUnreadAt
+export declare function jointUnreadAt(joint: JointDown): Instant;
+
 ### build/index.d.ts#kindClassSchema
 export declare const kindClassSchema: z.ZodType<KindClass, KindClass>;
 
@@ -4703,8 +5366,14 @@ export declare const kindSchema: z.ZodType<Kind, Kind>;
 ### build/index.d.ts#knownKind
 export declare function knownKind(code: string): boolean;
 
+### build/index.d.ts#knowsReport
+export declare function knowsReport(state: MergeState, id: ReportId): boolean;
+
 ### build/index.d.ts#lastRun
 export declare function lastRun(runs: readonly DrillRun[], id: string): DrillRun | undefined;
+
+### build/index.d.ts#lateRetirements
+export declare function lateRetirements(state: MergeState, found: readonly Incident[], at: Instant, horizon?: Duration, quiet?: QuietRule, options?: LateOptions): ReportId[];
 
 ### build/index.d.ts#lateSources
 export declare function lateSources(states: readonly Lateness[]): SourceId[];
@@ -4728,6 +5397,9 @@ export declare function latenessStep(checks: readonly Carriage[], expectations: 
 export declare function latestIn<T extends {
   readonly at: Instant;
 }>(items: readonly T[], at: Instant, window: Duration): T | undefined;
+
+### build/index.d.ts#leavingReports
+export declare function leavingReports({ state, group: ids, order, at, ended, link }: LeavingInput): ReportId[];
 
 ### build/index.d.ts#levelRuleSchema
 export declare const levelRuleSchema: z.ZodType<LevelRule, LevelRule>;
@@ -4808,7 +5480,7 @@ export declare function mergeParts(root: AlertConfig, parts: readonly NamedPart[
 export declare function messageKey(input: MessageKeyInput): string;
 
 ### build/index.d.ts#messageOf
-export declare function messageOf(incident: Incident, reports: readonly Report[], send: EscalationSend, why?: string): Message;
+export declare function messageOf(incident: Incident, reports: readonly Report[], send: EscalationSend, why?: string, software?: readonly SoftwareMatch[]): Message;
 
 ### build/index.d.ts#messageSchema
 export declare const messageSchema: z.ZodType<Message, Message>;
@@ -4828,6 +5500,12 @@ export declare function mostInWindow(times: readonly Instant[], length: Duration
 ### build/index.d.ts#moveSchema
 export declare const moveSchema: z.ZodType<Move, Move>;
 
+### build/index.d.ts#movingPlace
+export declare function movingPlace(place: PlaceConfig, fix: PositionFix | undefined, now: Instant, codes: readonly RegionCode[]): WatchedPlace | undefined;
+
+### build/index.d.ts#movingProblems
+export declare function movingProblems(place: PlaceConfig, places: readonly PlaceConfig[]): string[];
+
 ### build/index.d.ts#muteEffectSchema
 export declare const muteEffectSchema: z.ZodType<MuteEffect, MuteEffect>;
 
@@ -4842,6 +5520,9 @@ export declare const muteSchema: z.ZodType<Mute, Mute>;
 
 ### build/index.d.ts#nextDrillAt
 export declare function nextDrillAt(drill: DrillConfig, runs: readonly DrillRun[], at: Instant, quiet?: QuietWindow): Instant | undefined;
+
+### build/index.d.ts#nextFix
+export declare function nextFix(place: PlaceConfig, last: PositionFix | undefined, fix: PositionFix): FixStep;
 
 ### build/index.d.ts#nodeCovers
 export declare function nodeCovers(a: NodeKey, b: NodeKey): boolean;
@@ -4871,7 +5552,7 @@ export declare function observeConditions(verdicts: readonly ObserveVerdict[], l
 export declare function observeCut(input: ObserveCutInput): ObserveCut;
 
 ### build/index.d.ts#observeFetch
-export declare function observeFetch(track: HealthTrack, record: FetchRecord, descriptor: SourceDescriptor, options?: HealthOptions): HealthStep;
+export declare function observeFetch(track: HealthTrack, record: FetchRecord, descriptor: HealthSource, options?: HealthOptions): HealthStep;
 
 ### build/index.d.ts#observeVerdict
 export declare function observeVerdict(input: ObserveVerdictInput): ObserveVerdict;
@@ -4906,6 +5587,12 @@ export declare const outagePersonConfigSchema: z.ZodType<OutagePersonConfig, Out
 ### build/index.d.ts#ownBaselineSchema
 export declare const ownBaselineSchema: z.ZodType<OwnBaseline, OwnBaseline>;
 
+### build/index.d.ts#pairHistories
+export declare function pairHistories(buckets: readonly BucketReads[]): PairHistory[];
+
+### build/index.d.ts#pairSurprises
+export declare function pairSurprises(units: readonly SignalUnit[], pairs: readonly PairHistory[], minReads?: number): PairSurprise[];
+
 ### build/index.d.ts#parentKind
 export declare function parentKind(code: string): string | null;
 
@@ -4917,6 +5604,9 @@ export declare function parseCopySettings(text: string): Result<CopySettings, re
 
 ### build/index.d.ts#partLabel
 export declare function partLabel(name: string, index: number): string;
+
+### build/index.d.ts#passPlaces
+export declare function passPlaces(config: AlertConfig, fixes: ReadonlyMap<PlaceId, PositionFix>, now: Instant, codesAt: (place: PlaceConfig, at: Position) => readonly RegionCode[]): WatchedPlace[];
 
 ### build/index.d.ts#personConfigSchema
 export declare const personConfigSchema: z.ZodType<PersonConfig, PersonConfig>;
@@ -4945,8 +5635,14 @@ export declare function placeLabels(config: AlertConfig): WhyLabels;
 ### build/index.d.ts#placeNode
 export declare function placeNode(place: PlaceId): NodeKey;
 
+### build/index.d.ts#placeOfDevice
+export declare function placeOfDevice(places: readonly PlaceConfig[], device: string): PlaceConfig | undefined;
+
 ### build/index.d.ts#placeOfNode
 export declare function placeOfNode(node: NodeKey): PlaceId | undefined;
+
+### build/index.d.ts#placeScope
+export declare function placeScope(place: PlaceId): string;
 
 ### build/index.d.ts#placeWhy
 export declare function placeWhy(places: readonly PlaceId[]): WhyRecord | undefined;
@@ -4965,6 +5661,12 @@ export declare function policyFor(policies: readonly EscalationPolicy[], level: 
 
 ### build/index.d.ts#policyName
 export declare function policyName(policy: EscalationPolicy): string;
+
+### build/index.d.ts#policyWithPriors
+export declare function policyWithPriors(policy: AssessPolicy | undefined, people: readonly Pick<PersonWatch, "score">[], priors: ScorePriors | undefined): AssessPolicy | undefined;
+
+### build/index.d.ts#policyWithSoftware
+export declare function policyWithSoftware(policy: AssessPolicy | undefined, software: SoftwareStack | undefined): AssessPolicy | undefined;
 
 ### build/index.d.ts#positionSchema
 export declare const positionSchema: z.ZodType<Position, Position>;
@@ -5041,6 +5743,9 @@ export declare function recentStep(steps: readonly ClockStep[], at: Instant): Cl
 ### build/index.d.ts#recipientProblems
 export declare function recipientProblems(recipient: Recipient, channels: readonly ChannelDescriptor[]): string[];
 
+### build/index.d.ts#redundancyStage
+export declare function redundancyStage(state: Pick<RedundancyState, "works" | "points">): RedundancyStage | undefined;
+
 ### build/index.d.ts#regionCodeKey
 export declare function regionCodeKey(code: RegionCode): string;
 
@@ -5116,11 +5821,20 @@ export declare function runOpens(run: ChannelRun, policy: ChannelDownPolicy): bo
 ### build/index.d.ts#schemaOf
 export declare function schemaOf<T>(): <S extends z.ZodType<T, T>>(schema: S & Exact<S, T>) => z.ZodType<T, T>;
 
+### build/index.d.ts#scopeOf
+export declare function scopeOf(unit: string): string;
+
 ### build/index.d.ts#scoreFactorSchema
 export declare const scoreFactorSchema: z.ZodType<ScoreFactor, ScoreFactor>;
 
 ### build/index.d.ts#scorePriorsSchema
 export declare const scorePriorsSchema: z.ZodType<ScorePriors, ScorePriors>;
+
+### build/index.d.ts#scoreRuleResult
+export declare function scoreRuleResult(policy: AssessPolicy, rule: ScoreRule | undefined, incident: Pick<Incident | IncidentLine, "kind" | "certainty">, table: TableResult): ScoreRuleReason | undefined;
+
+### build/index.d.ts#scoreRuleSchema
+export declare const scoreRuleSchema: z.ZodType<ScoreRule, ScoreRule>;
 
 ### build/index.d.ts#secretRefSchema
 export declare const secretRefSchema: z.ZodType<SecretRef, SecretRef>;
@@ -5191,11 +5905,32 @@ export declare function shiftMerge(state: MergeState, size: Duration): MergeStat
 ### build/index.d.ts#shiftReport
 export declare function shiftReport(report: Report, size: Duration): Report;
 
+### build/index.d.ts#signalHistories
+export declare function signalHistories(buckets: readonly BucketReads[]): SignalHistory[];
+
+### build/index.d.ts#signalRate
+export declare function signalRate(history: SignalHistory, minReads?: number): SignalRate | undefined;
+
 ### build/index.d.ts#significanceSchema
 export declare const significanceSchema: z.ZodType<Significance, Significance>;
 
 ### build/index.d.ts#simplifyBasemap
 export declare function simplifyBasemap(regions: readonly MapRegion[], toleranceKm: number): MapRegion[];
+
+### build/index.d.ts#softwareMatchSchema
+export declare const softwareMatchSchema: z.ZodType<SoftwareMatch, SoftwareMatch>;
+
+### build/index.d.ts#softwareMatchText
+export declare function softwareMatchText(match: SoftwareMatch): string;
+
+### build/index.d.ts#softwareMatches
+export declare function softwareMatches(about: readonly Subject[], stack: SoftwareStack, check: RangeCheck): SoftwareMatch[];
+
+### build/index.d.ts#softwarePartSchema
+export declare const softwarePartSchema: z.ZodType<SoftwarePart, SoftwarePart>;
+
+### build/index.d.ts#softwareStackSchema
+export declare const softwareStackSchema: z.ZodType<SoftwareStack, SoftwareStack>;
 
 ### build/index.d.ts#sourceClearAt
 export declare function sourceClearAt(lines: SystemLines, snapshot: Pick<SystemSnapshot, "sources" | "health" | "sourceClear">, at: Instant): Instant[];
@@ -5233,6 +5968,9 @@ export declare function sourcePlaces(config: AlertConfig, source: SourceId): Wat
 ### build/index.d.ts#spendConfigSchema
 export declare const spendConfigSchema: z.ZodType<SpendConfig, SpendConfig>;
 
+### build/index.d.ts#staleMovingPlaces
+export declare function staleMovingPlaces(config: AlertConfig, fixes: ReadonlyMap<PlaceId, PositionFix>, now: Instant): PlaceId[];
+
 ### build/index.d.ts#staleTime
 export declare function staleTime(latest: Reading, measure: MeasureDeclaration, policy?: BaselinePolicy): Duration;
 
@@ -5262,6 +6000,9 @@ export declare const subjectSchema: z.ZodType<Subject, Subject>;
 
 ### build/index.d.ts#subjectWatchSchema
 export declare const subjectWatchSchema: z.ZodType<SubjectWatch, SubjectWatch>;
+
+### build/index.d.ts#surpriseOf
+export declare function surpriseOf(units: readonly SignalUnit[], histories: readonly SignalHistory[], minReads?: number): Surprise;
 
 ### build/index.d.ts#systemReports
 export declare function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: Instant): SystemStep;
@@ -5320,6 +6061,9 @@ export declare function useStages(use: LimitUse, at: Instant): UseStage[];
 ### build/index.d.ts#useUnreadAt
 export declare function useUnreadAt(use: LimitUse): Instant;
 
+### build/index.d.ts#versRangeCheck
+export declare const versRangeCheck: RangeCheck;
+
 ### build/index.d.ts#watchProblems
 export declare function watchProblems(watches: readonly PersonWatch[]): string[];
 
@@ -5334,6 +6078,9 @@ export declare function watchedDrillReportAt(watch: DrillWatch, copies: readonly
 
 ### build/index.d.ts#watchedPlaceSchema
 export declare const watchedPlaceSchema: z.ZodType<WatchedPlace, WatchedPlace>;
+
+### build/index.d.ts#watchedStates
+export declare function watchedStates(places: readonly WatchedPlace[]): readonly string[];
 
 ### build/index.d.ts#whyLimitSchema
 export declare const whyLimitSchema: z.ZodType<WhyLimit, WhyLimit>;

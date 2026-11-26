@@ -18,6 +18,12 @@
     "note": "The records of abusech-feodo-tracker, abusech-malwarebazaar, abusech-sslbl, abusech-threatfox, abusech-urlhaus name this issuer."
   },
   {
+    "id": "accc",
+    "name": "The Australian Competition and Consumer Commission (ACCC)",
+    "issues": null,
+    "note": "The records of scamwatch-rss name this issuer."
+  },
+  {
     "id": "accessnow",
     "name": "Access Now",
     "issues": null,
@@ -162,6 +168,12 @@
     "note": "The records of binance-api name this issuer."
   },
   {
+    "id": "bis",
+    "name": "BIS (the Bank for International Settlements)",
+    "issues": null,
+    "note": "The records of bis-data-api name this issuer."
+  },
+  {
     "id": "blitzortung",
     "name": "Blitzortung.org, a network of volunteer lightning stations",
     "issues": null,
@@ -267,7 +279,7 @@
     "id": "cdc",
     "name": "US Centers for Disease Control and Prevention",
     "issues": null,
-    "note": "The records of cdc-han, cdc-nwss, cdc-travel-notices name this issuer."
+    "note": "The records of cdc-han, cdc-nwss, cdc-travel-notices, cdc-foodborne-investigations name this issuer."
   },
   {
     "id": "census",
@@ -483,7 +495,7 @@
     "id": "debian",
     "name": "The Debian Project",
     "issues": null,
-    "note": "The records of debian-dla-rss, debian-dsa-rss, debian-security-tracker-json name this issuer."
+    "note": "The records of debian-dla-rss, debian-dsa-rss, debian-security-tracker-json, debian-distro-info-data name this issuer."
   },
   {
     "id": "defillama",
@@ -642,6 +654,12 @@
     "note": "The records of meteoalarm-feeds name this issuer."
   },
   {
+    "id": "eurepoc",
+    "name": "EuRepoC (the European Repository of Cyber Incidents)",
+    "issues": null,
+    "note": "The records of eurepoc-global-dataset name this issuer."
+  },
+  {
     "id": "exploit-db",
     "name": "Exploit-DB (OffSec)",
     "issues": null,
@@ -657,7 +675,13 @@
     "id": "faa",
     "name": "US Federal Aviation Administration",
     "issues": null,
-    "note": "The records of faa-nas-status, faa-notam-api name this issuer."
+    "note": "The records of faa-nas-status, faa-notam-api, faa-flight-prohibitions, faa-preliminary-accident-notices name this issuer."
+  },
+  {
+    "id": "fbi-ic3",
+    "name": "The Internet Crime Complaint Center of the US FBI (IC3)",
+    "issues": null,
+    "note": "The records of ic3-psa-rss name this issuer."
   },
   {
     "id": "fcc",
@@ -681,7 +705,7 @@
     "id": "federal-reserve-board",
     "name": "The Board of Governors of the Federal Reserve System",
     "issues": null,
-    "note": "The records of fed-fomc-calendar, fed-rss name this issuer."
+    "note": "The records of fed-fomc-calendar, fed-rss and fed-h41-tga name this issuer."
   },
   {
     "id": "federal-reserve-financial-services",
@@ -700,6 +724,12 @@
     "name": "US Federal Emergency Management Agency",
     "issues": null,
     "note": "The records of fema-open-shelters, openfema-api name this issuer."
+  },
+  {
+    "id": "fews-net",
+    "name": "FEWS NET (the Famine Early Warning Systems Network)",
+    "issues": null,
+    "note": "The records of fews-net-fdw-ipc-api name this issuer."
   },
   {
     "id": "first",
@@ -804,6 +834,12 @@
     "note": "The record of gitlab-patch-releases-atom names this issuer."
   },
   {
+    "id": "global-affairs-canada",
+    "name": "Global Affairs Canada",
+    "issues": null,
+    "note": "The records of gac-travel-advice name this issuer."
+  },
+  {
     "id": "good-judgment",
     "name": "Good Judgment Open",
     "issues": null,
@@ -813,7 +849,7 @@
     "id": "google",
     "name": "Google",
     "issues": null,
-    "note": "The records of android-security-bulletins, chrome-releases-feed, firebase-status, gcp-status-json, go-vulndb, google-pollen-api, google-trends, pixel-update-bulletins, project-zero-0day-itw name this issuer."
+    "note": "The records of android-security-bulletins, chrome-releases-feed, firebase-status, gcp-status-json, google-workspace-status, go-vulndb, google-pollen-api, google-trends, pixel-update-bulletins, project-zero-0day-itw name this issuer."
   },
   {
     "id": "greynoise",
@@ -936,6 +972,12 @@
     "note": "The record of indiana-ag-breach-reports names this issuer."
   },
   {
+    "id": "ingv",
+    "name": "INGV (the National Institute of Geophysics and Volcanology of Italy)",
+    "issues": null,
+    "note": "The records of ingv-fdsnws-event name this issuer."
+  },
+  {
     "id": "insight-prediction",
     "name": "Insight Prediction",
     "issues": null,
@@ -972,10 +1014,22 @@
     "note": "The records of ipa-security-alerts-rss, jvn-ipedia-myjvn-api, jvn-rss-en name this issuer."
   },
   {
+    "id": "ipc",
+    "name": "IPC (the Integrated Food Security Phase Classification)",
+    "issues": null,
+    "note": "The records of ipc-api name this issuer."
+  },
+  {
     "id": "irs",
     "name": "US Internal Revenue Service",
     "issues": null,
     "note": "The records of irs-disaster-relief name this issuer."
+  },
+  {
+    "id": "isc",
+    "name": "ISC (the International Seismological Centre)",
+    "issues": null,
+    "note": "The records of isc-fdsnws-event name this issuer."
   },
   {
     "id": "isid",
@@ -1349,6 +1403,12 @@
     "note": "The record of open-xchange-csaf names this issuer."
   },
   {
+    "id": "openai",
+    "name": "OpenAI",
+    "issues": null,
+    "note": "The records of openai-status name this issuer."
+  },
+  {
     "id": "openbsd",
     "name": "The OpenBSD Project",
     "issues": null,
@@ -1511,6 +1571,12 @@
     "note": "The record of radware-live-threat-map names this issuer."
   },
   {
+    "id": "raic",
+    "name": "The Responsible AI Collaborative (the AI Incident Database)",
+    "issues": null,
+    "note": "The records of aiid-rss name this issuer."
+  },
+  {
     "id": "ransomfeed",
     "name": "Ransomfeed",
     "issues": null,
@@ -1544,7 +1610,13 @@
     "id": "redhat",
     "name": "Red Hat",
     "issues": null,
-    "note": "The records of redhat-csaf-advisories, redhat-csaf-vex, redhat-security-data-api name this issuer."
+    "note": "The records of redhat-csaf-advisories, redhat-csaf-vex, redhat-product-life-cycles, redhat-security-data-api name this issuer."
+  },
+  {
+    "id": "ree",
+    "name": "Red Eléctrica (the operator of the transmission grid of Spain)",
+    "issues": null,
+    "note": "The records of ree-redata-api name this issuer."
   },
   {
     "id": "ria",
@@ -1664,7 +1736,7 @@
     "id": "sidc",
     "name": "SIDC, the Solar Influences Data Analysis Center (RWC-Belgium)",
     "issues": null,
-    "note": "The records of sidc-alerts-email name this issuer."
+    "note": "The records of sidc-alerts-email and sidc-product-archive name this issuer."
   },
   {
     "id": "siemens",
@@ -1841,6 +1913,12 @@
     "note": "The record of uk-ico-incident-trends names this issuer."
   },
   {
+    "id": "uk-mhra",
+    "name": "The Medicines and Healthcare products Regulatory Agency of the United Kingdom (MHRA)",
+    "issues": null,
+    "note": "The records of mhra-alerts-govuk name this issuer."
+  },
+  {
     "id": "uk-national-archives",
     "name": "The National Archives of the UK",
     "issues": null,
@@ -1979,7 +2057,7 @@
     "id": "uscg",
     "name": "US Coast Guard (NAVCEN and the National Response Center)",
     "issues": null,
-    "note": "The records of nrc-uscg-reports, uscg-navcen name this issuer."
+    "note": "The records of nrc-uscg-reports, uscg-navcen and uscg-navcen-msi-files name this issuer."
   },
   {
     "id": "usda-aphis",
@@ -2231,7 +2309,7 @@
     "id": "neso",
     "name": "NESO, the National Energy System Operator of Great Britain",
     "issues": null,
-    "note": "The records of neso-data-portal and carbon-intensity-gb name this body."
+    "note": "The records of neso-data-portal, carbon-intensity-gb and elexon-bmrs-syswarn name this body. Elexon publishes the system warnings of NESO."
   },
   {
     "id": "network-rail",
@@ -2400,5 +2478,395 @@
     "name": "Zyxel",
     "issues": null,
     "note": "The record of zyxel-security-advisories names this issuer."
+  },
+  {
+    "id": "hacker-news",
+    "name": "Hacker News, of Y Combinator",
+    "issues": null,
+    "note": "The record of hacker-news-api names this body. The users submit the stories."
+  },
+  {
+    "id": "npr",
+    "name": "NPR (National Public Radio)",
+    "issues": null,
+    "note": "The record of npr-content-feeds names this body."
+  },
+  {
+    "id": "ocha-reliefweb",
+    "name": "ReliefWeb, of the UN Office for the Coordination of Humanitarian Affairs",
+    "issues": null,
+    "note": "The record of reliefweb-api names this body."
+  },
+  {
+    "id": "dma",
+    "name": "The Danish Maritime Authority (DMA)",
+    "issues": null,
+    "note": "The DMA publishes the warnings of Danish waters through Niord, its open-source system."
+  },
+  {
+    "id": "alaska-dec",
+    "name": "The Alaska Department of Environmental Conservation (DEC)",
+    "issues": null,
+    "note": "Its Drinking Water Program enters each notice in SDWIS, and the map service shows it."
+  },
+  {
+    "id": "nl-water-resources",
+    "name": "The Water Resources Management Division of Newfoundland and Labrador",
+    "issues": null,
+    "note": "The division issues the boil water advisories of the province."
+  },
+  {
+    "id": "ca-water-board",
+    "name": "The California State Water Resources Control Board",
+    "issues": null,
+    "note": "Its FHAB data system holds the bloom reports of the state."
+  },
+  {
+    "id": "fsa-uk",
+    "name": "The Food Standards Agency (FSA) of the United Kingdom",
+    "issues": null,
+    "note": "The FSA gives the food recalls and the allergy alerts of England, Wales and Northern Ireland."
+  },
+  {
+    "id": "ukpn",
+    "name": "UK Power Networks",
+    "issues": null,
+    "note": "The distribution operator of the East, London and South East areas of England."
+  },
+  {
+    "id": "rivm",
+    "name": "The National Institute for Public Health and the Environment (RIVM) of the Netherlands",
+    "issues": null,
+    "note": "RIVM measures the virus in the wastewater of each treatment plant of the Netherlands."
+  },
+  {
+    "id": "phac",
+    "name": "The Public Health Agency of Canada (PHAC)",
+    "issues": null,
+    "note": "PHAC gives the Health Infobase data of Canada. The records of gc-news-phac name this issuer."
+  },
+  {
+    "id": "chicago-pd",
+    "name": "The Chicago Police Department",
+    "issues": null,
+    "note": "The city portal gives the crime records of the department."
+  },
+  {
+    "id": "apha",
+    "name": "The Animal and Plant Health Agency (APHA) of the United Kingdom",
+    "issues": null,
+    "note": "APHA confirms the cases of notifiable animal diseases for the Department for Environment, Food and Rural Affairs."
+  },
+  {
+    "id": "un-security-council",
+    "name": "The Security Council of the United Nations",
+    "issues": null,
+    "note": "The committees of the Security Council keep the Consolidated List of their sanctions."
+  },
+  {
+    "id": "meteoswiss",
+    "name": "MeteoSwiss, the Federal Office of Meteorology and Climatology of Switzerland",
+    "issues": null,
+    "note": "MeteoSwiss measures the pollen of Switzerland at its stations."
+  },
+  {
+    "id": "seattle-pd",
+    "name": "The Seattle Police Department",
+    "issues": null,
+    "note": "The department publishes the offenses of its reports on the open data portal of the city."
+  },
+  {
+    "id": "quebec-msss",
+    "name": "The Ministry of Health and Social Services of Quebec (MSSS)",
+    "issues": null,
+    "note": "The ministry publishes the data of the emergency rooms of Quebec from its provincial console each hour."
+  },
+  {
+    "id": "scottish-water",
+    "name": "Scottish Water",
+    "issues": null,
+    "note": "The water company of Scotland. It monitors its storm overflows. The record of scottish-water-overflows names this issuer."
+  },
+  {
+    "id": "american-red-cross",
+    "name": "The American Red Cross",
+    "issues": null,
+    "note": "The Red Cross runs its National Shelter System and publishes its open shelters. The record of redcross-open-shelters names this issuer."
+  },
+  {
+    "id": "avinor",
+    "name": "Avinor, the operator of the state airports of Norway",
+    "issues": null,
+    "note": "Avinor publishes the flights of its 43 airports. The record of avinor-flight-data names this issuer."
+  },
+  {
+    "id": "njdep",
+    "name": "The New Jersey Department of Environmental Protection (NJDEP)",
+    "issues": null,
+    "note": "The department samples blooms in fresh water and sets the advisory tiers. The record of njdep-hab-sampling names this issuer."
+  },
+  {
+    "id": "usda-fs",
+    "name": "USDA FS (the Forest Service)",
+    "issues": null,
+    "note": "The Forest Service publishes the status of its recreation sites. The record of usfs-recreation-status names this issuer."
+  },
+  {
+    "id": "nsw-rfs",
+    "name": "The NSW Rural Fire Service",
+    "issues": null,
+    "note": "The fire service of New South Wales declares the total fire bans. The record of nsw-rfs-fire-bans names this issuer."
+  },
+  {
+    "id": "bc-parks",
+    "name": "BC Parks, the park agency of British Columbia",
+    "issues": null,
+    "note": "BC Parks publishes the advisories of the provincial parks. The record of bc-parks-advisories names this issuer."
+  },
+  {
+    "id": "bc-wildfire-service",
+    "name": "The BC Wildfire Service",
+    "issues": null,
+    "note": "The service sets the open fire prohibitions of each fire centre of British Columbia. The record of bc-parks-advisories names this issuer."
+  },
+  {
+    "id": "nsw-beachwatch",
+    "name": "Beachwatch, the beach water program of the NSW Government",
+    "issues": null,
+    "note": "The program samples the swimming sites of New South Wales and forecasts their pollution. The record of nsw-beachwatch names this issuer."
+  },
+  {
+    "id": "hk-epd",
+    "name": "The Environmental Protection Department of Hong Kong (EPD)",
+    "issues": null,
+    "note": "The department grades the water quality of the beaches of Hong Kong. The record of hk-epd-beach-grading names this issuer."
+  },
+  {
+    "id": "toronto-public-health",
+    "name": "Toronto Public Health",
+    "issues": null,
+    "note": "The health unit of Toronto tests its beaches for E. coli and posts the swim warnings. The record of toronto-beach-water-quality names this issuer."
+  },
+  {
+    "id": "tfl",
+    "name": "Transport for London (TfL)",
+    "issues": null,
+    "note": "The transport authority of London publishes the status of its lines. The record of tfl-unified-api names this issuer."
+  },
+  {
+    "id": "nve",
+    "name": "NVE (the Norwegian Water Resources and Energy Directorate)",
+    "issues": null,
+    "note": "NVE gives the landslide warnings of Norway. The record of nve-landslide-warnings names this issuer."
+  },
+  {
+    "id": "hko",
+    "name": "The Hong Kong Observatory",
+    "issues": null,
+    "note": "The weather service of Hong Kong issues the weather warnings and the landslip warning. The record of hko-warning-summary names this issuer."
+  },
+  {
+    "id": "losco",
+    "name": "LOSCO (the Louisiana Oil Spill Coordinator's Office)",
+    "issues": null,
+    "note": "The office keeps the spill response records of Louisiana. The record of losco-active-spills names this issuer."
+  },
+  {
+    "id": "nsw-health",
+    "name": "NSW Health, the health department of New South Wales",
+    "issues": null,
+    "note": "The department publishes the public drug warnings of the state. The record of nsw-health-drug-warnings names this issuer."
+  },
+  {
+    "id": "fbi",
+    "name": "The FBI (the Federal Bureau of Investigation of the United States)",
+    "issues": null,
+    "note": "The FBI publishes the posters of wanted and missing persons. The record of fbi-wanted-api names this issuer."
+  },
+  {
+    "id": "hkpf",
+    "name": "The Hong Kong Police Force",
+    "issues": null,
+    "note": "The police publish the appeals for missing persons of Hong Kong. The record of hkpf-missing-persons names this issuer."
+  },
+  {
+    "id": "hk-wsd",
+    "name": "The Water Supplies Department of Hong Kong",
+    "issues": null,
+    "note": "The department publishes the water suspension notices of Hong Kong. The record of hk-wsd-water-suspensions names this issuer."
+  },
+  {
+    "id": "taiwan-water",
+    "name": "Taiwan Water Corporation",
+    "issues": null,
+    "note": "The water utility of most of Taiwan publishes its water outage cases. The record of taiwan-water-outages names this issuer."
+  },
+  {
+    "id": "interpol",
+    "name": "INTERPOL",
+    "issues": null,
+    "note": "INTERPOL publishes the public yellow notices of missing persons. The record of interpol-yellow-notices names this issuer."
+  },
+  {
+    "id": "politie",
+    "name": "Politie, the police of the Netherlands",
+    "issues": null,
+    "note": "The police of the Netherlands publish the missing persons in an open data API. The record of politie-missing-persons names this issuer."
+  },
+  {
+    "id": "de-warning-authorities",
+    "name": "The German authorities that warn through MoWaS and NINA: the BBK, the states, the districts and the police",
+    "issues": null,
+    "note": "The authorities send their warnings through MoWaS, the warning system of the federal government. The record of bbk-nina-api names this issuer."
+  },
+  {
+    "id": "canada-alerting-authorities",
+    "name": "The authorized government authorities of the National Public Alerting System of Canada",
+    "issues": null,
+    "note": "The authorities send their public alerts to the NAAD System. The record of naad-alerts names this issuer."
+  },
+  {
+    "id": "nav-canada",
+    "name": "NAV CANADA, the operator of the civil air navigation system of Canada",
+    "issues": null,
+    "note": "NAV CANADA publishes the NOTAMs of Canada. The record of nav-canada-notam names this issuer."
+  },
+  {
+    "id": "nsw-education",
+    "name": "The NSW Department of Education",
+    "issues": null,
+    "note": "The department publishes the closures of the public schools of New South Wales. The record of nsw-school-closures names this issuer."
+  },
+  {
+    "id": "dgpa",
+    "name": "The Directorate-General of Personnel Administration of Taiwan (DGPA)",
+    "issues": null,
+    "note": "The DGPA announces the closures of work and schools for natural disasters. The record of dgpa-closures names this issuer."
+  },
+  {
+    "id": "wvde",
+    "name": "The West Virginia Department of Education",
+    "issues": null,
+    "note": "The department publishes the school closings of West Virginia. The record of wvde-closings names this issuer."
+  },
+  {
+    "id": "nasa-ames-atap",
+    "name": "The Asteroid Threat Assessment Project of the NASA Ames Research Center",
+    "issues": null,
+    "note": "The team finds bolides in the data of the Geostationary Lightning Mappers. The record of nasa-glm-bolides names this issuer."
+  },
+  {
+    "id": "sfmta",
+    "name": "The San Francisco Municipal Transportation Agency (SFMTA)",
+    "issues": null,
+    "note": "The SFMTA permits the temporary street closures of San Francisco. The record of sfmta-street-closures names this issuer."
+  },
+  {
+    "id": "slack",
+    "name": "Slack",
+    "issues": null,
+    "note": "Slack publishes the status of its own service. The record of slack-status-api names this issuer."
+  },
+  {
+    "id": "cer",
+    "name": "The Canada Energy Regulator (CER)",
+    "issues": null,
+    "note": "The CER regulates the pipelines that cross a border of a province or of Canada. The record of cer-pipeline-incidents names this issuer."
+  },
+  {
+    "id": "florida-geological-survey",
+    "name": "The Florida Geological Survey of the Florida Department of Environmental Protection",
+    "issues": null,
+    "note": "The survey collects the reports of subsidence in Florida. The record of fgs-subsidence-reports names this issuer."
+  },
+  {
+    "id": "cal-oes",
+    "name": "The California Governor's Office of Emergency Services (Cal OES)",
+    "issues": null,
+    "note": "Cal OES collects the active outages from the outage maps of the utilities. The record of caloes-power-outages names this issuer."
+  },
+  {
+    "id": "recaap-isc",
+    "name": "The ReCAAP Information Sharing Centre (ReCAAP ISC)",
+    "issues": null,
+    "note": "The centre records the incidents of piracy and armed robbery against ships in Asia. The record of recaap-incidents names this issuer."
+  },
+  {
+    "id": "democracy-club",
+    "name": "Democracy Club",
+    "issues": null,
+    "note": "Democracy Club collects the elections of the United Kingdom. The record of democracy-club-elections names this issuer."
+  },
+  {
+    "id": "uk-aaib",
+    "name": "The Air Accidents Investigation Branch of the United Kingdom (AAIB)",
+    "issues": null,
+    "note": "The records of aaib-deployments-govuk name this issuer."
+  },
+  {
+    "id": "uk-raib",
+    "name": "The Rail Accident Investigation Branch of the United Kingdom (RAIB)",
+    "issues": null,
+    "note": "The records of raib-notices-govuk name this issuer."
+  },
+  {
+    "id": "ca-tsb",
+    "name": "The Transportation Safety Board of Canada (TSB)",
+    "issues": null,
+    "note": "The records of tsb-canada-news name this issuer."
+  },
+  {
+    "id": "us-marad",
+    "name": "The Maritime Administration of the US Department of Transportation (MARAD)",
+    "issues": null,
+    "note": "The records of marad-msci-advisories name this issuer."
+  },
+  {
+    "id": "solana-network",
+    "name": "The Solana network (its validators)",
+    "issues": null,
+    "note": "The records of solana-rpc-tip name this issuer."
+  },
+  {
+    "id": "coinbase",
+    "name": "Coinbase",
+    "issues": null,
+    "note": "The records of coinbase-exchange-ticker name this issuer."
+  },
+  {
+    "id": "canada-post",
+    "name": "Canada Post",
+    "issues": null,
+    "note": "The records of canada-post-service-alerts name this issuer."
+  },
+  {
+    "id": "osc",
+    "name": "Ontario Securities Commission",
+    "issues": null,
+    "note": "The records of osc-investor-alerts name this issuer."
+  },
+  {
+    "id": "king-county-wtd",
+    "name": "King County Wastewater Treatment Division",
+    "issues": null,
+    "note": "The file of king-county-cso-status comes from this operator, with the City of Seattle."
+  },
+  {
+    "id": "entur",
+    "name": "Entur AS",
+    "issues": null,
+    "note": "The records of entur-situations come from the operators of Norway through the national registry of Entur."
+  },
+  {
+    "id": "bea-aero",
+    "name": "BEA, the French safety investigation authority for civil aviation",
+    "issues": null,
+    "note": "The events of bea-aero-notified-events come from the notifications to the BEA."
+  },
+  {
+    "id": "cfia",
+    "name": "CFIA, the Canadian Food Inspection Agency",
+    "issues": null,
+    "note": "The CFIA sets the regulated areas of plant pests in Canada. The releases of gc-news-cfia name them."
   }
 ]

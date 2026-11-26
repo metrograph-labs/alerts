@@ -11,11 +11,14 @@
  *
  * The store of `@mark1russell7/sqlite` also checks that the log has the event of the mark at the position of the mark.
  */
-import { DEFAULT_LINK_POLICY, type Duration } from "@mark1russell7/alerts";
+import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { DEFAULT_LINK_POLICY, healthSource, type Duration } from "@mark1russell7/alerts";
 import { isRecord } from "@mark1russell7/optional/read";
 import { canonicalHash } from "@mark1russell7/rigor-generators";
 import { openFoldSnapshot, openOrQuarantine, type FoldKey, type FoldMark, type FoldRow, type FoldSnapshotFile, type Quarantined } from "@mark1russell7/sqlite";
 import type { EntrySnapshot } from "./entries.ts";
+import type { RuntimeEvent } from "./events.ts";
 import { retention } from "./retention.ts";
 import { withJoins, type FoldContext, type RuntimeState } from "./state.ts";
 
@@ -24,7 +27,32 @@ import { withJoins, type FoldContext, type RuntimeState } from "./state.ts";
  * index. Then a start ignores each snapshot of the old fold, and it folds the whole log. The gate test of the digests fails
  * until the change raises the version.
  */
-export const FOLD_VERSION = 2;
+export const FOLD_VERSION = 6;
+
+/**
+ * The upgrade of a snapshot of an old fold to the fold of `FOLD_VERSION`, with no fold of the log (AL-153). The field `since`
+ * holds the event types that only the new fold reads. The upgrade is exact only when the log has no event of these types at or
+ * before the mark of the snapshot. Then the two folds read the same events, and the upgrade adds the new parts of the state.
+ */
+export interface SnapshotUpgrade {
+  readonly since: readonly RuntimeEvent["type"][];
+  readonly upgrade: (snapshot: StartSnapshot) => StartSnapshot;
+}
+
+/**
+ * The upgrades of the snapshots of old folds, by the version of the old fold. A start with no snapshot of `FOLD_VERSION` reads
+ * the snapshot of an old fold with an upgrade. Thus a deploy that raises the version does not fold the whole log at its start.
+ * A gate test pins each upgrade to the digests of the two versions.
+ */
+export const SNAPSHOT_UPGRADES: Readonly<Record<number, SnapshotUpgrade>> = {
+  // Version 3 (AL-172) changes the retirement of an incident that a person knows. Only a fold of the log gives that state,
+  // thus version 2 has no upgrade. The upgrade of version 1 (AL-88: the blocks of the event loop) gave version 2, not 3.
+  // Version 4 (AL-187) keeps the incident of the last run of a drill. A snapshot of version 3 can hold that incident already
+  // retired, thus version 3 has no upgrade. Version 5 (AL-177) retires old reports of a live incident. Only a fold of the
+  // log gives the times of those retirements, thus version 4 has no upgrade. Version 6 (AL-189) keeps the
+  // incident of the last run of a drill past the horizon. A snapshot of version 5 can hold that incident already retired,
+  // thus version 5 has no upgrade.
+};
 
 /** The content of a snapshot: the state and the entry index at the position of its mark. */
 export interface StartSnapshot {
@@ -42,17 +70,30 @@ export interface SnapshotLog {
 
 /** This function gives the key of the snapshots of a fold context on a log. */
 export function snapshotKey(context: FoldContext, log: SnapshotLog): FoldKey {
-  const parts = {
-    first: log.first,
-    recoveries: log.recoveries,
-    sources: context.sources,
+  // The canonical hash does not read the order of the fields. Thus the key has the same value as before `contextParts` (AL-169).
+  return { version: FOLD_VERSION, key: canonicalHash({ first: log.first, recoveries: log.recoveries, ...contextParts(context) }, { form: "json" }) };
+}
+
+/**
+ * This function gives the part of the key of a fold context with no part of the log (AL-169). Two builds with the same
+ * context key give the same snapshot key on each log. Thus a stage compares the context keys of the two slots, and it tells
+ * when the next start folds the whole log.
+ */
+export function contextKey(context: FoldContext): string {
+  return `${String(FOLD_VERSION)}:${canonicalHash(contextParts(context), { form: "json" })}`;
+}
+
+// The parts of the key that the fold context gives.
+function contextParts(context: FoldContext): Record<string, unknown> {
+  return {
+    // Only the fields that the fold reads (AL-156). Thus a change of the kinds or of the text of a source keeps the snapshot.
+    sources: context.sources.map(healthSource),
     health: context.health ?? null,
     // The retention with its defaults. Thus a change of a default of the core gives a new key.
     retention: context.retention === undefined ? null : retention(context.retention),
     link: context.link ?? DEFAULT_LINK_POLICY,
     expectations: context.expectations ?? [],
   };
-  return { version: FOLD_VERSION, key: canonicalHash(parts, { form: "json" }) };
 }
 
 // The paths of the objects that the rows split into their fields. The fields of each other object go into one row each.
@@ -176,7 +217,7 @@ export const START_SNAPSHOT_EVERY: Duration = 30 * 60_000;
  */
 export const START_SNAPSHOT_FLOOR = 500;
 
-/** The name of the file of the snapshot of the start in the home folder, next to the log. */
+/** The name of the file of the snapshot of the start of an older runtime in the home folder, next to the log. The store reads it (AL-169). */
 export const START_SNAPSHOT_FILE = "snapshot.sqlite";
 
 /** The read of the log at the open of a runtime (AL-105). */
@@ -187,12 +228,15 @@ export interface StartRead {
   readonly events: number;
   /** The name of the error of the read of the snapshot. Then the open folded the whole log. */
   readonly fault?: string;
+  /** The version of the old fold of the snapshot that the open upgraded (AL-153). It is undefined for a snapshot of `FOLD_VERSION`. */
+  readonly upgraded?: number;
 }
 
 /** This function gives the line of the output for the read of the log at a start. The line has counts and positions only. */
 export function startReadText(start: StartRead): string {
   const folded = `${String(start.events)} events`;
-  if (start.snapshot !== undefined) return `The start read the snapshot at the position ${String(start.snapshot.seq)} of the log, and it folded the ${folded} after it.`;
+  const upgraded = start.upgraded === undefined ? "" : ` It upgraded the snapshot from the fold version ${String(start.upgraded)}.`;
+  if (start.snapshot !== undefined) return `The start read the snapshot at the position ${String(start.snapshot.seq)} of the log, and it folded the ${folded} after it.${upgraded}`;
   if (start.fault !== undefined) return `The read of the snapshot failed (${start.fault}). The start folded the ${folded} of the whole log.`;
   return `The start had no snapshot of this log and of this configuration. It folded the ${folded} of the whole log.`;
 }
@@ -218,4 +262,142 @@ export function openStartSnapshot(path: string): OpenedStartSnapshot {
   } catch (error) {
     return { fault: error instanceof Error ? error.name : typeof error };
   }
+}
+
+/**
+ * The name of the folder of the snapshots of the start in the home folder (AL-169). The folder has one file for each key of
+ * a fold. Thus the snapshot of one set of private files stays when a start uses another set.
+ */
+export const START_SNAPSHOTS_FOLDER = "snapshots";
+
+/**
+ * The count of the keys that the folder of the snapshots keeps (AL-169). A deploy gives a new key, and the last good set has
+ * the key of the set before it. Thus three files keep the snapshot of each set that a start can use, and one more.
+ */
+export const START_SNAPSHOT_KEEP = 3;
+
+/** The options of `openStartSnapshots`. */
+export interface StartSnapshotsOptions {
+  /** This value is the count of the keys that the folder keeps: a whole number of 1 or more. The default is `START_SNAPSHOT_KEEP`. */
+  readonly keep?: number;
+  /** The store calls this function for each broken file that goes into quarantine. */
+  readonly onQuarantine?: (quarantined: Quarantined) => void;
+}
+
+/** This function gives the name of the file of the snapshots of a key in the folder of the snapshots. */
+export function snapshotFileName(key: FoldKey): string {
+  const text = /^[0-9a-f]{16,}$/u.test(key.key) ? key.key : canonicalHash({ key: key.key }, { form: "json" });
+  return `${text.slice(0, 16)}.sqlite`;
+}
+
+const SNAPSHOT_OPTIONS = { wal: true, synchronous: "NORMAL", busyTimeoutMs: 5000, makeFolder: true } as const;
+// The files of SQLite next to a database file.
+const SIDE_FILES = ["", "-wal", "-shm", "-journal"];
+
+/**
+ * This function opens the snapshots of the start in the home folder (AL-169). The store keeps the newest snapshot of each key
+ * in its own file of the folder `START_SNAPSHOTS_FOLDER`, and the newest `keep` files. The file of a key does not hold the
+ * version of the fold in its name. Thus the read of an old fold for an upgrade (AL-153) finds it.
+ *
+ * The file `START_SNAPSHOT_FILE` of an older runtime is one more file for the reads. The keep counts it, thus the store
+ * removes it after `keep` writes of other keys. A broken file goes into quarantine. The function does not throw.
+ */
+export function openStartSnapshots(home: string, options: StartSnapshotsOptions = {}): OpenedStartSnapshot {
+  const legacyPath = join(home, START_SNAPSHOT_FILE);
+  const legacy = existsSync(legacyPath) ? openStartSnapshot(legacyPath) : {};
+  if (legacy.quarantined !== undefined) options.onQuarantine?.(legacy.quarantined);
+  try {
+    const store = keyedSnapshots(join(home, START_SNAPSHOTS_FOLDER), legacy.store === undefined ? undefined : { path: legacyPath, store: legacy.store }, options);
+    return legacy.quarantined === undefined ? { store } : { store, quarantined: legacy.quarantined };
+  } catch (error) {
+    legacy.store?.close();
+    return { fault: error instanceof Error ? error.name : typeof error };
+  }
+}
+
+interface OpenFile {
+  readonly path: string;
+  readonly store: FoldSnapshotFile;
+}
+
+function keyedSnapshots(folder: string, legacy: OpenFile | undefined, options: StartSnapshotsOptions): FoldSnapshotFile {
+  const keep = options.keep ?? START_SNAPSHOT_KEEP;
+  if (!Number.isInteger(keep) || keep < 1) throw new RangeError("The store keeps 1 or more keys.");
+  mkdirSync(folder, { recursive: true });
+  const files = new Map<string, OpenFile>();
+  let old = legacy;
+  const fileOf = (key: FoldKey, make: boolean): FoldSnapshotFile | undefined => {
+    const path = join(folder, snapshotFileName(key));
+    const known = files.get(path);
+    if (known !== undefined) return known.store;
+    if (!make && !existsSync(path)) return undefined;
+    const { value: store, quarantined } = openOrQuarantine(path, (file) => openFoldSnapshot(file, SNAPSHOT_OPTIONS));
+    if (quarantined !== undefined) options.onQuarantine?.(quarantined);
+    files.set(path, { path, store });
+    return store;
+  };
+  const drop = (file: OpenFile): void => {
+    file.store.close();
+    for (const side of SIDE_FILES) rmSync(`${file.path}${side}`, { force: true });
+  };
+  // The newest `keep` files stay: the file of the last write, and the files with the newest changes.
+  const prune = (written: string): void => {
+    const candidates = readdirSync(folder)
+      .filter((name) => name.endsWith(".sqlite"))
+      .map((name) => join(folder, name));
+    if (old !== undefined) candidates.push(old.path);
+    const others = candidates.filter((path) => path !== written).sort((left, right) => changedAt(right) - changedAt(left));
+    for (const path of others.slice(keep - 1)) {
+      if (old?.path === path) {
+        drop(old);
+        old = undefined;
+        continue;
+      }
+      const open = files.get(path);
+      files.delete(path);
+      if (open !== undefined) drop(open);
+      else for (const side of SIDE_FILES) rmSync(`${path}${side}`, { force: true });
+    }
+  };
+  const closeAll = (): void => {
+    for (const file of files.values()) file.store.close();
+    files.clear();
+    old?.store.close();
+  };
+  return {
+    read(key, log, work) {
+      const own = fileOf(key, false)?.read(key, log, work);
+      return own !== undefined ? own : old?.store.read(key, log, work);
+    },
+    write(key, mark, rows) {
+      const count = (fileOf(key, true) as FoldSnapshotFile).write(key, mark, rows);
+      prune(join(folder, snapshotFileName(key)));
+      return count;
+    },
+    async writeInChunks(key, mark, rows, chunks) {
+      const count = await (fileOf(key, true) as FoldSnapshotFile).writeInChunks(key, mark, rows, chunks);
+      prune(join(folder, snapshotFileName(key)));
+      return count;
+    },
+    clear() {
+      for (const file of files.values()) drop(file);
+      files.clear();
+      for (const name of readdirSync(folder)) rmSync(join(folder, name), { force: true });
+      old?.store.clear();
+    },
+    close: closeAll,
+  };
+}
+
+// The time of the last change of a database file: its own time or the time of its WAL file, the newest of the two.
+function changedAt(path: string): number {
+  let newest = 0;
+  for (const side of ["", "-wal"]) {
+    try {
+      newest = Math.max(newest, statSync(`${path}${side}`).mtimeMs);
+    } catch {
+      // A missing file has no time.
+    }
+  }
+  return newest;
 }

@@ -14,5 +14,6 @@ export {
   SEVERITY_BY_LEVEL,
   SOLAR_RADIATION_STORM_KIND,
   SPACE_WEATHER_KIND,
+  thirdsText,
 } from "./scales.ts";
 export type { ScaleLevel } from "./scales.ts";

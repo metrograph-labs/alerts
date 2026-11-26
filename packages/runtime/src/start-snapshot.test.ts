@@ -1,13 +1,14 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { reportId, type Expectation, type ObservationId, type Report, type ReportId, type SourceId } from "@mark1russell7/alerts";
+import { reportId, type Expectation, type ObservationId, type Report, type ReportId, type SourceDescriptor, type SourceId } from "@mark1russell7/alerts";
 import { canonicalHash, random } from "@mark1russell7/rigor-generators";
 import { afterEach, describe, expect, it } from "vitest";
 import { entryIndex } from "./entries.ts";
 import { envelope, type RuntimeEvent } from "./events.ts";
 import { importOf, sharedItem } from "./exchange.ts";
-import { FOLD_VERSION, openStartSnapshot, readSnapshot, snapshotKey, snapshotRows, startReadText, type StartSnapshot } from "./start-snapshot.ts";
+import type { FoldSnapshot } from "@mark1russell7/sqlite";
+import { contextKey, FOLD_VERSION, openStartSnapshot, openStartSnapshots, readSnapshot, snapshotFileName, START_SNAPSHOT_FILE, START_SNAPSHOTS_FOLDER, SNAPSHOT_UPGRADES, snapshotKey, snapshotRows, startReadText, type StartSnapshot } from "./start-snapshot.ts";
 import { EMPTY_RUNTIME, fold, rebuild, type FoldContext, type RuntimeState } from "./state.ts";
 
 const T0 = Date.UTC(2026, 3, 1, 18, 0, 0);
@@ -157,11 +158,25 @@ describe("the key of the snapshot of a start (AL-105)", () => {
     for (const other of others) expect(other).not.toBe(key);
     expect(new Set(others).size).toBe(others.length);
   });
+
+  it("reads only the fields of a source that the fold reads (AL-156)", () => {
+    const source: SourceDescriptor = { id: API, title: "A feed", origins: ["https://feed.example"], dependsOn: [], uses: ["internet"], kinds: ["met"], coverage: "global", transport: "poll", interval: MINUTE, slowAfter: 10_000, auth: "none" };
+    const key = snapshotKey({ sources: [source] }, LOG);
+    // A change of a field that the fold does not read keeps the key.
+    for (const other of [{ ...source, title: "Another title" }, { ...source, kinds: ["met", "geo"] }, { ...source, origins: [] }, { ...source, canary: "x" }]) {
+      expect(snapshotKey({ sources: [other] }, LOG)).toEqual(key);
+    }
+    // A change of a field that the fold reads changes it.
+    for (const other of [{ ...source, interval: 2 * MINUTE }, { ...source, slowAfter: 20_000 }, { ...source, maxQuiet: HOUR }]) {
+      expect(snapshotKey({ sources: [other] }, LOG)).not.toEqual(key);
+    }
+  });
 });
 
 describe("the line of the read of the log at a start (AL-105)", () => {
   it("tells the position of the snapshot, the fault of its read, or the fold of the whole log", () => {
     expect(startReadText({ events: 12, snapshot: { seq: 900, id: "e-900" } })).toBe("The start read the snapshot at the position 900 of the log, and it folded the 12 events after it.");
+    expect(startReadText({ events: 12, snapshot: { seq: 900, id: "e-900" }, upgraded: 1 })).toBe("The start read the snapshot at the position 900 of the log, and it folded the 12 events after it. It upgraded the snapshot from the fold version 1.");
     expect(startReadText({ events: 912, fault: "SyntaxError" })).toBe("The read of the snapshot failed (SyntaxError). The start folded the 912 events of the whole log.");
     expect(startReadText({ events: 912 })).toBe("The start had no snapshot of this log and of this configuration. It folded the 912 events of the whole log.");
   });
@@ -189,6 +204,115 @@ describe("the file of the snapshot of a start (AL-105)", () => {
   });
 });
 
+describe("the snapshots of the start, one for each key (AL-169)", () => {
+  const log = { get: (id: string) => (id === "e-1" ? { seq: 1 } : undefined) };
+  const mark = { seq: 1, id: "e-1" };
+  const keyOf = (n: number) => ({ version: FOLD_VERSION, key: canonicalHash({ n }, { form: "json" }) });
+  const readState = (store: FoldSnapshot, n: number) =>
+    store.read(keyOf(n), log, (_mark, rows) => readSnapshot(rows).state);
+
+  it("keeps the snapshot of one key when a start writes the snapshot of another key", () => {
+    const home = mkdtempSync(join(tmpdir(), "alerts-snapshots-"));
+    folders.push(home);
+    const opened = openStartSnapshots(home);
+    const store = opened.store;
+    if (store === undefined) throw new Error("The store did not open.");
+    try {
+      // The good set has key 1, and a deploy gives key 2.
+      store.write(keyOf(1), mark, snapshotRows(sample()));
+      store.write(keyOf(2), mark, snapshotRows(sample()));
+      expect(readState(store, 1)).toEqual(sample().state);
+      expect(readState(store, 2)).toEqual(sample().state);
+      expect(readState(store, 3)).toBeUndefined();
+    } finally {
+      store.close();
+    }
+    // A new open reads the two keys from their files.
+    const again = openStartSnapshots(home).store;
+    try {
+      expect(again === undefined ? undefined : readState(again, 1)).toEqual(sample().state);
+    } finally {
+      again?.close();
+    }
+  });
+
+  it("keeps the newest files of the keep count, and removes the oldest file", () => {
+    const home = mkdtempSync(join(tmpdir(), "alerts-snapshots-"));
+    folders.push(home);
+    const store = openStartSnapshots(home, { keep: 2 }).store;
+    if (store === undefined) throw new Error("The store did not open.");
+    const folder = join(home, START_SNAPSHOTS_FOLDER);
+    const age = (n: number, ms: number) => {
+      const path = join(folder, snapshotFileName(keyOf(n)));
+      const at = new Date(Date.now() - ms);
+      for (const side of ["", "-wal"]) if (existsSync(path + side)) utimesSync(path + side, at, at);
+    };
+    try {
+      store.write(keyOf(1), mark, snapshotRows(sample()));
+      age(1, 3 * HOUR);
+      store.write(keyOf(2), mark, snapshotRows(sample()));
+      age(2, HOUR);
+      // The write of key 3 keeps the newest other file, key 2, and removes the oldest file, key 1.
+      store.write(keyOf(3), mark, snapshotRows(sample()));
+      expect(readState(store, 1)).toBeUndefined();
+      expect(readState(store, 2)).toEqual(sample().state);
+      expect(readState(store, 3)).toEqual(sample().state);
+      expect(readdirSync(folder).filter((name) => name.endsWith(".sqlite")).sort()).toEqual([snapshotFileName(keyOf(2)), snapshotFileName(keyOf(3))].sort());
+    } finally {
+      store.close();
+    }
+  });
+
+  it("reads the file of an older runtime, and removes it after the keep count of new keys", () => {
+    const home = mkdtempSync(join(tmpdir(), "alerts-snapshots-"));
+    folders.push(home);
+    const legacy = openStartSnapshot(join(home, START_SNAPSHOT_FILE)).store;
+    legacy?.write(keyOf(1), mark, snapshotRows(sample()));
+    legacy?.close();
+    const old = new Date(Date.now() - 3 * HOUR);
+    utimesSync(join(home, START_SNAPSHOT_FILE), old, old);
+    for (const side of ["-wal"]) if (existsSync(join(home, START_SNAPSHOT_FILE + side))) utimesSync(join(home, START_SNAPSHOT_FILE + side), old, old);
+    const store = openStartSnapshots(home, { keep: 2 }).store;
+    if (store === undefined) throw new Error("The store did not open.");
+    try {
+      expect(readState(store, 1)).toEqual(sample().state);
+      store.write(keyOf(2), mark, snapshotRows(sample()));
+      // The keep of 2 counts the old file: it stays after one new key.
+      expect(readState(store, 1)).toEqual(sample().state);
+      store.write(keyOf(3), mark, snapshotRows(sample()));
+      expect(readState(store, 1)).toBeUndefined();
+      expect(existsSync(join(home, START_SNAPSHOT_FILE))).toBe(false);
+    } finally {
+      store.close();
+    }
+  });
+
+  it("removes each snapshot at a clear, and writes again after it", () => {
+    const home = mkdtempSync(join(tmpdir(), "alerts-snapshots-"));
+    folders.push(home);
+    const store = openStartSnapshots(home).store;
+    if (store === undefined) throw new Error("The store did not open.");
+    try {
+      store.write(keyOf(1), mark, snapshotRows(sample()));
+      store.write(keyOf(2), mark, snapshotRows(sample()));
+      store.clear();
+      expect(readState(store, 1)).toBeUndefined();
+      expect(readState(store, 2)).toBeUndefined();
+      store.write(keyOf(2), mark, snapshotRows(sample()));
+      expect(readState(store, 2)).toEqual(sample().state);
+    } finally {
+      store.close();
+    }
+  });
+
+  it("names the file of a key with the start of its hash, and hashes a key that is not a hash", () => {
+    expect(snapshotFileName(keyOf(1))).toBe(`${keyOf(1).key.slice(0, 16)}.sqlite`);
+    expect(snapshotFileName({ version: 1, key: "../not a hash" })).toMatch(/^[0-9a-f]{16}.sqlite$/u);
+    // The version is not in the name: the read of an old fold for an upgrade finds the same file.
+    expect(snapshotFileName({ ...keyOf(1), version: 1 })).toBe(snapshotFileName(keyOf(1)));
+  });
+});
+
 /**
  * The gate of the version of the fold. The test folds seeded logs, and it pins the hash of the rows of each snapshot. A change of
  * the fold, of the form of the state or of the form of the rows changes a hash. Then the change raises `FOLD_VERSION` and pins the
@@ -207,6 +331,54 @@ const DIGESTS: Readonly<Record<number, readonly string[]>> = {
     "a433217afb26fe8b3380cc30154fe661ed2897d3dd4e77b26c12c1c0538805a2",
   ],
   2: [
+    "d1a591b9261f7cd3bd1d6af2b4e2ab3c815812a9e73b442473570b443d12de1d",
+    "ce9e3aa1a06a6c7b9157c1c132216efc1a3557de1e39496555f589207f1e4d4e",
+    "75890383cfb4f381773541b34afca7c5eed12b6fb1e976551b594d29847116bb",
+    "e664fc900fb57cbae22b938a87916db07f01573fd1ca5caf1ec91bce3830e1cf",
+    "bfade8145362d938d08b31c4e7cbffda0c6c4232a4079e3b067d98dccf6181a7",
+    "0a99d0eb9cf69a82ab8a21b4f06ea132e3611ff6560fb673d030b149cd754c50",
+    "ccbee4225413f0ceefdf24aff8b27f2b8a9632b74179f1d6cc60f2912d212779",
+    "19f892aac112680c4bf165f86f3e6b75410552fbacb20a80f142b1ca12154bab",
+    "e929c3703c2d58fc5aa679c6d4401610af738a0de29fd99f51e23f4a9a8cab69",
+  ],
+  // Version 3 (AL-172) changes the retirement of an incident that a person knows. The seeded snapshots keep their rows.
+  3: [
+    "d1a591b9261f7cd3bd1d6af2b4e2ab3c815812a9e73b442473570b443d12de1d",
+    "ce9e3aa1a06a6c7b9157c1c132216efc1a3557de1e39496555f589207f1e4d4e",
+    "75890383cfb4f381773541b34afca7c5eed12b6fb1e976551b594d29847116bb",
+    "e664fc900fb57cbae22b938a87916db07f01573fd1ca5caf1ec91bce3830e1cf",
+    "bfade8145362d938d08b31c4e7cbffda0c6c4232a4079e3b067d98dccf6181a7",
+    "0a99d0eb9cf69a82ab8a21b4f06ea132e3611ff6560fb673d030b149cd754c50",
+    "ccbee4225413f0ceefdf24aff8b27f2b8a9632b74179f1d6cc60f2912d212779",
+    "19f892aac112680c4bf165f86f3e6b75410552fbacb20a80f142b1ca12154bab",
+    "e929c3703c2d58fc5aa679c6d4401610af738a0de29fd99f51e23f4a9a8cab69",
+  ],
+  // Version 4 (AL-187) changes only the retirement of a drill run. The seeded logs have no drill, thus the hashes stay.
+  4: [
+    "d1a591b9261f7cd3bd1d6af2b4e2ab3c815812a9e73b442473570b443d12de1d",
+    "ce9e3aa1a06a6c7b9157c1c132216efc1a3557de1e39496555f589207f1e4d4e",
+    "75890383cfb4f381773541b34afca7c5eed12b6fb1e976551b594d29847116bb",
+    "e664fc900fb57cbae22b938a87916db07f01573fd1ca5caf1ec91bce3830e1cf",
+    "bfade8145362d938d08b31c4e7cbffda0c6c4232a4079e3b067d98dccf6181a7",
+    "0a99d0eb9cf69a82ab8a21b4f06ea132e3611ff6560fb673d030b149cd754c50",
+    "ccbee4225413f0ceefdf24aff8b27f2b8a9632b74179f1d6cc60f2912d212779",
+    "19f892aac112680c4bf165f86f3e6b75410552fbacb20a80f142b1ca12154bab",
+    "e929c3703c2d58fc5aa679c6d4401610af738a0de29fd99f51e23f4a9a8cab69",
+  ],
+  // Version 5 (AL-177) retires old reports of a live incident. The reports of the seeded logs are heads, thus the hashes stay.
+  5: [
+    "d1a591b9261f7cd3bd1d6af2b4e2ab3c815812a9e73b442473570b443d12de1d",
+    "ce9e3aa1a06a6c7b9157c1c132216efc1a3557de1e39496555f589207f1e4d4e",
+    "75890383cfb4f381773541b34afca7c5eed12b6fb1e976551b594d29847116bb",
+    "e664fc900fb57cbae22b938a87916db07f01573fd1ca5caf1ec91bce3830e1cf",
+    "bfade8145362d938d08b31c4e7cbffda0c6c4232a4079e3b067d98dccf6181a7",
+    "0a99d0eb9cf69a82ab8a21b4f06ea132e3611ff6560fb673d030b149cd754c50",
+    "ccbee4225413f0ceefdf24aff8b27f2b8a9632b74179f1d6cc60f2912d212779",
+    "19f892aac112680c4bf165f86f3e6b75410552fbacb20a80f142b1ca12154bab",
+    "e929c3703c2d58fc5aa679c6d4401610af738a0de29fd99f51e23f4a9a8cab69",
+  ],
+  // Version 6 (AL-189) keeps the run of the last start of a drill past the horizon. The seeded logs have no drill, thus the hashes stay.
+  6: [
     "d1a591b9261f7cd3bd1d6af2b4e2ab3c815812a9e73b442473570b443d12de1d",
     "ce9e3aa1a06a6c7b9157c1c132216efc1a3557de1e39496555f589207f1e4d4e",
     "75890383cfb4f381773541b34afca7c5eed12b6fb1e976551b594d29847116bb",
@@ -252,11 +424,11 @@ function seededLog(seed: string, length: number): RuntimeEvent[] {
   return events;
 }
 
-describe("the version of the fold (AL-105)", () => {
-  it("pins the hash of the snapshot of each seeded log", () => {
-    const contexts: readonly FoldContext[] = [{ sources: [], retention: {} }, { sources: [], retention: { horizon: 24 * HOUR, quiet: 3 * HOUR, life: 48 * HOUR, every: HOUR } }, { sources: [] }];
-    const digests = ["a", "b", "c"].flatMap((seed) =>
-      contexts.map((context) => {
+// The snapshot of the fold of each seeded log in each context of the gate.
+function seededSnapshots(): StartSnapshot[] {
+  const contexts: readonly FoldContext[] = [{ sources: [], retention: {} }, { sources: [], retention: { horizon: 24 * HOUR, quiet: 3 * HOUR, life: 48 * HOUR, every: HOUR } }, { sources: [] }];
+  return ["a", "b", "c"].flatMap((seed) =>
+    contexts.map((context) => {
         const entries = entryIndex();
         const events = seededLog(seed, 300);
         const state = rebuild(
@@ -269,10 +441,23 @@ describe("the version of the fold (AL-105)", () => {
           context,
           (merge) => entries.prune(merge),
         );
-        return canonicalHash([...snapshotRows({ state, entries: entries.snapshot() })], { form: "json" });
+        return { state, entries: entries.snapshot() };
       }),
-    );
+  );
+}
+
+// True for a row of the blocks of the event loop, the part of the state that version 2 adds (AL-88).
+
+describe("the version of the fold (AL-105)", () => {
+  it("pins the hash of the snapshot of each seeded log", () => {
+    const digests = seededSnapshots().map((snapshot) => canonicalHash([...snapshotRows(snapshot)], { form: "json" }));
     expect(digests, `The digests of FOLD_VERSION ${String(FOLD_VERSION)}: ${JSON.stringify(digests)}`).toEqual(DIGESTS[FOLD_VERSION]);
+  });
+
+  it("has no upgrade to version 3, 4, 5 or 6 of the fold (AL-153, AL-172, AL-187, AL-177, AL-189)", () => {
+    expect(FOLD_VERSION, "A new version of the fold also changes SNAPSHOT_UPGRADES and this test.").toBe(6);
+    // An upgrade gives a snapshot of FOLD_VERSION. A told incident of version 3 retires at another time, thus no upgrade gives its state.
+    expect(Object.keys(SNAPSHOT_UPGRADES)).toEqual([]);
   });
 });
 
@@ -294,5 +479,27 @@ describe("the fold under a write of the snapshot (AL-115)", () => {
         }
       }
     }
+  });
+});
+
+describe("the context key of a fold (AL-169)", () => {
+  it("keeps the value of the snapshot key of AL-156: the snapshots of a live copy stay valid", () => {
+    expect(snapshotKey({ sources: [], retention: {} }, { first: "event-1", recoveries: 2 }).key).toBe("b3d7dbe860c2cdfffe28ea9feb63778ece82eebae6d10fbef3f399af4e0aeeee");
+  });
+
+  it("reads no part of the log, and starts with the fold version", () => {
+    const context = { sources: [], retention: {} };
+    // The hash is pinned. The version comes from FOLD_VERSION, thus a new version of the fold does not change this test.
+    expect(contextKey(context)).toBe(`${String(FOLD_VERSION)}:7921159f7f68953ad57bbb40c564d533dd3118f51c812cd953fb82b4dd12c27b`);
+  });
+
+  it("changes when the snapshot key changes on the same log", () => {
+    const log = { first: "event-1", recoveries: 0 };
+    const other = { sources: [], retention: { quiet: 6 * HOUR } };
+    const base = { sources: [], retention: {} };
+    expect(contextKey(other) === contextKey(base)).toBe(snapshotKey(other, log).key === snapshotKey(base, log).key);
+    const linked = { ...base, link: { window: HOUR } as never };
+    expect(contextKey(linked)).not.toBe(contextKey(base));
+    expect(snapshotKey(linked, log).key).not.toBe(snapshotKey(base, log).key);
   });
 });

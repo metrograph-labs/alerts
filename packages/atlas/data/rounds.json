@@ -1014,5 +1014,1408 @@
       "members": 1757,
       "cause": "Round 18 adds planned and later sources to the thin classes and to the dimensions. The gaps go from 107 to 103, because 4 classes get a second source. The dimensions with two live sources go from 5 to 7. No source is adopted, so the cover and the totals do not change."
     }
+  },
+  {
+    "round": 19,
+    "date": "2026-11-22",
+    "by": "One session, for the new hazard cases of the package stack-hazards (AL-125).",
+    "method": "No web search. The round adds 9 classes for new codes of the taxonomy, with their gaps. The codes are new cases of a hazard list.",
+    "lists": [
+      "The hazard cases of @mark1russell7/stack-hazards: https://www.npmjs.com/package/@mark1russell7/stack-hazards"
+    ],
+    "queries": [],
+    "notes": [
+      "The new codes are civic.ai-collapse, civic.economy.collapse, security.nuclear-war, cbrne.nuclear-detonation, cbrne.emp, health.outbreak.pandemic, infra.power.grid-collapse, infra.supply-chain.food and cyber.infrastructure-attack.",
+      "security.nuclear-war and infra.power.grid-collapse are siblings of security.armed-conflict and infra.power.outage. Adapters give those two codes as leaf codes, so they stay leaf codes.",
+      "A later round searches the sources of the 9 classes (AL-127)."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 213,
+      "gaps": 112,
+      "cover": {
+        "adopted": 54,
+        "paths": 54,
+        "origins": 4
+      },
+      "total": {
+        "adopted": 146,
+        "paths": 146,
+        "origins": 67
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 7,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 19 adds 9 classes for new codes of the taxonomy, with gaps. The classes go from 204 to 213, and the gaps from 103 to 112. No source changes."
+    }
+  },
+  {
+    "round": 20,
+    "date": "2026-11-22",
+    "by": "One session and one research agent, for the 9 classes of the new hazard cases (AL-127).",
+    "method": "Web searches and reads of the pages and the API replies of each source. The agent examined the existing records for the 9 codes first, then searched new sources. Before the commit, the session read four claims again: the USGS event type, the INGV event type, the alert types of alerts.in.ua and the WHO news API.",
+    "lists": [
+      "USGS FDSN event query, the events with the type nuclear explosion since 2010: https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&eventtype=nuclear%20explosion&starttime=2010-01-01&endtime=2026-11-22",
+      "EMSC SeismicPortal FDSN event query, the window of the 2017-09-03 event in North Korea: https://www.seismicportal.eu/fdsnws/event/1/query?format=json&start=2017-09-03T03:00:00&end=2017-09-03T04:30:00&minmag=4",
+      "GEOFON FDSN event query, the same window: https://geofon.gfz.de/fdsnws/event/1/query?format=text&start=2017-09-03T03:00:00&end=2017-09-03T04:30:00&minmag=4",
+      "ISC FDSN event query, the same window: https://www.isc.ac.uk/fdsnws/event/1/query?starttime=2017-09-03T03:29:00&endtime=2017-09-03T03:32:00&minmagnitude=5",
+      "INGV FDSN event query, the same window: https://webservices.ingv.it/fdsnws/event/1/query?starttime=2017-09-03T03:25:00&endtime=2017-09-03T03:35:00&minmag=5&format=text",
+      "CISA cybersecurity advisories feed (10 items): https://www.cisa.gov/cybersecurity-advisories/cybersecurity-advisories.xml",
+      "CISA all advisories feed: https://www.cisa.gov/cybersecurity-advisories/all.xml",
+      "WHO news items API, 50 items: https://www.who.int/api/news/newsitems?$top=50",
+      "WHO disease outbreak news API, 100 items: https://www.who.int/api/news/diseaseoutbreaknews?$top=100",
+      "Zenodo record of the EuRepoC Global Dataset of Cyber Incidents: https://zenodo.org/api/records/14965395",
+      "AI Incident Database RSS feed: https://incidentdatabase.ai/rss.xml"
+    ],
+    "queries": [
+      "EuRepoC European Repository of Cyber Incidents data download API licence",
+      "FEWS NET Data Warehouse fdw.fews.net API terms of use data reuse",
+      "OECD AI Incidents Monitor AIM data download API incidents dataset terms",
+      "J-Alert 国民保護情報 弾道ミサイル 配信 XML API 公開 データ"
+    ],
+    "notes": [
+      "Round 20 adds 12 sources for the 9 classes of round 19: 6 planned and 6 later. It adds the codes to 5 records that carry the signals already: who-don-api, cisa-advisories-rss, alerts-in-ua, ioda-api, statuspage-public-api.",
+      "The USGS catalog gives the event type nuclear explosion, and Cloudflare Radar gives the cause power outage. Their records are adopted, but their adapters do not give the two codes. Thus the two records get the codes after AL-128.",
+      "health.outbreak.pandemic: 2 live sources. who-don-api (existing, plan) and who-news-items-api (new, plan). The research did not check cdc-han, because it is an email source and its archive was not read.",
+      "cyber.infrastructure-attack: 1 live source, cisa-advisories-rss (existing, plan), and eurepoc-global-dataset (later). The current windows of the CERT-UA RSS feed, the CCCS alerts feed and the NCSC UK feed had no item on an attack on the control systems of a utility, so no record got the code.",
+      "cbrne.nuclear-detonation: 1 live source, ingv-fdsnws-event (new, plan), with isc-fdsnws-event (later). The USGS catalog names the 2017-09-03 event in North Korea a nuclear explosion, but the adapter of usgs-comcat-geojson maps each event to an earthquake (AL-128). EMSC gives the evtype ke (known earthquake) for the event, and GEOFON gives an empty EventType. The research did not read the CTBTO pages this round.",
+      "cbrne.emp: no source. The research found no public feed that names an electromagnetic pulse. A burst high in the atmosphere gives little or no seismic signal, so the seismic catalogs do not carry it. The likely signals are the national warnings of security.nuclear-war and wide outages of power and telecom, but no source names the cause.",
+      "security.nuclear-war: 1 live source, alerts-in-ua (existing, plan). The swagger document of api.ukrainealarm.com gave HTTP 403, so no record was made. A search found no public machine-readable form of the J-Alert civil protection messages of Japan. The IPAWS page in the record ipaws-open gave HTTP 404, so the research could not show that the feed carries the national code EAN.",
+      "infra.power.grid-collapse: 2 live sources, ree-redata-api (new, plan) and ioda-api (existing, plan). Cloudflare Radar also shows the Iberian blackout of 2025-04-28 with the cause power outage, but its adapter maps the outage to an internet outage (AL-128). eia-930 (power-demand) can give the same drop of load for US balancing areas, but its record has no classes, so it got no code.",
+      "infra.supply-chain.food: 1 live source, fews-net-fdw-ipc-api (new, plan), with ipc-api and wfp-hungermap-api (later). The HDX HAPI food-security path (hapi.humdata.org) answered HTTP 429 with the message Blocked due to bot activity, so no record was made and the research did not try again.",
+      "civic.economy.collapse: 1 live source, bis-data-api (new, plan), for hyperinflation only. The research found no free machine-readable source of bank holidays, capital controls or sovereign defaults within the budget.",
+      "civic.ai-collapse: 2 live sources. statuspage-public-api (existing, plan, with the Claude status page as evidence) and aiid-rss (new, plan), with oecd-ai-incidents-monitor and openai-status (later).",
+      "Failed reads: WHO disease outbreak news API with $select or $orderby (HTTP 400). WHO path /api/news/statements (HTTP 404). REE path demanda/evolucion (HTTP 400, the path demanda-tiempo-real worked). IPC documentation page (only the title). HungerMap path /swagger/ (HTTP 404). HDX HAPI (HTTP 429, bot block). api.ukrainealarm.com swagger (HTTP 403). FEMA all-hazards feed page (HTTP 404). alerts.ncdr.nat.gov.tw (a small script page with no alert data)."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 213,
+      "gaps": 109,
+      "cover": {
+        "adopted": 54,
+        "paths": 54,
+        "origins": 4
+      },
+      "total": {
+        "adopted": 146,
+        "paths": 146,
+        "origins": 67
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 8,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 20 adds planned and later sources to the 9 classes of round 19. The gaps go from 112 to 109, because 3 classes get two live sources: civic.ai-collapse, health.outbreak.pandemic and infra.power.grid-collapse. The dimensions with two live sources go from 7 to 8, because ree-redata-api is a second source of power-demand. No source is adopted, so the cover and the totals do not change."
+    }
+  },
+  {
+    "round": 21,
+    "date": "2026-11-22",
+    "by": "One session, for the classes of the adopted records (AL-129).",
+    "method": "The session compared the classes of each adopted record with the kinds of the descriptors of its adapter, in both directions. It read no outside page.",
+    "lists": [
+      "The source descriptors of the 17 adopted adapters of this repository"
+    ],
+    "queries": [],
+    "notes": [
+      "The Radar adapter reads the outage center and the traffic anomalies. Its record claimed the classes cyber.ddos, infra.internet.bgp and infra.internet.dns-cdn, and the adopted layers counted them. These classes go to the new planned record cloudflare-radar-bgp-attacks-dns, with the dimension internet-routing. AL-130 plans the adapter.",
+      "The Radar adapter gives infra.cloud.outage for an outage of a platform and for an anomaly of a cloud region. The record did not have the class, so it gets it.",
+      "The IPAWS adapter gives fire.wildfire for the code FRW (Fire Warning). The record of ipaws-open had no fire class, so it gets fire.wildfire.",
+      "A dimension counts adopted and planned sources in the same way. Thus a dimension with no measure of the adapter claims no delivery. The dimensions of the GCP, Firebase and USGS records stay.",
+      "A test of the descriptors holds the two directions: each class of an adopted record is a kind of its adapter, and each kind of the adapter has a class of the record."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 213,
+      "gaps": 108,
+      "cover": {
+        "adopted": 54,
+        "paths": 54,
+        "origins": 4
+      },
+      "total": {
+        "adopted": 146,
+        "paths": 146,
+        "origins": 67
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 8,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 21 corrects the adopted records: the Radar adapter does not give 3 of its classes, and it gives 1 class that the record did not have. IPAWS gets fire.wildfire. The adopted total goes from 148 to 146, the path total from 148 to 146 and the origin total from 69 to 67. The gaps stay at 108, because a planned record keeps the 3 classes live."
+    }
+  },
+  {
+    "round": 22,
+    "date": "2026-11-23",
+    "by": "One agent, with one request to each page and a check of each record before the commit.",
+    "method": "The round looked for free sources of news and read the terms of each. It read the existing news and social records again, and opened one GDELT event file to count the events with a place.",
+    "lists": [
+      "The GDELT data page and its terms of use",
+      "The Hacker News API on GitHub",
+      "The terms of use of NPR",
+      "The ReliefWeb API documentation",
+      "The Bluesky developer guidelines",
+      "Wikipedia: Portal:Current events"
+    ],
+    "queries": [
+      "GDELT DOC 2.0 API terms",
+      "GDELT terms of use redistribution",
+      "Hacker News API rate limit",
+      "NPR RSS terms of use",
+      "ReliefWeb API appname",
+      "Bluesky developer guidelines automated"
+    ],
+    "notes": [
+      "The GDELT terms permit use and redistribution with no fee. Each use cites the GDELT Project with a link. The records of GDELT get these terms.",
+      "A query of the GDELT DOC API holds its words. A query for a place thus sends the place out, so the record is later. The event files need no query.",
+      "One GDELT event file of 15 minutes held 958 events, and 940 of them had a place of the action. The adapter can filter by place on the computer of the user.",
+      "The knowledge graph of GDELT has the hazard themes, but each file of 15 minutes is approximately 7 MB compressed. It is later.",
+      "The Hacker News API needs no key and states no rate limit. It is a second witness of outages of software and clouds, so it is planned.",
+      "The ReliefWeb API needs an appname that ReliefWeb approves first, and its terms page gave no body to the client. It is later until a person registers.",
+      "The NPR terms forbid the redistribution of a whole feed, so a public repository cannot hold a fixture of it. A general reader of news feeds comes first."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 213,
+      "gaps": 108,
+      "cover": {
+        "adopted": 54,
+        "paths": 54,
+        "origins": 4
+      },
+      "total": {
+        "adopted": 146,
+        "paths": 146,
+        "origins": 67
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 35,
+      "dimensions": 9,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 22 adds research only. The dimension news-volume gets a second planned source, hacker-news-api, so the dimensions go from 8 to 9. Two later records have an unknown path, so the unknown paths go from 33 to 35. No adapter changed, so the layers stay."
+    }
+  },
+  {
+    "round": 23,
+    "date": "2026-11-24",
+    "by": "One session, for a new hazard case of the package stack-hazards.",
+    "method": "No web search. The round adds 1 class for a new code of the taxonomy, with its gap. The code is a new case of a hazard list.",
+    "lists": [
+      "The hazard cases of @mark1russell7/stack-hazards: https://www.npmjs.com/package/@mark1russell7/stack-hazards"
+    ],
+    "queries": [],
+    "notes": [
+      "The new code is infra.power.physical-attack: gunfire, sabotage, vandalism or theft at a substation or a power line.",
+      "The OE-417 annual summaries of the DOE give the cases of this class with a duration. They are not a live source."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 109,
+      "cover": {
+        "adopted": 54,
+        "paths": 54,
+        "origins": 4
+      },
+      "total": {
+        "adopted": 146,
+        "paths": 146,
+        "origins": 67
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 35,
+      "dimensions": 9,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 23 adds 1 class for a new code of the taxonomy, with a gap. The classes go from 213 to 214, and the gaps from 108 to 109. No source changes."
+    }
+  },
+  {
+    "round": 24,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent, in a memory hold.",
+    "method": "The round read again each life-safety class whose gap reason was a failed read: a refusal, a time-out or a page that was not opened. One fetch went to each host, with a plain user agent. A refusal stays a refusal: the round tried no other route.",
+    "lists": [
+      "The gaps of the atlas on main, with their reasons: packages/atlas/data/classes.json"
+    ],
+    "queries": [
+      "FCC Disaster Information Reporting System DIRS public status reports communications outages",
+      "CAISO emergency notifications RSS feed Flex Alert EEA notices",
+      "MARAD MSCI U.S. Maritime Advisories RSS feed",
+      "NTSB CAROL public API aviation investigations data download"
+    ],
+    "notes": [
+      "Closed: security.travel-advisory (gac-travel-advice), safety.recall.drug and safety.recall.medical-device (mhra-alerts-govuk), safety.scam (ic3-psa-rss and scamwatch-rss).",
+      "fema-open-shelters answered, so it moves from later to plan. The class rescue.shelter-open still has 1 source.",
+      "eskom-loadshedding-status is new. The class infra.power.load-shedding still has 1 source.",
+      "Still refused or down: NAVCEN (403), NGA MSI (503), the Flex Alert feed of CAISO (404) and the NTSB API (502).",
+      "The page of FCC DIRS moved. Its reports are PDF files while DIRS is active, so it is no live feed.",
+      "The market and fiscal gaps are not in the scope of this round."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 105,
+      "cover": {
+        "adopted": 55,
+        "paths": 55,
+        "origins": 5
+      },
+      "total": {
+        "adopted": 152,
+        "paths": 152,
+        "origins": 73
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 35,
+      "dimensions": 9,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 24 adds 5 planned sources and moves fema-open-shelters to plan. 4 classes get 2 or more sources, so the gaps go from 109 to 105. The cover and total counts include the adoptions on main after round 23."
+    }
+  },
+  {
+    "round": 25,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent, after memory hold 26.",
+    "method": "The round read the life-safety classes with no source. It searched for a national or regional feed of each class, worldwide. One fetch went to each host, with a plain user agent, and a second fetch read the terms fields. A refusal stays a refusal: the round tried no other route.",
+    "lists": [
+      "The gaps of the atlas on main, with their reasons: packages/atlas/data/classes.json"
+    ],
+    "queries": [
+      "Environment Agency bathing water pollution risk forecast API environment.data.gov.uk",
+      "Sjöfartsverket navigational warnings open API JSON",
+      "NASA LHASA landslide nowcast near real-time data API download",
+      "Public Safety Power Shutoff ArcGIS feature service current events SCE PG&E open data",
+      "Danish Maritime Authority Niord navigational warnings REST download data terms of use",
+      "boil water notices open data API state JSON feed current advisories",
+      "harmful algal bloom advisories open data API current lake advisories JSON state",
+      "avian influenza confirmed cases data feed GOV.UK atom OR USDA APHIS HPAI detections CSV download"
+    ],
+    "notes": [
+      "Closed: env.water.drinking-advisory (alaska-dec-boil-water and nl-boil-water-advisories).",
+      "dma-niord-warnings is new. The class transport.sea.navigational-warning has 1 source with no risk.",
+      "ca-fhab-reports is new. The class env.water.harmful-algal-bloom has 1 source with no risk.",
+      "Refused or down: the bathing water API of the Environment Agency (429 on the first request), the OGC API of the Portuguese Hydrographic Institute (no answer) and the conditions page of the DMA (404).",
+      "The outage layer of the Cal OES search result has only unplanned outages, so it gives no PSPS. The GOV.UK Atom search did not apply its keywords.",
+      "The Global Landslide Nowcast of NASA needs an Earthdata account, so it waits for a decision of the owner on accounts."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 104,
+      "cover": {
+        "adopted": 55,
+        "paths": 55,
+        "origins": 5
+      },
+      "total": {
+        "adopted": 152,
+        "paths": 152,
+        "origins": 73
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 35,
+      "dimensions": 9,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 25 adds 4 planned sources. 1 class gets 2 sources, so the gaps go from 105 to 104."
+    }
+  },
+  {
+    "round": 26,
+    "date": "2026-11-25",
+    "by": "One session, with one research subagent.",
+    "method": "The round read 15 classes with no source, worldwide. One fetch went to each host, with a plain user agent. A second fetch read the licence fields of each candidate. A refusal stays a refusal: the round tried no other route.",
+    "lists": [
+      "The gaps of the atlas on main, with their reasons: packages/atlas/data/classes.json"
+    ],
+    "queries": [
+      "RIVM rioolwaterdata open data CSV",
+      "Health Infobase wastewater surveillance data download",
+      "Food Standards Agency food alerts API",
+      "UK Power Networks power cut open data API",
+      "Socrata crimes dataset daily updates open data",
+      "Australian Electoral Commission media feed",
+      "Canada Post service alerts feed",
+      "GeoNet API landslide"
+    ],
+    "notes": [
+      "Closed: infra.power.outage (odin-ornl and ukpn-national-energy-outage) and safety.recall.food (canada-recalls and fsa-uk-food-alerts).",
+      "rivm-wastewater-sars2 is new. The class health.wastewater-signal has 1 source with no risk.",
+      "chicago-crimes is new. The class security.crime has 1 source with no risk.",
+      "canada-wastewater-trend is later, because its file has no date.",
+      "The status page of Bitstamp gives JSON, but it is a crypto exchange. statuspage-crypto covers that class on the same path, so the round adds no row.",
+      "Refused or down: the media feed of the Australian Electoral Commission (no answer), the status pages of OKX and Bitfinex (no answer) and the recalls feed of FSANZ (HTML, not a feed).",
+      "No feed: the service updates of Canada Post are a page only, and one probe of the GeoNet API found no landslide data.",
+      "Not read in this round: civic.court-ruling, market.credit.rating, infra.timekeeping, transport.air.notam, infra.telecom.outage, civic.school-closure and health.animal-disease."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 102,
+      "cover": {
+        "adopted": 55,
+        "paths": 55,
+        "origins": 5
+      },
+      "total": {
+        "adopted": 152,
+        "paths": 152,
+        "origins": 73
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 35,
+      "dimensions": 9,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 26 adds 4 planned sources and 1 later source. 2 classes get 2 sources, so the gaps go from 104 to 102."
+    }
+  },
+  {
+    "round": 27,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round read the 7 classes that round 26 did not read. One fetch went to each URL, with a plain user agent. A refusal stays a refusal: the round tried no other route.",
+    "lists": [
+      "The gaps of the atlas on main, with their reasons: packages/atlas/data/classes.json",
+      "The not-read list of round 26: packages/atlas/data/rounds.json"
+    ],
+    "queries": [],
+    "notes": [
+      "iana-tz moves from later to plan: the leap second list is in the public domain, with its expiry date. The class infra.timekeeping has 1 source with no risk.",
+      "defra-avian-influenza-zones is new. The class health.animal-disease has 1 source with no risk.",
+      "Refused: the search API of CourtListener gave 405 with a page of human verification, and its terms page gave 403.",
+      "The search API of GOV.UK gives the guidance pages of APHA, not cases, so the round reads the page of cases.",
+      "Not read in this round: market.credit.rating, transport.air.notam, infra.telecom.outage and civic.school-closure. The round knew no candidate URL for them."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 102,
+      "cover": {
+        "adopted": 55,
+        "paths": 55,
+        "origins": 5
+      },
+      "total": {
+        "adopted": 152,
+        "paths": 152,
+        "origins": 73
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 35,
+      "dimensions": 9,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 27 adds 1 planned source and moves 1 source from later to plan. 2 classes get their first source, so the gaps stay at 102."
+    }
+  },
+  {
+    "round": 28,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took classes with one source and looked for a second source with a different origin. One fetch went to each URL, with a plain user agent.",
+    "lists": [
+      "The classes with one source, from the gaps of the atlas on main: packages/atlas/data/classes.json"
+    ],
+    "queries": [],
+    "notes": [
+      "uk-sanctions-list and un-sc-consolidated-list are new. With the OFAC list, civic.sanctions has 3 sources from 3 origins.",
+      "ripestat-data-api is new. With Cloudflare Radar, infra.internet.bgp has 2 sources from 2 origins.",
+      "freddie-mac-pmms stays later: its terms forbid automated reading. So market.rates.mortgage keeps one source.",
+      "The documentation page of RIPEstat gave 404. The terms come from the RIPE NCC terms of service, as for ripe-ris-live."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 100,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 35,
+      "dimensions": 9,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 28 adds 3 planned sources. civic.sanctions and infra.internet.bgp get a second origin, so the gaps go from 102 to 100."
+    }
+  },
+  {
+    "round": 29,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took classes with one source and looked for a second source with a different origin. One fetch went to each URL, with a plain user agent.",
+    "lists": [
+      "The classes with one source, from the gaps of the atlas on main: packages/atlas/data/classes.json"
+    ],
+    "queries": [],
+    "notes": [
+      "meteoswiss-pollen is new. With dwd-pollen-index, env.pollen has 2 sources from 2 origins.",
+      "cdc-nwss-wastewater is new. The old CDC dataset 2ew6-ywp6 stopped in 2025-09. With rivm-wastewater-sars2, health.wastewater-signal has 2 origins.",
+      "seattle-spd-crime is new. With chicago-crimes, security.crime has 2 origins.",
+      "The API documentation of the American Meteor Society gave 410, and the data page of the NASA landslide nowcast gave 404."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 97,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 35,
+      "dimensions": 9,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 29 adds 3 planned sources. env.pollen, health.wastewater-signal and security.crime get a second origin, so the gaps go from 100 to 97."
+    }
+  },
+  {
+    "round": 30,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round read again the later sources of classes with one source, and looked for a second origin. One fetch went to each URL, with a plain user agent.",
+    "lists": [
+      "The classes with one source, from the gaps of the atlas on main: packages/atlas/data/classes.json"
+    ],
+    "queries": [],
+    "notes": [
+      "federal-register-api moves to plan: its API answered with no key. The pages of the site still redirect to a bot check.",
+      "With federal-register-api, civic.regulation and civic.emergency-declaration each have 2 origins.",
+      "ifrc-go-appeals moves to plan: its API answered, and its terms stay unread. rescue.disaster-assistance has 2 origins.",
+      "The ReliefWeb API gave 403 to an appname that ReliefWeb did not approve. It stays later. The data portal of NESO named no margin notice."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 94,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 34,
+      "dimensions": 9,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 30 moves 2 later sources to plan. Three classes get a second origin, so the gaps go from 97 to 94."
+    }
+  },
+  {
+    "round": 31,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took classes with one source, read again the later sources of these classes and looked for a second origin. One fetch went to each URL, with a plain user agent.",
+    "lists": [
+      "The classes with one source, from the gaps of the atlas on main: packages/atlas/data/classes.json"
+    ],
+    "queries": [],
+    "notes": [
+      "uscg-navcen-msi-files is new. With dma-niord-warnings, transport.sea.navigational-warning has 2 sources from 2 origins.",
+      "The Digitraffic nautical-warning v1 path gave 404 again, and the marine OpenAPI document still has no such path. The host of the Portuguese OGC API has no DNS record.",
+      "fed-h41-tga is new. The Federal Reserve gives the cash of the Treasury each week, so civic.economy.fiscal has 2 origins. The Treasury API answered this time.",
+      "iers-bulletin-c moves to plan: the README of its folder gives an open licence, and the file says that it is in the public domain. infra.timekeeping has 2 origins.",
+      "quebec-msss-emergency-rooms is new. With cdc-nhsn-hrd, health.hospital-capacity has 2 origins.",
+      "The NGA MSI API gave 503 again. The documentation page of the Scottish Water overflows gave 403, so scottish-water-overflows is later."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 90,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 35,
+      "dimensions": 9,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 31 adds 3 planned sources and moves 1 later source to plan. Four classes get a second origin, so the gaps go from 94 to 90. The later record of Scottish Water has an unknown path."
+    }
+  },
+  {
+    "round": 32,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took classes with one source and looked for a second origin. It searched the catalog of ArcGIS Online and read the terms of each planned source. One fetch went to each URL, with a plain user agent.",
+    "lists": [
+      "The classes with one source, from the gaps of the atlas on main: packages/atlas/data/classes.json",
+      "The search API of ArcGIS Online, for open shelters, harmful algal blooms and avian influenza: https://www.arcgis.com/sharing/rest/search"
+    ],
+    "queries": [],
+    "notes": [
+      "redcross-open-shelters is new. With fema-open-shelters, rescue.shelter-open has 2 sources from 2 origins.",
+      "avinor-flight-data is new. With faa-nas-status, transport.air.disruption has 2 sources from 2 origins.",
+      "njdep-hab-sampling is new. With ca-fhab-reports, env.water.harmful-algal-bloom has 2 sources from 2 origins.",
+      "elexon-bmrs-syswarn is new. With ercot-txans, infra.power.grid-emergency has 2 sources from 2 origins.",
+      "sidc-product-archive is later. The archive needs no email, but the flare alert reads GOES data and the data policy of the ROB limits the use.",
+      "The NICT site gives the flares and protons of GOES as images, and its terms permit private use only. The ESA SWE portal gives its products after a registration.",
+      "usfs-recreation-status is later, because its open status has no time and no cause.",
+      "The APHIS page of the flocks with avian influenza gave 403. The CFIA gives its flocks only on a page, and the layers of British Columbia and APHIS on ArcGIS Online have restricted terms.",
+      "The layer of open shelters of California tells users not to aggregate its data, so the round did not plan it."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 86,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 35,
+      "dimensions": 9,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 32 adds 4 planned sources and 2 later sources. Four classes get a second source, so the gaps go from 90 to 86. No layer of the cover changes."
+    }
+  },
+  {
+    "round": 33,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took the classes with a gap and ranked them by their value to a person at home. It tried infra.power.load-shedding first. It searched open data catalogs and ArcGIS Online, and read the terms and the robots.txt of each candidate. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The data catalog of British Columbia, for park advisories: https://catalogue.data.gov.bc.ca/api/3/action/package_search?q=parks%20advisories",
+      "Data.NSW, for Beachwatch: https://data.nsw.gov.au/data/api/3/action/package_search?q=beachwatch",
+      "DATA.GOV.HK, for beach water quality: https://data.gov.hk/en-data/api/3/action/package_search?q=beach%20water%20quality",
+      "The search API of ArcGIS Online, for beach advisories, park closures and sewer overflows: https://www.arcgis.com/sharing/rest/search"
+    ],
+    "queries": [],
+    "notes": [
+      "aemo-market-notices moves from later to plan. The copyright permissions of AEMO permit each use with attribution. With eskom-loadshedding-status, infra.power.load-shedding has 2 sources from 2 origins.",
+      "nsw-rfs-fire-bans and bc-parks-advisories are new. With nps-alerts-api, fire.burn-ban has 3 sources.",
+      "bc-parks-advisories gives closures and wildlife advisories. With nps-alerts-api, safety.public-lands-closure and safety.wildlife each have 2 sources from 2 origins.",
+      "nsw-beachwatch and hk-epd-beach-grading are new. env.water.beach-advisory has 2 sources from 2 origins.",
+      "toronto-beach-water-quality is later, because it gives E. coli counts and no advisory. ea-bathing-water-quality is later, because the robots.txt blocks its data paths.",
+      "tfl-unified-api is later, because its terms page gave 403.",
+      "The layer of Scottish Water on ArcGIS Online gives only the totals of each year, so it is not a second source of overflows.",
+      "The API of the Department of Conservation of New Zealand needs a key from a portal with no static page. The round did not register.",
+      "The open data portal of Queensland gave no dataset of park alerts."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 81,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 35,
+      "dimensions": 9,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 33 adds 4 planned sources and 3 later sources, and moves 1 later source to plan. Five classes get a second source, so the gaps go from 86 to 81. No layer of the cover changes."
+    }
+  },
+  {
+    "round": 34,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took the classes with a gap and ranked them by their value to a person at home. It tried geo.landslide first. It searched open data catalogs, ArcGIS Online and the web, and read the terms and the robots.txt of each candidate. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The API documentation of NVE, for the landslide warnings: https://api.nve.no/doc/jordskredvarsling/",
+      "DATA.GOV.HK, for the weather warnings of Hong Kong: https://data.gov.hk/en-data/api/3/action/package_search?q=weather%20warning%20summary&rows=5",
+      "The open data page of the French fuel prices: https://www.prix-carburants.gouv.fr/rubrique/opendata/",
+      "The search API of ArcGIS Online, for spill layers: https://www.arcgis.com/sharing/rest/search",
+      "The map services of the ECDC, for animal disease layers: https://gis.ecdc.europa.eu/public/rest/services?f=json",
+      "The RSS page of NSW Health, for drug warnings: https://www.health.nsw.gov.au/Pages/rss.aspx",
+      "Open Government Canada, for avian influenza: https://open.canada.ca/data/api/3/action/package_search?q=avian%20influenza%20infected%20premises&rows=8"
+    ],
+    "queries": [
+      "prix carburants flux instantané v2 rupture carburant API",
+      "Public Health Agency of Canada public health notices outbreak RSS Atom feed",
+      "public drug warnings RSS feed health department nitazene alert feed",
+      "avian influenza outbreaks open data API GeoJSON official veterinary authority"
+    ],
+    "notes": [
+      "nve-landslide-warnings and hko-warning-summary are new. geo.landslide has 2 sources from 2 origins.",
+      "nve-landslide-warnings also gives the debris flows of Norway. With iem-vtec, geo.debris-flow has 2 sources from 2 origins.",
+      "prix-carburants-fr moves from later to plan. Its file gives each fuel stock-out at each station under the Licence Ouverte. With eia-api, infra.fuel.shortage and market.price.fuel each have 2 sources.",
+      "The robots.txt of data.economie.gouv.fr blocks its API path, so the record names the file of roulez-eco.",
+      "losco-active-spills is later, because its layer gives no licence.",
+      "ecdc-wnv-animal-outbreaks is later, because each query of its layer failed. The avian influenza folder of the same server needs a token.",
+      "nsw-health-drug-warnings is later, because the warnings come only on a page. The robots.txt blocks the RSS paths of the site.",
+      "The feed of public health updates of the PHAC gave no answer in 120 seconds. The round stopped the fetch and did not try again.",
+      "Open Government Canada gave no dataset of infected premises of avian influenza."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 77,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 34,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 34 adds 2 planned sources and 3 later sources, and moves 1 later source to plan. Four classes get a second source, so the gaps go from 81 to 77. The dimension fuel-prices gets a second live source. No layer of the cover changes."
+    }
+  },
+  {
+    "round": 35,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took the classes with a gap and ranked them by their value to a person at home. It tried the missing persons, the kidnappings, the water outages and armed conflict first. It searched open data catalogs and the web, and read the terms and the robots.txt of each candidate. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The API documentation of the FBI, for the posters of missing persons: https://www.fbi.gov/wanted/api",
+      "DATA.GOV.HK, for the missing persons and the water suspensions of Hong Kong: https://data.gov.hk/en-data/api/3/action/package_search?q=water%20supply%20suspension&rows=5",
+      "The open data platform of Taiwan, for the water outages: https://data.gov.tw/api/v2/rest/dataset/6050",
+      "The travel advisory API of the US State Department: https://cadataapi.state.gov/api/TravelAdvisories",
+      "The terms and the EULA of ACLED: https://acleddata.com/terms-and-conditions",
+      "The operating status of OPM as JSON: https://www.opm.gov/json/operatingstatus.json"
+    ],
+    "queries": [
+      "missing persons open data API JSON police official feed",
+      "台灣自來水公司 停水資訊 開放資料 API data.gov.tw",
+      "water supply interruptions open data feed API utility outages GeoJSON official water outages open data"
+    ],
+    "notes": [
+      "fbi-wanted-api and hkpf-missing-persons are new. security.missing-person has 2 sources from 2 origins.",
+      "fbi-wanted-api also gives the kidnapping cases. state-dept-advisories moves from later to plan with its JSON API, and it names the risk of kidnapping of each country. Thus security.kidnap has 2 sources from 2 origins.",
+      "hk-wsd-water-suspensions and taiwan-water-outages are new. infra.water.outage has 2 sources from 2 origins.",
+      "acled-api moves from later to plan. Its EULA grants a royalty-free licence for non-commercial use through the API. With gdelt-events, security.armed-conflict and security.civil-unrest each have 2 sources.",
+      "The read of taiwan-water-outages gave an empty list, so its fields come from the metadata of the dataset.",
+      "The records of hkpf-missing-persons and fbi-wanted-api name persons. The atlas holds no record of a person, and an adapter keeps only the case, its dates and its place.",
+      "opm-status moves from later to plan, because OPM gives its status as JSON. The class has 1 source, so its gap stays.",
+      "interpol-yellow-notices and politie-missing-persons are later, because each API gave 403. The round did not try again.",
+      "The UCDP API gave 401 and asks for a token. The catalog of data.govt.nz gave a bot check, so the round did not read its water shut-off dataset."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 72,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 34,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 35 adds 4 planned sources and 2 later sources, and moves 3 later sources to plan. Five classes get a second source, so the gaps go from 77 to 72. No layer of the cover changes."
+    }
+  },
+  {
+    "round": 36,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took the classes with a gap and ranked them by their value to a person at home. Life safety came first, then health, property and travel. It looked for national public alerting systems with open CAP feeds, because one such feed covers many classes. It read the terms and the robots.txt of each candidate. One fetch went to each URL, with the user agent alerts-atlas-research/1.0. A source that needs an account, a key or a token, or whose terms forbid commercial use, did not close a gap (AL-195).",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The OpenAPI document of the NINA API: https://github.com/bundesAPI/nina-api",
+      "The Atom feed of the NAAD System of Canada: https://rss.naad-adna.pelmorex.com/",
+      "The CAP-CP event list of Public Safety Canada: https://www.publicsafety.gc.ca/cnt/rsrcs/pblctns/capcp-vnt-rfrncs/index4-eng.aspx",
+      "The download page of the ASAP hotspots of the JRC: https://agricultural-production-hotspots.ec.europa.eu/download.php",
+      "The TFR list of the FAA: https://tfr.faa.gov/tfrapi/exportTfrList",
+      "The CAP platform of the NCDR of Taiwan: https://alerts.ncdr.nat.gov.tw/RssAtomFeed.ashx"
+    ],
+    "queries": [
+      "NINA API warnung.bund.de Nutzungsbedingungen Lizenz Warnmeldungen Open Data BBK",
+      "NAAD System Pelmorex terms of use last mile distributor CAP feed redistribution",
+      "CAP-CP event list \"explosive\" \"telephoneService\" \"collapse\" \"dangerPerson\" profile:CAP-CP:Event",
+      "NINA Warn-App Polizeimeldungen Polizei warnt Amoklage Gefahrenlage Bundesländer BBK",
+      "NINA Warnmeldung Störung Telefonnetz Mobilfunk Festnetz Ausfall Gefahreninformation Landkreis",
+      "JRC ASAP anomaly hotspots agricultural production download csv hotspots country warnings data",
+      "NAV CANADA CFPS plan.navcanada.ca terms of use NOTAM data redistribution automated",
+      "school closures open data API JSON feed emergency school closures education department current closures",
+      "alerts.ncdr.nat.gov.tw 示警 類別 停班停課 鐵路事故 CAP 開放資料 RssAtomFeed",
+      "Alertswiss API JSON open data alerts feed polyalert"
+    ],
+    "notes": [
+      "bbk-nina-api and naad-alerts are new. Each gives security.explosive-ordnance, security.active-threat, safety.national-emergency and infra.telecom.outage, so each of these classes has 2 sources from 2 origins.",
+      "The MoWaS list of 2026-11-25 had two bomb finds. The NAAD feed of the same day had a telephone service outage. News reports tell that NINA warned of phone network outages in 2021 and 2022.",
+      "jrc-asap-hotspots is new. With fews-net-fdw-ipc-api, infra.supply-chain.food has 2 sources from 2 origins. The JRC hotspots come from satellite data, apart from FEWS NET.",
+      "faa-tfr-list is new. transport.air.notam has 1 source, so its gap stays. nav-canada-notam is later, because its terms forbid commercial use and a copy of the data.",
+      "naad-alerts gives civic.school-closure for Canada. nsw-school-closures needs a token, and dgpa-closures needs a member login, so both are later. The feed of wvde-closings was not found.",
+      "The research found no terms of use for the NINA API. Its terms of automated use are unclear, and an adapter needs a new read of the terms.",
+      "The robots.txt of the documentation site of the NAAD System blocks some crawlers of AI companies. The terms of the feed do not forbid automated use, and the feed host has no robots.txt.",
+      "The NZ feed of emergency mobile alerts and the VMA API of Sweden answered with no alert, so the round did not record them."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 67,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 34,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 36 adds 4 planned sources and 4 later sources. Five classes get a second source, so the gaps go from 72 to 67. No layer of the cover changes."
+    }
+  },
+  {
+    "round": 37,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took the classes with a gap and ranked them by their value to a person at home. Life safety came first, then health, property and travel. It looked for official open data in general formats: JSON APIs, CSV files and ArcGIS layers. It read the terms and the robots.txt of each candidate. One fetch went to each URL, with the user agent alerts-atlas-research/1.0. A source that needs an account, a key or a token, or whose terms forbid commercial use, did not close a gap (AL-195).",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The documentation of the Fireball API of JPL: https://ssd-api.jpl.nasa.gov/doc/fireball.html",
+      "The bolide site of NASA: https://neo-bolide.ndc.nasa.gov/",
+      "The metadata of the temporary street closures of San Francisco: https://data.sfgov.org/api/views/8x25-yybr.json",
+      "The Slack Status API: https://docs.slack.dev/reference/slack-status-api",
+      "The pipeline incident data of the CER: https://open.canada.ca/data/en/dataset/7dffedc4-23fa-440c-a36d-adf5a6cc09f1",
+      "The subsidence incident reports of Florida: https://ca.dep.state.fl.us/arcgis/rest/services/OpenData/FGS_SUBSIDENCE/MapServer/0",
+      "The power outages layer of Cal OES: https://services.arcgis.com/BLN4oKB0N1YSgvY8/arcgis/rest/services/Power_Outages_(View)/FeatureServer",
+      "The site of ReCAAP ISC: https://www.recaap.org/",
+      "The elections API of Democracy Club: https://elections.democracyclub.org.uk/api/"
+    ],
+    "queries": [
+      "Florida Subsidence Incident Reports open data ArcGIS FeatureServer Florida Geological Survey",
+      "sinkhole reports open data API recent incidents state geological survey download (Pennsylvania OR Missouri OR Kentucky OR Texas) sinkhole report database",
+      "open.canada.ca pipeline incidents data Canada Energy Regulator Open Government Licence",
+      "TSB Transportation Safety Board pipeline occurrence data download csv open data monthly",
+      "Alberta Energy Regulator compliance dashboard incidents data download pipeline incident open data licence",
+      "Public Safety Power Shutoff open data GIS layer current PSPS events ArcGIS FeatureServer utility",
+      "data.sfgov.org Temporary Street Closures special events dataset API",
+      "NATO Shipping Centre maritime security alerts piracy RSS feed shipping.nato.int",
+      "IRS RSS feeds news releases \"tax relief\" disaster feed URL irs.gov rss"
+    ],
+    "notes": [
+      "jpl-fireball-api moves to plan, and nasa-glm-bolides is new. Thus geo.fireball has 2 sources from 2 origins. Both tell of a fireball after the fact, because a fireball ends in seconds.",
+      "sfmta-street-closures is new. With ticketmaster-discovery-api, civic.planned-event has 2 sources from 2 origins. The street closures need no key.",
+      "slack-status-api and google-workspace-status are new. With statuspage-public-api, infra.saas.outage has 3 sources. Neither new source goes through Statuspage.",
+      "cer-pipeline-incidents, fgs-subsidence-reports and democracy-club-elections are new. Each gives the first source of its class, so each of these gaps stays.",
+      "caloes-power-outages is later. Its read had no PSPS cause, it states no licence, and it copies the outage maps of the utilities.",
+      "recaap-incidents is later, because it gives PDF lists only. The NGA ASAM API gave 503, and the MDAT-GoG site had an expired certificate. The round did not go around these errors.",
+      "The PHMSA pages gave 403 again. The CFTC and FINRA gave no feed of investor alerts, and the robots.txt of the CFTC limits the use of its content.",
+      "Three records name persons: the GLM events, the street closures and the subsidence reports. The round read only the counts and the field names of these records."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 64,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 34,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 37 adds 7 planned sources and 2 later sources, and moves 1 later source to plan. Three classes get a second source, so the gaps go from 67 to 64. No layer of the cover changes."
+    }
+  },
+  {
+    "round": 38,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent, during a memory hold.",
+    "method": "The round took the classes with a gap and ranked them by their value to a person at home. It looked for official sources with no account and no limit on commercial use (AL-195). One fetch went to each URL, with the user agent alerts-atlas-research/1.0. It read the robots.txt and the terms of each candidate.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The FAA Prohibitions, Restrictions and Notices: https://www.faa.gov/air_traffic/publications/us_restrictions",
+      "The PRESTO alerts of the SIDC: https://www.sidc.be/products/presto/",
+      "The data policy of the Royal Observatory of Belgium: https://www.astro.oma.be/en/information/data-policy/",
+      "The RSS feed of the NCSC of the United Kingdom: https://www.ncsc.gov.uk/api/1/services/v1/all-rss-feed.xml",
+      "The RSS feed of the advisories of CERT-Bund: https://wid.cert-bund.de/content/public/securityAdvisory/rss"
+    ],
+    "queries": [],
+    "notes": [
+      "faa-flight-prohibitions is new. With easa-czib, transport.air.conflict-zone has 2 sources from 2 origins.",
+      "The PRESTO alerts of the SIDC tell of flares, proton events and storms. The data policy of the observatory permits private, educational or scientific use only, so the alerts stay later as sidc-product-archive.",
+      "The site of the Korean Space Weather Center failed its TLS check. The round did not go around the error.",
+      "The NCSC and CERT-Bund feeds give advisories on weak software, not reports of attacks on a utility. So cyber.infrastructure-attack keeps its gap.",
+      "The FAA page names staff mailboxes. The round kept no address."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 63,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 34,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 38 adds 1 planned source. transport.air.conflict-zone gets a second origin, so the gaps go from 64 to 63. No layer of the cover changes."
+    }
+  },
+  {
+    "round": 39,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took the classes with no live source and looked for official sources with no account and no limit on commercial use (AL-195). One fetch went to each URL, with the user agent alerts-atlas-research/1.0. It read the robots.txt and the terms of each candidate.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The search API of GOV.UK: https://www.gov.uk/api/search.json",
+      "The FAA Preliminary Accident and Incident Notices: https://www.faa.gov/data_research/accident_incident/preliminary_data",
+      "The RSS page of the TSB of Canada: https://www.tsb-bst.gc.ca/eng/medias-media/rss/index.html",
+      "The NGA MSI API: https://msi.nga.mil/api/publications/broadcast-warn",
+      "The MSCI advisories of MARAD: https://www.maritime.dot.gov/msci-advisories"
+    ],
+    "queries": [],
+    "notes": [
+      "aaib-deployments-govuk is new. It is the first live source of transport.air.accident, so the class has 1 source from 1 origin.",
+      "The RAIB, AAIB and MAIB reports on GOV.UK come months after the event. The AAIB deployment news comes on the same day. The RAIB notices come weeks after the event.",
+      "TSB Canada and MARAD returned 403, and the NGA MSI API gave a block page. The round did not go around a block.",
+      "The FAA notices are a dashboard. The page tells of a CSV file, but the round found no link to it."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 63,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 34,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 39 adds 1 planned source and 4 later sources. transport.air.accident gets its first live source, but a gap closes only at 2 origins, so the gaps stay at 63. No layer of the cover changes."
+    }
+  },
+  {
+    "round": 40,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took three classes with one origin or none and looked for official sources with no account (AL-195). One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The catalog API of the open data of Canada: https://open.canada.ca/data/api/action/package_search",
+      "The content API of the CDC: https://tools.cdc.gov/api/v2/resources/media",
+      "The news API of the Government of Canada: https://api.io.canada.ca/io-server/gc/news/en/v2",
+      "The API of the space weather service of BoM: https://sws-data.sws.bom.gov.au/api-docs"
+    ],
+    "queries": [
+      "avian influenza cfia"
+    ],
+    "notes": [
+      "No gap closes. The round adds two later sources and three notes of what it did not find.",
+      "The CDC page of active food outbreak investigations returned 403. The content API of the CDC answers, but it has no feed of these investigations.",
+      "The news API of Canada gives the PHAC releases as JSON with no key. The terms page of canada.ca gave no answer, so the source stays later.",
+      "The API of BoM has 8 products: the A, K and Dst indexes, and the magnetic and aurora alerts. None is a radio blackout."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 63,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 34,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 40 adds 2 later sources and no planned source, so no layer of the cover changes and the gaps stay at 63."
+    }
+  },
+  {
+    "round": 41,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round looked again at a class with one origin. A web search found the API host of a later source. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The near real-time API of Scottish Water: https://api.scottishwater.co.uk/overflow-event-monitoring/v1/near-real-time"
+    ],
+    "queries": [
+      "combined sewer overflow real-time status open data API JSON"
+    ],
+    "notes": [
+      "In round 31 the API host of Scottish Water had no DNS record. In round 41 it answered with the status of 2091 overflow points and no key.",
+      "The documentation page still gave 403, and the API host has no robots.txt and no documentation. So the terms are not read, and the plan has a risk.",
+      "A source with a risk does not count in the cover, so the gap of sewage overflows stays open.",
+      "The search found no US city with a documented live API of its overflows. The EPA inventory and the data of one state give only the places of the outfalls."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 63,
+      "cover": {
+        "adopted": 58,
+        "paths": 58,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 164,
+        "paths": 163,
+        "origins": 83
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 41 moves one source from later to plan, with a risk on its terms. A source with a risk does not count in the cover, so the gaps stay at 63."
+    }
+  },
+  {
+    "round": 42,
+    "date": "2026-11-26",
+    "by": "One session, with no subagent.",
+    "method": "The round took two classes with one origin: space debris reentry and software end of life. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The Red Hat Product Life Cycle Data API: https://access.redhat.com/product-life-cycles/api/v1/products",
+      "The distro-info-data files of Debian: https://salsa.debian.org/debian/distro-info-data"
+    ],
+    "queries": [
+      "reentry predictions JSON API satellite decay open data",
+      "ESA reentry predictions API access terms account",
+      "EU SST re-entry analysis service open data feed public",
+      "Microsoft product lifecycle API JSON end of support dates",
+      "Red Hat product life cycles API documentation"
+    ],
+    "notes": [
+      "The Red Hat API gives 236 products as JSON with no key. Its documentation host gave 403, so the source is a plan with a risk.",
+      "The Debian file distro-info-data gives the end-of-life dates of Debian and Ubuntu as CSV under the ISC licence. It is a second origin with no risk, so the class has no gap. The second origin covers only Debian and Ubuntu.",
+      "The search found no JSON API of the Microsoft lifecycle data. The documented way is an export to a spreadsheet.",
+      "For reentry, no new source qualifies. The ESA host gave no answer, its predictions need an account, and the Aerospace Corporation list gave 403."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 62,
+      "cover": {
+        "adopted": 59,
+        "paths": 59,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 166,
+        "paths": 165,
+        "origins": 84
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 42 plans the release dates of Debian, a second origin with no risk for software end of life. Thus the gaps go from 63 to 62."
+    }
+  },
+  {
+    "round": 43,
+    "date": "2026-11-26",
+    "by": "One session, with no subagent.",
+    "method": "The round took two classes with one source: crypto chain halts and credit rating actions. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The SEC rule of 2014 on rating histories: https://www.govinfo.gov/content/pkg/FR-2014-09-15/html/2014-20890.htm",
+      "The Statuspage summary JSON of ten chains: Solana, Avalanche, Polygon, Base, Arbitrum, Optimism, Sui, Aptos, NEAR and Cosmos"
+    ],
+    "queries": [
+      "SEC Rule 17g-7 XBRL rating history files download",
+      "ESMA European Rating Platform credit ratings download API terms",
+      "blockchain network halt status page API",
+      "Solana public RPC endpoints rate limits production"
+    ],
+    "notes": [
+      "Avalanche, Polygon, Base and Sui give the Statuspage summary JSON, as Solana does. They join statuspage-crypto. Arbitrum and Optimism answered in another format. Aptos, NEAR and Cosmos gave no page.",
+      "The public RPC of Solana gives the newest slot. It is a second origin of a halt, but the endpoint is not for production, so it is later with a risk.",
+      "The SEC page on rating histories gave 403 to the user agent of the round. The rule of 2014 in the Federal Register lets an agency publish an action 12 months later, or 24 months for a rating that the issuer did not pay.",
+      "An ESMA opinion of 2021 tells that its European Rating Platform has no machine-readable bulk download. No free live source of rating actions was found."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 62,
+      "cover": {
+        "adopted": 59,
+        "paths": 59,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 166,
+        "paths": 165,
+        "origins": 84
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 43 adds four chain pages to a planned source and one later source with a risk. Neither counts as a second source with no risk, so the gaps stay at 62."
+    }
+  },
+  {
+    "round": 44,
+    "date": "2026-11-26",
+    "by": "One session, with no subagent.",
+    "method": "The round took two classes with one source: stablecoin depegs and postal disruptions. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The public tickers of Coinbase, Kraken and Bitstamp for USDT and USDC",
+      "The Coinbase Market Data Terms: https://www.coinbase.com/legal/market_data",
+      "The Canada Post service alerts and its terms of use"
+    ],
+    "queries": [
+      "Coinbase Exchange API market data terms of use redistribution",
+      "Bitstamp API terms of use market data",
+      "postal service disruption alerts RSS feed JSON"
+    ],
+    "notes": [
+      "The tickers of Coinbase, Kraken and Bitstamp gave stablecoin prices with no key. Only the Coinbase terms were read, so only Coinbase is a plan.",
+      "The Coinbase terms allow personal or research use only, the same limit as DefiLlama. Thus coinbase-exchange-ticker has the same terms values. With two origins, the depeg class and its parent market.crypto have no gap.",
+      "Canada Post gives red and yellow delivery alerts by area on a page. Its terms say nothing about automated reading, so the source is later.",
+      "The search found no feed of postal disruptions for Canada Post, Royal Mail or Australia Post."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 60,
+      "cover": {
+        "adopted": 59,
+        "paths": 59,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 166,
+        "paths": 165,
+        "origins": 84
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 44 plans the Coinbase ticker, a second origin for stablecoin depegs. It closes the gap of the depeg class and of its parent market.crypto, so the gaps go from 62 to 60."
+    }
+  },
+  {
+    "round": 45,
+    "date": "2026-11-26",
+    "by": "One session, with no subagent.",
+    "method": "The round took two classes with one source: sewage overflows and investor alerts. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The RSS feeds of the Ontario Securities Commission: https://www.osc.ca/en/news-events/connect-us/rss-feeds",
+      "The web map of the King County overflow status: https://www.arcgis.com/sharing/rest/content/items/6de3cae45d914326a32ed120b5ace4f8/data?f=json"
+    ],
+    "queries": [
+      "combined sewer overflow real-time notification open data API ArcGIS feature service",
+      "FCA warning list of unauthorised firms download data API",
+      "securities regulator investor alerts RSS feed warnings unregistered firms",
+      "King County combined sewer overflow real-time status data feed"
+    ],
+    "notes": [
+      "The warning list page of the FCA gave 403, so the round did not read it again.",
+      "The investor alerts feed of the Canadian Securities Administrators gave a challenge page, so the round stopped there.",
+      "The OSC gives a feed of investor alerts. Its terms let non-commercial use but forbid redistribution, so an alert goes only to its user.",
+      "The status map of King County reads a CSV file with the status of 126 outfalls. The terms let copies and distribution, but not sale.",
+      "With two origins each, the sewage overflow class and the investor alert class have no gap."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 58,
+      "cover": {
+        "adopted": 59,
+        "paths": 59,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 166,
+        "paths": 165,
+        "origins": 84
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 45 plans the OSC investor alerts and the King County overflow status, a second origin for each class. Thus the gaps go from 60 to 58."
+    }
+  },
+  {
+    "round": 46,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took the transit service alerts, a class with one source. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The developer portal of Entur: https://developer.entur.no/"
+    ],
+    "queries": [],
+    "notes": [
+      "The terms page of the TfL API gave 403 in round 33, so the round did not read it again.",
+      "The situation exchange API of Entur answers with SIRI-SX XML and needs no key. The terms ask for the header ET-Client-Name.",
+      "The data of Entur has the NLOD licence. It permits reuse and redistribution with attribution to Entur.",
+      "With a second source, the transit service alert class has no gap."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 57,
+      "cover": {
+        "adopted": 59,
+        "paths": 59,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 166,
+        "paths": 165,
+        "origins": 84
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 46 plans the situation exchange API of Entur, a second source of transit service alerts. Thus the gaps go from 58 to 57."
+    }
+  },
+  {
+    "round": 47,
+    "date": "2026-11-25",
+    "by": "One session, with no subagent.",
+    "method": "The round took the animal disease outbreaks, a class with one source. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The ADIS page of the European Commission: https://food.ec.europa.eu/animals/animal-diseases/animal-disease-information-system-adis_en"
+    ],
+    "queries": [],
+    "notes": [
+      "The weekly report of ADIS is a PDF that the server makes at each request. It gives the outbreaks of the last seven days by disease and country.",
+      "The report of the current year is a second PDF with each outbreak of the year.",
+      "The legal notice of the Commission puts its content under CC BY 4.0. It says nothing about automated reading, so that term stays unclear.",
+      "The pages of APHIS and WAHIS stay later, because their terms for automated reading are not known.",
+      "With a second source, the animal disease class has no gap."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 56,
+      "cover": {
+        "adopted": 59,
+        "paths": 59,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 166,
+        "paths": 165,
+        "origins": 84
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 47 plans the weekly outbreak report of ADIS, a second source of animal disease outbreaks. Thus the gaps go from 57 to 56."
+    }
+  },
+  {
+    "round": 48,
+    "date": "2026-11-26",
+    "by": "One session, with no subagent.",
+    "method": "The round looked for a second source of air accidents. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json"
+    ],
+    "queries": [],
+    "notes": [
+      "The home page of the ATSB gave no answer in 30 s. The round did not try it again.",
+      "The BEA lists its notified events within days, also the events abroad that it joins. The site has no feed.",
+      "The legal notice of the BEA needs a licence for a commercial use, so its source does not close the gap.",
+      "The note of round 24 does not give the URL of the NTSB API, so the round did not read it again."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 56,
+      "cover": {
+        "adopted": 59,
+        "paths": 59,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 166,
+        "paths": 165,
+        "origins": 84
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 48 adds the notified events of the BEA as a later source. Its terms need a licence for a commercial use, so the gaps stay at 56."
+    }
+  },
+  {
+    "round": 49,
+    "date": "2026-11-26",
+    "by": "One session, with no subagent.",
+    "method": "The round looked for a live source of pest quarantines. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json"
+    ],
+    "queries": [
+      "APHIS federal order domestic quarantine RSS feed",
+      "CFIA RSS feeds plant health notices to industry",
+      "canada.ca terms commercial reproduction"
+    ],
+    "notes": [
+      "The Federal Register API gave the newest 20 quarantine documents of APHIS. Only 1 changed quarantined areas: most are risk analyses and information collections.",
+      "The bulletin feed of APHIS on GovDelivery gave 406. The program updates of the APHIS site gave 403. The round did not try again.",
+      "The news API of the Government of Canada gave the newest 50 releases of the CFIA as Atom. 5 were new or larger regulated areas for plant pests.",
+      "The terms page of canada.ca gave no answer in 30 s, as in round 40. A search result tells that a commercial reproduction needs a permission."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 56,
+      "cover": {
+        "adopted": 59,
+        "paths": 59,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 166,
+        "paths": 165,
+        "origins": 84
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 49 adds the CFIA news releases as a later source of pest quarantines. Their terms need a permission for a commercial use, so the gaps stay at 56."
+    }
+  },
+  {
+    "round": 50,
+    "date": "2026-11-26",
+    "by": "One session, with no subagent.",
+    "method": "The round looked again at the foodborne outbreaks, a class with no source. It read the terms of the later sources. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json"
+    ],
+    "queries": [],
+    "notes": [
+      "The website policies of the FDA tell that the content of www.fda.gov is in the public domain. The robots.txt permits the path, with a crawl delay of 30 s.",
+      "The table of the CORE investigations of the FDA listed 9 active investigations. Most had no product yet.",
+      "The intellectual property notices of ECDC license its content under CC BY 4.0, also for a commercial use. The two ECDC sources stay later, because the feed lagged five weeks in round 18.",
+      "The page of the RSS feeds of the FDA gave 404. The round found no feed of the investigations."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 56,
+      "cover": {
+        "adopted": 59,
+        "paths": 59,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 166,
+        "paths": 165,
+        "origins": 84
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 50 makes fda-core-investigations a plan: its content is in the public domain. The class gets 1 source of 2, so the gaps stay at 56."
+    }
   }
 ]

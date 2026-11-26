@@ -1,0 +1,89 @@
+{
+  "status": "ahead",
+  "ahead_by": 4,
+  "behind_by": 0,
+  "total_commits": 4,
+  "base_commit": {
+    "sha": "996f37a73e3ee08e7f0242d632b55b4a63879074"
+  },
+  "commits": [
+    {
+      "sha": "3ffe6bbfeddc222825ad557f2afe42c0b9ee1a08",
+      "commit": {
+        "committer": {
+          "date": "2026-11-25T17:10:34Z"
+        },
+        "message": "Ingest OSV - Cloud Storage"
+      }
+    },
+    {
+      "sha": "115522680663228c9cd5d4f72ce9ff0fc2569a47",
+      "commit": {
+        "committer": {
+          "date": "2026-11-25T17:12:24Z"
+        },
+        "message": "Assign IDs"
+      }
+    },
+    {
+      "sha": "60f60ec34edb1301adf93c8a880e92df7ede9acf",
+      "commit": {
+        "committer": {
+          "date": "2026-11-25T17:17:46Z"
+        },
+        "message": "Ingest OSV - GHSA Malware"
+      }
+    },
+    {
+      "sha": "aa96d1277bde3d9694fcc4dd8676a2dd5080921a",
+      "commit": {
+        "committer": {
+          "date": "2026-11-25T17:19:29Z"
+        },
+        "message": "Assign IDs"
+      }
+    }
+  ],
+  "files": [
+    {
+      "sha": "57d44ca843661c41968c0434359eabf06f2bd94c",
+      "filename": "config/start-keys.yaml",
+      "status": "modified"
+    },
+    {
+      "sha": "b9a2a4d324a5c95958bd2355d9e49129b61bcada",
+      "filename": "osv/malicious/.id-allocator",
+      "status": "modified"
+    },
+    {
+      "sha": "9b1c331fb10f4e9aaf4401880c5b4adbf4fcd2b4",
+      "filename": "osv/malicious/npm/apache-httpclient2/MAL-2026-20354.json",
+      "status": "modified"
+    },
+    {
+      "sha": "a4b1acd665171114591b7fbc257ecc33472a270d",
+      "filename": "osv/malicious/npm/apache-httpclient3/MAL-2026-20612.json",
+      "status": "added"
+    },
+    {
+      "sha": "c6c2bd30d4be21686fda60ea38a23e4daa62fa44",
+      "filename": "osv/malicious/npm/apache-httpclient4/MAL-2026-20613.json",
+      "status": "added"
+    },
+    {
+      "sha": "d1eb6c4814811e8d8e6389b35690631bd146ef50",
+      "filename": "osv/malicious/npm/create_meme_pumpfun/MAL-2026-20614.json",
+      "status": "added"
+    },
+    {
+      "sha": "2db5f49deb5a0d1be78575aa875e23d17a68fca5",
+      "filename": "osv/malicious/npm/grammy-key/MAL-2026-20615.json",
+      "status": "added"
+    },
+    {
+      "sha": "555189d7d678f0e65f197e121e7fc43c4a5966de",
+      "filename": "osv/malicious/pypi/mcp-diag-7f3a/MAL-2026-20611.json",
+      "status": "added"
+    }
+  ]
+}

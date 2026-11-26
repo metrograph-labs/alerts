@@ -5,6 +5,10 @@
  * - An outage of the outage center gives a report of `infra.internet.outage`. An outage that an authority ordered gives
  *   `infra.internet.shutdown`, and an outage of a platform gives `infra.cloud.outage`. The scope of the outage gives the
  *   severity. The analysts confirm each outage, so its certainty is `observed`.
+ * - A nationwide outage with the cause `POWER_OUTAGE` also gives a report of `infra.power.grid-collapse`, with the areas and
+ *   the shared key of the outage. The analysts name the cause, but the traffic gives the extent, so its certainty is
+ *   `likely`. A regional cause gives no power report. The coverage of a source is one list for each kind, and the
+ *   analysts do not report each local power outage.
  * - A traffic anomaly gives a report of `infra.internet.outage`, or `infra.cloud.outage` for a cloud region. A model
  *   finds each anomaly, so its certainty is `likely` or `possible`.
  *
@@ -27,6 +31,7 @@ import {
   COUNTRY_SYSTEM,
   DOMAIN_SYSTEM,
   GEONAMES_SYSTEM,
+  GRID_COLLAPSE_KIND,
   OUTAGE_CENTER,
   OUTAGE_KEY_SYSTEM,
   OUTAGE_KIND,
@@ -320,7 +325,7 @@ function outageResult(observation: Observation, record: Fields): MapResult {
   const scopeWords = scope !== undefined && Object.hasOwn(SCOPE_WORDS, scope) ? SCOPE_WORDS[scope]! : "internet outage";
   const causeWords = cause !== undefined && Object.hasOwn(CAUSE_WORDS, cause) ? CAUSE_WORDS[cause]! : "unknown cause";
   const key = textOrNumberOf(record, "id")!;
-  const report = reportOf(observation, {
+  const common: Common = {
     source: OUTAGES_SOURCE,
     key,
     sent,
@@ -341,8 +346,20 @@ function outageResult(observation: Observation, record: Fields): MapResult {
       dataSource: textOrNumberOf(record, "dataSource") === undefined ? [] : [textOrNumberOf(record, "dataSource")!],
       origin: origins.map((each) => each.origin),
     },
-  });
-  return { reports: [report], problems: problems.list };
+  };
+  const reports = [reportOf(observation, common)];
+  if (cause === "POWER_OUTAGE" && scope === "NATIONWIDE") {
+    reports.push(
+      reportOf(observation, {
+        ...common,
+        key: `${key}/power`,
+        kind: GRID_COLLAPSE_KIND,
+        certainty: "likely",
+        headline: `Cloudflare Radar: nationwide power outage (internet outage of the whole country): ${placeOf(names)}`,
+      }),
+    );
+  }
+  return { reports, problems: problems.list };
 }
 
 /** This function maps one observation of the traffic anomalies. It does not throw. A body that it does not understand gives a fatal problem. */

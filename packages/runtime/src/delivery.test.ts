@@ -199,7 +199,7 @@ function open(scripts: { readonly pushover?: Script; readonly sms?: Script } = {
 }
 
 // The events of the delivery. The first pass also seeds the mode of the source (AL-73), and `observe.test.ts` tests it.
-const types = (log: RuntimeLog) => [...log.read()].map((event) => event.type).filter((type) => type !== "observation" && type !== "fetch" && type !== "system" && type !== "mode");
+const types = (log: RuntimeLog) => [...log.read()].map((event) => event.type).filter((type) => type !== "observation" && type !== "fetch" && type !== "system" && type !== "mode" && type !== "calls");
 
 describe("the delivery step of a pass", () => {
   it("keeps the shadow score of the incident at the start of each escalation, and the score changes no send", async () => {
@@ -351,6 +351,47 @@ describe("the delivery step of a pass", () => {
     expect(back.pushover.send.map((message) => message.key)).toEqual([messageKey({ incident: anchor, level: "life-safety", person: PERSON, step: 0, episode: 1 })]);
     expect(back.pushover.send[0]!.key).not.toBe(key);
     expect(starts()).toEqual([`escalation:${anchor}:life-safety:${PERSON}`, `escalation:${anchor}:life-safety:${PERSON}:1`]);
+    log.close();
+  });
+
+  it("sends nothing on a channel that the copy leaves to the other copies, and gives no failure and no overdue send of it (AL-55)", async () => {
+    const { clock, runtime, log, pushover, sms } = open({}, undefined, undefined, { leaveChannels: [SMS], overdueAfter: MINUTE });
+    let pass = await runtime.pass();
+    while (clock.now() < T0 + 8 * MINUTE) {
+      await clock.advance(30 * SECOND);
+      pass = await runtime.pass();
+    }
+    expect(pushover.send).toHaveLength(1);
+    expect(sms.send).toEqual([]);
+    // The plan keeps the step on the channel. Thus the keys and the numbers of the steps are the same in each copy.
+    expect(pass.delivery?.routes.flatMap((entry) => entry.plan.sends).map((send) => [send.channel, send.step])).toEqual([[SMS, 1]]);
+    expect(pass.delivery?.failures).toEqual([]);
+    expect(pass.delivery?.overdue).toEqual([]);
+    expect(new Set(types(log))).toEqual(new Set(["started", "escalation", "attempt", "delivery"]));
+    log.close();
+  });
+
+  it("polls and cancels nothing on a channel that the copy leaves, also for a delivery of the log (AL-55)", async () => {
+    const clock = fakeWallClock(T0);
+    const log = openRuntimeLog(":memory:");
+    const first = open({}, log, clock);
+    await first.runtime.pass();
+    expect(first.pushover.send).toHaveLength(1);
+    // The copy starts again, and it leaves the channel to the other copies. The log keeps the delivery and its receipt.
+    await clock.advance(MINUTE);
+    const left = open({}, log, clock, { leaveChannels: [PUSHOVER] });
+    const polled = await left.runtime.pass();
+    expect(left.pushover.status).toEqual([]);
+    expect(polled.delivery?.failures).toEqual([]);
+    // The person no longer watches the place, thus the escalation ends. The copy that sent the message cancels it,
+    // because the copies share each cancel. A cancel of this copy would end the cancel of that copy.
+    await clock.advance(MINUTE);
+    const gone = open({}, log, clock, { leaveChannels: [PUSHOVER], recipients: [{ ...RECIPIENT, watch: { ...RECIPIENT.watch, places: [] } }] });
+    const ended = await gone.runtime.pass();
+    expect(gone.pushover.cancel).toEqual([]);
+    expect(ended.delivery?.cancelled).toEqual([]);
+    expect(ended.delivery?.failures).toEqual([]);
+    expect(types(log)).not.toContain("cancelled");
     log.close();
   });
 
@@ -1667,5 +1708,51 @@ describe("the send limit in the passes of the runtime (AL-72)", () => {
     expect(Object.keys(late.refusals)).toEqual(["b"]);
     expect(late.refusals["b"]?.streak).toBe(1);
     log.close();
+  });
+});
+
+describe("the holds of a moving place at the edge of an area (AL-40)", () => {
+  // The fix of a phone at the edge of the warning area. The zone codes of the fix stand for its position: in, then out.
+  const MOVER: WatchedPlace = { id: "place:m" as PlaceId, codes: [{ system: "ugc", code: "KSZ083" }], bufferKm: 0 };
+  const AWAY: WatchedPlace = { ...MOVER, codes: [{ system: "ugc", code: "KSZ084" }] };
+
+  // Ten passes, 20 s apart: the fix crosses the edge 5 times. A place of the view is a fixed place, with no hold.
+  async function flap(fixed: boolean) {
+    const clock = fakeWallClock(T0);
+    const log = openRuntimeLog(":memory:");
+    const pushover = channel(PUSHOVER, "poll", () => clock.now());
+    const sms = channel(SMS, "none", () => clock.now());
+    let inside = true;
+    const runtime = openRuntime({
+      log,
+      clock,
+      sources: [SOURCE],
+      watch: () => ({ places: [KANSAS], kinds: ["met"] }),
+      view: fixed ? { ...VIEW, places: [KANSAS, MOVER] } : VIEW,
+      places: () => [KANSAS, inside ? MOVER : AWAY],
+      run: RUN,
+      delivery: { ...DELIVERY, recipients: [{ ...RECIPIENT, watch: { ...RECIPIENT.watch, places: [MOVER.id] } }], channels: [pushover.procedures, sms.procedures] },
+    });
+    for (let pass = 0; pass < 10; pass += 1) {
+      inside = pass % 2 === 0;
+      await runtime.pass();
+      await clock.advance(20 * SECOND);
+    }
+    const events = [...log.read()];
+    log.close();
+    return { sends: pushover.calls.send, ends: events.filter((event) => event.type === "escalation-end"), starts: events.filter((event) => event.type === "escalation") };
+  }
+
+  it("gives 1 send and no end to a moving place whose fix crosses the edge 5 times", async () => {
+    const moving = await flap(false);
+    expect(moving.sends).toHaveLength(1);
+    expect(moving.starts).toHaveLength(1);
+    expect(moving.ends).toEqual([]);
+  });
+
+  it("keeps the rule with no hold for a fixed place: each return starts a new episode", async () => {
+    const fixed = await flap(true);
+    expect(fixed.ends.length).toBeGreaterThan(1);
+    expect(fixed.sends.length).toBeGreaterThan(1);
   });
 });

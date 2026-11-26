@@ -136,6 +136,16 @@ export function add(state: MergeState, parts: MergeParts): MergeState {
   return normal({ reports, deliveries, acks, ends, retired: state.retired });
 }
 
+/**
+ * This function tells if a report id is not new to a state: the state has a report or a tombstone with the id. Thus an
+ * add of a report with that id gives no new report. A state in the one form gets two searches of its sorted lists.
+ * Another state gets a read of each report and each tombstone.
+ */
+export function knowsReport(state: MergeState, id: ReportId): boolean {
+  if (normalStates.has(state)) return indexIn(state.reports, id, reportKey) >= 0 || indexIn(state.retired, id, tombstoneKey) >= 0;
+  return state.reports.some((report) => report.id === id) || state.retired.some((tombstone) => tombstone.report === id);
+}
+
 const reportKey = (report: Report): string => report.id;
 const tombstoneKey = (tombstone: Tombstone): string => tombstone.report;
 
@@ -206,7 +216,10 @@ function insertSorted<T>(list: readonly T[], items: readonly T[], keyOf: (item: 
  * cost grows with the size of the blocks, not with the square of the count of reports.
  */
 export interface LinkRule {
-  /** The blocks of a report, for example its family of kind and its day. A report with no block links to no report. */
+  /**
+   * The blocks of a report, for example its family of kind and its day. A report with no block links to no report.
+   * The blocks read only the report. Thus `incidents` keeps the blocks of each report for each rule.
+   */
   blocks(report: Report): readonly string[];
   /** True when two reports tell of one real event. It is symmetric, and it reads only the two reports. */
   matches(a: Report, b: Report): boolean;
@@ -234,21 +247,204 @@ export interface IncidentOptions {
  */
 export function incidents(state: MergeState, at: Instant, options: IncidentOptions = {}): Incident[] {
   const ended = endedReports(state, at);
-  return groupsOf(state.reports, options.link).map((group) => cachedIncident(group, at, ended));
+  return groupsOf(state.reports, options.link, normalStates.has(state)).map((group) => cachedIncident(group, at, ended));
 }
 
 // The key of the groups of a list of reports with no link rule.
 const NO_LINK: object = {};
 // The groups of each list of reports and each link rule, in the order of their anchors. The groups do not read the
 // time, so each pass over the same list reads them again. Each entry lives while its list and its link rule live.
-const groupCache = new WeakMap<readonly Report[], WeakMap<object, readonly (readonly Report[])[]>>();
+const groupCache = new WeakMap<readonly Report[], WeakMap<object, readonly Group[]>>();
 
-/** This function gives the groups of reports of the incidents, in the order of their anchors. */
-function groupsOf(reports: readonly Report[], link: LinkRule | undefined): readonly (readonly Report[])[] {
+/** A group of reports: the reports of one incident, in the order of the list. */
+type Group = readonly Report[];
+
+// The keys of rules 1 and 2 of each report. A report does not change, so a build reads the keys of a report one time.
+const shareKeyCache = new WeakMap<Report, readonly string[]>();
+
+/** This function gives the keys of a report for rules 1 and 2. Each key holds the audience of the report (AL-92, `audience.ts`). */
+function shareKeys(report: Report): readonly string[] {
+  const held = shareKeyCache.get(report);
+  if (held !== undefined) return held;
+  const audience = audienceKey(report);
+  const keys = [
+    JSON.stringify(["key", audience, report.status, report.source, report.key]),
+    ...report.references.map((reference) => JSON.stringify(["key", audience, report.status, report.source, reference])),
+    ...report.correlation.map((key) => JSON.stringify(["correlation", audience, report.status, key.system, key.id])),
+  ];
+  shareKeyCache.set(report, keys);
+  return keys;
+}
+
+// The block keys of each report for each link rule. The blocks of a rule read only the report, so they do not change.
+const blockKeyCache = new WeakMap<LinkRule, WeakMap<Report, readonly string[]>>();
+// Most reports have no block. They share this list, so the cache holds no list for each of them.
+const NO_BLOCKS: readonly string[] = [];
+
+/** This function gives the block keys of a report for a link rule: each block with the audience and the status of the report. */
+function blockKeys(report: Report, link: LinkRule): readonly string[] {
+  let byReport = blockKeyCache.get(link);
+  if (byReport === undefined) blockKeyCache.set(link, (byReport = new WeakMap()));
+  const held = byReport.get(report);
+  if (held !== undefined) return held;
+  const blocks = [...new Set(link.blocks(report))];
+  const audience = blocks.length === 0 ? "" : audienceKey(report);
+  const keys = blocks.length === 0 ? NO_BLOCKS : blocks.map((block) => JSON.stringify([audience, report.status, block]));
+  byReport.set(report, keys);
+  return keys;
+}
+
+/**
+ * The groups of the last list of one link rule, with the indexes that the next build reads (AL-116). The next list of a
+ * merge state has few reports that the last list does not have. Thus the next build makes again only the groups of those reports.
+ */
+interface GroupBuild {
+  /** The reports of the build, in the order of their ids. */
+  readonly reports: readonly Report[];
+  /** The groups, in the order of their anchors. */
+  readonly groups: readonly Group[];
+  /** The group of each report. */
+  readonly groupOf: Map<Report, Group>;
+  /** The group of each key of rules 1 and 2. The reports of one key are connected, so each key has one group. */
+  readonly byKey: Map<string, Group>;
+  /** The reports of each block key of the link rule. */
+  readonly byBlock: Map<string, Set<Report>>;
+}
+
+// The last build of each link rule. A build holds its list, so the entry of `NO_LINK` holds the last list with no rule.
+const lastBuild = new WeakMap<object, GroupBuild>();
+
+/**
+ * This function gives the groups of reports of the incidents, in the order of their anchors. The reports of a state in
+ * the one form are in the order of their ids, and no two have one id. Such a list gets the groups from the last build
+ * of its link rule. Another list gets a full build.
+ */
+function groupsOf(reports: readonly Report[], link: LinkRule | undefined, inOrder: boolean): readonly Group[] {
   let byLink = groupCache.get(reports);
   if (byLink === undefined) groupCache.set(reports, (byLink = new WeakMap()));
-  const held = byLink.get(link ?? NO_LINK);
+  const rule = link ?? NO_LINK;
+  const held = byLink.get(rule);
   if (held !== undefined) return held;
+  const groups = inOrder ? nextBuild(reports, link, rule) : componentsOf(reports, link);
+  byLink.set(rule, groups);
+  return groups;
+}
+
+/** This function gives the groups of a list in the order of the ids, and keeps them as the last build of the link rule. */
+function nextBuild(reports: readonly Report[], link: LinkRule | undefined, rule: object): readonly Group[] {
+  const last = lastBuild.get(rule);
+  // A change of a build changes its indexes. A fault of the link rule during the change thus leaves no build.
+  lastBuild.delete(rule);
+  const build = (last === undefined ? undefined : changedBuild(last, reports, link)) ?? fullBuild(reports, link);
+  lastBuild.set(rule, build);
+  return build.groups;
+}
+
+/** This function gives a build with all the groups of a list. */
+function fullBuild(reports: readonly Report[], link: LinkRule | undefined): GroupBuild {
+  const build: GroupBuild = { reports, groups: componentsOf(reports, link), groupOf: new Map(), byKey: new Map(), byBlock: new Map() };
+  for (const group of build.groups) enter(build, group, link);
+  return build;
+}
+
+/**
+ * This function gives the build of a list from the last build. It changes the indexes of the last build.
+ *
+ * An edge of two reports reads only the two reports. Thus a last group with no removed report, and with no edge to an
+ * added report, is a group of the list too. The function makes again only the other groups. When those groups hold
+ * more than half of the list, the function changes nothing and gives `undefined`.
+ */
+function changedBuild(last: GroupBuild, reports: readonly Report[], link: LinkRule | undefined): GroupBuild | undefined {
+  const { removed, added } = changeOf(last.reports, reports);
+  if (added.length * 2 > reports.length) return undefined;
+  // The last groups that have a removed report, or an edge to an added report.
+  const touched = new Set<Group>();
+  for (const report of removed) touched.add(last.groupOf.get(report)!);
+  for (const report of added) {
+    for (const key of shareKeys(report)) {
+      const group = last.byKey.get(key);
+      if (group !== undefined) touched.add(group);
+    }
+    if (link === undefined) continue;
+    for (const key of blockKeys(report, link)) {
+      for (const member of last.byBlock.get(key) ?? []) if (link.matches(report, member)) touched.add(last.groupOf.get(member)!);
+    }
+  }
+  const gone = new Set(removed);
+  const nodes = [...added];
+  for (const group of touched) for (const report of group) if (!gone.has(report)) nodes.push(report);
+  if (nodes.length * 2 > reports.length) return undefined;
+  nodes.sort((a, b) => compareCodeUnits(a.id, b.id));
+  const fresh = componentsOf(nodes, link);
+  // The kept groups and the fresh groups are each in the order of their anchors. Their merge keeps that order.
+  const groups: Group[] = [];
+  let next = 0;
+  for (const group of last.groups) {
+    if (touched.has(group)) continue;
+    while (next < fresh.length && compareCodeUnits(fresh[next]![0]!.id, group[0]!.id) < 0) groups.push(fresh[next++]!);
+    groups.push(group);
+  }
+  while (next < fresh.length) groups.push(fresh[next++]!);
+  const build: GroupBuild = { reports, groups, groupOf: last.groupOf, byKey: last.byKey, byBlock: last.byBlock };
+  for (const group of touched) leave(build, group, link);
+  for (const group of fresh) enter(build, group, link);
+  return build;
+}
+
+/** This function gives the reports that only the last list has, and the reports that only the next list has. Each list is in the order of its ids. */
+function changeOf(last: readonly Report[], next: readonly Report[]): { readonly removed: readonly Report[]; readonly added: readonly Report[] } {
+  const removed: Report[] = [];
+  const added: Report[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < last.length && j < next.length) {
+    const a = last[i]!;
+    const b = next[j]!;
+    if (a === b) {
+      i += 1;
+      j += 1;
+      continue;
+    }
+    // Two contents of one id are two reports: the last one goes and the next one comes.
+    const order = compareCodeUnits(a.id, b.id);
+    if (order <= 0) removed.push(last[i++]!);
+    if (order >= 0) added.push(next[j++]!);
+  }
+  while (i < last.length) removed.push(last[i++]!);
+  while (j < next.length) added.push(next[j++]!);
+  return { removed, added };
+}
+
+/** This function puts a group into the indexes of a build. */
+function enter(build: GroupBuild, group: Group, link: LinkRule | undefined): void {
+  for (const report of group) {
+    build.groupOf.set(report, group);
+    for (const key of shareKeys(report)) build.byKey.set(key, group);
+    if (link === undefined) continue;
+    for (const key of blockKeys(report, link)) {
+      const members = build.byBlock.get(key);
+      if (members === undefined) build.byBlock.set(key, new Set([report]));
+      else members.add(report);
+    }
+  }
+}
+
+/** This function removes a group from the indexes of a build. */
+function leave(build: GroupBuild, group: Group, link: LinkRule | undefined): void {
+  for (const report of group) {
+    build.groupOf.delete(report);
+    for (const key of shareKeys(report)) if (build.byKey.get(key) === group) build.byKey.delete(key);
+    if (link === undefined) continue;
+    for (const key of blockKeys(report, link)) {
+      const members = build.byBlock.get(key);
+      members?.delete(report);
+      if (members?.size === 0) build.byBlock.delete(key);
+    }
+  }
+}
+
+/** This function gives the connected groups of a list of reports, in the order of their anchors. Each group keeps the order of the list. */
+function componentsOf(reports: readonly Report[], link: LinkRule | undefined): readonly Group[] {
   const edges: number[][] = reports.map(() => []);
   const connect = (a: number, b: number): void => {
     edges[a]!.push(b);
@@ -263,16 +459,12 @@ function groupsOf(reports: readonly Report[], link: LinkRule | undefined): reado
   };
   // Each key holds the audience of the report. Thus reports with two audiences never connect (AL-92, `audience.ts`).
   reports.forEach((report, index) => {
-    const audience = audienceKey(report);
-    share(JSON.stringify(["key", audience, report.status, report.source, report.key]), index);
-    for (const reference of report.references) share(JSON.stringify(["key", audience, report.status, report.source, reference]), index);
-    for (const key of report.correlation) share(JSON.stringify(["correlation", audience, report.status, key.system, key.id]), index);
+    for (const key of shareKeys(report)) share(key, index);
   });
   if (link !== undefined) {
     const blocks = new Map<string, number[]>();
     reports.forEach((report, index) => {
-      for (const block of new Set(link.blocks(report))) {
-        const key = JSON.stringify([audienceKey(report), report.status, block]);
+      for (const key of blockKeys(report, link)) {
         const members = blocks.get(key);
         if (members === undefined) blocks.set(key, [index]);
         else members.push(index);
@@ -287,12 +479,10 @@ function groupsOf(reports: readonly Report[], link: LinkRule | undefined): reado
     }
   }
   // The edges go in the two directions, so the strong components are the connected components.
-  // The nodes of a component keep the order of the reports: the order of their ids.
+  // The nodes of a component keep the order of the reports.
   const components = stronglyConnectedComponents(reports.keys(), (index) => edges[index]!);
   // The anchor of an incident is the id of the first report of its group.
-  const groups = components.map((component) => component.map((index) => reports[index]!)).sort((a, b) => compareCodeUnits(a[0]!.id, b[0]!.id));
-  byLink.set(link ?? NO_LINK, groups);
-  return groups;
+  return components.map((component) => component.map((index) => reports[index]!)).sort((a, b) => compareCodeUnits(a[0]!.id, b[0]!.id));
 }
 
 // The incident of each group, by its first report, with the reports and the live mask that it read.
@@ -301,6 +491,132 @@ const incidentCache = new WeakMap<Report, { readonly group: readonly Report[]; r
 /** True when a report is live at a time: it is not a cancel, it did not expire and it did not end. */
 const liveAt = (report: Report, at: Instant, ended: ReadonlySet<ReportId>): boolean =>
   report.op !== "cancel" && !(report.expires !== undefined && report.expires <= at) && !ended.has(report.id);
+
+/** The inputs of `leavingReports`. */
+export interface LeavingInput {
+  /** The merge state of the group. */
+  readonly state: MergeState;
+  /** The ids of the reports of one group, as `incidents` gives them. */
+  readonly group: readonly ReportId[];
+  /** The ids of the candidates, in the order of the test. The result gives them in the order that they leave. */
+  readonly order: readonly ReportId[];
+  /** The time of the test. */
+  readonly at: Instant;
+  /** The ended reports at the time, from `endedReports`. */
+  readonly ended: ReadonlySet<ReportId>;
+  /** The link rule of the groups, the same rule that gave the group. */
+  readonly link?: LinkRule | undefined;
+}
+
+/**
+ * This function gives the candidates that can leave a group one by one, in the order of `order` (AL-177). A candidate
+ * leaves only when the reports that stay keep one group and the same values of the incident. The anchor can leave, then
+ * the incident gets the next anchor. The caller keeps each report that a reader names.
+ *
+ * - The candidate is not live, and it is not a head of the group. Thus the heads of the incident stay.
+ * - The candidate has no block of the link rule. Thus no link of rule 3 needs it.
+ * - The candidate shares one or more keys of rules 1 and 2 with the reports that stay. The reports that stay connect
+ *   these keys without the candidate. Thus the reports that stay are one group.
+ * - No reference of the candidate names a report that stays. No report that stays has its origin, a shared correlation
+ *   key and an earlier sent time. Thus the candidate states nothing about a report that stays.
+ * - No report that stays has an event of the candidate, a sent time at or after it and an unknown value. Thus each
+ *   known value of a report that stays does not change.
+ * - A report that stays has the origin of the candidate. Thus the corroboration of the incident stays.
+ *
+ * The test of each candidate reads the reports that stay after the earlier candidates leave. The function tests the
+ * candidates again until no candidate leaves. Thus a second call with the reports that stay gives no report.
+ */
+export function leavingReports({ state, group: ids, order, at, ended, link }: LeavingInput): ReportId[] {
+  const group = reportsOf(state, ids);
+  const byId = new Map(group.map((report) => [report.id, report]));
+  // A report that leaves states nothing about a report that stays. Thus the heads of the reports that stay are the heads of the group.
+  const { superseded, replaced } = statementsOf(group, eventsOf(group));
+  // The reports that stay, for each key of rules 1 and 2, for each own key and for each origin.
+  const members = new Map<string, Set<Report>>();
+  const owners = new Map<string, number>();
+  const origins = new Map<string, number>();
+  const count = (map: Map<string, number>, key: string, step: number): void => {
+    map.set(key, (map.get(key) ?? 0) + step);
+  };
+  for (const report of group) {
+    for (const key of shareKeys(report)) {
+      let set = members.get(key);
+      if (set === undefined) members.set(key, (set = new Set()));
+      set.add(report);
+    }
+    count(owners, shareKeys(report)[0]!, 1);
+    count(origins, report.origin, 1);
+  }
+  const leaving: ReportId[] = [];
+  const left = new Set<ReportId>();
+  for (let again = true; again; ) {
+    again = false;
+    for (const id of order) {
+      const report = byId.get(id);
+      if (report === undefined || left.has(id) || liveAt(report, at, ended)) continue;
+      if (!superseded.has(id) && !replaced.has(id)) continue;
+      if (link !== undefined && blockKeys(report, link).length > 0) continue;
+      if ((origins.get(report.origin) ?? 0) < 2) continue;
+      const keys = shareKeys(report);
+      const own = keys[0]!;
+      const shared = [...new Set(keys)].filter((key) => (members.get(key)?.size ?? 0) > 1);
+      if (!joinedWithout(shared, members, report)) continue;
+      // A reference names the own key of a report that stays: the candidate ends or states that report.
+      const references = keys.slice(1, 1 + report.references.length);
+      if (references.some((key) => (owners.get(key) ?? 0) - (key === own ? 1 : 0) > 0)) continue;
+      // The reports that stay of each event of the candidate: one origin and one correlation key.
+      const correlations = keys.slice(1 + report.references.length);
+      const events = correlations.flatMap((key) => [...(members.get(key) ?? [])].filter((other) => other !== report && other.origin === report.origin));
+      // The rule of the copies: a later report of an event states the codes of the earlier one.
+      if (events.some((other) => other.sent < report.sent)) continue;
+      // An unknown value of a later report of an event takes the value of the latest earlier report that is not a cancel.
+      const unknown = (other: Report): boolean => other.severity === "unknown" || other.urgency === "unknown" || other.certainty === "unknown";
+      if (report.op !== "cancel" && events.some((other) => other.sent >= report.sent && unknown(other))) continue;
+      leaving.push(id);
+      left.add(id);
+      again = true;
+      for (const key of new Set(keys)) members.get(key)?.delete(report);
+      count(owners, own, -1);
+      count(origins, report.origin, -1);
+    }
+  }
+  return leaving;
+}
+
+/** This function gives the reports of a state with the ids. A state in the one form gets a search of its sorted list for each id. */
+function reportsOf(state: MergeState, ids: readonly ReportId[]): Report[] {
+  if (normalStates.has(state)) {
+    return ids.flatMap((id) => {
+      const index = indexIn(state.reports, id, reportKey);
+      return index >= 0 ? [state.reports[index]!] : [];
+    });
+  }
+  const wanted = new Set(ids);
+  return state.reports.filter((report) => wanted.has(report.id));
+}
+
+/**
+ * This function gives true when the keys are one or more, and the reports of the keys other than one report connect
+ * the keys. Two keys connect when a report has both keys. The function uses a union of sets over the keys.
+ */
+function joinedWithout(keys: readonly string[], members: ReadonlyMap<string, ReadonlySet<Report>>, report: Report): boolean {
+  if (keys.length <= 1) return keys.length === 1;
+  const root = keys.map((_, index) => index);
+  const find = (index: number): number => {
+    while (root[index] !== index) index = root[index] = root[root[index]!]!;
+    return index;
+  };
+  const first = new Map<Report, number>();
+  keys.forEach((key, index) => {
+    for (const other of members.get(key) ?? []) {
+      if (other === report) continue;
+      const held = first.get(other);
+      if (held === undefined) first.set(other, index);
+      else root[find(held)] = find(index);
+    }
+  });
+  return keys.every((_, index) => find(index) === find(0));
+}
 
 /**
  * This function gives the incident of a group at a time. The incident reads the time only through the live reports.
@@ -322,6 +638,17 @@ function cachedIncident(group: readonly Report[], at: Instant, ended: ReadonlySe
  * the past value.
  */
 export function endedReports(state: MergeState, at: Instant): ReadonlySet<ReportId> {
+  const held = endedCache.get(state);
+  if (held !== undefined && held.at === at) return held.ended;
+  const ended = endedOf(state, at);
+  endedCache.set(state, { at, ended });
+  return ended;
+}
+
+// The ended reports of the last time of each state. A pass reads them for `incidents` and for the retirements.
+const endedCache = new WeakMap<MergeState, { readonly at: Instant; readonly ended: ReadonlySet<ReportId> }>();
+
+function endedOf(state: MergeState, at: Instant): ReadonlySet<ReportId> {
   const latest = new Map<ReportId, EndMark>();
   for (const mark of state.ends) {
     if (mark.at > at) continue;

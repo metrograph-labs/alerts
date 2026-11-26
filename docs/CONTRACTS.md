@@ -183,6 +183,8 @@ The rules of each adapter:
 
    Fatal and lossy problems move the health to `changed`. Notes do not. So a renamed value that the map replaces with a fallback shows in the health.
    When the map cannot read an area or a subject that a watch can match, it gives a fatal problem. A place with no position matches only by codes, so an area needs a region code or a place.
+   A report with no area, no subject and no address has no place, for example a cancel with no info block or a space weather event of the whole Earth. The schema accepts it, and it reaches no person by a place (AL-157).
+   The fetch step checks each report of the map with `reportSchema`. A report that fails it is a lossy problem, and the log does not get it. Thus the log keeps only reports that the other copies accept.
 3. **The descriptor tells the truth about dependencies.** `origins` names the authorities whose messages the source carries. `dependsOn` names the failure domains outside the cell: providers, CDNs, carriers, transmitters. Each id starts with its kind, for example `cdn:akamai`. `uses` names the resources of the cell: `internet`, `dns`, `power`, `receiver`. The coverage uses both.
 4. **The ids are hashes of content.** The core gives the id functions in `ids.ts`. An adapter does not make its own ids.
    - `observationId`: the SHA-256 of the source id, the content type, the request URL and the body. The fetch time is not part of it, so a poll with no change gives the same id. The URL is the part that the `map` function reads. A URL with the time of the poll gives the URL with no time, and a test holds that `map` does not read the time.
@@ -304,6 +306,44 @@ The function `areaMeetsPlace` matches the area of a series to a place:
 A zone with no regions in the table, and a shape that `@mark1russell7/geo` refuses, meet no place. Their keys are in the list `unplaced`, so a gap of the table shows.
 
 The breadth gives counts and no decision. The threat level (AL-24) reads the counts.
+
+### The surprise of the signals
+
+The module `threat.ts` tells how rare the signals of one time are (AL-24). A unit is one source of evidence in one area, for example the rail delays near a place.
+
+- `breadthUnits` gives one unit for each dimension of a breadth with a read. A dimension with no read gives no unit.
+- `signalRate` gives the base rate of a unit from its history: the upper bound of the Wilson interval of its reads with a signal. A history with fewer than `MIN_READS` (30) reads gives no rate.
+- `surpriseOf` gives the chance of the count of the units with a signal, or more, when the units are independent. The law is the Poisson binomial law of their rates, from `@mark1russell7/rigor-statistics`. The surprise is `-log10` of that chance.
+- The field `weighted` gives a weight of `-ln(rate)` to each unit. Thus a rare signal counts more than a common signal.
+- Its statistic is the sum of the weights of the units with a signal. Its `p` is the upper bound of `weightedBernoulliTest`, and `low` is the lower bound.
+- When each unit has the same rate, the weighted `p` is the `p` of the count. A group of more than `MAX_WEIGHTED_UNITS` units has no field `weighted`.
+- The field `pairs` tells the links between the domains of one scope. `pairHistories` counts the hours with a read of two units, and the hours with a signal of each and of both.
+- For each pair with two signals, `rate` is the upper bound of the Wilson interval of the joint signals, and `surprise` is `-log10(rate)`.
+- The value `together` is the binomial chance of the joint count or more when the two units are independent. A low value tells a common cause, thus the two signals are not two independent signs.
+- The result is a function of the sets of the units and of the histories. The order and a duplicate do not change it.
+- `indicatorUnits` gives the units of the world with the scope `world`, and the units of a place with the scope `place/<id>`. Thus no place id gives the units of the world.
+- `indicatorSurprise` gives the surprise of the world and of each place from one list of histories.
+
+The history of a unit counts one read in each bucket of one hour at most (`HISTORY_BUCKET`, `signalHistories`). Two passes a few seconds apart give the same read nearly always. A count of each pass thus counts one read many times, and the hours with many passes count more. A bucket of a fixed size gives each hour the same weight.
+
+- A bucket with no read of a unit adds no read of the unit. A read with a signal adds to the reads and to the signals.
+- Two reads of a unit in one bucket count one time. A signal counts.
+- The result is a function of the set of the reads. The order and a duplicate do not change it.
+
+`unit-history.ts` of the runtime keeps the history in the store of the readings:
+
+- The first pass of each hour writes the units of its breadth to the table `unit_reads`. The later passes of the hour write nothing.
+- The surprise of a pass reads the history of the hours before its hour. Thus the read of the pass is not in its own base rate.
+- The store deletes the reads of the units with the old readings. The history thus holds the last 29 days, 696 hours at most.
+- The table is a part of the file with its own version. An older build reads only the version of the readings, thus it opens the file.
+- The runtime reads the table at the first pass and keeps it in memory. A new hour or a delete calculates the histories again, in O(hours × units). Each other pass reuses them.
+- A fault of the table goes to the hook `onReadingsFault` with the action `read` or `add`. The pass then has no surprise, and it continues. The next pass reads the table again.
+
+The field `surprise` of the pass holds the surprise, next to the breadth. The map route gives it in the field `surprise`. A runtime with no store of the readings has no field.
+
+The history does not come from a read of the store at past times. The baseline of a past time reads the 28 days before that time, and the store keeps only one day more. Thus a past read of a score is correct only for the last day, 24 reads. That is fewer than `MIN_READS`. A longer store doubles the store and the cost of each read.
+
+A high surprise tells that a hidden common cause moves many units at one time. The surprise gives no level. The calculation of the level (AL-31) reads it.
 
 The runtime calculates the breadth at each pass, after the fetches and before the view. The field `breadth` of the pass holds it. `series-reads.ts` of the runtime keeps the read of each series of the store between the passes:
 
@@ -437,6 +477,61 @@ A use report (AL-111) tells the use of a hard limit of a paid provider account i
 - With two copies, only one copy reports `level` (see "The facts of a shared account"). Each copy reports its own `unread`.
 - A person gets the use reports only when the person watches `{ system: "alerts.limit" }`.
 
+A joint report (AL-148) tells the joint down time of the copies: the time in a window in which no copy could tell the person. A joint report has no area. Its subject is `{ system: "alerts.copy", id: "all" }` (`COPY_SUBJECT`). Its kind is `system.joint.<stage>`, and it gets `notice` at most. `jointStages` gives the stages of a `JointDown` at a time:
+
+| Stage | Condition | Severity, urgency |
+| --- | --- | --- |
+| `over` | The joint down time of the last read is longer than the limit | `moderate`, `expected` |
+| `unread` | No read passed for the maximum age or longer (`jointUnreadAt`) | `moderate`, `expected` |
+
+- The target is 0.999 of each 7 days in which some copy can tell the person. Thus the limit is 10 minutes of joint down time in 7 days.
+- The copies share the loud check of Healthchecks.io (see "The outside heartbeat"). It gets only success pings. Thus it is down only when no copy can tell the person.
+- The runtime reads the flips of the loud check with the management API, once in each hour (`JOINT_EVERY`). A failed read tries again after 15 minutes.
+- A down span starts at its down flip less the period and the grace of the check. It ends at the next up flip, or at the read. The window clips it.
+- The request gets all the flips of the check. The state at the start of the window is the state after the last flip before it. With no such flip, the check is new and was not down. With no flip, it is the state of the check.
+- A new sum over the limit gives no update. A read with a sum of the limit or less ends `over`. A read that passes ends `unread`.
+- A watch with no read keeps its open line `over`. Thus a restart sends nothing. A snapshot with no field `joint` keeps each open line.
+- The value `null` of `joint` tells that the copy has no watch. Then each open line ends.
+- The runtime has a watch only when `secrets.env` has `HEALTHCHECKS_API_KEY` and `HEALTHCHECKS_LOUD_PING_URL`. With no key, it has no watch and no line.
+- With two copies, only one copy reports `over` (see "The facts of a shared account"). Each copy reports its own `unread`.
+- A message names no key, no ping URL and no id of a check. The health route shows the read as `joint down time`.
+- A person gets the joint reports only when the person watches `{ system: "alerts.copy" }`.
+
+A drift report (AL-139) tells that a copy host does not agree with its code, or that its daily check cannot read. A drift report has no area. Its subject is `{ system: "alerts.copy", id: <name of the check> }` (`COPY_SUBJECT`). Its kind is `system.drift.<stage>`, and it gets `notice` at most. `driftStages` gives the stages of a `DriftCheck` at a time:
+
+| Stage | Condition | Severity, urgency |
+| --- | --- | --- |
+| `changed` | The last read that passed found one change or more | `moderate`, `expected` |
+| `unread` | No read passed for the maximum age or longer (`driftUnreadAt`) | `moderate`, `expected` |
+
+- Each entry of the field `drift.commands` of `copy.json` gives one check: a name, a kind and an `argv`. The runtime starts the program with no shell.
+- The checks are a setting of each copy, because an `argv` has the paths and the programs of one host. A mirror does not take them (`configFrom`).
+- `config.json` and the parts do not have the field `drift`. The schema refuses it.
+- The kind `setup` is a setup check in check mode. It exits with 0, and each line `check: <step>: <reason>` is a change. Another exit code is a failed read.
+- The kind `tofu` is a plan with `-detailed-exitcode`. The exit code 0 tells no change, and 2 tells a change. Another exit code is a failed read.
+- The runtime starts each command one time in each day (`DRIFT_EVERY`). A failed read tries again after 1 hour. A command has a limit of 5 minutes.
+- The commands run one at a time, after the check of the pass. The pass does not wait for them, because a pass must end within its limit.
+- A read keeps the count of the changes, and the names that have only letters, digits, `.`, `_` and `-`. It keeps no other output of the command.
+- The headline names the check and its first 10 changes. The parameter `steps` holds each name of the read, up to 50.
+- A new list of changes gives an update. A read with no change ends `changed`. A read that passes ends `unread`. The maximum age is 2 days.
+- A check with no read keeps its open line `changed`. Thus a restart sends nothing. A snapshot with no field `drift` keeps each open line.
+- The value `null` of `drift` tells that the copy has no drift check. Then each open line ends. A check that leaves `copy.json` ends its lines.
+- Each copy reports the stages of its own checks, `changed` and `unread`. Give a different name to the check of each host.
+- A message of a failed read names the check. It holds no argument and no output. The health route shows each read as `drift of <name>`.
+- A person gets the drift reports only when the person watches `{ system: "alerts.copy" }`.
+
+A redundancy report (AL-90) tells that a function of the alert chain lost a path. An example is the push to a person when the carriers of the texts are down. A redundancy report has no area. Its subject is `{ system: "alerts.function", id: <part id> }` (`FUNCTION_SUBJECT`). Its kind is `system.redundancy.<stage>`, and it gets `notice` at most. The runtime gives a `RedundancyState` for each function from the open incidents of its parts. `redundancyStage` gives its stage:
+
+| Stage | Condition | Severity, urgency |
+| --- | --- | --- |
+| `single` | The function works, and it has a new single point of failure: a part that alone stops it with the down parts, and not with no part down | `moderate`, `expected` |
+| `stopped` | The down parts stop the function | `severe`, `immediate` |
+
+- Each stage of each function is its own line: `redundancy/<part>/<stage>`. A function that stops ends its line `single` and opens `stopped`.
+- The facts of a line are the function, the stage and the points. A new down part that leaves the same points gives no update.
+- A function with its full redundancy ends each line. A snapshot with no list keeps each open line of a function.
+- A person gets the redundancy reports only when the person watches `{ system: "alerts.function" }`.
+
 A clock report has no area. Its subject is `{ system: "alerts.clock", id: "wall" }`. Its kind is `system.clock.step`, with the severity `minor` and the urgency `past`. Thus it gets `digest` at most:
 
 - The condition is the latest step of the wall clock in `CLOCK_STEP_WINDOW` (24 hours) before the time of the snapshot (`recentStep`).
@@ -464,6 +559,24 @@ A store report has no area. Its kind is `system.store.empty` (AL-86), with the s
 - The first entry of the family ends the line with a cancel. A snapshot with no list of stores keeps each open line of a store.
 - A store that gets no turn after a start, as a refresh that waits for the good start, fails the check.
 
+The merge state of the runtime has a bound of reports (AL-145). Each report stays in the memory while its incident is live. A flood of new reports thus fills the heap. The default bound is `REPORT_LIMIT` (10,000 reports), and the field `reportLimit` of the configuration replaces it:
+
+- A report and its parts take approximately 9 to 11 kB of the heap. A pass also makes a route of approximately 1.2 kB for each live incident and each person.
+- With 10 persons, 10,000 reports take approximately 230 MB at the peak of a pass. That is less than half of the heap of a host with 1 GB.
+- The fetch step asks for the admission of each new observation (`admit` of `fetchStep`). The count includes the system reports.
+- At the bound, a new observation goes in only when one of its reports has priority (`keepsAtBound`). A report with priority is an update or a cancel, a report for named persons, or a report at a watched place (`matchPlaces`).
+- Thus a full state keeps out only the new reports of other areas. The delivery sends those reports to no person.
+- A refused observation does not go into the log. It stays new, thus a later fetch gives it again, and it goes in when the state has space.
+- The bound does not refuse an import from another copy, a system report or a fold of the log at a start.
+
+A bound report has no area. Its kind is `system.store.full`, with the severity `moderate` and the urgency `expected`. Thus it gets `notice` at most:
+
+- The runtime gives a `StoreBound` with the store `state`, the family `reports`, the count of the entries, the bound and the count of the waiting observations.
+- The condition is a count at the bound, or a waiting observation (`atBound`). The line is `bound/<store>/<family>`.
+- The subjects are the store (`STORE_SUBJECT`) and each source with a waiting observation at the open of the line.
+- The facts of the line are the store and the family. A change of the counts alone gives no update.
+- A count below the bound with no waiting observation ends the line with a cancel. A snapshot with no list of bounds keeps each open line of a bound.
+
 A copy report has no area. Its subject is `{ system: "alerts.copy", id: <copy id> }` (`COPY_SUBJECT`). Its kind is `system.copy.<stage>`, with the severity `moderate` and the urgency `expected`. Thus it gets `notice` at most. `copyStages` gives the stages of a `CopyWatch` at a time, and each stage is one line:
 
 | Stage | Condition |
@@ -487,6 +600,18 @@ A copy that starts again and again is not steady (AL-108). It answers the exchan
 - An open line `unsteady` stays open over a restart of this copy, until the first steady read.
 - A copy of an older build tells nothing. Its watch has no `unsteadySince`, and a read that passes ends `unread` as before.
 - On 2026-11-21, a copy made 125 starts. The line `unread` of the other copy opened at each stop and ended at each start, and no line told of the loop.
+
+An account can stop the billing of a copy host at a spend limit. Then the host stops, and the line `unread` of the copy names the billing stop (AL-70).
+
+- The field `billing` of a peer in `copy.json` names a command: `argv`, a JSON `field` and the values of a stop (`stoppedWhen`). It names no provider.
+- The runtime starts the program with no shell, only when the copy reaches `unread`. One read passes in each down time of the copy.
+- A failed read tries again after 5 minutes, then after two times as long, up to 1 hour. A read has a limit of 1 minute.
+- The program prints one JSON value. The field is a path of names with dots between them. A value in `stoppedWhen` is `stopped`, and each other text, number or boolean is `on`.
+- A failed command, a time out, a bad JSON value or a missing field is `unread`. The message holds no argument and no output.
+- The pass does not wait for the read. Thus the alert of the line goes out at once with the text of a down copy.
+- The billing state goes into `CopyWatch.billing` and into the parameter `billing` of the line. `stopped` and `unread` are facts of the line, thus each gives an update.
+- `stopped` names the billing stop in the headline. `unread` adds that the billing state is unread. `on` keeps the text of a down copy.
+- A read of the copy that passes ends the down time and its billing state. The health route shows each read as `billing of <copy>`.
 
 A drill report has no area. Its subject is `{ system: "alerts.drill", id: <drill id> }` (`DRILL_SUBJECT`). Each copy has its own lines, thus the name of a line holds the copy id.
 
@@ -676,6 +801,70 @@ The cap of the spend of a Twilio channel is two gates of `polite-crawler/api`, w
 - The text channel takes its units from the same gates as the call channel. Thus one cap holds the calls and the texts of the account.
 - `takeSpend` in `spend.ts` takes the units for each channel. The quota line of the status is the line of `twilio-call`.
 
+The webhook channel (`@mark1russell7/alerts-channel-webhook`, AL-55) sends each message as one signed JSON request to the URL of a receiver:
+
+- The request follows Standard Webhooks (`@procedures/notify/webhook`). Each request has the headers `webhook-id`, `webhook-timestamp` and `webhook-signature`.
+- The id is the delivery key of the message. Thus the requests of two copies have one id, and the receiver keeps one of them.
+- The body is the event `alert.message`. Its data has the key, the person, the level, the title, the body, the incident and the quiet flag of the message.
+- The data also has the URL, the end time, the why line and the copy id, when the send has them.
+- The secrets are the value of the key `WEBHOOK_SECRET` of `secrets.env`, in the `whsec_` form. A space splits two secrets.
+- Each secret adds a signature. Thus a receiver can change its secret with no gap.
+- A bad value stops the start. Its problem names the key and the place of the bad secret, and no value.
+- Without the key, the instance has no sender on the channel. A step on the channel then stops the start.
+- A copy that leaves the channel to the other copies (`leaveChannels` of `copy.json`) needs no key. It sends nothing on the channel.
+- The address has one field, `url`: an `https:` URL, or an `http:` URL of the loopback host.
+- The load of the configuration refuses a plain URL to another host, because the body holds the alert.
+- The receiver is a program. Thus the channel has no silent mode, no repeats and no acknowledgement. The body tells if the message is quiet.
+- The channel follows no redirect. A status of 2xx is a send. 401 and 403 give `auth`.
+- 429, 502 and 504 give `rate-limited`, with a wait of 5 seconds or more. Each other status of 5xx gives `server`.
+- 410, a redirect and each other status give `refused`. A fault of the network gives `network`, and the time limit of 10 seconds gives `timeout`.
+- The channel sends no message after its end time. It gives `expired`.
+- `status` gives `accepted`, because a receiver tells no state after its answer. `cancel` does nothing.
+- The User-Agent of each request is `alerts-runtime`. The receiver gets no contact of the configuration.
+- The channel has no probe, because each probe is a request to the receiver.
+
+The sounder channel (`@mark1russell7/alerts-channel-sounder`, AL-41) makes a sound on a device in the home of the person:
+
+- The channel needs no phone, no push service and no internet link. Its descriptor uses only the power of the cell.
+- A sounder is the adapter of one device: the speaker of a computer, a siren, or a radio node with a buzzer.
+- The first adapter is `commandSounder`. It starts a program for each sound, as an argument list with no shell.
+- The runner of the program is a parameter. Thus the package has no dependency other than the core.
+- The channel gives the pattern of the sounds. The level `life-safety` has 60 sounds at most, `urgent` has 3, and each other level has 1.
+- The options can set the count of each level and the wait between two sounds. The default wait is 1 second.
+- A send makes the first sound before its answer. Thus an accepted send tells that the device made a sound.
+- The other sounds come after the answer. A failed sound does not stop them.
+- The sounds stop at a cancel, at the end time of the message, or after the count of the level.
+- One device makes one sound at a time. The sounds of two messages on one device come in turns.
+- The channel repeats, thus the dispatcher keeps the copy id of each send. `cancel({ copy })` stops one copy.
+- `cancel({ receipt })` stops each copy of the delivery key. A cancel is idempotent, and it stops the program of a sound in progress.
+- A device has no silent mode. The channel refuses a quiet message with the kind `quiet`.
+- The channel sends no message after its end time. It gives `expired`.
+- A device shows no text. The descriptor has no why line, and its limits of the title and the body are 0.
+- The channel has no acknowledgement. A person stops the sounds with an acknowledgement on another channel, which cancels the plan.
+- `status` gives `delivered` after a sound, and `failed` when the last sound failed. The dispatcher does not poll it.
+- The sounds are in memory only. A restart of the runtime ends them, and `status` then gives `accepted` with that reason.
+- The address has one field that is not necessary, `device`: the name of a sounder. A system with one sounder needs no name.
+- A program that did not start gives `refused`. A program that passed its time limit of 5 seconds gives `timeout`.
+- An exit code other than 0 gives `server`. A message of a failure holds no argument of the program.
+- The channel has a probe only when a sounder has one. A probe makes no sound.
+- The fact `breaksThrough` is true only for a device that sets its own loudness. A person can set the volume of a computer to zero.
+- The runtime does not load the channel at this time. The next step adds it to the instance, with the command of the copy.
+
+The supervisor sends a notice to a receiver when the runtime stops again and again (`loop-notice.ts`, AL-55). A runtime in a loop sends no alert, because the runtime is the sender:
+
+- The URL is the value of the key `SUPERVISOR_WEBHOOK_URL` of `secrets.env`. Each copy has its own file, thus its own receiver.
+- The key `WEBHOOK_SECRET` signs each notice. A URL with no secret is a bad key.
+- Without the key, the supervisor sends no notice.
+- A bad key writes one warning, and the supervisor sends no notice. The supervisor does not stop.
+- The supervisor reads the keys at its start. A change of the keys takes effect at the next start of the supervisor.
+- A loop starts at 3 stops of the runtime in 15 minutes. A stop after a ready start counts too, because a crash after each ready start is a loop.
+- The start of a loop sends the event `runtime.restarts`. Its data has the copy id, the count of stops, the window, the end of the last stop and the time of the first stop.
+- A loop ends when the runtime is ready and has no stop for 15 minutes. The end sends the event `runtime.ready`, with the copy id, the count of stops and the time of the first stop.
+- One loop gives one event of each type. The id comes from the copy, the type and the time of the first stop.
+- A failed send goes again after 60 seconds, with the same id. Thus the receiver keeps one of each event.
+- The end of the last stop comes from the warning of the group. It has one line of 200 characters or fewer.
+- The requests follow the rules of the webhook channel: the same headers, the same URL rule and the User-Agent `alerts-runtime`.
+
 ## The delivery promise
 
 For `life-safety`, the system prefers a duplicate to a miss.
@@ -696,14 +885,40 @@ Each copy loads the same configuration: `config.json` and the parts. The sync of
 - `id`: the name of the copy, for example `home` or `cloud`. Two copies do not have the same id.
 - `rank`: the order of the copy, from 0. The copy with rank 0 sends first.
 - `listen`: the address and the port of the exchange. The address is the tailnet address of the computer, not all addresses.
-- `peers`: the id and the URL of the exchange of each other copy.
+- `peers`: the id and the URL of the exchange of each other copy. A peer can also have a billing read of its host (`billing`, AL-70). The section "System reports" tells it.
 - `pingKey`: the key of `secrets.env` that holds the ping URL of the first check of this copy. The default is `HEALTHCHECKS_PING_URL`. It is not the key of the loud check, because the copies share the loud check.
 - `accounts`: the number of the account of each source with an account, by the id of the source. The keys of account 2 end in `_2`. The default is account 1.
 - `configFrom`: the id of the copy that gives the configuration of this copy. It is the id of a copy of `peers`. The section "The sync of the configuration" tells the steps.
+- `leaveChannels`: the ids of the channels that this copy leaves to the other copies (AL-55). The section "The channels that a copy leaves" tells the rules.
+- `sounder`: the sounder channel of this copy (AL-41). The section "The sounder of a copy" tells the rules.
+- `drift`: the drift checks of the host of this copy (AL-139). The section "System reports" tells their lines.
 
 Without `copy.json`, the runtime is the only copy. It has rank 0 and no exchange. The key `COPY_TOKEN` of `secrets.env` gives the token of the exchange, the same for each copy. The check of the profile `daemon` needs it when the copy has other copies.
 
 The runtime reads `copy.json` at its start, and the reload hook watches it with `config.json` and `secrets.env`. A change that passes the check restarts the runtime. A file with problems gives way to the last good set of the private files, and a problem holds no address and no URL.
+
+### The channels that a copy leaves
+
+A receiver that only one computer reaches gets its messages from the copy on that computer. An example is a receiver on the loopback host. The other copies name its channel in the field `leaveChannels` of `copy.json`:
+
+- Only a copy with other copies has the field. Each id is a channel of the instance, and no id is in the list two times.
+- The plans of the copy keep each step on the channel. Thus the delivery keys and the numbers of the steps are the same in each copy.
+- The copy sends, cancels and polls nothing on the channel. It counts no failure of the channel, and no send on the channel is overdue.
+- A step on the channel needs no sender of the copy. Thus the copy needs no secret of the channel.
+- When the copy on that computer stops, the receiver gets no message. Each other step still goes from each copy.
+- An older runtime refuses the field. Add the field only after each copy has the code that reads it.
+
+### The sounder of a copy
+
+A sounder is a device in the home of one copy, for example the speaker of its computer. Only that copy can start its sounds. Thus the field `sounder` of `copy.json` holds the sounders, and the configuration holds the contacts and the steps:
+
+- `devices`: the programs of each device, by its name. A name has small letters, digits and hyphens, and 32 characters or fewer.
+- Each device has the program `sound`. It can also have a program for a level in `levels`, and the program `probe` that makes no sound.
+- `sounds`: the most sounds of one message at each level. The defaults are 60 for `life-safety`, 3 for `urgent` and 1 for the other levels.
+- `gapMs`: the wait between two sounds of a message. The default is 1 second.
+- The runtime starts each program with no shell. A problem names the field and no argument, because an argument can be a private path.
+- A copy with no field `sounder` names the channel `sounder` in `leaveChannels`. Without it, a step on the channel stops the start of that copy.
+- A copy with the field `sounder` does not leave the channel.
 
 ### The rank wait
 
@@ -752,6 +967,7 @@ The other events stay in their copy, because each copy has its own sources, heal
 
 - the events `started`, `observation`, `system`, `escalation`, `clock`, `recovered` and `drill`
 - the events of the tries of a send: `attempt`, `settled` and `refused`
+- the event `calls`: the calls of the channels in one pass, for the measure of a shared channel (AL-147)
 
 The rules of an import:
 
@@ -996,6 +1212,12 @@ The log keeps each copy on a channel that repeats, and its end. Thus a restart d
 - A stop of a copy whose send did not end does not end the copy. The channel can accept that copy later, and then its stop goes again.
 
 A write of the `attempt` event that fails throws, and the send does not go.
+
+The log also keeps the calls of the channels of each pass in a `calls` event (AL-147). The fold changes nothing for it:
+
+- Each call has its channel, its kind (`send`, `status`, `cancel`, `copy` or `probe`), its end time and the kind of its failure.
+- The event has the time of the last passed fetch of the copy. It shows that the network of the copy worked.
+- The placement plan reads these calls from the logs of the live copies. They measure the chance of a push or call service with no status page.
 
 The log also keeps each refused send. A refused send is a refusal, a bad key, a full quota or a quota in its reserve, in the time limit of the send:
 
@@ -1276,7 +1498,7 @@ Each assessment has its reasons: the gate that stopped it, the class, the two lo
 
 The table becomes the calculation of AL-31. The calculation multiplies the probability that the event is real and the harm of the event. It compares the result with the cost to interrupt the person at that time. Each factor comes from a public measure, not from a value that a person sets.
 
-The shadow score (`shadowScore`) is the first step. It operates next to the table, and it does not decide a level:
+The shadow score (`shadowScore`) is the first step. It operates next to the table. It decides a level only through the score rule of a person (step 4, below):
 
 - The priors (`ScorePriors`, format `alerts-priors/2`) are data. For each prefix of a kind, they give the verified share of its warnings and the deaths and injuries of one event. For each CAP certainty value, they give a probability.
 - Format 2 adds the harm in one area under one active alert of a kind, for each significance (`KindPrior.under`). The measure counts each event under an alert, so it holds the probability of the event.
@@ -1288,7 +1510,7 @@ The shadow score (`shadowScore`) is the first step. It operates next to the tabl
 - The expected harm (`expectedOf`) is the probability times the deaths, and the probability times the injuries. `mul` of `@mark1russell7/interval` rounds each interval outward. Thus the interval holds each exact product.
 - Each count of the priors is from 0 to `Number.MAX_SAFE_INTEGER`. Thus each product has a finite interval.
 - A factor that the priors do not give makes a score with no read. The score names each missing factor. It does not take 0 or a default value.
-- `assessWithShadow` adds the score as the last reason of an assessment with a reason of the table. The level and the other reasons stay those of `assess`. A seeded gate test holds this.
+- `assessWithShadow` adds the score as the last reason of an assessment with a reason of the table. The level and the other reasons stay those of `assess`. A seeded gate test holds this. An assessment whose reason `score` holds the score gets no second score.
 
 The priors come from the base rates of the package `rates` (`priorsOf`). The file `packages/rates/data/priors.json` holds them. A test holds it equal to the priors of `data/rates.json`:
 
@@ -1343,6 +1565,16 @@ The runtime reads the committed priors at its start (`committedPriors` of the pa
 - The log keeps the score at the start of each escalation (the field `shadow` of the event `escalation`). Thus a later study can compare each decision of the table with its score. A score of a log line from before the basis `alert` has no field `basis`. Its basis is `event`.
 - `shadowDifferences` gives each pair of incidents where the table and the score disagree. The table gives one incident the higher level. The score gives the other more expected deaths and more expected injuries, and the intervals do not overlap. Thus the rule needs no weight between a death and an injury.
 
+The score rule of a person (`PersonWatch.score`, step 4 of AL-31) lets the score decide a level, with the rule of the replay:
+
+- The rule has a risk value above 0. An incident gets `life-safety` when the expected deaths of its score are at the risk value or higher. Thus the risk value of the replay curve gives the sends of the rule.
+- The table stays the floor. The rule raises the level of the incident and of each line. It does not lower a level, and the rules of the person still lower the raised level.
+- The list `except` holds the prefixes of the kinds that the rule does not examine. For these kinds, the table decides. An example is the kinds of the beach (`met.rip-current`, `met.surf`, `met.beach-hazards`): they hurt swimmers, not a person who sleeps.
+- The quiet table of the sources of other copies (AL-76) is not raised.
+- The reason `score` follows the reason `table`. It gives the risk value, the score and the field `raised`. A score with no read does not raise.
+- The rule reads the priors in the policy (`AssessPolicy.priors`). The runtime adds the committed priors to the policy only when a person has a score rule (`policyWithPriors`). With no priors, the reason has no score, and the table decides.
+- A person with no rule gets each assessment of the table. A seeded gate test holds this. The value of each person goes in the private configuration.
+
 ## The service
 
 The runtime operates as one service of `@mark1russell7/service`. Its entry is `packages/runtime/src/main.ts`. Only that file uses `run()`, and only that file reads a real clock.
@@ -1371,8 +1603,14 @@ The function `openInstance` makes the instance of the owner from the private con
 - The optional key `TWILIO_TEXT_FROM` adds the text channel. It holds the registered sender of texts: a phone of a 10DLC campaign or a verified toll-free phone.
 - The instance does not text from `TWILIO_FROM`. Without `TWILIO_TEXT_FROM`, the text channel and the texts of the outage call are off.
 - A spend entry of a provider of a channel gives the cap of the channel. The count of the cap is in `quotas.sqlite`.
+- The cap also keeps the own count: the cost of the sends of this copy alone. The reads of the spend of the provider do not change it (AL-91).
+- Each pass writes the use reads of the cap of Twilio into `use.json` when they change. The format is `UseRead` of `@mark1russell7/stack-spend`.
+  - The count read has the part `meter:twilio-<copy>` and the source `count`. Its amount is the own count, in US dollars.
+  - The provider read has the part `account:twilio` and the source `provider`. It is the last spend of the account that Twilio gave in the month.
+  - The date of each read is a date of the time zone of the cap.
 - The spend entry of Twilio also gives the watch of the balance: one read each day, and its floors.
 - Each entry of the field `limits` gives the watch of the use of one hard limit (AL-111). The section "The use report" tells its lines.
+- The field `chain` gives the stack of the alert chain (AL-90): a stack document with a layer of risks, and the subjects that tell the state of its parts. A live incident about a subject tells that its part is down. The runtime gives a `RedundancyState` for each goal of the layer.
 - The watch of a limit of GitHub reads the usage report of the account one time each day. The first read comes 20 minutes after the start.
 - The token of the reads is in the key `tokenKey` of the limit, or in `GITHUB_BILLING_TOKEN`. A fine-grained token needs Plan (read) of a user, or Administration (read) of an organization.
 - A fine-grained token has one owner: a user or one organization. Thus each account needs its own key. The limits with one key share one client.
@@ -1396,7 +1634,7 @@ The instance does not start when it finds one of these problems:
 - a watch of a limit of a provider with no reader, or a limit of GitHub with no value for the key of its token
 - a place that no regional source covers. Usually the place does not have a code of each level: the zone, the county, SAME, the state and the country. A source with the coverage `global`, for example the SWPC, covers each place with no code. Thus the check does not count it.
 
-The environment gives `PORT` (8080), `PROBE_PORT` (9090) and `SERVICE_PROFILE` (`local`, `daemon` or `pod`). The folder `ALERTS_HOME` (`.alerts` in the home folder) holds the private files: `config.json`, `secrets.env`, the log `runtime.sqlite` and the outlines of the zones `shapes.sqlite`. It also holds the counts of the quotas, `quotas.sqlite`, and the copy of the transit catalog, `transit-catalog.json`. No repository holds them. A problem of `secrets.env` names its line and its key, and no value. The output of a failed pass shows no value of `secrets.env`.
+The environment gives `PORT` (8080), `PROBE_PORT` (9090) and `SERVICE_PROFILE` (`local`, `daemon` or `pod`). The folder `ALERTS_HOME` (`.alerts` in the home folder) holds the private files: `config.json`, `secrets.env`, the log `runtime.sqlite` and the outlines of the zones `shapes.sqlite`. It also holds the counts of the quotas, `quotas.sqlite`, the use reads of the caps, `use.json`, and the copy of the transit catalog, `transit-catalog.json`. No repository holds them. A problem of `secrets.env` names its line and its key, and no value. The output of a failed pass shows no value of `secrets.env`.
 
 Each runtime takes the lock `home.lock` of the folder at its start, before it reads or writes a file of the folder (AL-58). The lock is the instance lock of `@mark1russell7/service/host`:
 
@@ -1477,6 +1715,8 @@ The start reads the snapshot only when its key and its mark agree with the log. 
 2. The id of the first event of the log, and the count of its `recovered` events. A new log and a salvage give a new key.
 3. The hash of the context of the fold: the sources, the health options, the retention with its defaults, the link policy and the expectations.
 
+The key holds only the fields of a source that the fold reads (`HealthSource`: `id`, `interval`, `slowAfter` and `maxQuiet`). Thus a change of the title, the kinds or the origins of a source keeps the snapshot (AL-156). The types hold this rule: `FoldContext` and the health functions take only `HealthSource`.
+
 The store also checks that the log has the event of the mark at the position of the mark. In each other case, the start folds the whole log:
 
 - The file has no snapshot, or a snapshot of another key or of another log.
@@ -1497,6 +1737,7 @@ The module `host.ts` gives the host of the live instance as data. A boot task st
 - `node src/install.ts install` installs the boot task, and starts it. A boot task needs an elevated shell one time. `remove` stops the supervisor and removes the task. `status` gives the state of the task, the result of one readiness probe and the times of the outside check. It exits with 1 when the runtime is not ready or the check is too short.
 - After each install, and after each change of `config.json` or `secrets.env`, start `status` when the ready wait passed. A runtime that is not ready sends no alert, and only its log tells it.
 - The boot task starts the supervisor at the start of the computer, before a logon. It starts the supervisor again 1 minute after a stop.
+- On Windows, the boot task starts the supervisor in a headless console (`conhost.exe`). A stop of the task ends only that console. Then the input of the supervisor closes, and the supervisor stops the runtime and itself (AL-141).
 - The supervisor starts the runtime with the profile `daemon` on the ports 4750 and 4751. The runtime is ready when `/readiness` passes, in its startup budget plus one readiness interval.
 - The supervisor uses `/liveness` each 10 seconds. After 3 failures in sequence, it stops the runtime and starts it again. A stuck loop fails the liveness.
 - A stop goes as the message `shutdown` on the IPC channel, because a Windows process cannot catch a signal of its parent. Then the runtime drains its pass.
@@ -1513,10 +1754,32 @@ The live path of the checkout is a link to one of two checkouts, the slots `<liv
 - `deploy.ts stage <commit>` checks out the commit in the slot that the link does not name. Then it installs and checks the code there.
 - A stage checks four things: the install, the file of the outage bundles, the private files and the load of the code.
 - On Linux, the heavy steps of a stage operate in a scope of the user manager. The scope has a memory limit and a low weight of the processor.
-- `deploy.ts swap` points the link at the staged slot in one step. A second `swap` goes back to the old slot.
+- `deploy.ts swap <a|b> <commit>` points the link at the staged slot in one step. A swap to the old slot goes back to it.
+- The swap is a compare and swap (AL-167). It refuses when the link names the target slot already, or when the target slot has another commit.
+- `stage`, `swap`, `relink`, `adopt` and `fold` hold the deploy lock `host/deploy.lock`. A second deploy on the host stops at its start.
+- Each start of the runtime writes `host/running.json`: its process, its slot and the commit of the stage of that slot.
+- `install.ts restart` and `deploy.ts status` compare that slot with the link. A runtime of the other slot gives exit code 1.
 - On Windows the link is a junction. The swap removes it and makes a new one. A start in that short gap fails, and the supervisor starts the runtime again.
 - A swap stops no process. The runtime takes the new code at its next start. `node src/install.ts restart` from the live path starts it at once.
 - A swap back to older code is a rollback. Do it only when the new code wrote no new kind of event to the log.
+
+The package links of each slot resolve in that slot (AL-144):
+
+- On Windows, pnpm makes junctions with absolute targets. A checkout that moves to slot `a` keeps links to the live path.
+- After a swap to slot `b`, those links name slot `b`. Then each start from slot `a` fails with a missing package.
+- Thus `adopt` installs slot `a` again at its new path when a link names the old path.
+- A swap refuses when a link of either slot resolves outside its slot. `deploy.ts relink [a|b]` installs a slot again at its path.
+- For the live slot, stop the boot task before `relink`.
+
+A new fold version gets its snapshot before the next start (AL-153):
+
+- A new `FOLD_VERSION` makes the next start ignore the old snapshot. Then the start folds the whole log.
+- On a small host, that fold can take longer than the ready window. The supervisor stops each start in its fold, and the work of the fold is lost.
+- The stage and the swap read `FOLD_VERSION` of the two slots. When it changes, they tell the steps.
+- `deploy.ts fold` starts `main.ts fold` of the live slot on the live home. The mode folds the log, writes the snapshot and stops.
+- The mode has no service, no listener and no window. It does not change the start marker or the last good set.
+- The lock of the home folder refuses the fold while a runtime runs. Thus stop the runtime, swap, fold, and then start the runtime.
+- A fold version change with an upgrade of the old snapshot needs no fold step. A fold step then only writes a new snapshot.
 
 The two slots keep each start on the code of one commit:
 
@@ -1527,16 +1790,21 @@ The two slots keep each start on the code of one commit:
 The supervisor keeps the code of its own start:
 
 - The supervisor loads its own files only at its start. A swap and a restart of the runtime do not change them.
-- The parts of the supervisor are the files of `SUPERVISOR_FILES` (`supervise.ts`, `host.ts` and `start-times.ts`) and the version of `@mark1russell7/service`.
-- `start-times.ts` gives the ready window. Thus a change of the ready window is a change of the supervisor.
+- The parts of the supervisor are the files of `SUPERVISOR_FILES` (`supervise.ts` and `host.ts`) and the version of `@mark1russell7/service`.
+- `host.ts` gives the ready spec, and `@mark1russell7/service` measures the window. Thus a change of the ready window is a change of the supervisor.
+- The supervisor measures each start of the runtime from its spawn to the first pass of `/readiness`. The file `host/runtime.ready.json` keeps the last 20 times (AL-84).
+- The window is 120 s until 5 ready starts. Then it is the worst time plus the worst minus the best, from 35 s to 10 minutes.
+- A missed start makes the next window at least two times longer, to 10 minutes. A ready start removes the missed starts.
+- `install.ts` reads the same file with `hostReadyWindow`, thus it waits for the window of the next start. The supervisor does not read the old file `host/start-times.json`.
 - `stage` and `swap` compare these parts in the two slots. Each of them prints the parts that change, or one line that tells no change.
 - A change of a part needs a restart of the boot task. On Linux, the boot task is a user unit of systemd.
 - The restart of the boot task is a step of the operator. Until that restart, the old supervisor starts each runtime with its old ready window.
+- A supervisor older than AL-89 starts each runtime from the real path of its slot, not through the link. Thus it starts the old code until that restart. `stage` and `swap` tell it.
 
 A deploy has these steps, in this order:
 
 1. `deploy.ts stage <commit>`. Read its line about the supervisor.
-2. `deploy.ts swap`.
+2. `deploy.ts swap <slot> <commit>`, with the slot and the commit that the stage tells.
 3. With no change of the supervisor, `node src/install.ts restart` from the live path.
 4. With a change of the supervisor, the operator restarts the boot task. This restart also starts the runtime on the new code.
 5. `node src/install.ts status` after the ready wait.
@@ -1568,6 +1836,7 @@ The runtime cannot tell the person that it stopped. A check of Healthchecks.io t
 - `heartbeatGap` gives the longest time between two success pings. It adds the period of the pings, two pass limits, the longest wait of the loop and the ping limit. Each failed pass adds a pass limit and a wait. The check lets one failed pass go.
 - The period plus the grace of the check must be this gap or more: 430 seconds for the instance. `install.ts status` reads the check with `HEALTHCHECKS_API_KEY`, and fails when it is shorter.
 - A new check alerts only after its first ping. Thus the first install checks that the check is up.
+- The runtime also reads the flips of the loud check with `HEALTHCHECKS_API_KEY`. The section "System reports" tells the joint report (AL-148).
 
 ### The chain of tries
 
@@ -1841,12 +2110,12 @@ A deploy of new code does not change the live checkout (AL-89). The live path of
 - `ALERTS_LIVE` names the live path in place of the path of the entry file (`liveRoot`). `install.ts` reads it too.
 - `node src/deploy.ts swap` points the live path at the staged slot in one step. It refuses a slot with no mark of its commit, a missing check or a change in its tree.
 - On Linux, the swap renames a new symbolic link over the old link. On Windows, it removes the junction and makes a new one. A start in that short gap fails, and the supervisor starts the runtime again.
-- The old slot stays as it is. A second `swap` goes back to it. Do not go back after the new code wrote a new kind of event to the log.
-- `node src/deploy.ts status` gives the live slot, and the commit and the mark of each slot.
+- The old slot stays as it is. A swap to it goes back to it. Do not go back after the new code wrote a new kind of event to the log.
+- `node src/deploy.ts status` gives the live slot, the commit and the mark of each slot, and the slot of the running runtime.
 
 The supervisor and `install.ts` take the folder of the package from the path of the command line (`entryRoot`), not from the URL of the module. Node resolves the links in the URL of a module, but not in the path of the command line. Thus each start of the runtime goes through the link, and takes the slot that the link names at that time.
 
-The supervisor loads its own files only at its own start. The stage and the swap tell when `supervise.ts`, `host.ts`, `start-times.ts` or the version of `@mark1russell7/service` change. Such a change needs a restart of the boot task.
+The supervisor loads its own files only at its own start. The stage and the swap tell when `supervise.ts`, `host.ts` or the version of `@mark1russell7/service` change. Such a change needs a restart of the boot task.
 
 The environment variable `PNPM` gives the program of pnpm. A path that ends in `.cjs` starts with Node. On Windows the variable is necessary, because Node cannot start `pnpm.cmd` with no shell.
 
@@ -1898,10 +2167,85 @@ The core matches the area of a report to a place with one rule for each source. 
 - A place with no position matches by the codes of each block.
 - `@mark1russell7/geo` can refuse a shape, for example a ring with fewer than 4 positions. When it refuses each shape of a block, the codes of that block decide. This error is on the safe side. The match has `shapeRefused: true`, and the view tells it.
 - A fire zone code (`ugc-fire`) covers only a fire zone code of a place. A place with no fire zone code of a state uses its forecast zone code (`ugc`) with the same code. This is on the safe side. The match has `zoneFallback: true`, and the view tells it.
+- In a block with zone codes of a state, the county codes of that state do not widen the match (AL-69). The county codes are the UGC county codes, the SAME codes and the FIPS codes of a county.
+  - A county code of a place does not decide when the place has a zone code of the same kind and state as a zone code of the block. Then the zone codes decide for that place.
+  - A place with no zone code of that kind and that state keeps the match of its county. Thus no place loses an alert that it got without a zone code.
+  - For example, a Red Flag Warning names 2 to 26 counties and no shape. A place with a fire zone code matches only when the warning names that fire zone.
 - One block that matches is enough.
 - The areas with no block key keep the union rule. Their codes are the floor of the match, and a shape adds a place in its buffer. A shape that geo refuses adds no place.
 - A position in a shape has the distance 0. The reason `place` of the assessment has `distanceKm` when the distance is in the buffer. A match by a shape only has no codes.
 - `@mark1russell7/geo` gives the distances. An edge of a polygon is a straight line in longitude and latitude, as in GeoJSON (RFC 7946).
+
+### A moving place (AL-40)
+
+A watched place has a fixed position. A moving place gets its position from the phone of its person. Thus the relevance and the rule of the life-safety warnings also cover the place where the person is at that time.
+
+The format:
+
+- A moving place is a place of the configuration with the field `moving`: `{ "device": <id>, "maxAgeMinutes": <minutes> }`. It has no `at`.
+- The field `maxAccuracyKm` of `moving` is optional. The default is `DEFAULT_MAX_ACCURACY_KM`, 2 km.
+- Its `codes` give the states and the country where the person can be. The runtime adds the zone codes near each fix.
+- A moving place has no `sharePosition`. The load refuses the field on a moving place. Thus no source gets the position.
+- A source gets the codes of a moving place with no position. Thus the sources fetch the states where the person can be.
+- `localPlaces` does not give a moving place. A moving place goes into a pass only from a fix.
+- A fix is one reading: `PositionFix` `{ place, at, accuracyKm, observedAt }`. The core gives the type and its pure rules.
+- The function `movingPlace(place, fix, now, codes)` of the core gives the `WatchedPlace` at the fix, or `undefined`.
+- It gives `undefined` with no fix, with a fix older than `maxAgeMinutes`, and with a fix in the future by more than one minute.
+- The buffer of the place at a fix is `bufferKm` plus `accuracyKm`. Thus an imprecise fix widens the match, on the safe side.
+- `nextFix` keeps the last good fix after a fix with a problem, a doubt over `maxAccuracyKm` or an older time.
+- `passPlaces(config, fixes, now, codesAt)` gives the places of a pass: the fixed places, then each moving place at a fresh fix.
+- `staleMovingPlaces` gives the moving places with no fresh fix.
+- A person watches a moving place as a fixed place: by its id in `places`, in the interest graph and in a rule of `mandatory`.
+
+The runtime:
+
+- The intake is the procedure `alerts.position` on the listener of the intake of the operator (`tellHost`). It needs the entry `tell`.
+- Give this URL to the phone: `http://<host>:<port>/tell/alerts/position`. A proxy of the private network takes the calls to the loopback listener.
+- The phone sends the token of `tell.token` as the password of HTTP Basic auth. A call with the Bearer token also passes.
+- The intake reads the JSON of OwnTracks, an open phone app: `_type` `location`, `lat`, `lon`, `acc` in meters and `tst` in seconds.
+- The intake ignores each other `_type`. It answers `[]`, the empty list of messages that OwnTracks reads.
+- The tracker id `tid` of OwnTracks is the `device` of the moving place. The intake refuses an unknown device with `BAD_REQUEST`.
+- The text of a refusal holds no position.
+- `nextFix` decides if the intake keeps a fix. The intake records the cause of the last refused fix of each place.
+- The file `fixes.json` of the home keeps the last fix of each moving place. The runtime writes it atomically with the mode 0600.
+- The runtime reads `fixes.json` at the start. It drops the fix of each place that is not a moving place of the configuration.
+- At the start of each pass, `passPlaces` gives the places of the pass. The coverage, the threats, the admission, the observe mode and the delivery read them.
+- The store of shapes, the choice of the transit feeds and the watch of each source get only the fixed places. Thus a fix changes no fetch.
+- A fix in or near an outline of the states of the file gives the zone codes near it. The search buffer is `bufferKm` plus `accuracyKm`.
+- A fix with no outline, or outside each outline, keeps the codes of the file.
+- The health route has a read for each moving place. It has the time of the last fix, `failed` for a stale place, and the cause of a refused fix.
+- The read holds no position.
+- A moving place with no fix in its age limit is not in the places of the pass.
+- A stale moving place is the private system report `system.place.stale` for the persons of the place. It has the label of the place and no position.
+- Only a copy that took a fix of the place gives this report. Thus a copy with no phone tells nothing.
+
+The holds at the edge of an area:
+
+- A fix at the edge of an area goes out and back in. Without a hold, each return starts a new episode with new message keys.
+- Thus a hold keeps the match of a moving place. The function `holdPlaces` of the core gives the holds after each pass.
+- A moving place that the area of a live incident covers holds that incident at its fix of that pass.
+- A later fix in the area moves the hold to that fix. A fix out of the area or a stale place keeps the hold.
+- The `route` reads the places of each incident with its holds (`heldPlaces`). A fix in the area wins over the hold.
+- Thus the route stays until the incident ends or the person acknowledges it. An acknowledgment stops the sends of the route.
+- The hold stays after the acknowledgment until the incident ends. Thus a flap after an acknowledgment starts no new episode.
+- The end of the incident ends its holds. A change of the area that leaves the held fix and the fix of the pass ends the route.
+- A fixed place has no hold. Its route ends when the area no longer covers it, as before.
+- The dispatcher keeps the holds in memory only. No log, no file and no payload gets a hold, because a hold has a position.
+
+The privacy rules:
+
+- The fix stays on the copy that takes it. It is in memory and in the file `fixes.json` of the home of that copy only.
+- The exchange, the sync of the configuration and the map payload do not carry a fix. A mirror and the cloud copy do not get it.
+- No log, no problem text and no why line holds a position of a fix. A why line names the place by its label.
+- The phone sends the fix over the private network of its person, to a copy on a machine of that person.
+
+The limits:
+
+- A restart loses the holds. After a restart, the first fix out of the area ends the route. A later return sends again.
+- A person who leaves the area for real keeps the route until the incident ends or the person acknowledges it.
+- Only the copy that takes the fixes watches a moving place. When that copy is down, no copy watches it.
+- A stop of the runtime loses the last fix when the home store does not have it. The next fix of the phone gives it again.
+- The phone app decides the time between two fixes. A long time between fixes makes the place stale.
 
 ### The fire zones of the NWS (AL-33)
 
@@ -2098,7 +2442,9 @@ The file `schemas.ts` of the core has one zod 4 schema for each data type of the
 ## Open points
 
 - The threat level does not read the breadth of the signals yet. No source gives the table of the zones yet.
-- The breadth gives counts and no chance. A base rate of the signals of each dimension, from the history of the reads, gives the chance of a breadth.
+- A new store gives no base rate for 30 hours: the history of the units starts empty. A restart keeps the history.
+- The reads of one unit in near hours are not independent. A signal of one day gives 24 reads with a signal. Thus the Wilson interval of a history is too narrow.
+- The calculation of the level (AL-31) does not read the weighted surprise or the pairs yet.
 - The atlas has no table of the regions of each zone yet. Until then, each series of a zone is in `unplaced`.
 - A fault of the store of the readings goes only to the output. The health payload does not show it yet.
 - The season of a baseline is in UTC. A change of the clock moves a local rush hour by 1 h in UTC. A season in the local time of the area, with the civil time of `@mark1russell7/algebra`, replaces it.

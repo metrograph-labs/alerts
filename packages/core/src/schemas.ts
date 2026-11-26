@@ -96,6 +96,7 @@ import {
   type ResponseType,
   type ScoreFactor,
   type ScorePriors,
+  type ScoreRule,
   type SendOutcome,
   type Severity,
   type ShadowScore,
@@ -134,8 +135,11 @@ import { compareCodeUnits } from "@mark1russell7/text/order";
 import {
   CONFIG_FORMAT,
   CONFIG_PART_FORMAT,
+  BILLING_FIELD,
   COPY_FORMAT,
   copyProblems,
+  DRIFT_COMMAND_KINDS,
+  DRIFT_NAME,
   LIMIT_ACCOUNT_KINDS,
   loadConfig,
   mergeParts,
@@ -145,15 +149,22 @@ import {
   type ConfigPart,
   type ContactConfig,
   type NamedPart,
+  type CopyBillingConfig,
   type CopyListen,
   type CopyPeer,
+  type CopySounder,
+  type CopySounderDevice,
   type CopySettings,
+  type DriftCommandConfig,
+  type DriftConfig,
   type ExpectationConfig,
   type OutageConfig,
   type OutagePersonConfig,
   type PersonConfig,
   type InterestDefaultsConfig,
   type LimitConfig,
+  type ChainConfig,
+  type ChainSubject,
   type PlaceConfig,
   type SecretLookup,
   type SpendConfig,
@@ -166,6 +177,7 @@ import type { ChannelDownConfig, ChannelRun } from "./channel-down.ts";
 import type { SourceClearConfig } from "./system-reports.ts";
 import type { SendLimitConfig } from "./send-limit.ts";
 import type { ThrottleConfig } from "./throttle.ts";
+import type { InstalledPackage, SoftwareMatch, SoftwarePart, SoftwareStack } from "./software.ts";
 import type { EscalationEnd, Recipient } from "./delivery.ts";
 import type { DrillConfig, DrillPath } from "./drill.ts";
 import { OPT_IN_WAYS, type OptInConfig, type OptInRecord } from "./opt-in.ts";
@@ -349,7 +361,50 @@ export const areaSchema: z.ZodType<Area, Area> = schemaOf<Area>()(
 
 /** This schema checks a thing that an event is about, other than a place. */
 export const subjectSchema: z.ZodType<Subject, Subject> = schemaOf<Subject>()(
-  z.strictObject({ system: z.string(), id: z.string(), label: z.string().exactOptional() }).readonly(),
+  z.strictObject({ system: z.string(), id: z.string(), label: z.string().exactOptional(), ranges: z.array(z.string()).readonly().exactOptional() }).readonly(),
+);
+
+/** This schema checks one installed package of a part: a purl with no version, and the version. */
+export const installedPackageSchema: z.ZodType<InstalledPackage, InstalledPackage> = schemaOf<InstalledPackage>()(
+  z
+    .strictObject({
+      purl: z.string().regex(/^pkg:[a-z0-9.+-]+\/[^@?#]+$/u, "The purl of an installed package starts with pkg: and has no version, qualifiers or subpath."),
+      version: z.string().min(1, "The version of an installed package is a non-empty text."),
+    })
+    .readonly(),
+);
+
+/** This schema checks the software of one part of a stack. */
+export const softwarePartSchema: z.ZodType<SoftwarePart, SoftwarePart> = schemaOf<SoftwarePart>()(
+  z
+    .strictObject({
+      part: z.string().min(1, "The id of a part is a non-empty text."),
+      label: z.string().exactOptional(),
+      packages: z.array(installedPackageSchema).readonly(),
+    })
+    .readonly(),
+);
+
+/** This schema checks the software of a stack (AL-197). Each part id is unique. */
+export const softwareStackSchema: z.ZodType<SoftwareStack, SoftwareStack> = schemaOf<SoftwareStack>()(
+  z
+    .strictObject({ parts: z.array(softwarePartSchema).readonly() })
+    .readonly()
+    .refine((stack) => new Set(stack.parts.map((part) => part.part)).size === stack.parts.length, "Each part of the software has a unique id."),
+);
+
+/** This schema checks one match of an advisory to a part of the software of a stack. */
+export const softwareMatchSchema: z.ZodType<SoftwareMatch, SoftwareMatch> = schemaOf<SoftwareMatch>()(
+  z
+    .strictObject({
+      part: z.string(),
+      label: z.string().exactOptional(),
+      purl: z.string(),
+      installed: z.string(),
+      verdict: z.enum(["affected", "unknown"]),
+      fixed: z.string().exactOptional(),
+    })
+    .readonly(),
 );
 
 /** This schema checks a key that two sources share for one real event. */
@@ -419,11 +474,9 @@ export const reportSchema: z.ZodType<Report, Report> = schemaOf<Report>()(
       observation: observationIdSchema,
       parameters: z.record(z.string(), z.array(z.string()).readonly()).readonly(),
     })
-    .readonly()
-    .refine((report) => report.areas.length > 0 || report.about.length > 0 || (report.addresses?.length ?? 0) > 0, {
-      error: "A report has one area or more, one subject or more, or one address or more.",
-      path: ["areas"],
-    }),
+    // A report with no area, no subject and no address has no place: a cancel, or a space weather event of the whole
+    // Earth. It reaches no person by a place. The map gives a fatal problem when it cannot read an area (AL-157).
+    .readonly(),
 );
 
 // =============================================================================
@@ -979,8 +1032,16 @@ export const assessPolicySchema: z.ZodType<AssessPolicy, AssessPolicy> = schemaO
       otherwise: levelTableSchema,
       // The schema of the relevance policy comes later in this file.
       relevance: z.lazy(() => relevancePolicySchema).exactOptional(),
+      // The schema of the priors comes later in this file.
+      priors: z.lazy(() => scorePriorsSchema).exactOptional(),
+      software: softwareStackSchema.exactOptional(),
     })
     .readonly(),
+);
+
+/** This schema checks the score rule of a person (AL-31). The risk is a number above 0, and each prefix is a code of the taxonomy. */
+export const scoreRuleSchema: z.ZodType<ScoreRule, ScoreRule> = schemaOf<ScoreRule>()(
+  z.strictObject({ risk: z.number().positive(), except: z.array(kindCodeSchema).readonly().exactOptional() }).readonly(),
 );
 
 /** This schema checks the kind of a subject. */
@@ -1055,6 +1116,7 @@ export const personWatchSchema: z.ZodType<PersonWatch, PersonWatch> = schemaOf<P
         .refine((rules) => new Set(rules.map((rule) => rule.place)).size === rules.length, "A place has one rule of the life-safety warnings at most.")
         .readonly()
         .exactOptional(),
+      score: scoreRuleSchema.exactOptional(),
     })
     .readonly(),
 );
@@ -1179,7 +1241,7 @@ export const shadowScoreSchema: z.ZodType<ShadowScore, ShadowScore> = schemaOf<S
 // =============================================================================
 
 // The key `person`, or `<system>:<id>` with a system of SUBJECT_SYSTEMS and an id that is not empty.
-const NODE_KEY = new RegExp(`^(?:person|(?:${Object.keys(SUBJECT_SYSTEMS).join("|")}):.+)$`);
+const NODE_KEY = new RegExp(`^(?:person|(?:${Object.keys(SUBJECT_SYSTEMS).map((system) => system.replaceAll(".", "[.]")).join("|")}):.+)$`);
 const nodeKeyText = z
   .string()
   .regex(NODE_KEY, "A node key is `person`, or `<system>:<id>` with a system of SUBJECT_SYSTEMS and an id that is not empty.")
@@ -1351,6 +1413,7 @@ export const assessReasonSchema: z.ZodType<AssessReason, AssessReason> = schemaO
         zoneFallback: z.literal(true).exactOptional(),
       }),
       z.strictObject({ kind: z.literal("subject"), subject: subjectWatchSchema }),
+      z.strictObject({ kind: z.literal("software"), match: softwareMatchSchema }),
       z.strictObject({ kind: z.literal("place-table"), place: placeIdSchema, reports: z.array(reportIdSchema).min(1).readonly(), level: assessedLevelSchema }),
       z.strictObject({
         kind: z.literal("table"),
@@ -1363,6 +1426,7 @@ export const assessReasonSchema: z.ZodType<AssessReason, AssessReason> = schemaO
       }),
       z.strictObject({ kind: z.literal("rule"), place: placeIdSchema.exactOptional(), index: count(), max: assessedLevelSchema }),
       z.strictObject({ kind: z.literal("shadow"), score: shadowScoreSchema }),
+      z.strictObject({ kind: z.literal("score"), risk: z.number().positive(), raised: z.boolean(), score: shadowScoreSchema.exactOptional() }),
       z.strictObject({
         kind: z.literal("reach"),
         reach: probabilitySchema,
@@ -1440,6 +1504,7 @@ export const placeConfigSchema: z.ZodType<PlaceConfig, PlaceConfig> = schemaOf<P
       codes: z.array(regionCodeSchema).readonly(),
       bufferKm: z.number(),
       sharePosition: z.array(sourceIdSchema).readonly().exactOptional(),
+      moving: z.strictObject({ device: z.string(), maxAgeMinutes: z.number(), maxAccuracyKm: z.number().exactOptional() }).readonly().exactOptional(),
     })
     .readonly(),
 );
@@ -1527,6 +1592,21 @@ export const spendConfigSchema: z.ZodType<SpendConfig, SpendConfig> = schemaOf<S
  * This schema checks the watch of one hard limit of a provider account (AL-111). `loadConfig` checks the ids and the
  * monthly limit of the account of a user.
  */
+/** This schema checks one subject of the stack of the alert chain (AL-90). */
+export const chainSubjectSchema: z.ZodType<ChainSubject, ChainSubject> = schemaOf<ChainSubject>()(
+  z.strictObject({ system: z.string().min(1), id: z.string().min(1), part: z.string().min(1) }).readonly(),
+);
+
+/** This schema checks the stack of the alert chain (AL-90). The runtime checks the stack document with its own schemas. */
+export const chainConfigSchema: z.ZodType<ChainConfig, ChainConfig> = schemaOf<ChainConfig>()(
+  z
+    .strictObject({
+      stack: z.record(z.string(), z.unknown()).readonly(),
+      subjects: z.array(chainSubjectSchema).readonly(),
+    })
+    .readonly(),
+);
+
 export const limitConfigSchema: z.ZodType<LimitConfig, LimitConfig> = schemaOf<LimitConfig>()(
   z
     .strictObject({
@@ -1666,6 +1746,30 @@ export const tellConfigSchema: z.ZodType<TellConfig, TellConfig> = schemaOf<Tell
     .readonly(),
 );
 
+/** This schema checks one command of the drift checks (AL-139): a name for the reports, a kind, and the program with its arguments. */
+export const driftCommandConfigSchema: z.ZodType<DriftCommandConfig, DriftCommandConfig> = schemaOf<DriftCommandConfig>()(
+  z
+    .strictObject({
+      name: z.string().regex(DRIFT_NAME, "The name of a drift check is letters, digits, dots, underscores and hyphens, up to 64 characters."),
+      kind: z.enum(DRIFT_COMMAND_KINDS),
+      argv: z.array(z.string().min(1, "An argument of a drift check is a non-empty text.")).min(1, "A drift check names its program.").readonly(),
+    })
+    .readonly(),
+);
+
+/** This schema checks the drift checks of the host of one copy (AL-139): one command or more, each with its own name. */
+export const driftConfigSchema: z.ZodType<DriftConfig, DriftConfig> = schemaOf<DriftConfig>()(
+  z
+    .strictObject({
+      commands: z
+        .array(driftCommandConfigSchema)
+        .min(1, "The drift checks have one command or more.")
+        .readonly()
+        .refine((commands) => new Set(commands.map((command) => command.name)).size === commands.length, "Two drift checks have the same name."),
+    })
+    .readonly(),
+);
+
 /** This schema checks the policy of a down channel (AL-65). A run opens a line at 1 failed call or more. */
 export const channelDownConfigSchema: z.ZodType<ChannelDownConfig, ChannelDownConfig> = schemaOf<ChannelDownConfig>()(
   z.strictObject({ failures: z.number().int().min(1).exactOptional(), span: durationSchema.exactOptional() }).readonly(),
@@ -1693,10 +1797,13 @@ export const alertConfigSchema: z.ZodType<AlertConfig, AlertConfig> = schemaOf<A
       expectations: z.array(expectationConfigSchema).readonly().exactOptional(),
       spend: z.array(spendConfigSchema).readonly().exactOptional(),
       limits: z.array(limitConfigSchema).readonly().exactOptional(),
+      chain: chainConfigSchema.exactOptional(),
+      software: softwareStackSchema.exactOptional(),
       link: linkPolicySchema.exactOptional(),
       outage: outageConfigSchema.exactOptional(),
       rankDelay: rankDelaysSchema.exactOptional(),
       rankFloor: durationSchema.exactOptional(),
+      reportLimit: z.number().int().min(1, "The bound of the reports is 1 or more.").exactOptional(),
       assess: assessPolicySchema.exactOptional(),
       drills: z.array(drillConfigSchema).readonly().exactOptional(),
       optIn: z.array(optInConfigSchema).readonly().exactOptional(),
@@ -1731,9 +1838,57 @@ export const copyListenSchema: z.ZodType<CopyListen, CopyListen> = schemaOf<Copy
   z.strictObject({ host: z.string().min(1, "The address is a non-empty text."), port: z.int().min(1).max(65535, "The port is 1 to 65535.") }).readonly(),
 );
 
-/** This schema checks another copy of the system: its id and the URL of its exchange. */
+/** This schema checks the billing read of the host of another copy (AL-70): the program with its arguments, the field and the stop values. */
+export const copyBillingConfigSchema: z.ZodType<CopyBillingConfig, CopyBillingConfig> = schemaOf<CopyBillingConfig>()(
+  z
+    .strictObject({
+      argv: z.array(z.string().min(1, "An argument of a billing read is a non-empty text.")).min(1, "A billing read names its program.").readonly(),
+      field: z.string().regex(BILLING_FIELD, "The field of a billing read is names with dots between them, each of letters, digits, underscores and hyphens."),
+      stoppedWhen: z
+        .array(z.union([z.string(), z.number(), z.boolean()]))
+        .min(1, "A billing read has one value of a stop or more.")
+        .readonly(),
+    })
+    .readonly(),
+);
+
+/** This schema checks another copy of the system: its id, the URL of its exchange and the billing read of its host. */
 export const copyPeerSchema: z.ZodType<CopyPeer, CopyPeer> = schemaOf<CopyPeer>()(
-  z.strictObject({ id: copyIdSchema, url: z.string().refine(isExchangeUrl, "The URL of a copy is an http or https URL with no user, no query and no fragment.") }).readonly(),
+  z
+    .strictObject({
+      id: copyIdSchema,
+      url: z.string().refine(isExchangeUrl, "The URL of a copy is an http or https URL with no user, no query and no fragment."),
+      billing: copyBillingConfigSchema.exactOptional(),
+    })
+    .readonly(),
+);
+
+/** This schema checks the program of one sound or one probe of a sounder: a program and its arguments, with no empty text. */
+const sounderArgvSchema = z.array(z.string().min(1, "An argument of a sounder program is a non-empty text.")).min(1, "A sounder program names its program.").readonly();
+
+/** This schema checks the programs of one sounder of a copy (AL-41). */
+export const copySounderDeviceSchema: z.ZodType<CopySounderDevice, CopySounderDevice> = schemaOf<CopySounderDevice>()(
+  z
+    .strictObject({
+      sound: sounderArgvSchema,
+      levels: z.partialRecord(levelSchema, sounderArgvSchema).readonly().exactOptional(),
+      probe: sounderArgvSchema.exactOptional(),
+    })
+    .readonly(),
+);
+
+/** This schema checks the sounder channel of a copy (AL-41). The channel checks the names of the devices and the counts again at the start. */
+export const copySounderSchema: z.ZodType<CopySounder, CopySounder> = schemaOf<CopySounder>()(
+  z
+    .strictObject({
+      devices: z
+        .record(z.string().min(1, "The name of a sounder is a non-empty text."), copySounderDeviceSchema)
+        .refine((devices) => Object.keys(devices).length > 0, "A sounder channel has one device or more.")
+        .readonly(),
+      sounds: z.partialRecord(levelSchema, z.int().nonnegative("A count of sounds is an integer, 0 or more.")).readonly().exactOptional(),
+      gapMs: durationSchema.exactOptional(),
+    })
+    .readonly(),
 );
 
 /** This schema checks the JSON of the settings of one copy, the file `copy.json`. Then `copyProblems` checks the ranks and the ids. */
@@ -1754,6 +1909,10 @@ export const copySettingsSchema: z.ZodType<CopySettings, CopySettings> = schemaO
         .readonly()
         .exactOptional(),
       configFrom: copyIdSchema.exactOptional(),
+      leaveChannels: z.array(channelIdSchema).readonly().exactOptional(),
+      leaveSources: z.array(sourceIdSchema).readonly().exactOptional(),
+      sounder: copySounderSchema.exactOptional(),
+      drift: driftConfigSchema.exactOptional(),
     })
     .readonly(),
 );

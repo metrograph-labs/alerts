@@ -2,7 +2,8 @@ import { readFile, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openTransitCache } from "@mark1russell7/alerts-runtime";
-import { openShapeCache, type ShapeRecords } from "@mark1russell7/alerts-shapes-nws";
+import { openShapeCache, type ShapeRecords, type ZoneHead } from "@mark1russell7/alerts-shapes-nws";
+import type { MapShape, Position } from "@mark1russell7/alerts";
 import { CATALOG_COLUMNS, catalogFeeds } from "@mark1russell7/alerts-source-gtfs-alerts";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { SEED_FORECAST_ZONES, seedShapes, seedTransit, TRANSIT_COLUMNS, type SeedShapesResult, type SeedTransitResult } from "./seed-files.ts";
@@ -19,6 +20,16 @@ function load(path: string): ShapeRecords {
   const cache = openShapeCache(path);
   try {
     return cache.load();
+  } finally {
+    cache.close();
+  }
+}
+
+/** This function reads the head and the shapes of each zone. The load of the cache reads no shapes (AL-115). */
+function loadOutlines(path: string): { readonly zone: ZoneHead; readonly shapes: readonly MapShape[] | undefined }[] {
+  const cache = openShapeCache(path);
+  try {
+    return cache.load().zones.map((zone) => ({ zone, shapes: cache.outline(zone) }));
   } finally {
     cache.close();
   }
@@ -46,10 +57,11 @@ describe("seedShapes", () => {
 
   it("has made-up states, and closed rings", () => {
     const records = load(shapes.path);
-    for (const zone of records.zones) {
+    for (const { zone, shapes: outline } of loadOutlines(shapes.path)) {
       expect(zone.state).toMatch(/^[YZ][A-Z]$/u);
       expect(zone.id.startsWith(zone.state)).toBe(true);
-      for (const shape of zone.shapes) {
+      expect(outline).toBeDefined();
+      for (const shape of outline ?? []) {
         if (shape.type !== "polygon") throw new Error("A seeded shape is a polygon.");
         const ring = shape.rings[0]!;
         expect(ring.length).toBeGreaterThanOrEqual(5);
@@ -105,6 +117,35 @@ describe("seedTransit", () => {
   it("gives the same file for the same seed", async () => {
     const again = await seedTransit(join(dir, "d"), { bytes: TRANSIT, seed: "al-103" });
     expect(await readFile(again.path, "utf8")).toBe(await readFile(transit.path, "utf8"));
+  });
+
+  it("adds the feeds near a point, and keeps the draws of the other rows", async () => {
+    const at: Position = [-98.55, 28.3];
+    const near = await seedTransit(join(dir, "near"), { bytes: TRANSIT, seed: "al-103", near: { at, feeds: 6 } });
+    expect(near.near).toBe(6);
+    const read = catalogFeeds(openTransitCache(near.path).read()!.text);
+    expect(read.problems).toEqual([]);
+    const ids = Array.from({ length: 6 }, (_, index) => `seed-near-${String(index + 1)}`);
+    const found = read.feeds.filter((feed) => ids.includes(feed.id));
+    expect(found.map((feed) => feed.id).sort()).toEqual([...ids].sort());
+    for (const feed of found) {
+      expect(feed.box.west).toBeLessThan(at[0]);
+      expect(feed.box.east).toBeGreaterThan(at[0]);
+      expect(feed.box.south).toBeLessThan(at[1]);
+      expect(feed.box.north).toBeGreaterThan(at[1]);
+    }
+    expect(new Set(found.map((feed) => new URL(feed.url).host)).size).toBe(6);
+    // The rows near the point take bytes of the size. Thus the other rows are the first rows of the plain file.
+    const others = read.feeds.filter((feed) => !ids.includes(feed.id)).map((feed) => feed.id);
+    const plain = catalogFeeds(openTransitCache(transit.path).read()!.text).feeds.map((feed) => feed.id);
+    expect(others.length).toBeGreaterThan(0);
+    expect(plain.slice(0, others.length)).toEqual(others);
+    const text = await readFile(near.path, "utf8");
+    for (const host of new Set([...text.matchAll(/https:\/\/([^/"\\,]+)/gu)].map((match) => match[1]))) expect(host).toMatch(/\.example\.test$/u);
+  });
+
+  it("refuses a count of the feeds near a point that is not a whole number", async () => {
+    await expect(seedTransit(join(dir, "bad"), { bytes: TRANSIT, seed: 1, near: { at: [0, 0], feeds: 1.5 } })).rejects.toThrow(RangeError);
   });
 });
 

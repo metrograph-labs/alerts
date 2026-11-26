@@ -1,6 +1,6 @@
 import { random, seedsFrom, type Random } from "@mark1russell7/rigor-generators";
 import { describe, expect, it } from "vitest";
-import { assess, LIFE_SAFETY_KINDS } from "./assess.ts";
+import { assess, assessWithShadow, LIFE_SAFETY_KINDS } from "./assess.ts";
 import type {
   Area,
   AssessedLevel,
@@ -25,7 +25,7 @@ import type {
 } from "./contracts.ts";
 import { ASSESSED_LEVELS } from "./contracts.ts";
 import { assessmentSchema, scorePriorsSchema, shadowScoreSchema } from "./schemas.ts";
-import { assessWithShadow, expectedOf, PRIORS_FORMAT, shadowDifferences, shadowScore } from "./score.ts";
+import { expectedOf, PRIORS_FORMAT, shadowDifferences, shadowScore } from "./score.ts";
 
 const SEEDS = seedsFrom(process.env["SEED"], [1, 2, 3, 4, 5, 6, 7, 8]);
 
@@ -400,5 +400,54 @@ describe("shadowDifferences", () => {
     const key = (pair: { readonly above: ReportId; readonly below: ReportId }): string => `${pair.above} ${pair.below}`;
     expect(new Set(differences.map(key))).toEqual(new Set(expected.map(key)));
     expect(differences).toHaveLength(expected.length);
+  });
+});
+
+describe("the longest prefix of a kind (AL-136)", () => {
+  // The rule before AL-136: a scan of each kind of the priors. The walk of the prefixes of the kind gives the same key.
+  const scan = (kinds: ScorePriors["kinds"], kind: string, pick: (prior: KindPrior) => unknown): string | undefined => {
+    let found: string | undefined;
+    for (const [key, prior] of Object.entries(kinds)) {
+      if (pick(prior) === undefined || !(kind === key || kind.startsWith(`${key}.`))) continue;
+      if (found === undefined || key.length > found.length) found = key;
+    }
+    return found;
+  };
+  const SEGMENTS = ["a", "b", "ab", ""];
+  const kindOf = (r: Random): string => Array.from({ length: r.int(1, 4) }, () => r.pick(SEGMENTS)).join(".");
+  const value = estimate(0.1, 0.05, 0.2);
+  const under = { deaths: value, injuries: value, area: "zone" as const };
+
+  it.each(SEEDS)("gives the key of the scan of the kinds, seed %i", (seed) => {
+    const r = random(seed);
+    for (let round = 0; round < 200; round += 1) {
+      const kinds: Record<string, KindPrior> = {};
+      for (let count = r.int(0, 12); count > 0; count -= 1) {
+        kinds[kindOf(r)] = {
+          ...(r.chance(0.5) ? { verified: value } : {}),
+          ...(r.chance(0.6) ? { deaths: value } : {}),
+          ...(r.chance(0.6) ? { injuries: value } : {}),
+          ...(r.chance(0.3) ? { under: { warning: under } } : {}),
+        };
+      }
+      const priors: ScorePriors = { ...PRIORS, kinds };
+      const code = kindOf(r);
+      const certainty = r.pick<Certainty>(["observed", "likely"]);
+      const score = shadowScore(incident(code, { certainty }, "warning"), priors);
+      const underKey = certainty === "observed" ? undefined : scan(kinds, code, (prior) => prior.under?.warning);
+      if (underKey !== undefined) {
+        expect(score).toMatchObject({ read: true, basis: "alert", deaths: { from: { key: underKey } } });
+        continue;
+      }
+      const deaths = scan(kinds, code, (prior) => prior.deaths);
+      const injuries = scan(kinds, code, (prior) => prior.injuries);
+      const verified = certainty === "observed" ? undefined : scan(kinds, code, (prior) => prior.verified);
+      if (deaths === undefined || injuries === undefined) {
+        expect(score.read).toBe(false);
+        continue;
+      }
+      expect(score).toMatchObject({ read: true, basis: "event", deaths: { from: { key: deaths } }, injuries: { from: { key: injuries } } });
+      if (verified !== undefined) expect(score).toMatchObject({ probability: { from: { table: "kinds", key: verified } } });
+    }
   });
 });

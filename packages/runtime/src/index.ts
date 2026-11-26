@@ -1,5 +1,5 @@
-import type { Duration, HealthPayload, HistoryPayload, Instant, InterestsPayload, MapPayload } from "@mark1russell7/alerts";
-import { add, type Quantity } from "@mark1russell7/quantity";
+import type { CopyWatch, Duration, HealthPayload, HistoryPayload, Instant, InterestsPayload, MapPayload } from "@mark1russell7/alerts";
+import { max, type Quantity } from "@mark1russell7/quantity";
 import { daemon, kubernetes, localDev, service } from "@mark1russell7/service";
 import type { Profile, ServiceBuilder, Timing, WorkerLoop } from "@mark1russell7/service";
 import { probeServer } from "@mark1russell7/service/http";
@@ -9,6 +9,7 @@ import type { OutageDeployWorker } from "./outage.ts";
 
 export { LOOPBACK, PAGE_INDEX, attachApi, pageFolder, statusOf, type ApiOptions, type StartStatus, type Status } from "./api.ts";
 export * from "./balance.ts";
+export { BLOCK_WATCH_LIMITS, startBlockWatch, type BlockPhase, type BlockWatch, type BlockWatchOptions } from "./block-watch.ts";
 export * from "./channel-watch.ts";
 export * from "./config.ts";
 export * from "./copy-store.ts";
@@ -25,11 +26,12 @@ export * from "./limit.ts";
 export * from "./log.ts";
 export * from "./loop.ts";
 export * from "./measured-start.ts";
+export * from "./metrics.ts";
 export * from "./outage.ts";
 export * from "./peers.ts";
 export * from "./replies.ts";
 export { RETIRE_EVERY, retention, retiredEvent, type RetentionOptions } from "./retention.ts";
-export { START_SNAPSHOT_EVERY, START_SNAPSHOT_FILE, START_SNAPSHOT_FLOOR } from "./start-snapshot.ts";
+export { START_SNAPSHOT_EVERY, START_SNAPSHOT_FILE, START_SNAPSHOT_FLOOR, START_SNAPSHOT_KEEP, START_SNAPSHOTS_FOLDER } from "./start-snapshot.ts";
 export { openTransitCache, TRANSIT_FILE, TRANSIT_FORMAT, type TransitCache } from "./transit.ts";
 export * from "./runtime.ts";
 export * from "./schedule.ts";
@@ -112,10 +114,17 @@ export interface Options {
   readonly outage?: OutageDeployWorker;
   /** The files of the start. The route `GET /status` gives them. */
   readonly start?: StartStatus;
+  /** The watches of the other copies. The route `GET /status` gives the time of the last read of each copy (AL-186). */
+  readonly copies?: { watches(): readonly CopyWatch[] };
   /** The exchange with the other copies of the system. */
   readonly exchange?: ServiceExchange;
   /** The procedures host of the intake of the messages of the operator (`tellHost`, AL-92). It declares its server on the service. */
   readonly tell?: { declare(svc: ServiceBuilder): ServiceBuilder };
+  /**
+   * The context of the traces (`startTelemetry`, AL-82). The service stops it in the last stage, `flush the output`. Thus each
+   * span ends before the process exits. Each profile has this stage.
+   */
+  readonly telemetry?: { shutdown(): Promise<void> };
 }
 
 /**
@@ -134,16 +143,21 @@ export interface ServiceExchange {
 
 /**
  * This function gives a profile whose drain also holds the pass in flight. The cap of the drain is
- * the cap of the profile plus `passLimit`. Thus a shutdown does not cut a pass.
+ * the larger of the cap of the profile and `passLimit`. A pass ends within `passLimit`, and the
+ * drain waits for it and for the other work of the drain together. Thus a shutdown does not cut a pass.
  */
 export const holdingPasses = (profile: Profile, passLimit: Duration): Profile => ({
   ...profile,
-  phases: profile.phases?.map((phase) => (phase.name === "drain" ? { ...phase, cap: add(phase.cap, { value: passLimit, unit: "ms" }) } : phase)),
+  phases: profile.phases?.map((phase) => (phase.name === "drain" ? { ...phase, cap: max(phase.cap, { value: passLimit, unit: "ms" }) } : phase)),
 });
 
 /** This function adds the worker of the deploy of the outage call, when the instance has one. */
 const withOutage = (svc: ServiceBuilder, outage: OutageDeployWorker | undefined): ServiceBuilder =>
   outage === undefined ? svc : svc.worker("outage", outage.worker.knobs, outage.worker);
+
+// The context of the traces stops in the last stage, after the log and the servers close.
+const withTelemetry = (svc: ServiceBuilder, telemetry: Options["telemetry"]): ServiceBuilder =>
+  telemetry === undefined ? svc : svc.onPhase("flush the output", () => telemetry.shutdown());
 
 /**
  * This function declares the one service of the process. It starts nothing. `describe()` gives the
@@ -155,13 +169,13 @@ export const declare = (options: Options): ServiceBuilder => {
   // The worker of the exchange stops before the log closes, because the service closes each worker before its dependencies.
   const withWorker = exchange?.loop === undefined ? svc : svc.worker(EXCHANGE_WORKER, exchange.loop.knobs, exchange.loop);
   const withHost = exchange?.host === undefined ? withWorker : exchange.host.declare(withWorker);
-  return options.tell === undefined ? withHost : options.tell.declare(withHost);
+  return withTelemetry(options.tell === undefined ? withHost : options.tell.declare(withHost), options.telemetry);
 };
 
 // The parts of the service of each runtime: the API, the dependencies, the workers of the passes and of the outage call, the checks and the policies.
 const parts = (options: Options): ServiceBuilder =>
   withOutage(
-    attachApi(service("runtime"), { port: options.port, loop: options.loop, map: options.map, health: options.health, history: options.history, interests: options.interests, page: options.page, ...(options.outage === undefined ? {} : { outage: options.outage }), ...(options.start === undefined ? {} : { start: options.start }) })
+    attachApi(service("runtime"), { port: options.port, loop: options.loop, map: options.map, health: options.health, history: options.history, interests: options.interests, page: options.page, ...(options.outage === undefined ? {} : { outage: options.outage }), ...(options.start === undefined ? {} : { start: options.start }), ...(options.copies === undefined ? {} : { copies: options.copies }) })
       // The dependencies close in the reverse sequence of their connect. Thus the lock of the home folder goes after the log.
       .dependency("home", { system: null, knobs: {}, operations: {} }, { connect: () => undefined, close: () => options.home?.release() })
       .dependency("log", { system: null, knobs: {}, operations: {} }, { connect: () => undefined, close: () => options.log.close() })

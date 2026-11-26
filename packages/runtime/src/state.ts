@@ -6,6 +6,7 @@
 import {
   add,
   addSystemReports,
+  blockCause,
   DEFAULT_LINK_POLICY,
   LOOP_BLOCK_WINDOW,
   EMPTY_STATE,
@@ -46,7 +47,7 @@ import {
   type MergeState,
   type Report,
   type ReportId,
-  type SourceDescriptor,
+  type HealthSource,
   type SystemLines,
   type Tombstone,
 } from "@mark1russell7/alerts";
@@ -56,7 +57,8 @@ import { retention, retiredEvent, RETIRE_EVERY, type RetentionOptions } from "./
 
 /** What the fold reads from the configuration: the descriptors of the sources, the options of the health and the retention. */
 export interface FoldContext {
-  readonly sources: readonly SourceDescriptor[];
+  /** The sources. The fold reads only the fields of `HealthSource` (AL-156), thus the key of a snapshot holds only these fields. */
+  readonly sources: readonly HealthSource[];
   readonly health?: HealthOptions;
   /**
    * The retention of old incidents (AL-109). With it, the fold retires on a cadence of the event time, with no event in
@@ -281,18 +283,126 @@ export const EMPTY_RUNTIME: RuntimeState = {
 };
 
 /**
+ * The lists that one batch of folds made (AL-150). Only the last state of the batch leaves it, thus a fold of the batch adds
+ * an item to such a list in place. A list from outside the batch gets a copy one time. Thus a batch of n starts costs O(n),
+ * not O(n²).
+ */
+export type FoldScratch = WeakSet<readonly unknown[]>;
+
+/** This function gives the scratch of a new batch of folds. Give it to each fold of the batch, and keep only the last state. */
+export function foldScratch(): FoldScratch {
+  return new WeakSet();
+}
+
+// The list with the item at its end. A list of the scratch grows in place. Each other list gets a copy, and the copy joins the scratch.
+function appended<T>(list: readonly T[], item: T, scratch: FoldScratch | undefined): readonly T[] {
+  if (scratch?.has(list) === true) {
+    (list as T[]).push(item);
+    return list;
+  }
+  const next = [...list, item];
+  scratch?.add(next);
+  return next;
+}
+
+/**
+ * The records of each source that the folds of one scope made: `cursors`, `fetched`, `health` and `modes` (AL-136). A fold
+ * sets the key of a record of the scope in place. A record from outside the scope gets a copy one time. Thus a scope of n
+ * fetches of n sources costs O(n), not O(n²).
+ *
+ * The scope of the runtime is the fetches of one pass, thus each fetch is its own batch and its own write. Thus a fold can
+ * change a record of the last state. These rules keep the state correct:
+ * - Each batch goes through `recordBatch`. When its write fails, the batch puts back each old value, and the state stays as it was.
+ * - When a reader keeps a state for longer than one turn of the loop (the cut of a snapshot), the scope ends before the next
+ *   fold. The next fold then copies each record one time, and the records of the kept state do not change.
+ */
+export interface RecordScratch {
+  /** The records that the folds of the scope made. */
+  readonly owned: WeakSet<object>;
+  /** The old value of each key that the open batch set in place. It is undefined when no batch is open. */
+  undo: RecordUndo[] | undefined;
+}
+
+/** The old value of one key of a record. `had` is false when the record did not have the key. */
+export interface RecordUndo {
+  readonly record: Record<string, unknown>;
+  readonly key: string;
+  readonly had: boolean;
+  readonly value: unknown;
+}
+
+/** This function gives the record scratch of a new scope. Give it to each fold of the scope. */
+export function recordScratch(): RecordScratch {
+  return { owned: new WeakSet(), undo: undefined };
+}
+
+/**
+ * This function does one batch of folds with the record scratch. When `work` throws, the function puts back each value
+ * that the batch set in place, and then it throws the error again.
+ */
+export function recordBatch<T>(scratch: RecordScratch, work: () => T): T {
+  const undo: RecordUndo[] = [];
+  scratch.undo = undo;
+  try {
+    return work();
+  } catch (error) {
+    for (let at = undo.length - 1; at >= 0; at -= 1) {
+      const { record, key, had, value } = undo[at]!;
+      if (had) record[key] = value;
+      else delete record[key];
+    }
+    throw error;
+  } finally {
+    scratch.undo = undefined;
+  }
+}
+
+// The record with the value at the key. A record of the scratch changes in place. Each other record gets a copy, and the copy joins the scratch.
+function assigned<V>(record: Readonly<Record<string, V>>, key: string, value: V, scratch: RecordScratch | undefined): Readonly<Record<string, V>> {
+  if (scratch?.owned.has(record) === true) {
+    const own = record as Record<string, V>;
+    scratch.undo?.push({ record: own, key, had: Object.hasOwn(own, key), value: own[key] });
+    own[key] = value;
+    return own;
+  }
+  const next = { ...record, [key]: value };
+  scratch?.owned.add(next);
+  return next;
+}
+
+// The descriptor of each source id, one index for each array of descriptors. The first descriptor of an id wins, as in a find.
+const sourceIndexes = new WeakMap<readonly HealthSource[], ReadonlyMap<string, HealthSource>>();
+
+// The descriptor of a source id, or undefined when the context has no source with the id.
+function sourceOf(sources: readonly HealthSource[], id: string): HealthSource | undefined {
+  let index = sourceIndexes.get(sources);
+  if (index === undefined) {
+    const map = new Map<string, HealthSource>();
+    for (const source of sources) if (!map.has(source.id)) map.set(source.id, source);
+    index = map;
+    sourceIndexes.set(sources, index);
+  }
+  return index.get(id);
+}
+
+/**
  * This function adds one event to the state. With a retention in the context, a step of the retirement can come before
  * the event (AL-109). `retired` gets the merge state after the step, and after the fold of a `retired` event.
+ *
+ * With `scratch`, the fold can change a list that an earlier fold of the same batch made (`FoldScratch`). Then only the
+ * last state of the batch is a value: each earlier state of the batch can change.
+ *
+ * With `records`, the fold can change a record of each source that an earlier fold of the same scope made (`RecordScratch`).
  */
-export function fold(state: RuntimeState, event: RuntimeEvent, context: FoldContext, retired?: RetireHook): RuntimeState {
-  const next = foldEvent(retireStep(state, event, context, retired), event, context);
+export function fold(state: RuntimeState, event: RuntimeEvent, context: FoldContext, retired?: RetireHook, scratch?: FoldScratch, records?: RecordScratch): RuntimeState {
+  const next = foldEvent(retireStep(state, event, context, retired), event, context, scratch, records);
   if (event.type === "retired") retired?.(next.merge);
   return next;
 }
 
 // The fold of one event, with no step of the retirement.
-function foldEvent(state: RuntimeState, event: RuntimeEvent, context: FoldContext): RuntimeState {
-  const rest = foldRest(state, event, context);
+function foldEvent(state: RuntimeState, event: RuntimeEvent, context: FoldContext, scratch?: FoldScratch, records?: RecordScratch): RuntimeState {
+  const rest = foldRest(state, event, context, scratch, records);
   // A tombstone of this copy keeps the parts of a retired report out of each side. The own merge state applies its own tombstones.
   const parts = event.type === "import" ? withoutRetired(partsOf(event.event), rest.own.merge.retired) : partsOf(event);
   if (parts === undefined) return rest;
@@ -312,6 +422,9 @@ function foldEvent(state: RuntimeState, event: RuntimeEvent, context: FoldContex
  */
 export function rebuild(events: Iterable<RuntimeEvent>, context: FoldContext, retired?: RetireHook, from?: RuntimeState): RuntimeState {
   let state = EMPTY_RUNTIME;
+  // Only the last state of the rebuild leaves it. Thus the lists and the records of each source of the rebuild grow in place.
+  const scratch = foldScratch();
+  const records = recordScratch();
   const own = collector();
   const imported = collector();
   if (from !== undefined) {
@@ -341,7 +454,7 @@ export function rebuild(events: Iterable<RuntimeEvent>, context: FoldContext, re
     // The fold moves its own merge state in normal form. A step can change which copy of a report the normal form keeps.
     // Thus the own parts get the normal form before the step moves them.
     if (event.type === "clock") own.compact(before);
-    state = foldRest(state, event, context);
+    state = foldRest(state, event, context, scratch, records);
     // A step moves the own parts before it, as the fold moves its own merge state. The parts after it are in the new frame.
     if (event.type === "clock") own.shift(event.size);
     if (event.type === "retired") {
@@ -488,7 +601,7 @@ function partsOf(event: RuntimeEvent | SharedEvent): MergeParts | undefined {
 }
 
 // Each change of an event other than the merge.
-function foldRest(state: RuntimeState, event: RuntimeEvent, context: FoldContext): RuntimeState {
+function foldRest(state: RuntimeState, event: RuntimeEvent, context: FoldContext, scratch?: FoldScratch, records?: RecordScratch): RuntimeState {
   const base: RuntimeState = { ...state, time: Math.max(state.time, event.time) };
   const start = state.start ?? event.time;
   switch (event.type) {
@@ -499,24 +612,24 @@ function foldRest(state: RuntimeState, event: RuntimeEvent, context: FoldContext
     }
     case "fetch": {
       const { record } = event;
-      const descriptor = context.sources.find((source) => source.id === record.source);
-      const cursors = event.cursor === undefined ? state.cursors : { ...state.cursors, [record.source]: event.cursor };
-      const next: RuntimeState = { ...base, start, cursors, fetched: { ...state.fetched, [record.source]: Math.max(state.fetched[record.source] ?? record.at, record.at) } };
+      const descriptor = sourceOf(context.sources, record.source);
+      const cursors = event.cursor === undefined ? state.cursors : assigned(state.cursors, record.source, event.cursor, records);
+      const next: RuntimeState = { ...base, start, cursors, fetched: assigned(state.fetched, record.source, Math.max(state.fetched[record.source] ?? record.at, record.at), records) };
       // A source that is not in the configuration keeps its reports, and it has no health.
       if (descriptor === undefined) return next;
       const track = state.health[record.source] ?? startHealth(record.source, start);
-      return { ...next, health: { ...state.health, [record.source]: observeFetch(track, record, descriptor, context.health).track } };
+      return { ...next, health: assigned(state.health, record.source, observeFetch(track, record, descriptor, context.health).track, records) };
     }
     case "system":
       return { ...base, lines: addSystemReports(state.lines, event.reports, event.observations) };
     case "escalation":
-      return { ...base, starts: [...state.starts, event.start] };
+      return { ...base, starts: appended(state.starts, event.start, scratch) };
     case "hold":
-      return { ...base, holds: [...state.holds, event.hold] };
+      return { ...base, holds: appended(state.holds, event.hold, scratch) };
     case "suppressed":
-      return { ...base, suppressions: [...state.suppressions, event.suppression] };
+      return { ...base, suppressions: appended(state.suppressions, event.suppression, scratch) };
     case "escalation-end": {
-      const own = { ...state.own, escalationEnds: [...state.own.escalationEnds, event.end] };
+      const own = { ...state.own, escalationEnds: appended(state.own.escalationEnds, event.end, scratch) };
       return { ...base, own, escalationEnds: joinedEnds(own, state.imported) };
     }
     case "cancelled":
@@ -543,7 +656,7 @@ function foldRest(state: RuntimeState, event: RuntimeEvent, context: FoldContext
     }
     case "loop": {
       // Only the blocks of the window before this block stay. Thus the list stays short, and a rebuild gives the same list.
-      const blocks = [...state.blocks.filter((block) => event.time - block.at < LOOP_BLOCK_WINDOW), { at: event.time, size: event.size }];
+      const blocks = [...state.blocks.filter((block) => event.time - block.at < LOOP_BLOCK_WINDOW), { at: event.time, size: event.size, ...blockCause(event) }];
       return { ...base, blocks };
     }
     case "recovered": {
@@ -564,7 +677,7 @@ function foldRest(state: RuntimeState, event: RuntimeEvent, context: FoldContext
       // The first event of each mode sets its time. A source that went live does not observe again.
       if (event.mode === "live" ? track.live !== undefined : track.since !== undefined || track.live !== undefined) return base;
       const next: SourceModeTrack = event.mode === "live" ? { ...track, live: event.time } : { since: event.time };
-      return { ...base, modes: { ...state.modes, [event.source]: next } };
+      return { ...base, modes: assigned(state.modes, event.source, next, records) };
     }
     default:
       return base;

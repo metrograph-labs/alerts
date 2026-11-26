@@ -10,20 +10,25 @@
 import { canonicalJson } from "@mark1russell7/rigor-generators";
 import { countOf } from "@mark1russell7/text/english";
 import { compareCodeUnits } from "@mark1russell7/text/order";
-import { BALANCE_KIND, CHANNEL_KIND, CLOCK_KIND, CONTEXT_KINDS, COPY_KIND, COVERAGE_KIND, DRILL_KIND, ESCALATION_KIND, hasKind, HEALTH_KIND, LIMIT_KIND, LOG_KIND, LOOP_KIND, matchPlaces, PERSON_SUBJECT, QUOTA_KIND, STORE_KIND, USE_KIND } from "./assess.ts";
+import { BALANCE_KIND, CHANNEL_KIND, CLOCK_KIND, CONTEXT_KINDS, COPY_KIND, COVERAGE_KIND, DRILL_KIND, ESCALATION_KIND, hasKind, HEALTH_KIND, DRIFT_KIND, JOINT_KIND, LIMIT_KIND, LOG_KIND, LOOP_KIND, matchPlaces, PERSON_SUBJECT, PLACE_KIND, QUOTA_KIND, REDUNDANCY_KIND, STORE_KIND, USE_KIND } from "./assess.ts";
 import { isPrivate } from "./audience.ts";
 import type {
   Area,
   BalanceStage,
   ChannelId,
   ChannelQuota,
+  CopyBillingState,
   CopyStage,
   CopyWatch,
   Coverage,
+  DriftCheck,
+  DriftStage,
   Duration,
   HealthState,
   Incident,
   Instant,
+  JointDown,
+  JointStage,
   Kind,
   LimitUse,
   Observation,
@@ -32,6 +37,8 @@ import type {
   PlaceId,
   ProviderBalance,
   QuotaStage,
+  RedundancyStage,
+  RedundancyState,
   Report,
   ResponseType,
   Severity,
@@ -69,7 +76,7 @@ export const LOG_SUBJECT = "alerts.log";
 
 /**
  * The subject system of a copy of the system. The id of a subject is the id of the copy. A report of another copy is about
- * that copy. A block of the event loop is about this copy (AL-88).
+ * that copy. A block of the event loop is about this copy (AL-88). The joint down time is about the id `all`: the copies together (AL-148).
  */
 export const COPY_SUBJECT = "alerts.copy";
 
@@ -84,22 +91,45 @@ export const LIMIT_SUBJECT = "alerts.limit";
 
 /** The subject system of an incident. The id of a subject is a report of the incident: an exhausted escalation links its warning. */
 export const INCIDENT_SUBJECT = "alerts.incident";
+/** The subject system of a function of the alert chain (AL-90). The id of a subject is the id of the part of the function in the stack. */
+export const FUNCTION_SUBJECT = "alerts.function";
+
+/** The subject system of a watched place (AL-40). The id of a subject is the id of a place. */
+export const PLACE_SUBJECT = "alerts.place";
 
 /**
  * These systems hold the subjects of the reports about the system itself (AL-121). A report of one of them reaches a
  * person only when the person watches its system in `PersonWatch.subjects`. Thus each system needs a person who watches it.
- * The drill reports, the person reports and the incident reports have their own routes, and they are not in the list.
+ * The drill, person, place and incident reports have their own routes, and they are not in the list.
  */
-export const OPERATOR_SYSTEMS: readonly string[] = [SOURCE_SUBJECT, CHANNEL_SUBJECT, CLOCK_SUBJECT, LOG_SUBJECT, COPY_SUBJECT, STORE_SUBJECT, LIMIT_SUBJECT];
+export const OPERATOR_SYSTEMS: readonly string[] = [
+  SOURCE_SUBJECT,
+  CHANNEL_SUBJECT,
+  CLOCK_SUBJECT,
+  LOG_SUBJECT,
+  COPY_SUBJECT,
+  STORE_SUBJECT,
+  LIMIT_SUBJECT,
+  FUNCTION_SUBJECT,
+];
 
 /** These systems are each system of the subjects of a report. A watch of another system `alerts.*` matches no report. */
-export const REPORT_SYSTEMS: readonly string[] = [...OPERATOR_SYSTEMS, DRILL_SUBJECT, INCIDENT_SUBJECT, PERSON_SUBJECT];
+export const REPORT_SYSTEMS: readonly string[] = [...OPERATOR_SYSTEMS, DRILL_SUBJECT, INCIDENT_SUBJECT, PERSON_SUBJECT, PLACE_SUBJECT];
 
 /** The stages of a quota, from the first to the last. */
 export const QUOTA_STAGES: readonly QuotaStage[] = ["low", "reserve", "spent"];
 
 /** The stages of a balance. `empty` holds `low`. `unread` comes from the time of the last read. */
 export const BALANCE_STAGES: readonly BalanceStage[] = ["low", "empty", "unread"];
+
+/** The stages of the joint down time of the copies (AL-148). `unread` comes from the time of the last read. */
+export const JOINT_STAGES: readonly JointStage[] = ["over", "unread"];
+
+/** The stages of the drift check of a copy host (AL-139). `unread` comes from the time of the last read. */
+export const DRIFT_STAGES: readonly DriftStage[] = ["changed", "unread"];
+
+/** The most names of changes in the headline of a drift report. The parameter `steps` holds each name of the read. */
+export const DRIFT_STEPS_SHOWN = 10;
 
 /** The stages of the use of a hard limit (AL-111). `level` comes from the last read that passed. `unread` comes from its time. */
 export const USE_STAGES: readonly UseStage[] = ["level", "unread"];
@@ -209,6 +239,12 @@ export interface LoopBlock {
   readonly at: Instant;
   /** The length of the block in milliseconds. */
   readonly size: Duration;
+  /** The processor time of the thread in the block, in milliseconds (AL-180). A block with much less processor time than its length waited. */
+  readonly cpu?: Duration;
+  /** The count of the reads of memory pages from the disk in the block, for example from swap (AL-180). */
+  readonly faults?: number;
+  /** The time of the pauses of the garbage collector in the block, in milliseconds (AL-180). */
+  readonly gc?: Duration;
 }
 
 /** The shortest block of the event loop that is a condition (AL-88). The runtime records only blocks of this length or longer. */
@@ -244,6 +280,31 @@ export function blockSizeText(size: Duration): string {
 }
 
 /**
+ * This function gives the cause of a block in a text, from its processor time, its page reads and its pauses (AL-180). It
+ * gives `undefined` for a block with none of them. A block with less processor time than half its length was a wait.
+ */
+export function blockCauseText(block: LoopBlock): string | undefined {
+  const parts: string[] = [];
+  if (block.cpu !== undefined) parts.push(`${blockSizeText(block.cpu)} of processor time`);
+  if (block.faults !== undefined) parts.push(`${countOf(block.faults, "page read")} from the disk`);
+  if (block.gc !== undefined) parts.push(`${blockSizeText(block.gc)} of pauses of the garbage collector`);
+  if (parts.length === 0) return undefined;
+  const last = parts.pop() ?? "";
+  const list = parts.length === 0 ? last : `${parts.join(", ")} and ${last}`;
+  const kind = block.cpu === undefined ? "" : block.cpu * 2 < block.size ? " Thus the block was mostly a wait, for example for swap or the disk." : " Thus the block was mostly work of the processor.";
+  return `The block had ${list}.${kind}`;
+}
+
+/** This function gives the measures of the cause of a block (AL-180), with no field for a measure that the block lacks. */
+export function blockCause(block: Pick<LoopBlock, "cpu" | "faults" | "gc">): Pick<LoopBlock, "cpu" | "faults" | "gc"> {
+  return {
+    ...(block.cpu === undefined ? {} : { cpu: block.cpu }),
+    ...(block.faults === undefined ? {} : { faults: block.faults }),
+    ...(block.gc === undefined ? {} : { gc: block.gc }),
+  };
+}
+
+/**
  * The fill of one family of a store of the runtime (AL-86), as the fire zones of the store of shapes. A store fills after each
  * start. A family with no entry at the end of its window is a condition.
  */
@@ -260,6 +321,30 @@ export interface StoreFill {
   readonly within: Duration;
   /** The sources that feed the store. A person who watches one of them gets the report. */
   readonly sources: readonly SourceId[];
+}
+
+/**
+ * The fill of a store with a bound (AL-145). At the bound, the store keeps out the entries of low priority. They wait
+ * outside until the store has space again.
+ */
+export interface StoreBound {
+  /** The id of the store, as `state`. */
+  readonly store: string;
+  /** The family of the entries, as `reports`. */
+  readonly family: string;
+  /** The count of the entries of the family at the time of the snapshot. */
+  readonly entries: number;
+  /** The bound of the count of the entries. */
+  readonly limit: number;
+  /** The count of the entries that wait outside the store at the time of the snapshot. */
+  readonly waiting: number;
+  /** The sources of the entries that wait. A person who watches one of them gets the report. */
+  readonly sources: readonly SourceId[];
+}
+
+/** This function tells if a store is at its bound: it has `limit` entries or more, or an entry waits outside it. */
+export function atBound(bound: StoreBound): boolean {
+  return bound.entries >= bound.limit || bound.waiting > 0;
 }
 
 /** The time after a start in which each family of a store gets its first entry (AL-86). */
@@ -356,6 +441,18 @@ export interface SystemSnapshot {
    * condition. With no list, each open line of a use stays open. Only one copy reports the stage `level` (`reportsShared`).
    */
   readonly uses?: readonly LimitUse[];
+  /**
+   * The watch of the joint down time of the copies (AL-148). Each stage that `jointStages` gives is a condition. The value
+   * `null` tells that this copy has no watch: each open line of the joint down time ends. With no field, each open line
+   * stays open. Only one copy reports the stage `over` (`reportsShared`).
+   */
+  readonly joint?: JointDown | null;
+  /**
+   * The drift checks of the host of this copy (AL-139). Each stage that `driftStages` gives is a condition. The value
+   * `null` tells that this copy has no drift check: each open line of a drift ends. With no field, each open line stays
+   * open. Each stage is a fact of this copy, because each copy has its own checks.
+   */
+  readonly drift?: readonly DriftCheck[] | null;
   /** The id of this copy. With the watches of the other copies, it chooses the copy that reports the facts of a shared account. */
   readonly copy?: string;
   /**
@@ -374,6 +471,11 @@ export interface SystemSnapshot {
    * stays a condition while its family has no entry, also after a restart. With no list, each open line of a store stays open.
    */
   readonly stores?: readonly StoreFill[];
+  /**
+   * The stores with a bound (AL-145). A store at its bound (`atBound`) is a condition. With no list, each open line of a
+   * bound stays open.
+   */
+  readonly bounds?: readonly StoreBound[];
   /**
    * The drills of the copy. A run that waits for its acknowledgment is a condition, and a failed last run is a condition.
    * With no drills, each open line of a drill stays open.
@@ -409,6 +511,28 @@ export interface SystemSnapshot {
   readonly observing?: readonly ObserveCondition[];
   /** The policy of the end of the line of a down source (AL-75). Each absent field has its value of `DEFAULT_SOURCE_CLEAR`. */
   readonly sourceClear?: SourceClearConfig;
+  /**
+   * The functions of the alert chain, from the open incidents of their parts (AL-90). A function that stops is a condition,
+   * and a function with a new single point of failure is a condition. With no list, each open line of a function stays open.
+   */
+  readonly redundancy?: readonly RedundancyState[];
+  /**
+   * The stale moving places of this copy (AL-40). Each one is a private condition for the persons of the place. With no
+   * list, each open line of a moving place stays open.
+   */
+  readonly stale?: readonly StalePlace[];
+}
+
+/**
+ * A moving place with no fresh fix on this copy (AL-40). It holds the label of the place and no position. The runtime
+ * gives it only for a place that took a fix on this copy. Thus a copy that takes no fixes tells nothing.
+ */
+export interface StalePlace {
+  readonly place: PlaceId;
+  /** The label of the place, for the text of the report. */
+  readonly label: string;
+  /** The persons who watch the place. Only they get the report. */
+  readonly persons: readonly PersonId[];
 }
 
 /** The result of one step of the fold. */
@@ -500,6 +624,38 @@ export function useLevelsReached(use: LimitUse): number[] {
   const level = use.read?.level;
   if (level === undefined) return [];
   return [...new Set(use.levels)].filter((one) => one <= level).sort((a, b) => a - b);
+}
+
+/**
+ * This function gives the stages of the joint down time of the copies at the time `at`, in the order of `JOINT_STAGES` (AL-148).
+ *
+ * - `over` comes from the last read that passed, also when the read is old. The down time must be longer than the limit.
+ * - `unread` starts at `jointUnreadAt`. A read that passes ends it.
+ */
+export function jointStages(joint: JointDown, at: Instant): JointStage[] {
+  const reached: Readonly<Record<JointStage, boolean>> = { over: joint.read !== undefined && joint.read.down > joint.limit, unread: at >= jointUnreadAt(joint) };
+  return JOINT_STAGES.filter((stage) => reached[stage]);
+}
+
+/** This function gives the time of the stage `unread` of the joint down time: the maximum age after the last read. With no read, the age counts from the start. */
+export function jointUnreadAt(joint: JointDown): Instant {
+  return (joint.read?.at ?? joint.since) + joint.maxAge;
+}
+
+/**
+ * This function gives the stages of the drift check of a copy host at the time `at`, in the order of `DRIFT_STAGES` (AL-139).
+ *
+ * - `changed` comes from the last read that passed, also when the read is old. The read must count one change or more.
+ * - `unread` starts at `driftUnreadAt`. A read that passes ends it.
+ */
+export function driftStages(check: DriftCheck, at: Instant): DriftStage[] {
+  const reached: Readonly<Record<DriftStage, boolean>> = { changed: check.read !== undefined && check.read.changes > 0, unread: at >= driftUnreadAt(check) };
+  return DRIFT_STAGES.filter((stage) => reached[stage]);
+}
+
+/** This function gives the time of the stage `unread` of a drift check: the maximum age after the last read. With no read, the age counts from the start. */
+export function driftUnreadAt(check: DriftCheck): Instant {
+  return (check.read?.at ?? check.since) + check.maxAge;
 }
 
 /**
@@ -599,6 +755,8 @@ export function gapGrade(entry: Coverage, threatened: boolean): { readonly sever
  * - Each stage of a quota, each stage of a balance and each stage of another copy. Only one copy reports the stages
  *   `low` and `empty` of a balance (`reportsShared`). The stage `unread` is a fact of each copy.
  * - Each level that the use of a hard limit reached, and the stage `unread` of its watch. Only one copy reports a level (`reportsShared`).
+ * - Each stage of the joint down time of the copies (AL-148). Only one copy reports `over` (`reportsShared`).
+ * - Each stage of the drift check of the host of this copy (AL-139). Each stage is a fact of this copy.
  * - The latest step of the wall clock in `CLOCK_STEP_WINDOW` before `at`.
  * - The latest recovery of the log in `LOG_RECOVERY_WINDOW` before `at`.
  * - Each run of a drill that waits for its acknowledgment, and each drill whose last run failed.
@@ -657,6 +815,22 @@ export function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: 
       }
     }
   }
+  // The joint down time is a fact of the shared check, and one copy reports it. The stage unread is a fact of this copy.
+  const joint = snapshot.joint ?? undefined;
+  if (joint !== undefined) {
+    for (const stage of jointStages(joint, at)) if (stage === "unread" || shared) conditions.set(jointName(stage), jointCondition(joint, stage, at));
+    // A watch with no read keeps its open line over. Thus after a restart, a failed first read sends no cancel and no new alert.
+    const over = jointName("over");
+    if (joint.read === undefined && shared && lines.open[over] !== undefined) conditions.set(over, jointCondition(joint, "over", at));
+  }
+  // Each copy has its own drift checks in its settings (copy.json). Thus each stage of a drift is a fact of this copy.
+  for (const check of snapshot.drift ?? []) {
+    for (const stage of driftStages(check, at)) conditions.set(driftName(check.name, stage), driftCondition(check, stage, at));
+    // A check with no read keeps its open line changed. Thus after a restart, a failed first read sends no cancel and no new alert.
+    const changed = driftName(check.name, "changed");
+    const open = lines.open[changed];
+    if (check.read === undefined && open !== undefined) conditions.set(changed, driftCondition(check, "changed", at, open));
+  }
   for (const watch of snapshot.copies ?? []) {
     for (const stage of copyStages(watch, at)) conditions.set(copyName(watch.copy, stage), copyCondition(watch, stage, at));
     // A copy that starts again and again answers in each try, and it stops after each try. Thus an open line of the copy
@@ -707,6 +881,13 @@ export function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: 
     const name = storeName(fill);
     if (fill.entries === 0 && (at >= storeEmptyAt(fill) || lines.open[name] !== undefined)) conditions.set(name, storeCondition(fill, titles));
   }
+  for (const bound of snapshot.bounds ?? []) if (atBound(bound)) conditions.set(boundName(bound), boundCondition(bound, titles));
+  for (const state of snapshot.redundancy ?? []) {
+    const stage = redundancyStage(state);
+    if (stage !== undefined) conditions.set(redundancyName(state.function.id, stage), redundancyCondition(state, stage));
+  }
+  // A stale moving place is a fact of this copy: only this copy takes the fixes of the phone. A place with no person tells nobody.
+  for (const entry of snapshot.stale ?? []) if (entry.persons.length > 0) conditions.set(placeName(snapshot.copy, entry.place), staleCondition(entry, snapshot.copy));
   const names = [...new Set([...Object.keys(lines.open), ...conditions.keys()])].sort(compareCodeUnits);
   let count = lines.count;
   const open = new Map(Object.entries(lines.open));
@@ -718,6 +899,8 @@ export function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: 
     if (condition === undefined && snapshot.quotas === undefined && name.startsWith(QUOTA_LINE)) continue;
     if (condition === undefined && snapshot.balances === undefined && name.startsWith(BALANCE_LINE)) continue;
     if (condition === undefined && snapshot.uses === undefined && name.startsWith(USE_LINE)) continue;
+    if (condition === undefined && snapshot.joint === undefined && name.startsWith(JOINT_LINE)) continue;
+    if (condition === undefined && snapshot.drift === undefined && name.startsWith(DRIFT_LINE)) continue;
     if (condition === undefined && unreadUses.some((prefix) => name.startsWith(prefix))) continue;
     if (condition === undefined && snapshot.copies === undefined && name.startsWith(COPY_LINE)) continue;
     if (condition === undefined && snapshot.drills === undefined && name.startsWith(DRILL_LINE)) continue;
@@ -727,6 +910,10 @@ export function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: 
     if (condition === undefined && snapshot.channels === undefined && name.startsWith(CHANNEL_LINE)) continue;
     if (condition === undefined && snapshot.observing === undefined && name.startsWith(OBSERVE_LINE)) continue;
     if (condition === undefined && snapshot.stores === undefined && name.startsWith(STORE_LINE)) continue;
+    if (condition === undefined && snapshot.bounds === undefined && name.startsWith(BOUND_LINE)) continue;
+    if (condition === undefined && snapshot.redundancy === undefined && name.startsWith(REDUNDANCY_LINE)) continue;
+    // A copy ends only its own lines of the stale places. Each other copy watches the fixes of its own phones.
+    if (condition === undefined && name.startsWith(PLACE_LINE) && (snapshot.stale === undefined || !name.startsWith(placePrefix(snapshot.copy)))) continue;
     const draft = condition === undefined ? (line === undefined ? undefined : cancelOf(line)) : condition;
     if (draft === undefined) continue;
     const facts = canonicalJson(draft.facts, { form: "json" });
@@ -818,6 +1005,20 @@ function balanceName(provider: string, stage: BalanceStage, floor?: number): str
   return floor === undefined ? name : `${name}/${String(floor)}`;
 }
 
+// The start of the name of each line of the joint down time of the copies (AL-148).
+const JOINT_LINE = "joint/";
+
+function jointName(stage: JointStage): string {
+  return `${JOINT_LINE}${stage}`;
+}
+
+// The start of the name of each line of the drift check of a copy host (AL-139).
+const DRIFT_LINE = "drift/";
+
+function driftName(check: string, stage: DriftStage): string {
+  return `${DRIFT_LINE}${encodeURIComponent(check)}/${stage}`;
+}
+
 // The start of the name of each line of the use of a hard limit (AL-111).
 const USE_LINE = "use/";
 
@@ -825,6 +1026,19 @@ const USE_LINE = "use/";
 function useName(id: string, stage: UseStage, level?: { readonly level: number; readonly month: string }): string {
   const name = `${USE_LINE}${encodeURIComponent(id)}/${stage}`;
   return level === undefined ? name : `${name}/${String(level.level)}/${level.month}`;
+}
+
+// The start of the name of each line of a function of the alert chain (AL-90).
+const REDUNDANCY_LINE = "redundancy/";
+
+function redundancyName(part: string, stage: RedundancyStage): string {
+  return `${REDUNDANCY_LINE}${encodeURIComponent(part)}/${stage}`;
+}
+
+/** This function gives the stage of a function of the alert chain, or `undefined` for a function with its full redundancy (AL-90). */
+export function redundancyStage(state: Pick<RedundancyState, "works" | "points">): RedundancyStage | undefined {
+  if (!state.works) return "stopped";
+  return state.points.length > 0 ? "single" : undefined;
 }
 
 // The start of the name of each line of another copy.
@@ -877,6 +1091,12 @@ const STORE_LINE = "store/";
 
 function storeName(fill: StoreFill): string {
   return `${STORE_LINE}${encodeURIComponent(fill.store)}/${encodeURIComponent(fill.family)}`;
+}
+
+const BOUND_LINE = "bound/";
+
+function boundName(bound: StoreBound): string {
+  return `${BOUND_LINE}${encodeURIComponent(bound.store)}/${encodeURIComponent(bound.family)}`;
 }
 
 function coverageName(place: PlaceId, kind: string): string {
@@ -1100,6 +1320,39 @@ function heldCondition(entry: HeldPerson): Condition {
   };
 }
 
+const PLACE_LINE = "place/";
+
+// The start of the names of the lines of the stale places of one copy.
+function placePrefix(copy: string | undefined): string {
+  return `${PLACE_LINE}${encodeURIComponent(copy ?? "")}/`;
+}
+
+// The copy is in the name: each copy tells only of the fixes that it takes.
+function placeName(copy: string | undefined, place: PlaceId): string {
+  return `${placePrefix(copy)}${encodeURIComponent(place)}`;
+}
+
+function staleCondition(entry: StalePlace, copy: string | undefined): Condition {
+  const code = `${PLACE_KIND}.stale`;
+  return {
+    // The copy and the place are the facts. Thus a line gives one alert, and the next good fix gives its cancel.
+    facts: { copy: copy ?? null, place: entry.place },
+    kind: { code, label: kindLabel(code) },
+    // The table of the system reports gives the level `notice`.
+    severity: "moderate",
+    urgency: "expected",
+    response: ["assess"],
+    // The report is private, and it holds no position. Only the persons of the place get it.
+    areas: [],
+    about: [{ system: PLACE_SUBJECT, id: entry.place, label: entry.label }],
+    addresses: [...entry.persons],
+    headline: `The watch of the moving place ${entry.label} stopped.`,
+    description: "The phone of the place sent no good fix in the age limit of the place. Thus no alert at the position of the phone reaches you.",
+    instruction: "Open the phone app, and send a fix. Examine the network path from the phone to the runtime.",
+    parameters: { place: [entry.place] },
+  };
+}
+
 function drillRunCondition(copy: string, drill: DrillConfig, run: DrillRun): Condition {
   const code = `${DRILL_KIND}.run`;
   return {
@@ -1119,9 +1372,19 @@ function drillRunCondition(copy: string, drill: DrillConfig, run: DrillRun): Con
   };
 }
 
+// A time as a call can say it (AL-188): "15:00 UTC on 24 November 2026". An ISO time reads as a list of digits.
+const SPOKEN_TIME = new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+const SPOKEN_DAY = new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", day: "numeric", month: "long", year: "numeric" });
+
+// The time as a call can say it, in UTC.
+function spokenInstant(at: Instant): string {
+  return `${SPOKEN_TIME.format(at)} UTC on ${SPOKEN_DAY.format(at)}`;
+}
+
 function drillFailedCondition(copy: string, drill: DrillConfig, run: DrillRun, why: "no-ack" | "late-ack"): Condition {
   const code = `${DRILL_KIND}.failed`;
   const late = why === "late-ack";
+  const minutes = `${String(Math.round(drill.ackWithin / 60_000))} minutes`;
   return {
     // Each run and each reason is a new fact. Thus a late acknowledgment after a failure gives an update.
     facts: { copy, drill: drill.id, at: run.at, why },
@@ -1132,9 +1395,10 @@ function drillFailedCondition(copy: string, drill: DrillConfig, run: DrillRun, w
     onset: run.at + drill.ackWithin,
     areas: [],
     about: [{ system: DRILL_SUBJECT, id: drill.id, label: `Drill ${drill.id}` }],
-    headline: `The drill ${drill.id} failed: ${late ? "the acknowledgment came late" : "no acknowledgment came"}.`,
-    description: `The drill started at ${new Date(run.at).toISOString()} on the channel ${drill.path.channel}, from the copy ${copy}. A real warning on this path can also go without an answer.`,
-    instruction: "Examine the channel, the app and the settings of the phone. The next run of the drill tests the path again.",
+    headline: `The drill ${drill.id} failed: ${late ? `the acknowledgment came after ${minutes}` : `no acknowledgment came in ${minutes}`}.`,
+    // A call says the headline and the description (AL-188). Thus the description tells when the drill message went out.
+    description: `The drill message went out at ${spokenInstant(run.at)} on the channel ${drill.path.channel}, from the copy ${copy}. A real warning on this path can also go without an answer.`,
+    instruction: "Find the drill message in the app, and acknowledge it. Examine the channel, the app and the settings of the phone. The next run of the drill tests the path again.",
     parameters: { drill: [drill.id], copy: [copy], why: [why] },
   };
 }
@@ -1408,6 +1672,120 @@ function useCondition(use: LimitUse, stage: UseStage, at: Instant, level?: numbe
   };
 }
 
+// The text of a joint down time: minutes with one decimal, for example `13.6 min`.
+function minutesText(size: Duration): string {
+  return `${(size / 60_000).toFixed(1)} min`;
+}
+
+// The text of a window: whole days, or else whole hours. 7 days of milliseconds is `7 days`.
+function windowText(size: Duration): string {
+  const day = 24 * 3_600_000;
+  return size % day === 0 ? countOf(size / day, "day") : `${String(Math.round(size / 3_600_000))} h`;
+}
+
+// The condition of one stage of the joint down time of the copies (AL-148).
+function jointCondition(joint: JointDown, stage: JointStage, at: Instant): Condition {
+  const { window, limit, read } = joint;
+  const last = read === undefined ? `the start of the watch at ${new Date(joint.since).toISOString()}` : new Date(read.at).toISOString();
+  const text: Readonly<Record<JointStage, { readonly headline: string; readonly description: string }>> = {
+    over: {
+      headline: `No copy could tell the person for ${read === undefined ? "too long" : minutesText(read.down)} in the last ${windowText(window)}. The limit is ${minutesText(limit)}.`,
+      description: "The shared check of the copies was down for longer than the limit. Find the cause of each down span. When the copies share a cause, add or move a copy.",
+    },
+    unread: {
+      headline: `The joint down time of the copies has no read since ${last}.`,
+      description: "The watch cannot see a long down time of the copies. Examine the key of the management API and the network.",
+    },
+  };
+  const code = `${JOINT_KIND}.${stage}`;
+  return {
+    // A new down time is not a fact. Thus each stage gives one alert, and no update.
+    facts: { stage },
+    kind: { code, label: kindLabel(code) },
+    severity: "moderate",
+    urgency: "expected",
+    response: ["assess"],
+    areas: [],
+    about: [{ system: COPY_SUBJECT, id: "all", label: "All copies" }],
+    ...text[stage],
+    parameters: {
+      stage: [stage],
+      window: [String(window)],
+      limit: [String(limit)],
+      ...(read === undefined ? {} : { down: [String(read.down)], spans: [String(read.spans)] }),
+      age: [String(at - (read?.at ?? joint.since))],
+    },
+  };
+}
+
+// The condition of one stage of the drift check of a copy host (AL-139). A check with no read keeps the facts of its open line.
+function driftCondition(check: DriftCheck, stage: DriftStage, at: Instant, open?: SystemLine): Condition {
+  const { name, maxAge, read } = check;
+  const last = read === undefined ? `the start of the watch at ${new Date(check.since).toISOString()}` : new Date(read.at).toISOString();
+  const kept = read === undefined && open !== undefined ? (JSON.parse(open.facts) as Readonly<Record<string, unknown>>) : undefined;
+  const shown = (read?.steps ?? []).slice(0, DRIFT_STEPS_SHOWN);
+  const more = (read?.changes ?? 0) - shown.length;
+  const list = shown.length === 0 ? "" : `: ${shown.join(", ")}${more > 0 ? ` and ${String(more)} more` : ""}`;
+  const text: Readonly<Record<DriftStage, { readonly headline: string; readonly description: string }>> = {
+    changed: {
+      headline: read === undefined ? `The host check ${name} found a change at its last read.` : `The host check ${name} found ${countOf(read.changes, "change")}${list}.`,
+      description: "The host does not agree with its code. Examine each change. Then apply the code to the host, or change the code.",
+    },
+    unread: {
+      headline: `The host check ${name} has no good read since ${last}.`,
+      description: "The watch cannot see a drift of the host. Examine the command of the check, its access to the host and its time limit.",
+    },
+  };
+  const code = `${DRIFT_KIND}.${stage}`;
+  return {
+    // A new list of changes is a new fact, thus it gives an update. The stage unread gives one alert, and no update.
+    facts: stage === "changed" ? (kept ?? { stage, changes: read?.changes ?? 0, steps: [...(read?.steps ?? [])] }) : { stage },
+    kind: { code, label: kindLabel(code) },
+    severity: "moderate",
+    urgency: "expected",
+    response: ["assess"],
+    areas: [],
+    about: [{ system: COPY_SUBJECT, id: name, label: `Host check ${name}` }],
+    ...text[stage],
+    parameters: {
+      stage: [stage],
+      check: [name],
+      maxAge: [String(maxAge)],
+      ...(read === undefined ? {} : { changes: [String(read.changes)], steps: [...read.steps] }),
+      age: [String(at - (read?.at ?? check.since))],
+    },
+  };
+}
+
+function redundancyCondition(state: RedundancyState, stage: RedundancyStage): Condition {
+  const { function: part, down } = state;
+  const points = [...state.points].sort((a, b) => compareCodeUnits(a.id, b.id));
+  const names = (parts: readonly { readonly name: string }[]): string => (parts.length === 0 ? "no part" : parts.map((item) => item.name).join(", "));
+  const text: Readonly<Record<RedundancyStage, { readonly headline: string; readonly description: string }>> = {
+    single: {
+      headline: `${part.name} has a single point of failure: ${names(points)}.`,
+      description: `The open incidents tell that these parts are down: ${names(down)}. A failure of ${points.length === 1 ? "this point" : "one of these points"} alone stops ${part.name}.`,
+    },
+    stopped: {
+      headline: `${part.name} does not work.`,
+      description: `The open incidents tell that these parts are down: ${names(down)}. No path of ${part.name} is left.`,
+    },
+  };
+  const code = `${REDUNDANCY_KIND}.${stage}`;
+  return {
+    // The list of the down parts is not a fact: a new down part that leaves the same points gives no update.
+    facts: { function: part.id, stage, points: points.map((item) => item.id) },
+    kind: { code, label: kindLabel(code) },
+    severity: stage === "stopped" ? "severe" : "moderate",
+    urgency: stage === "stopped" ? "immediate" : "expected",
+    response: ["assess"],
+    areas: [],
+    about: [{ system: FUNCTION_SUBJECT, id: part.id, label: part.name }],
+    ...text[stage],
+    parameters: { stage: [stage], points: points.map((item) => item.id), down: down.map((item) => item.id).sort(compareCodeUnits) },
+  };
+}
+
 function copyCondition(watch: CopyWatch, stage: CopyStage, at: Instant): Condition {
   const { copy, read } = watch;
   const last = read === undefined ? `the start of the watch at ${new Date(watch.since).toISOString()}` : new Date(read.at).toISOString();
@@ -1423,11 +1801,7 @@ function copyCondition(watch: CopyWatch, stage: CopyStage, at: Instant): Conditi
       description: "The copies can route one alert in two ways. Then a person can get an alert from each copy, or on a different channel.",
       instruction: "Give each copy the same file config.json. Then restart each copy.",
     },
-    unread: {
-      headline: `No read of the copy ${copy} passed since ${last}.`,
-      description: "This copy cannot see the sends of the other copy. Thus the two copies can both send each alert.",
-      instruction: "Examine the other computer and the network between the copies.",
-    },
+    unread: unreadText(copy, last, stage === "unread" ? watch.billing?.state : undefined),
     unsteady: {
       headline: `The copy ${copy} is not steady since ${new Date(watch.unsteadySince ?? watch.since).toISOString()}.`,
       description: "The other copy starts again and again, and it stops before it is steady. It sends no alert. Thus this copy is the only copy that sends.",
@@ -1435,9 +1809,11 @@ function copyCondition(watch: CopyWatch, stage: CopyStage, at: Instant): Conditi
     },
   };
   const code = `${COPY_KIND}.${stage}`;
+  // The billing state `on` keeps the text of a down copy, thus it is not a fact. A stop or a failed read changes the text (AL-70).
+  const billing = stage === "unread" ? watch.billing?.state : undefined;
   return {
-    // A new difference or a new age is not a fact. Thus each stage gives one alert, and no update.
-    facts: { copy, stage },
+    // A new difference or a new age is not a fact. Thus each stage gives one alert, and no update. A new billing state gives an update.
+    facts: { copy, stage, ...(billing === "stopped" || billing === "unread" ? { billing } : {}) },
     kind: { code, label: kindLabel(code) },
     severity: "moderate",
     urgency: "expected",
@@ -1449,7 +1825,26 @@ function copyCondition(watch: CopyWatch, stage: CopyStage, at: Instant): Conditi
       stage: [stage],
       ...(read === undefined ? {} : { skew: [String(read.skew)], sameConfig: [String(read.sameConfig)] }),
       age: [String(at - (read?.at ?? watch.since))],
+      ...(billing === undefined ? {} : { billing: [billing] }),
     },
+  };
+}
+
+// The text of the stage `unread` of a copy, with the billing state of its host when the watch has it (AL-70).
+function unreadText(copy: string, last: string, billing: CopyBillingState | undefined): { readonly headline: string; readonly description: string; readonly instruction: string } {
+  const unread = `No read of the copy ${copy} passed since ${last}.`;
+  const description = "This copy cannot see the sends of the other copy. Thus the two copies can both send each alert.";
+  if (billing === "stopped") {
+    return {
+      headline: `The copy ${copy} is down because of a billing stop of its host. ${unread}`,
+      description: `The account of the host of the copy stopped its billing, thus the host stopped. ${description}`,
+      instruction: "Examine the billing account of the host. Start the billing again, then start the copy.",
+    };
+  }
+  return {
+    headline: billing === "unread" ? `${unread} The billing state of its host is unread.` : unread,
+    description,
+    instruction: "Examine the other computer and the network between the copies.",
   };
 }
 
@@ -1509,6 +1904,13 @@ function lineClass(line: SystemLine | undefined): Duration {
 function loopCondition(blocks: readonly LoopBlock[], copy: string | undefined, held: Duration): Condition {
   const code = `${LOOP_KIND}.block`;
   const longest = blocks.reduce((found, block) => (block.size > found.size ? block : found));
+  // The cause is not a fact: thus a new cause of the same class gives no update (AL-180).
+  const cause = blockCauseText(longest);
+  const measures = {
+    ...(longest.cpu === undefined ? {} : { cpu: [String(longest.cpu)] }),
+    ...(longest.faults === undefined ? {} : { faults: [String(longest.faults)] }),
+    ...(longest.gc === undefined ? {} : { gc: [String(longest.gc)] }),
+  };
   return {
     facts: { class: Math.max(held, blockClass(longest.size)) },
     kind: { code, label: kindLabel(code) },
@@ -1519,9 +1921,9 @@ function loopCondition(blocks: readonly LoopBlock[], copy: string | undefined, h
     areas: [],
     about: [{ system: COPY_SUBJECT, id: copy ?? "this", label: copy === undefined ? "This copy" : `Copy ${copy}` }],
     headline: `The event loop of the runtime was blocked for ${blockSizeText(longest.size)}.`,
-    description: `In the last hour, the event loop of the runtime was blocked ${countOf(blocks.length, "time")} for 1 s or more. During a block, the runtime sends no alert and answers no probe.`,
+    description: `In the last hour, the event loop of the runtime was blocked ${countOf(blocks.length, "time")} for 1 s or more. During a block, the runtime sends no alert and answers no probe.${cause === undefined ? "" : ` In the longest block: ${cause}`}`,
     instruction: "Examine the memory, the disk and the processor load of the computer. A longer block can stop the runtime.",
-    parameters: { longest: [String(longest.size)], at: [String(longest.at)], count: [String(blocks.length)] },
+    parameters: { longest: [String(longest.size)], at: [String(longest.at)], count: [String(blocks.length)], ...measures },
   };
 }
 
@@ -1545,6 +1947,28 @@ function storeCondition(fill: StoreFill, titles: ReadonlyMap<SourceId, string>):
     description: "The store did not fill in the time. Its sources can be down, or the store gets no turn to fetch. Each feature that reads the family works without it.",
     instruction: "Examine the health of the sources of the store and the log of its refreshes.",
     parameters: { entries: [String(fill.entries)], within: [String(fill.within)] },
+  };
+}
+
+// A full store keeps out only the entries of low priority, thus it gets `notice` at most (AL-145). The counts are not facts.
+// Thus a change of a count gives no update, and the line ends when the store has space and no entry waits.
+function boundCondition(bound: StoreBound, titles: ReadonlyMap<SourceId, string>): Condition {
+  const code = `${STORE_KIND}.full`;
+  return {
+    facts: { store: bound.store, family: bound.family },
+    kind: { code, label: kindLabel(code) },
+    severity: "moderate",
+    urgency: "expected",
+    response: ["assess"],
+    areas: [],
+    about: [
+      { system: STORE_SUBJECT, id: `${bound.store}/${bound.family}`, label: `Store ${bound.store}, family ${bound.family}` },
+      ...bound.sources.map((source) => ({ system: SOURCE_SUBJECT, id: source, label: titles.get(source) ?? source })),
+    ],
+    headline: `The store ${bound.store} is at its bound of ${countOf(bound.limit, "entry", "entries")} of the family ${bound.family}.`,
+    description: `The store has ${countOf(bound.entries, "entry", "entries")}. The new entries of low priority wait outside it: ${bound.waiting.toLocaleString("en")} at this time. Each entry at a watched place and each update of a known entry still goes in.`,
+    instruction: "Examine the sources of the new entries. A source with a flood of entries can be broken.",
+    parameters: { entries: [String(bound.entries)], limit: [String(bound.limit)], waiting: [String(bound.waiting)] },
   };
 }
 

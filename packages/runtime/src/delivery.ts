@@ -15,7 +15,9 @@ import {
   digestMessageOf,
   exhaustions,
   holdKey,
+  holdPlaces,
   limitRoutes,
+  NO_HOLDS,
   throttleRoutes,
   graphLabels,
   incidents,
@@ -48,6 +50,8 @@ import {
   type Throttle,
   type ScorePriors,
   type SendOutcome,
+  type PlaceHolds,
+  type PlaceId,
   type WatchedPlace,
   type WhyLabels,
   type WhyLimit,
@@ -122,6 +126,12 @@ export interface DeliveryOptions {
    * runtime: no record and no log event holds them. Without them, each why line uses plain nouns.
    */
   readonly labels?: WhyLabels;
+  /**
+   * The channels that this copy leaves to the other copies (`CopySettings.leaveChannels`, AL-55). The plans keep their
+   * steps on them, thus the keys stay the same in each copy. The step sends, cancels and polls nothing on them. Thus
+   * they get no failure and no overdue send of this copy.
+   */
+  readonly leaveChannels?: readonly ChannelId[];
 }
 
 /** The default longest wait between two stop probes of a down channel: 60 seconds. */
@@ -209,6 +219,11 @@ export interface DeliveryContext {
   /** The id of the run. Its characters match `COPY_ID`. Each copy id starts with it, thus two runs do not give the same copy id. */
   readonly run: string;
   readonly places: readonly WatchedPlace[];
+  /**
+   * This function tells the moving places (AL-40). With it, the dispatcher keeps the holds of the moving places in memory
+   * (`holdPlaces`), and the route reads them. Without it, no place has a hold.
+   */
+  readonly moving?: ((place: PlaceId) => boolean) | undefined;
   /** The policy of the link rule of the merge, the policy of the view. The default is `DEFAULT_LINK_POLICY`. */
   readonly link?: LinkPolicy | undefined;
   state(): RuntimeState;
@@ -330,6 +345,10 @@ export function createDispatcher(options: DeliveryOptions, context: DeliveryCont
   // Only a copy that the channel repeats needs a stop.
   const repeating = new Set(descriptors.filter((descriptor) => descriptor.repeats).map((descriptor) => descriptor.id as string));
   const recipients = new Map(options.recipients.map((recipient) => [recipient.watch.person as string, recipient]));
+  // The channels of the other copies. A send, a cancel or a poll on them is not a call of this copy. The copies share
+  // each cancel and each acknowledgment (`SHARED_TYPES`). Thus the copy that sends on the channel writes them.
+  const left = new Set<string>(options.leaveChannels ?? []);
+  const kept = (item: { readonly channel: ChannelId }): boolean => !left.has(item.channel);
   // The labels of each person: the labels of the instance, and then the labels of the interest graph of the person.
   const personLabels = new Map(options.recipients.map((recipient) => [recipient.watch.person as string, graphLabels(labels, recipient.watch.interests)]));
   const labelsOf = (person: string): WhyLabels => personLabels.get(person) ?? labels;
@@ -354,6 +373,8 @@ export function createDispatcher(options: DeliveryOptions, context: DeliveryCont
   if (!COPY_ID.test(context.run)) throw new Error(`The run id "${context.run}" has a character that a copy id cannot have. Use letters, digits, _ and -.`);
   const polled = new Map<string, Instant>();
   const waits = new Map<string, Instant>();
+  // The holds of the moving places, in memory only (AL-40). A restart loses them. They hold a position, thus no log gets them.
+  let holds: PlaceHolds = NO_HOLDS;
   // The send in flight of each key. Each flight is an object, thus a late end does not remove a later flight of the same key.
   const flying = new Map<string, Flight>();
   // The stale copies that the channel can repeat, by copy id. Each step stops them.
@@ -400,6 +421,8 @@ export function createDispatcher(options: DeliveryOptions, context: DeliveryCont
       for (const [call, until] of waits) if (until <= at) waits.delete(call);
       const merged = incidents(context.state().merge, at, { link });
       const found = context.cut === undefined ? merged : context.cut(merged, at);
+      // The holds read each incident of the merge, also an incident that the observe mode cuts. Thus a cut keeps its holds.
+      if (context.moving !== undefined) holds = holdPlaces(holds, merged, context.places, context.moving);
       // The routes at the time of the step, after the send limit of each person and the throttle of each channel. The new
       // holds and suppressions go to the log in step 2.
       const routesNow = (): { readonly routes: readonly Route[]; readonly holds: readonly EscalationHold[]; readonly suppressions: readonly Suppression[] } => {
@@ -409,6 +432,7 @@ export function createDispatcher(options: DeliveryOptions, context: DeliveryCont
           incidents: found,
           recipients: options.recipients,
           places: context.places,
+          ...(context.moving === undefined ? {} : { holds }),
           assess: options.assess,
           sources: options.sources,
           starts: state.starts,
@@ -513,7 +537,7 @@ export function createDispatcher(options: DeliveryOptions, context: DeliveryCont
       // 1. The polls. An acknowledgment changes the escalations, thus the routes come again after it.
       const first = routesNow();
       const due: { readonly delivery: Delivery; readonly release: () => void }[] = [];
-      for (const delivery of first.routes.flatMap((entry) => entry.polls)) {
+      for (const delivery of first.routes.flatMap((entry) => entry.polls).filter(kept)) {
         if (!((polled.get(delivery.key) ?? Number.NEGATIVE_INFINITY) + options.pollEvery <= at && ready("status", delivery.key))) continue;
         const release = place(delivery.channel);
         if (release !== undefined) due.push({ delivery, release });
@@ -555,7 +579,7 @@ export function createDispatcher(options: DeliveryOptions, context: DeliveryCont
       const cancelled: string[] = [];
       const work: Promise<void>[] = [];
       for (const entry of routes) {
-        for (const send of entry.plan.sends) {
+        for (const send of entry.plan.sends.filter(kept)) {
           const key = messageKey(send);
           const flight = flying.get(key);
           if (flight !== undefined) {
@@ -585,7 +609,7 @@ export function createDispatcher(options: DeliveryOptions, context: DeliveryCont
               }
               const limit = whyLimits.get(send.channel);
               const why = limit === undefined || entry.why === undefined ? undefined : whyLine(entry.why, labelsOf(send.person), limit);
-              const message = messageOf(entry.incident, context.state().merge.reports, send, why);
+              const message = messageOf(entry.incident, context.state().merge.reports, send, why, entry.software);
               const deliveryOf = (accepted: Extract<SendOutcome, { ok: true }>): Delivery => ({ key: message.key, incident: send.incident, level: send.level, person: send.person, channel: send.channel, step: send.step, at: accepted.accepted, receipt: accepted.receipt });
               // A send with no free place on its channel goes at a later step. It has no copy yet.
               const release = place(send.channel);
@@ -667,7 +691,7 @@ export function createDispatcher(options: DeliveryOptions, context: DeliveryCont
             })(),
           );
         }
-        for (const delivery of entry.plan.cancels) {
+        for (const delivery of entry.plan.cancels.filter(kept)) {
           if (!ready("cancel", delivery.key)) continue;
           work.push(
             (async () => {
@@ -717,7 +741,7 @@ export function createDispatcher(options: DeliveryOptions, context: DeliveryCont
         holds: [...context.state().holds, ...context.state().suppressions],
         now: at,
       });
-      for (const send of digests.sends) {
+      for (const send of digests.sends.filter(kept)) {
         const key = send.key;
         const flight = flying.get(key);
         if (flight !== undefined) {
@@ -894,7 +918,7 @@ export function createDispatcher(options: DeliveryOptions, context: DeliveryCont
       closed.clear();
 
       const after = routesNow().routes;
-      const open = after.flatMap((entry) => entry.polls);
+      const open = after.flatMap((entry) => entry.polls).filter(kept);
       // Only an open receipt needs the time of its last poll. Each other entry goes, thus the map grows with the open receipts only.
       const keep = new Set(open.map((delivery) => delivery.key));
       for (const key of polled.keys()) if (!keep.has(key)) polled.delete(key);
@@ -904,7 +928,7 @@ export function createDispatcher(options: DeliveryOptions, context: DeliveryCont
       // in a burst end with a wake time before the pass (AL-75).
       const polls = open.map((delivery) => (polled.get(delivery.key) ?? at) + options.pollEvery).map((time) => (time > at ? time : at + options.pollEvery));
       const wakeAt = earliest([...after.map((entry) => entry.plan.wakeAt), digests.wakeAt, ...polls, ...failures.map((failure) => failure.retryAt), ...waiting]);
-      const overdue = overdueSends(after, context.state().refusals, at, options.overdueAfter);
+      const overdue = overdueSends(after, context.state().refusals, at, options.overdueAfter, left);
       const exhausted = exhaustions(after, descriptors, context.state().merge.reports);
       return { routes: after, sent, duplicates, stopped, acknowledged, cancelled, failures, conflicts, overdue, exhausted, ...(wakeAt === undefined ? {} : { wakeAt }) };
     },
@@ -931,11 +955,13 @@ export function createDispatcher(options: DeliveryOptions, context: DeliveryCont
  * This function gives the overdue sends of each channel at `at`. An overdue send is a send of the routes after the
  * step, due for `after` or more. With no `after`, no send is overdue. A send whose last refusal is not a fault of the
  * channel is not overdue (`REFUSAL_FAULTS`). Examples are `consent`, a STOP reply, and `quiet`, a call in the quiet window.
+ * A send on a channel of `left` is not overdue, because another copy sends it.
  */
-function overdueSends(routes: readonly Route[], refusals: RuntimeState["refusals"], at: Instant, after: Duration | undefined): OverdueSends[] {
+function overdueSends(routes: readonly Route[], refusals: RuntimeState["refusals"], at: Instant, after: Duration | undefined, left: ReadonlySet<string>): OverdueSends[] {
   if (after === undefined) return [];
   const byChannel = new Map<ChannelId, { readonly sends: number; readonly since: Instant }>();
   for (const send of routes.flatMap((entry) => entry.plan.sends)) {
+    if (left.has(send.channel)) continue;
     const last = refusals[messageKey(send)]?.kind;
     if (at - send.due < after || (last !== undefined && !REFUSAL_FAULTS[last])) continue;
     const before = byChannel.get(send.channel);

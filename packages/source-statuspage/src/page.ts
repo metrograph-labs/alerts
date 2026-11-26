@@ -24,9 +24,10 @@ export interface ComponentKey {
 
 /**
  * The formats of a page. `statuspage` is the summary API of Atlassian Statuspage, and incident.io gives the same format.
- * `statusiq` is the RSS feed of the components of a page of Site24x7 StatusIQ.
+ * `incident-list` is the list of the latest incidents of that API (`/api/v2/incidents.json`), for a page whose summary
+ * has no list of incidents. `statusiq` is the RSS feed of the components of a page of Site24x7 StatusIQ.
  */
-export const PAGE_FORMATS = ["statuspage", "statusiq"] as const;
+export const PAGE_FORMATS = ["statuspage", "incident-list", "statusiq"] as const;
 
 /** The format of a page: one of `PAGE_FORMATS`. */
 export type PageFormat = (typeof PAGE_FORMATS)[number];

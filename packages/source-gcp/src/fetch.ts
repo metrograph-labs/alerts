@@ -10,7 +10,7 @@
 import { observationId, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch } from "@mark1russell7/alerts";
 import { createRequester } from "@mark1russell7/alerts-fetch";
 import { isRecord, readHttpTime, timeOf, type Fields } from "@mark1russell7/optional/read";
-import type { Condition, Pace, Transport } from "polite-crawler/api";
+import { keptReplies, type Condition, type Pace, type Transport } from "polite-crawler/api";
 
 import { GCP_DASHBOARD, INCIDENTS_PATH, type GoogleDashboard } from "./feed.ts";
 import { HISTORY_FIELDS, INCIDENT_FIELDS, isIncident, ITEM_FIELDS, UPDATE_FIELDS } from "./map.ts";
@@ -106,12 +106,20 @@ export function readIncidents(body: string, now: Instant): Incidents | undefined
   };
 }
 
+// The last full answer: its body, its content type and its `Last-Modified` time.
+interface Full {
+  readonly body: string;
+  readonly contentType: string;
+  readonly asOf?: Instant;
+}
+
 /**
  * This function makes the fetch function of the feed. The fetch does not throw for a failure of the source: it gives
  * `{ ok: false }`. It throws only when the signal of the caller aborts.
  *
  * Each fetch is one conditional GET (`poll` of polite-crawler) with the `Last-Modified` date of the last full answer.
- * A 304 answer has no body. Then the fetch reads the last full answer again at the time of the fetch. Thus an incident
+ * A 304 answer has no body. The fetch keeps the last full answer as compressed bytes (`keptReplies` of
+ * `polite-crawler/api`). After a 304, it reads that answer again at the time of the fetch. Thus an incident
  * whose end time passes leaves the list. The time of the data is the `Last-Modified` date of the last full answer.
  */
 export function createGcpFetch(options: GcpFetchOptions): (input: GcpFetchInput, signal?: FetchSignal) => Promise<FetchOutcome> {
@@ -127,9 +135,10 @@ export function createGcpFetch(options: GcpFetchOptions): (input: GcpFetchInput,
   });
   const now = options.pace.now;
   const conditions = new Map<string, Condition>();
-  let last: { readonly url: string; readonly body: string; readonly contentType: string; readonly asOf?: Instant } | undefined;
+  const lastAnswer = keptReplies<{ readonly contentType: string; readonly asOf?: Instant }>();
+  let keptUrl: string | undefined;
 
-  const outcomeOf = (url: string, status: number, full: NonNullable<typeof last>, latency: number): FetchOutcome => {
+  const outcomeOf = (url: string, status: number, full: Full, latency: number): FetchOutcome => {
     const fetched = now();
     const incidents = readIncidents(full.body, fetched)!;
     const transport = { url, status, latency };
@@ -144,26 +153,35 @@ export function createGcpFetch(options: GcpFetchOptions): (input: GcpFetchInput,
     return { ok: true, observations, complete: incidents.complete, ...(full.asOf === undefined ? {} : { asOf: full.asOf }) };
   };
 
+  const forget = (): void => {
+    if (keptUrl !== undefined) lastAnswer.delete(keptUrl);
+    keptUrl = undefined;
+  };
+
   return async (_input, signal) => {
     const requested = await requester.get({ path: INCIDENTS_PATH, what: `the incidents of ${dashboard.sender}`, conditions }, signal);
     if (!requested.ok) return { ok: false, failure: requested.failure };
     const { url, answer, latency } = requested;
     if (answer.classified.outcome === "not-modified") {
-      if (last === undefined || last.url !== url) {
+      const previous = keptUrl === url ? await lastAnswer.get(url).catch(() => undefined) : undefined;
+      if (previous === undefined) {
         // A 304 with no earlier full answer: the next request sends no condition
         conditions.delete(url);
         return { ok: false, failure: { kind: "network", message: `a 304 answer with no earlier full answer: ${url}` } };
       }
-      return outcomeOf(url, 304, last, latency);
+      return outcomeOf(url, 304, { body: previous.reply.body, ...previous.extra }, latency);
     }
     if (readIncidents(answer.reply.body, now()) === undefined) {
       // poll keeps the condition of each 2xx answer. A body that does not parse must not be the base of a later 304.
       conditions.delete(url);
-      last = undefined;
+      forget();
       return { ok: false, failure: { kind: "network", message: `truncated or malformed body: ${url}` } };
     }
     const modified = readHttpTime(answer.reply.headers["last-modified"]);
-    last = { url, body: answer.reply.body, contentType: answer.reply.headers["content-type"] ?? "application/json", ...(modified === undefined ? {} : { asOf: modified }) };
-    return outcomeOf(url, answer.reply.status, last, latency);
+    const extra = { contentType: answer.reply.headers["content-type"] ?? "application/json", ...(modified === undefined ? {} : { asOf: modified }) };
+    forget();
+    lastAnswer.keep(url, answer.reply, extra);
+    keptUrl = url;
+    return outcomeOf(url, answer.reply.status, { body: answer.reply.body, ...extra }, latency);
   };
 }

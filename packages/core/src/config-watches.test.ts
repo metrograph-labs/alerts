@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { watchProblems } from "./config.ts";
 import type { PersonId, PersonWatch, SubjectWatch } from "./contracts.ts";
 import * as core from "./index.ts";
-import { CLOCK_SUBJECT, COPY_SUBJECT, LOG_SUBJECT, OPERATOR_SYSTEMS, REPORT_SYSTEMS } from "./system-reports.ts";
+import { CLOCK_SUBJECT, COPY_SUBJECT, FUNCTION_SUBJECT, LOG_SUBJECT, OPERATOR_SYSTEMS, PLACE_SUBJECT, REPORT_SYSTEMS } from "./system-reports.ts";
 
 /** AL-121: each system of the reports about the system has a person who watches it. */
 
@@ -53,5 +53,11 @@ describe("watchProblems: the watches of the system subjects (AL-121)", () => {
       .map(([, value]) => value as string);
     expect(systems.length).toBeGreaterThanOrEqual(REPORT_SYSTEMS.length);
     expect([...new Set(systems)].sort()).toEqual([...REPORT_SYSTEMS].sort());
+  });
+
+  it("needs a watch of the function reports, and a watch of the place reports is not a wrong name", () => {
+    const others = OPERATOR_SYSTEMS.filter((system) => system !== FUNCTION_SUBJECT);
+    expect(watchProblems([watch("person-1", of(...others))])).toEqual([unwatched(FUNCTION_SUBJECT)]);
+    expect(watchProblems([watch("person-1", of(...OPERATOR_SYSTEMS, PLACE_SUBJECT))])).toEqual([]);
   });
 });

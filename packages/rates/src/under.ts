@@ -11,7 +11,8 @@
  * The functions are pure. The join reads the rows of each window one time, and it keeps no row.
  */
 
-import { PHENOMENA, STATE_POSTAL } from "@mark1russell7/alerts-format-nws";
+import { STATE_POSTAL } from "@mark1russell7/alerts";
+import { PHENOMENA } from "@mark1russell7/alerts-format-nws";
 
 import { NCEI_KINDS, nceiKind, type HarmRow, type NceiLocalTime, type YearHarm } from "./ncei.ts";
 import { ALERT_SIGNIFICANCES, MARINE_PHENOMENA, MARINE_REASON, NATIONAL_NUMBERS, WATCHWARN_PARAMS, WATCHWARN_URL, type AlertCounts, type AlertSignificance, type CodeCounts, type NumberingCheck } from "./watchwarn.ts";

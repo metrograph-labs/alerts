@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { Acknowledgment, ChannelId, Delivery, EndMark, Incident, MergeState, ObservationId, PersonId, Report, ReportId, SourceId } from "./contracts.ts";
 import { reportId } from "./ids.ts";
 import { acknowledgedLevel, add, EMPTY_STATE, incidents, join, normalize, sentLevel, type IncidentOptions } from "./merge.ts";
-import { pruneTombstones, QUIET_HORIZON, retire, retirements, RETENTION_HORIZON, TOMBSTONE_LIFE, type QuietRule } from "./retention.ts";
+import { allRetirements, lateRetirements, pruneTombstones, QUIET_HORIZON, retire, retirements, RETENTION_HORIZON, TOMBSTONE_LIFE, type QuietRule } from "./retention.ts";
 
 const SEEDS = seedsFrom(process.env["SEED"], [1, 2, 3, 4, 5, 6, 7, 8]);
 const HOUR = 3_600_000;
@@ -139,6 +139,31 @@ describe("the quiet rule (AL-109)", () => {
     expect(retirements(state, incidents(state, ended + QUIET_HORIZON), ended + QUIET_HORIZON)).toEqual([]);
     expect(retirements(state, incidents(state, ended + DAY - 1), ended + DAY - 1, DAY, { horizon: 30 * DAY })).toEqual([]);
     expect(retirements(state, incidents(state, ended + DAY), ended + DAY, DAY, { horizon: 30 * DAY })).toEqual([alert.id]);
+  });
+
+  it("retires an incident that a person knows at the time told of the rule, unless the rule keeps it (AL-172)", () => {
+    const told: QuietRule = { horizon: QUIET_HORIZON, told: QUIET_HORIZON };
+    for (const parts of [{ reports: [alert], deliveries: [delivery(alert, T0)] }, { reports: [alert], acks: [ack(alert, T0)] }]) {
+      const state = normalize(parts);
+      expect(quietAt(state, ended + QUIET_HORIZON - 1, told)).toEqual([]);
+      expect(quietAt(state, ended + QUIET_HORIZON, told)).toEqual([alert.id]);
+      const kept = { ...told, keeps: (incident: Incident) => incident.reports.includes(alert.id) };
+      expect(quietAt(state, ended + QUIET_HORIZON, kept)).toEqual([]);
+      expect(quietAt(state, ended + RETENTION_HORIZON, kept)).toEqual([alert.id]);
+      // A time told above the horizon gives the horizon.
+      expect(quietAt(state, ended + RETENTION_HORIZON, { horizon: QUIET_HORIZON, told: 30 * DAY })).toEqual([alert.id]);
+    }
+  });
+
+  it("keeps a late copy of a told incident out after its retirement (AL-172)", () => {
+    const rule: QuietRule = { horizon: QUIET_HORIZON, told: QUIET_HORIZON };
+    const at = ended + QUIET_HORIZON;
+    const state = normalize({ reports: [alert], deliveries: [delivery(alert, T0)] });
+    const gone = retire(state, quietAt(state, at, rule), at + TOMBSTONE_LIFE);
+    const again = add(gone, { reports: [alert], deliveries: [delivery(alert, T0)] });
+    expect(again.reports).toEqual([]);
+    expect(again.deliveries).toEqual([]);
+    expect(incidents(again, at)).toEqual([]);
   });
 
   it("keeps a live incident and an incident with an expiry in the future", () => {
@@ -300,5 +325,134 @@ describe("the gate of the retention", () => {
       same(join(join(a, b), c), join(a, join(b, c)));
       same(join(a, EMPTY_STATE), a);
     }
+  });
+});
+
+// The values of an incident with no anchor and no list of reports: a late retirement keeps them.
+const valuesOf = ({ anchor: _anchor, reports: _reports, ...rest }: Incident): Omit<Incident, "anchor" | "reports"> => rest;
+
+// The late retirements of a state at a time, from its own incidents.
+const lateAt = (state: MergeState, at: number, options: IncidentOptions = {}): ReportId[] =>
+  lateRetirements(state, incidents(state, at, options), at, RETENTION_HORIZON, undefined, { link: options.link });
+
+// A stream of updates of one event: one report each day. Each report ended after one hour, the last is live.
+function stream(shape: "chain" | "star", count = 30, draft: (index: number) => Partial<Draft> = () => ({})): Report[] {
+  return Array.from({ length: count }, (_, index) => {
+    const sent = T0 + index * DAY;
+    return report({
+      key: `s${index}`,
+      sent,
+      op: index === 0 ? "alert" : "update",
+      expires: index === count - 1 ? T0 + 400 * DAY : sent + HOUR,
+      ...(shape === "chain" ? { references: index === 0 ? [] : [`s${index - 1}`] } : { correlation: [{ system: "vtec", id: "KTOP.TO.W.0001" }] }),
+      ...draft(index),
+    });
+  });
+}
+const STREAM_AT = T0 + 29 * DAY + HOUR;
+
+describe("the late retirements of a live incident (AL-177)", () => {
+  it.each(["chain", "star"] as const)("keeps only the reports in the horizon of a stream of one live event (%s)", (shape) => {
+    const reports = stream(shape);
+    const state = normalize({ reports });
+    const [before] = incidents(state, STREAM_AT);
+    expect(before!.live).toBe(true);
+    expect(before!.reports).toHaveLength(30);
+    const gone = lateAt(state, STREAM_AT);
+    const after = incidents(retire(state, gone, STREAM_AT + TOMBSTONE_LIFE), STREAM_AT);
+    expect(after).toHaveLength(1);
+    // The reports of the last 7 days stay. Each older report leaves.
+    const recent = reports.filter((entry) => entry.sent + HOUR > STREAM_AT - RETENTION_HORIZON).map((entry) => entry.id);
+    expect([...after[0]!.reports].sort()).toEqual([...recent].sort());
+    same(valuesOf(after[0]!), valuesOf(before!));
+  });
+
+  it("gives no report a second time, and no report of an incident that is not live", () => {
+    const state = normalize({ reports: stream("chain") });
+    const gone = lateAt(state, STREAM_AT);
+    expect(gone.length).toBeGreaterThan(0);
+    expect(gone).toEqual([...gone].sort());
+    expect(lateAt(retire(state, gone, STREAM_AT + TOMBSTONE_LIFE), STREAM_AT)).toEqual([]);
+    const ended = normalize({ reports: stream("chain", 30, () => ({ expires: T0 + DAY })) });
+    expect(lateAt(ended, STREAM_AT)).toEqual([]);
+  });
+
+  it("keeps a report that a person knows, the anchor of its incident, and each report that a reference of it needs", () => {
+    const reports = stream("chain");
+    const known = reports[5]!;
+    const state = normalize({ reports, deliveries: [delivery(known, T0 + 5 * DAY)] });
+    const found = incidents(state, STREAM_AT);
+    const gone = new Set(lateRetirements(state, found, STREAM_AT, RETENTION_HORIZON));
+    expect(gone.has(known.id)).toBe(false);
+    expect(gone.has(found[0]!.anchor)).toBe(false);
+    // Report 6 ends report 5. Without report 6, report 5 is a head again, thus report 6 stays.
+    expect(gone.has(reports[6]!.id)).toBe(false);
+    // The older reports leave up to the anchor. A report between the anchor and report 5 connects them, thus it stays.
+    const anchor = reports.findIndex((entry) => entry.id === found[0]!.anchor);
+    for (const index of [0, 1, 2, 3, 4]) expect(gone.has(reports[index]!.id)).toBe(index < anchor);
+    const after = retire(state, [...gone], STREAM_AT + TOMBSTONE_LIFE);
+    const [incident] = incidents(after, STREAM_AT);
+    expect(sentLevel(after, incident!, person)).toBe("urgent");
+  });
+
+  it("keeps a report that the rule keeps", () => {
+    const reports = stream("chain");
+    const state = normalize({ reports });
+    const gone = lateRetirements(state, incidents(state, STREAM_AT), STREAM_AT, RETENTION_HORIZON, undefined, { keeps: (id) => id === reports[0]!.id });
+    expect(gone).not.toContain(reports[0]!.id);
+    expect(gone).not.toContain(reports[1]!.id);
+  });
+
+  it("keeps the last report of each origin, thus the corroboration stays", () => {
+    const reports = stream("star", 30, (index) => (index === 3 ? { origin: "iem" } : {}));
+    const state = normalize({ reports });
+    const gone = lateAt(state, STREAM_AT);
+    expect(gone).not.toContain(reports[3]!.id);
+    expect(incidents(retire(state, gone, STREAM_AT + TOMBSTONE_LIFE), STREAM_AT)[0]!.corroboration).toBe(2);
+  });
+
+  it("keeps the earlier copies of an event when a later copy has an unknown value", () => {
+    const reports = stream("star", 30, (index) => (index === 29 ? { urgency: "unknown" } : {}));
+    expect(lateAt(normalize({ reports }), STREAM_AT)).toEqual([]);
+  });
+
+  it("keeps each report with a block of the link rule", () => {
+    expect(lateAt(normalize({ reports: stream("chain") }), STREAM_AT, LINK)).toEqual([]);
+  });
+
+  it.each(SEEDS)("keeps each incident, its values and the levels of a person, with each link option (seed %i)", (seed) => {
+    const r = random(seed);
+    let leftCount = 0;
+    for (let round = 0; round < 80; round += 1) {
+      const state = randomState(r);
+      const at = T0 + r.int(5, 40) * 12 * HOUR;
+      const horizon = r.pick([DAY, 3 * DAY, RETENTION_HORIZON]);
+      const rule: QuietRule = { horizon: r.pick([HOUR, QUIET_HORIZON, 2 * DAY]) };
+      for (const options of [{}, LINK] as IncidentOptions[]) {
+        const found = incidents(state, at, options);
+        const gone = lateRetirements(state, found, at, horizon, rule, { link: options.link });
+        // One pass of `allRetirements` gives the same two lists.
+        expect(allRetirements(state, found, at, horizon, rule, { link: options.link })).toEqual({ whole: retirements(state, found, at, horizon, rule), late: gone });
+        leftCount += gone.length;
+        const left = new Set(gone);
+        const after = retire(state, gone, at + TOMBSTONE_LIFE);
+        const now = incidents(after, at, options);
+        // The same incidents stay, each with the same values and with its reports less the reports that left.
+        expect(now).toHaveLength(found.length);
+        for (const incident of found) {
+          expect(incident.live || !incident.reports.some((id) => left.has(id))).toBe(true);
+          const stays = incident.reports.filter((id) => !left.has(id));
+          const match = now.find((entry) => entry.reports.includes(stays[0]!));
+          expect(match?.reports).toEqual(stays);
+          same(valuesOf(match!), valuesOf(incident));
+          expect(sentLevel(after, match!, person)).toBe(sentLevel(state, incident, person));
+          expect(acknowledgedLevel(after, match!, person)).toBe(acknowledgedLevel(state, incident, person));
+        }
+        // A second pass gives no report.
+        expect(lateRetirements(after, now, at, horizon, rule, { link: options.link })).toEqual([]);
+      }
+    }
+    // The random states have reports that leave, so the gate is not empty.
+    expect(leftCount).toBeGreaterThan(0);
   });
 });

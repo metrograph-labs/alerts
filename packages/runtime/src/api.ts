@@ -1,11 +1,12 @@
 import { stat } from "node:fs/promises";
 import { createServer } from "node:http";
 import { join } from "node:path";
-import type { HealthPayload, HistoryPayload, Instant, InterestsPayload, MapPayload, SourceId } from "@mark1russell7/alerts";
+import type { CopyWatch, HealthPayload, HistoryPayload, Instant, InterestsPayload, MapPayload, SourceId } from "@mark1russell7/alerts";
 import { findFilesAsync } from "@mark1russell7/files";
 import type { ServiceBuilder } from "@mark1russell7/service";
 import { handle, httpTransport } from "@mark1russell7/service/http";
 import { folderHandler } from "@mark1russell7/service/http-folder";
+import { callContext } from "@mark1russell7/service/otel";
 import type { RuntimeLoop } from "./loop.ts";
 import type { ModeStatus } from "./observe.ts";
 import type { OutageDeployState } from "./outage.ts";
@@ -48,6 +49,21 @@ export interface ApiOptions {
   readonly outage?: { state(): OutageDeployState };
   /** The files of the start of the runtime. The route `GET /status` gives them. */
   readonly start?: StartStatus;
+  /** The watches of the other copies. The route `GET /status` gives the time of the last read of each copy (AL-186). */
+  readonly copies?: { watches(): readonly CopyWatch[] } | undefined;
+}
+
+/** The last read of another copy (AL-186). A deploy stops the runtime only when each other copy had a recent read. */
+export interface CopyReadLine {
+  /** The id of the other copy, from `copy.json`. */
+  readonly copy: string;
+  /** The time of the last read that passed, or `null` before the first read. */
+  readonly readAt: Instant | null;
+  /**
+   * The first read that told that the copy is not steady, or `null` (AL-204). A copy that started a short time ago is not
+   * steady. A copy of an older build tells nothing, thus it has `null`.
+   */
+  readonly unsteadySince: Instant | null;
 }
 
 /**
@@ -82,6 +98,8 @@ export interface Status {
   readonly start?: StartStatus;
   /** The mode of each source of the last pass (AL-73): observe or live, with the rate and the share of each source that observes. */
   readonly modes?: readonly ModeStatus[];
+  /** The last read of each other copy (AL-186). A runtime with no other copy has no field. */
+  readonly copies?: readonly CopyReadLine[];
 }
 
 /** The answer of a route to a request with a bad query. The route gives it with the status 400. */
@@ -167,8 +185,8 @@ export function pageWarning(state: PageState): string | undefined {
   }
 }
 
-/** This function gives the status of the loop, of the deploy of the outage call and of the start, at the time of the request. */
-export function statusOf(loop: RuntimeLoop, outage?: { state(): OutageDeployState }, start?: StartStatus): Status {
+/** This function gives the status of the loop, the outage deploy, the start and the reads of the other copies. */
+export function statusOf(loop: RuntimeLoop, outage?: { state(): OutageDeployState }, start?: StartStatus, copies?: { watches(): readonly CopyWatch[] }): Status {
   const last = loop.last();
   return {
     at: last?.at ?? null,
@@ -180,6 +198,7 @@ export function statusOf(loop: RuntimeLoop, outage?: { state(): OutageDeployStat
     ...(outage === undefined ? {} : { outage: outage.state() }),
     ...(start === undefined ? {} : { start }),
     ...(last?.modes === undefined ? {} : { modes: last.modes }),
+    ...(copies === undefined ? {} : { copies: copies.watches().map((watch) => ({ copy: watch.copy, readAt: watch.read?.at ?? null, unsteadySince: watch.unsteadySince ?? null })) }),
   };
 }
 
@@ -191,13 +210,14 @@ const s = (value: number) => ({ value, unit: "s" });
  */
 export const attachApi = (svc: ServiceBuilder, options: ApiOptions): ServiceBuilder => {
   // The transport has no defaults: the idle close, the sweep of idle connections and the Retry-After of each 503.
+  // Each handler operates in the scope of its request, with the trace of its traceparent header (AL-82). The baggage drops.
   const http = httpTransport(
     createServer(),
     { server_idle_close: s(65), server_idle_sweep_interval: s(1), server_retry_after: s(1) },
-    { listen: { port: options.port, host: LOOPBACK } },
+    { listen: { port: options.port, host: LOOPBACK }, callContext },
   );
   // Each request of a route goes through the service. Thus the drain waits for it, and the shutdown can cut it.
-  http.mount(handle("api", "GET /status", () => statusOf(options.loop, options.outage, options.start)));
+  http.mount(handle("api", "GET /status", () => statusOf(options.loop, options.outage, options.start, options.copies)));
   // Each route declares if a client can send it again.
   const api = svc.controller("api").route("GET /status", { idempotent: true });
   const map = options.map;
