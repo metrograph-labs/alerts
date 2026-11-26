@@ -57,7 +57,7 @@ import { DATE_FORMAT as EIA_DATE_FORMAT, EIA_930_DESCRIPTOR, HOUR_MS, periodEnd,
 import { memoryQuotaStore, quotaGate, type Exchange, type Transport } from "polite-crawler/api";
 import { DEFAULT_POLICY } from "polite-crawler/politeness";
 import { afterEach, describe, expect, it } from "vitest";
-import { ACCOUNT_SOURCES, BOM_SWS_KEY, readsGdelt, CHECKS_KEY, EIA_KEY, CLOUDFLARE_RADAR_KEY, checksKeys, DAEMON_CHECK, daemonCheck, DELIVERY_TIMES, INSTANCE_CHANNELS, INSTANCE_CHECK, INSTANCE_EXPECTATIONS, instanceExpectations, INSTANCE_FETCH_LIMIT, INSTANCE_SOURCES, INSTANCE_TIMES, instanceCheck, instanceContextKey, instanceProblems, instanceServices, shownNode, shownServices, LOUD_PING_URL_KEY, LOUD_STEADY, nwwsKeys, nwwsSetup, openInstance, PING_URL_KEY, pingKeyOf, pingTargets, RANK_DELAY, RANK_FLOOR, SOURCE_POLICY, sourcePace, twilioSetup, USER_AGENT_NAME, instanceSenders, copySounderProblems, sounderOptions, WEBHOOK_SECRET_KEY, WEBHOOK_USER_AGENT, webhookSetup, type Instance, type InstanceOptions } from "./instance.ts";
+import { ACCOUNT_SOURCES, BOM_SWS_KEY, FIRMS_KEY, readsFirms, readsGdelt, CHECKS_KEY, EIA_KEY, CLOUDFLARE_RADAR_KEY, checksKeys, DAEMON_CHECK, daemonCheck, DELIVERY_TIMES, INSTANCE_CHANNELS, INSTANCE_CHECK, INSTANCE_EXPECTATIONS, instanceExpectations, INSTANCE_FETCH_LIMIT, INSTANCE_SOURCES, INSTANCE_TIMES, instanceCheck, instanceContextKey, instanceProblems, instanceServices, shownNode, shownServices, LOUD_PING_URL_KEY, LOUD_STEADY, nwwsKeys, nwwsSetup, openInstance, PING_URL_KEY, pingKeyOf, pingTargets, RANK_DELAY, RANK_FLOOR, SOURCE_POLICY, sourcePace, twilioSetup, USER_AGENT_NAME, instanceSenders, copySounderProblems, sounderOptions, WEBHOOK_SECRET_KEY, WEBHOOK_USER_AGENT, webhookSetup, type Instance, type InstanceOptions } from "./instance.ts";
 import { heartbeatGap } from "./heartbeat.ts";
 import { NO_PARTS } from "./config.ts";
 import { configFilesOf } from "./config-sync.ts";
@@ -1380,6 +1380,18 @@ describe("the GDELT source of the instance (AL-19)", () => {
     expect(readsGdelt(CONFIG)).toBe(false);
     expect(readsGdelt(sharing)).toBe(true);
     expect(readsGdelt({ ...CONFIG, places: CONFIG.places.map((one) => ({ ...one, sharePosition: ["nws-api" as SourceId] })) })).toBe(false);
+  });
+
+  it("reads FIRMS only when a place shares its position with it and the secrets have its key", () => {
+    const firms: AlertConfig = { ...CONFIG, places: CONFIG.places.map((one) => ({ ...one, sharePosition: ["firms" as SourceId] })) };
+    expect(readsFirms(CONFIG)).toBe(false);
+    expect(readsFirms(sharing)).toBe(false);
+    expect(readsFirms(firms)).toBe(true);
+    const ids = (secrets: Readonly<Record<string, string>>, config: AlertConfig) => open(store(secrets), config, 0, TEST_FETCH_LIMIT).instance.runtime.config.sources.map((source) => String(source.id));
+    const key = "f".repeat(32);
+    expect(ids({ ...SECRETS, [FIRMS_KEY]: key }, firms)).toContain("firms");
+    expect(ids(SECRETS, firms)).not.toContain("firms");
+    expect(ids({ ...SECRETS, [FIRMS_KEY]: key }, CONFIG)).not.toContain("firms");
   });
 
   it("reads the newest file of GDELT, gives no report far from the places, and no request holds a position", async () => {
