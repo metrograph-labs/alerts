@@ -1,12 +1,12 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { CONFIG_FORMAT, type AlertConfig, type ChannelId, type EscalationPolicy, type PersonId, type PlaceId } from "@mark1russell7/alerts";
+import { CONFIG_FORMAT, type AlertConfig, type ChannelId, type EscalationPolicy, type PersonId, type PlaceId, type SpendConfig } from "@mark1russell7/alerts";
 import { fakeWallClock, wallClock } from "@mark1russell7/algebra/clock";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HomeHeld } from "./home-lock.ts";
 import { openRuntimeLog } from "./log.ts";
-import { fakeBase, fakeUrl, longestPartWork, MEASURE_NOW_HEADER, openMeasuredRuntime, type MeasuredRuntime, type SnapshotWriteTime } from "./measured-start.ts";
+import { fakeBase, fakeUrl, longestPartWork, MEASURE_KEYS, MEASURE_NOW_HEADER, openMeasuredRuntime, type MeasuredRuntime, type SnapshotWriteTime } from "./measured-start.ts";
 import { START_SNAPSHOT_EVERY, START_SNAPSHOT_FLOOR } from "./start-snapshot.ts";
 
 const MINUTE = 60_000;
@@ -202,6 +202,33 @@ describe("openMeasuredRuntime", { timeout: 30_000 }, () => {
     // The refusal comes before the lock. Thus a start after it opens the folder.
     const measured = await open();
     expect(measured.first.fetched.length).toBeGreaterThan(0);
+  });
+
+  it("opens a configuration with the Twilio call channel and a spend entry, and sends no call (AL-202)", async () => {
+    const call = "twilio-call" as ChannelId;
+    // Fake keys and a fake number: the country code +999 has no country.
+    const keys = {
+      ...MEASURE_KEYS,
+      TWILIO_ACCOUNT_SID: `AC${"0".repeat(32)}`,
+      TWILIO_API_KEY_SID: `SK${"1".repeat(32)}`,
+      TWILIO_API_KEY_SECRET: "s".repeat(32),
+      TWILIO_FROM: "+99900000001",
+      PHONE: "+99900000002",
+    };
+    const spend: SpendConfig = { provider: "provider:twilio", monthlyUsd: 10, reserveUsd: 3, floor: 5, timeZone: "America/Chicago" };
+    const base = config();
+    const calling: AlertConfig = {
+      ...base,
+      contacts: [...base.contacts, { person, channel: call, address: { to: { secret: "PHONE" } } }],
+      policies: base.policies.map((entry) => ({ ...entry, steps: [...entry.steps, { channel: call, at: 0 }] })),
+      spend: [spend],
+    };
+    writeFileSync(join(home, "config.json"), JSON.stringify(calling));
+    const measured = await openMeasuredRuntime(home, { keys });
+    opened.push(measured);
+    expect(measured.first.fetched.length).toBeGreaterThan(0);
+    await measured.pass();
+    expect(requests).not.toHaveBeenCalled();
   });
 
   it("refuses private files that do not pass the check, and frees the lock", async () => {
