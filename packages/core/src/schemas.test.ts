@@ -838,6 +838,15 @@ describe("the value rules", () => {
     holds(latenessLimitSchema, { delay: 60_000, misses: 1 });
   });
 
+  it("a quiet window can have sound rules (AL-97)", () => {
+    const window = { zone: "America/Chicago", start: "22:00", end: "07:00" };
+    holds(quietWindowSchema, { ...window, sounds: [{ kinds: ["system.tell.needs-you"], level: "urgent", most: 2 }] });
+    holds(quietWindowSchema, { ...window, sounds: [] });
+    fails(quietWindowSchema, { ...window, sounds: [{ kinds: ["met.tornado"], level: "life-safety", most: 2 }] });
+    fails(quietWindowSchema, { ...window, sounds: [{ kinds: ["met.tornado"], level: "urgent", most: -1 }] });
+    fails(quietWindowSchema, { ...window, sounds: [{ kinds: ["met.tornado"], level: "urgent", most: 2, extra: true }] });
+  });
+
   it("a life-safety message is not quiet", () => {
     const message: Message = { key: "k", person: PERSON, level: "life-safety", title: "Tornado Warning", body: "Take shelter now.", incident: WARNING.id, quiet: false };
     holds(messageSchema, message);
