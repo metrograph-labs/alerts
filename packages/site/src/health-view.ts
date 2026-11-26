@@ -103,6 +103,8 @@ export function sourceRows(payload: HealthPayload, at: number, clock: Clock): So
     if (entry.state !== "healthy") {
       why.push(entry.reason);
       if (entry.lastFailure !== undefined) why.push(`The last failure was ${FAILURE_WORDS[entry.lastFailure.kind]}, ${ageText(at - entry.lastFailure.at)} ago.`);
+      // The redacted message of the last failure (AL-182) tells the cause, for example the host of a time-out.
+      if (entry.lastFailure?.message !== undefined) why.push(`Its message: ${entry.lastFailure.message}`);
     }
     for (const from of late) why.push(`It did not carry the reports of ${from} in time.`);
     return {

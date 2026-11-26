@@ -8,6 +8,7 @@ import {
   CONFIG_FORMAT,
   COPY_FORMAT,
   escalate,
+  failureMessage,
   HEALTH_FORMAT,
   healthPayloadSchema,
   MAP_FORMAT,
@@ -644,7 +645,7 @@ describe("openInstance", () => {
     expect(after.view.incidents.some((incident) => incident.level !== "none")).toBe(true);
   });
 
-  it("gives the health of the last pass with no message of a failure, and the quotas at the time of the read", async () => {
+  it("gives the health of the last pass with the redacted message of each failure, and the quotas at the time of the read", async () => {
     const { instance, clock } = await open();
     const before = instance.health();
     expect(before.format).toBe(HEALTH_FORMAT);
@@ -659,8 +660,13 @@ describe("openInstance", () => {
     expect(after.quotas.map((entry) => entry.quota)).toEqual(instance.quotas());
     // An instance with no other copy has no watch of a copy.
     expect(after.copies).toEqual([]);
+    // Each message of a failure is the redacted message of the pass (AL-182). This instance gives no values of secrets.env.
+    const raw = new Map(pass.view.health.map((entry) => [entry.source, entry.lastFailure?.failure.message]));
+    for (const entry of after.sources) {
+      const message = raw.get(entry.source);
+      expect(entry.lastFailure?.message).toBe(message === undefined ? undefined : failureMessage(message));
+    }
     const text = JSON.stringify(after);
-    expect(text).not.toContain('"message"');
     expect(healthPayloadSchema.safeParse(JSON.parse(text)).success).toBe(true);
   });
 
