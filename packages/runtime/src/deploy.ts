@@ -410,7 +410,7 @@ async function writeFiles(args: FilesArgs): Promise<void> {
     await writeFileAtomic(path, next);
     wrote = true;
     const outcome = filesOutcome(before, await liveKeys());
-    if (outcome === "bad") throw new Error(`The new ${args.name} gives no key of the fold. Look at the output of `main.ts key`.`);
+    if (outcome === "bad") throw new Error(`The new ${args.name} gives no key of the fold. Look at the output of \`main.ts key\`.`);
     if (outcome === "fold") {
       print.line(`The key of the fold changes with the new ${args.name}, thus the fold comes before the start.`);
       await foldLive();
