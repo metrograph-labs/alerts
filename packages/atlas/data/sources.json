@@ -26887,5 +26887,45 @@
       "https://developer.entur.no/open-data"
     ],
     "round": 46
+  },
+  {
+    "id": "eu-adis-weekly",
+    "name": "ADIS weekly outbreak report of the European Union",
+    "classes": [
+      "health.animal-disease"
+    ],
+    "url": "https://webgate.ec.europa.eu/tracesnt/adis/public/notification/outbreaks-weekly-report",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://commission.europa.eu/legal-notice_en",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The legal notice puts the content of the Commission under CC BY 4.0: reuse with credit and a note of the changes. It says nothing about automated reading."
+    },
+    "cost": "free",
+    "delay": "Days: the member states notify each outbreak in ADIS, and the report of the last seven days is made at each request.",
+    "history": "The report of the current year has each outbreak of the year. Older years are not in these files.",
+    "rateLimit": "unknown",
+    "calibration": "None. The report gives the count of outbreaks for each disease, type and country, with the date of the last one.",
+    "coverage": "The notified outbreaks of the main animal diseases in the member states and the connected countries: avian influenza, African swine fever, bluetongue and foot and mouth disease.",
+    "origins": [
+      "eu-commission"
+    ],
+    "path": [
+      "webgate.ec.europa.eu"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "A free official PDF of the outbreaks of the last seven days with no key, a second origin next to the bird flu zones of England. An adapter reads its text.",
+    "evidence": [
+      "https://food.ec.europa.eu/animals/animal-diseases/animal-disease-information-system-adis_en",
+      "https://webgate.ec.europa.eu/tracesnt/adis/public/notification/outbreaks-weekly-report",
+      "https://webgate.ec.europa.eu/tracesnt/adis/public/notification/outbreaks-current-year-report",
+      "https://commission.europa.eu/legal-notice_en"
+    ],
+    "round": 47
   }
 ]
