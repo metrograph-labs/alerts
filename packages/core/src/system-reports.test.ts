@@ -70,6 +70,7 @@ import {
   useStages,
   useUnreadAt,
   type LogRecovery,
+  type LogIntegrity,
   type StalePlace,
   type StoreBound,
   type StoreFill,
@@ -1351,6 +1352,40 @@ describe("the log reports", () => {
     expect(none.reports).toMatchObject([{ severity: "moderate", urgency: "expected" }]);
     expect(none.reports[0]!.description).toContain("It kept 0 events, and it could not read each part of the file. A lost event");
     expect(levels(none.reports, WATCHER, START)).toEqual(["notice"]);
+  });
+});
+
+describe("the report of a failed integrity check of the log (AL-223)", () => {
+  const START = Date.UTC(2026, 11, 1, 12);
+  const WATCHER: PersonWatch = { ...NEIGHBOR, subjects: [{ system: LOG_SUBJECT }] };
+  const failed: LogIntegrity = { at: START, problems: ["Tree 4 page 9: btreeInitPage() returns error code 11", "Tree 4 page 10: never used"] };
+  const codes = (reports: readonly Report[]) => reports.map((report) => [report.op, report.kind.code]);
+
+  it("gives an alert, no report for the same check, an update for a later check, and a cancel for null", () => {
+    expect(unknownKinds(["system.log.check"])).toEqual([]);
+    const first = systemReports(NO_SYSTEM_LINES, snapshot({ integrity: failed }), START);
+    expect(first.reports).toMatchObject([
+      {
+        op: "alert",
+        status: "system",
+        kind: { code: "system.log.check", label: "Check of the log" },
+        severity: "moderate",
+        urgency: "expected",
+        onset: START,
+        about: [{ system: LOG_SUBJECT, id: "runtime" }],
+        headline: "The integrity check of the log file of the alert system failed.",
+        parameters: { problems: ["2"] },
+      },
+    ]);
+    expect(first.reports[0]!.description).toContain("The check found 2 problems in the log file.");
+    expect(Object.keys(first.lines.open)).toEqual(["log-check"]);
+    expect(systemReports(first.lines, snapshot({ integrity: failed }), START + 60_000).reports).toEqual([]);
+    // With no field, the open line stays open. A copy with no check of the log ends nothing.
+    expect(systemReports(first.lines, snapshot({}), START + 60_000).reports).toEqual([]);
+    const later = systemReports(first.lines, snapshot({ integrity: { ...failed, at: START + 1_000 } }), START + 1_000);
+    expect(codes(later.reports)).toEqual([["update", "system.log.check"]]);
+    expect(codes(systemReports(later.lines, snapshot({ integrity: null }), START + 2_000).reports)).toEqual([["cancel", "system.log.check"]]);
+    expect(levels(first.reports, WATCHER, START)).toEqual(["notice"]);
   });
 });
 

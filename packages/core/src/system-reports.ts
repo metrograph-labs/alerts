@@ -224,6 +224,17 @@ export interface LogRecovery {
   readonly whole: boolean;
 }
 
+/**
+ * One failed integrity check of the log of the runtime (AL-223). The check ran after the start, and it did not move the
+ * file. The next start checks the file before its open, and it recovers a broken file.
+ */
+export interface LogIntegrity {
+  /** The time of the start of the check. */
+  readonly at: Instant;
+  /** The first problems that the check found. */
+  readonly problems: readonly string[];
+}
+
 /** The time after a recovery of the log during which its system report stays open. Thus the digest of the day shows it. */
 export const LOG_RECOVERY_WINDOW: Duration = 24 * 60 * 60 * 1000;
 
@@ -464,6 +475,11 @@ export interface SystemSnapshot {
   readonly steps?: readonly ClockStep[];
   /** The recoveries of the log. The latest recovery in `LOG_RECOVERY_WINDOW` before the time of the snapshot is a condition. */
   readonly recoveries?: readonly LogRecovery[];
+  /**
+   * The last integrity check of the log of this copy, when it failed (AL-223). A failed check is a condition. The value
+   * `null` tells that the last check did not fail: the open line ends. With no field, the open line stays open.
+   */
+  readonly integrity?: LogIntegrity | null;
   /** The blocks of the event loop of this copy (AL-88). The blocks in `LOOP_BLOCK_WINDOW` before the time of the snapshot are one condition. */
   readonly blocks?: readonly LoopBlock[];
   /**
@@ -847,6 +863,7 @@ export function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: 
   if (step !== undefined) conditions.set(CLOCK_LINE, clockCondition(step));
   const recovery = recentRecovery(snapshot.recoveries ?? [], at);
   if (recovery !== undefined) conditions.set(LOG_LINE, logCondition(recovery));
+  if (snapshot.integrity !== undefined && snapshot.integrity !== null) conditions.set(INTEGRITY_LINE, integrityCondition(snapshot.integrity));
   const blocks = recentBlocks(snapshot.blocks ?? [], at);
   if (blocks.length > 0) conditions.set(LOOP_LINE, loopCondition(blocks, snapshot.copy, lineClass(lines.open[LOOP_LINE])));
   for (const entry of snapshot.drills ?? []) {
@@ -900,6 +917,7 @@ export function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: 
     if (condition === undefined && snapshot.balances === undefined && name.startsWith(BALANCE_LINE)) continue;
     if (condition === undefined && snapshot.uses === undefined && name.startsWith(USE_LINE)) continue;
     if (condition === undefined && snapshot.joint === undefined && name.startsWith(JOINT_LINE)) continue;
+    if (condition === undefined && snapshot.integrity === undefined && name === INTEGRITY_LINE) continue;
     if (condition === undefined && snapshot.drift === undefined && name.startsWith(DRIFT_LINE)) continue;
     if (condition === undefined && unreadUses.some((prefix) => name.startsWith(prefix))) continue;
     if (condition === undefined && snapshot.copies === undefined && name.startsWith(COPY_LINE)) continue;
@@ -1082,6 +1100,9 @@ const CLOCK_LINE = "clock";
 
 // The name of the line of the recoveries of the log. A second recovery in the window of an open line gives an update.
 const LOG_LINE = "log";
+
+// The name of the line of the failed integrity check of the log. A later failed check in an open line gives an update.
+const INTEGRITY_LINE = "log-check";
 
 // The name of the line of the blocks of the event loop. A block of a higher class in the window of an open line gives an update.
 const LOOP_LINE = "loop";
@@ -1890,6 +1911,29 @@ function logCondition(recovery: LogRecovery): Condition {
     parameters: { quarantine: [recovery.quarantine], kept: [String(recovery.kept)], lost: [String(recovery.lost)], whole: [String(recovery.whole)] },
   };
 }
+
+// A broken file can lose events at the next start, thus a failed check gets the same grade as a recovery with a loss.
+function integrityCondition(integrity: LogIntegrity): Condition {
+  const code = `${LOG_KIND}.check`;
+  const problems = integrity.problems.slice(0, INTEGRITY_PROBLEMS);
+  return {
+    facts: { at: integrity.at, problems },
+    kind: { code, label: kindLabel(code) },
+    severity: "moderate",
+    urgency: "expected",
+    response: ["assess"],
+    onset: integrity.at,
+    areas: [],
+    about: [{ system: LOG_SUBJECT, id: "runtime", label: "Log of the runtime" }],
+    headline: "The integrity check of the log file of the alert system failed.",
+    description: `The check found ${String(integrity.problems.length)} problems in the log file. The file did not move. The first problem: ${problems[0] ?? "none"}`,
+    instruction: "Start the runtime again. The start checks the file, and it recovers a broken file. Then examine the disk of the computer.",
+    parameters: { problems: [String(integrity.problems.length)] },
+  };
+}
+
+// The count of the problems of a failed integrity check that its report keeps.
+const INTEGRITY_PROBLEMS = 10;
 
 // The class of an open line of the blocks of the event loop, or 0 for no line.
 function lineClass(line: SystemLine | undefined): Duration {
