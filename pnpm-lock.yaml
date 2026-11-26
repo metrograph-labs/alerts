@@ -800,8 +800,8 @@ importers:
         specifier: ^0.11.1
         version: 0.11.1
       '@mark1russell7/market-sources':
-        specifier: ^0.5.7
-        version: 0.5.7(@opentelemetry/api@1.10.0)(ws@8.23.0)
+        specifier: ^0.5.8
+        version: 0.5.8(@opentelemetry/api@1.10.0)(ws@8.23.0)
       '@mark1russell7/optional':
         specifier: ^1.5.0
         version: 1.5.0
@@ -2715,8 +2715,8 @@ packages:
     resolution: {integrity: sha512-1ERbIJoHmYNBWg4Wdv1Nxseec/FuKO+YU8yHJ87U4NpbVNBK6ffngMufjTVTZ0NmpwgcSJkv3TdpPHawVWHiiQ==}
     engines: {node: '>=22.12'}
 
-  '@mark1russell7/market-sources@0.5.7':
-    resolution: {integrity: sha512-Wi/UEwTCwgmphVp4z+psMtZ1eaiuKvIz1aZTFzEuj39JAcIig2aAtLu5FZR9OfWcWeG5EcfBw3UTcNiQf0qcsQ==}
+  '@mark1russell7/market-sources@0.5.8':
+    resolution: {integrity: sha512-ezhT7XqtL36xh8yBPIYkL0tZO66jrwf5p6CcYRQZ4Rd9G2tvUU4NVGrbVUX4jITlK5qmikAx0pYUF5eXhrStUQ==}
     engines: {node: '>=22'}
 
   '@mark1russell7/market@0.11.1':
@@ -5312,7 +5312,7 @@ snapshots:
     transitivePeerDependencies:
       - zod
 
-  '@mark1russell7/market-sources@0.5.7(@opentelemetry/api@1.10.0)(ws@8.23.0)':
+  '@mark1russell7/market-sources@0.5.8(@opentelemetry/api@1.10.0)(ws@8.23.0)':
     dependencies:
       '@mark1russell7/market': 0.11.1
       '@mark1russell7/quantity': 0.4.8(zod@4.6.7)
