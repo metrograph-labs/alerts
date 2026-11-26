@@ -14,7 +14,7 @@
  */
 
 import { arrayOf, isRecord, numberOf, textOf, timeOf, type Fields } from "@mark1russell7/optional/read";
-import { plainText } from "@mark1russell7/text/references";
+import { plainText } from "@mark1russell7/text/plain-text";
 
 /** The path of the documented list of the latest incidents of a page. */
 export const HISTORY_PATH = "/api/v2/incidents.json";
@@ -156,7 +156,8 @@ export interface HistoryFileRead extends HistoryRead {
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-const SPAN_PATTERN = /^([A-Z][a-z]{2}) (\d{1,2}), (\d{2}):(\d{2})(?: - (?:([A-Z][a-z]{2}) (\d{1,2}), )?(\d{2}):(\d{2}))? ([A-Z]{2,5})$/u;
+// The plain text puts one space for each tag, thus `<var>1</var>,` gives `1 ,`. The pattern permits that space before a comma.
+const SPAN_PATTERN = /^([A-Z][a-z]{2}) (\d{1,2}) ?, (\d{2}):(\d{2})(?: - (?:([A-Z][a-z]{2}) (\d{1,2}) ?, )?(\d{2}):(\d{2}))? ([A-Z]{2,5})$/u;
 
 /** This function gives the year of a month near a known month. A month more than half a year away is in the next or the last year. */
 function yearNear(month: number, knownMonth: number, knownYear: number): number {

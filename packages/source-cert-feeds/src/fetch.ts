@@ -10,7 +10,7 @@
 import { observationId, type FetchOutcome, type FetchSignal, type Instant, type Observation, type Watch } from "@mark1russell7/alerts";
 import { createRequester } from "@mark1russell7/alerts-fetch";
 import { readFeed, type FeedEntry } from "@mark1russell7/alerts-format-cap";
-import { plainText } from "@mark1russell7/text/references";
+import { plainText } from "@mark1russell7/text/plain-text";
 import type { Condition, Pace, Transport } from "polite-crawler/api";
 
 import { DAY_MS, type CertProvider } from "./providers.ts";

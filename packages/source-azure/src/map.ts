@@ -11,7 +11,7 @@
 import { categoryOf, kindLabel, Problems, reportId, type MapResult, type Observation, type Report, type Subject } from "@mark1russell7/alerts";
 import { isRecord, readHttpTime, textOf, type Fields } from "@mark1russell7/optional/read";
 import { errorMessage } from "@mark1russell7/text";
-import { plainText } from "@mark1russell7/text/references";
+import { plainText } from "@mark1russell7/text/plain-text";
 
 import { AZURE_DOMAIN, AZURE_KIND, AZURE_ORIGIN, AZURE_PAGE, AZURE_SOURCE, categoriesOf, DOMAIN_SYSTEM, REGION_SYSTEM, regionId } from "./feed.ts";
 
