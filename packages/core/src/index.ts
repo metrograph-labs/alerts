@@ -32,6 +32,7 @@ export * from "./why.ts";
 export * from "./config.ts";
 export * from "./opt-in.ts";
 export * from "./health.ts";
+export * from "./canary-limit.ts";
 export * from "./coverage.ts";
 export * from "./lateness.ts";
 export * from "./feed-lag.ts";
