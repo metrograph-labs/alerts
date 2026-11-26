@@ -578,18 +578,6 @@ describe("a retirement changes no verdict and sends nothing (AL-189)", () => {
       expect(retiring.time).toBe(kept.time);
       const expected = readers(kept, kept.time);
       const actual = readers(retiring, kept.time);
-      // DEBUG AL-189: remove before the merge.
-      if (JSON.stringify(actual.runs) !== JSON.stringify(expected.runs)) {
-        const dump = (state: RuntimeState) => ({
-          drills: state.drills,
-          runs: state.merge.reports.filter((report) => report.kind.code === "system.drill.run").map((report) => ({ id: report.id.slice(0, 8), onset: report.onset, sent: report.sent, received: report.received, drill: report.parameters["drill"]?.[0] })),
-          acks: state.merge.acks.map((ack) => ({ incident: ack.incident.slice(0, 8), at: ack.at, via: ack.via })),
-          retired: state.merge.retired.map((tombstone) => tombstone.report.slice(0, 8)),
-          steps: state.steps,
-          time: state.time,
-        });
-        console.log(`AL189DEBUG seed ${String(seed)} event ${String(index)} ${JSON.stringify(event)}\nKEPT ${JSON.stringify(dump(kept))}\nRETIRING ${JSON.stringify(dump(retiring))}\nPREV ${JSON.stringify(events[index - 1])}`);
-      }
       // One assertion for each reader, thus a failure names the reader.
       for (const name of Object.keys(expected) as (keyof typeof expected)[]) expect(actual[name], `the reader ${name} after the event ${String(index)}: ${event.id}`).toEqual(expected[name]);
       passed += expected.verdicts.filter((verdict) => verdict?.state === "passed").length;
