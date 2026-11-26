@@ -2850,5 +2850,11 @@
     "name": "King County Wastewater Treatment Division",
     "issues": null,
     "note": "The file of king-county-cso-status comes from this operator, with the City of Seattle."
+  },
+  {
+    "id": "entur",
+    "name": "Entur AS",
+    "issues": null,
+    "note": "The records of entur-situations come from the operators of Norway through the national registry of Entur."
   }
 ]
