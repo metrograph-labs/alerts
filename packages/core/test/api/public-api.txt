@@ -1684,6 +1684,7 @@ export interface CopyWatch {
   readonly read?: CopyRead;
   readonly drills?: Readonly<Record<string, Instant>>;
   readonly unsteadySince?: Instant;
+  readonly deployUntil?: Instant;
   readonly billing?: CopyBilling;
 }
 

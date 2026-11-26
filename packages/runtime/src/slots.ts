@@ -542,6 +542,8 @@ export interface CopyReadStatus {
   readonly readAt: number | null;
   /** The first read that told that the copy is not steady, or `null` (AL-204). A status of an older build gives `null`. */
   readonly unsteadySince: number | null;
+  /** The end of the deploy mark of the copy on the clock of this host, or `null` (AL-208). A status of an older build gives `null`. */
+  readonly deployUntil: number | null;
 }
 
 /**
@@ -560,7 +562,9 @@ export function copyReadsOf(value: unknown): readonly CopyReadStatus[] | undefin
     if (readAt !== null && typeof readAt !== "number") return undefined;
     const unsteadySince = item["unsteadySince"] ?? null;
     if (unsteadySince !== null && typeof unsteadySince !== "number") return undefined;
-    reads.push({ copy: item["copy"], readAt, unsteadySince });
+    const deployUntil = item["deployUntil"] ?? null;
+    if (deployUntil !== null && typeof deployUntil !== "number") return undefined;
+    reads.push({ copy: item["copy"], readAt, unsteadySince, deployUntil });
   }
   return reads;
 }
@@ -573,8 +577,11 @@ export function copyReadsOf(value: unknown): readonly CopyReadStatus[] | undefin
  * - A host with no other copy stops only with `alone`: no copy sends the alerts during the stop.
  * - Each other copy must be steady (AL-204). A copy that started a short time ago is not steady. Thus a deploy of the
  *   second copy waits until the first copy has its passes and its heartbeats again. One bad release then stops one copy only.
+ * - No other copy can have a deploy mark that did not end (AL-208). A copy that stages is up and steady, but it stops soon.
+ * - With `readAfter`, each other copy needs a read after that time (AL-208). The deploy gives the time of its own mark.
+ *   Then two deploys that start at about the same time see the marks of each other, and both refuse.
  */
-export function stopRefusal(copies: readonly CopyReadStatus[] | "down" | undefined, now: number, maxAge: number, alone: boolean): string | undefined {
+export function stopRefusal(copies: readonly CopyReadStatus[] | "down" | undefined, now: number, maxAge: number, alone: boolean, readAfter?: number): string | undefined {
   if (copies === "down") return undefined;
   if (copies === undefined) return "The status of the live runtime has no good list of the other copies. The deploy does not stop the runtime.";
   if (copies.length === 0) return alone ? undefined : "This runtime has no other copy, thus a stop leaves no copy up. Add `--alone` to accept the gap.";
@@ -582,9 +589,49 @@ export function stopRefusal(copies: readonly CopyReadStatus[] | "down" | undefin
   if (old.length > 0) {
     return `The copies ${old.join(", ")} had no read in the last ${String(Math.round(maxAge / 1000))} s, thus a stop can leave no copy up. The deploy does not stop the runtime.`;
   }
+  const unread = readAfter === undefined ? [] : copies.filter((read) => read.readAt === null || read.readAt <= readAfter).map((read) => read.copy);
+  if (unread.length > 0) return `The copies ${unread.join(", ")} had no read after the deploy mark of this host. The deploy does not stop the runtime.`;
+  const deploying = copies.filter((read) => read.deployUntil !== null && read.deployUntil > now).map((read) => read.copy);
+  if (deploying.length > 0) return `The copies ${deploying.join(", ")} deploy at this time. The deploy does not stop the runtime. Deploy again after their deploy ends.`;
   const unsteady = copies.filter((read) => read.unsteadySince !== null).map((read) => read.copy);
   if (unsteady.length === 0) return undefined;
   return `The copies ${unsteady.join(", ")} are not steady: they started a short time ago. The deploy does not stop the runtime. Deploy again when they are steady.`;
+}
+
+/** The name of the deploy mark in the host folder (AL-208). The runtime tells the other copies the end of the mark. */
+export const DEPLOY_MARK_FILE = "deploying.json";
+
+/** The end of a deploy mark while a deploy command holds the deploy lock: 1 hour after the take of the lock (AL-208). */
+export const DEPLOY_MARK_SPAN: number = 60 * 60_000;
+
+/**
+ * The end of a deploy mark after the release of the deploy lock: 2 minutes (AL-208). The mark thus also covers a restart after a
+ * swap. After that time, the other copies have no read of a stopped copy in their `maxAge`, or a read that is not steady.
+ */
+export const DEPLOY_MARK_TAIL: number = 2 * 60_000;
+
+/** The deploy mark of a host (AL-208): the take of the deploy lock and the end of the mark, in milliseconds since the epoch. */
+export interface DeployMark {
+  readonly since: number;
+  readonly until: number;
+}
+
+/** This function gives the text of the file of a deploy mark. */
+export const deployMarkText = (mark: DeployMark): string => `${JSON.stringify(mark)}\n`;
+
+/** This function gives the end of the deploy mark of a file text, when it is after `now`. No file, a bad file or an old mark give `undefined`. */
+export function deployMarkEnd(text: string | undefined, now: number): number | undefined {
+  if (text === undefined) return undefined;
+  let value: unknown;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+  if (!isRecord(value)) return undefined;
+  const { since, until } = value;
+  if (typeof since !== "number" || typeof until !== "number" || !Number.isFinite(since) || !Number.isFinite(until) || until < since) return undefined;
+  return until > now ? until : undefined;
 }
 
 /** The arguments of `deploy.ts deploy` (AL-186): the commit, the build of the page, and the consent to a stop with no other copy. */

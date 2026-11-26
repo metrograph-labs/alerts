@@ -49,7 +49,7 @@ import {
   type HistoryRead,
 } from "@mark1russell7/alerts-source-statuspage";
 import { isRecord } from "@mark1russell7/optional/read";
-import { wilson, Z95 } from "@mark1russell7/rigor-statistics";
+import { proportionMean, wilson, Z95 } from "@mark1russell7/rigor-statistics";
 import { openDatabase } from "@mark1russell7/sqlite";
 import { works } from "@mark1russell7/system-stack";
 import { countOf, errorMessage } from "@mark1russell7/text";
@@ -681,6 +681,46 @@ export interface BaseMeasure {
   readonly lines: readonly string[];
   /** The measure of each measured part, by the id of the part. */
   readonly measures: readonly ChanceMeasure[];
+}
+
+/**
+ * The estimate of a measured input from its down share (AL-147). `low` is the low end of the 95% Wilson interval, for
+ * a bound. `mean` is the Jeffreys posterior mean, (good + 1/2) / (hours + 1), for a point value. The low end of a
+ * short record with no down hour falls with the length of the record. The mean does not.
+ */
+export type Estimate = "low" | "mean";
+
+/** The estimates, in the order of the option `--estimate`. */
+export const ESTIMATES: readonly Estimate[] = ["low", "mean"];
+
+/** The text of the estimate of an input, for a source text. */
+const ESTIMATE_TEXT: Readonly<Record<Estimate, string>> = { low: "the input is the low end", mean: "the input is the Jeffreys posterior mean" };
+
+/**
+ * This function gives a measure with the input of an estimate. The low end gives the measure as it is. The source text
+ * tells the estimate and its value.
+ */
+export function estimated(measure: ChanceMeasure, estimate: Estimate): ChanceMeasure {
+  if (estimate === "low") return measure;
+  const { hours, downHours } = measure.down;
+  const works = proportionMean(hours - downHours, hours);
+  const text = `${ESTIMATE_TEXT.mean} ${works.toFixed(6)}`;
+  const source = measure.input.source.includes(ESTIMATE_TEXT.low) ? measure.input.source.replace(ESTIMATE_TEXT.low, text) : `${measure.input.source}, ${text}`;
+  return { ...measure, input: { ...measure.input, works, source } };
+}
+
+/**
+ * This function gives a base with the input of an estimate for each measured chance. `measures` are the measures of
+ * the chances of the base. A later measure of a part replaces an earlier one.
+ */
+export function estimatedBase(base: PlacementBase, measures: readonly ChanceMeasure[], estimate: Estimate): PlacementBase {
+  if (estimate === "low") return base;
+  const byPart = new Map(measures.map((measure) => [measure.input.id, estimated(measure, estimate).input] as const));
+  const chances = (base.chances ?? []).map((chance) => {
+    const input = byPart.get(chance.part);
+    return input === undefined || chance.kind !== "measured" ? chance : { ...chance, works: input.works, source: input.source };
+  });
+  return { ...base, chances };
 }
 
 /**

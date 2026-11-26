@@ -42,6 +42,11 @@ export interface EntriesOutput {
    * other copy reads it. A copy of an older build gives none.
    */
   readonly steady?: boolean;
+  /**
+   * The end of the deploy mark of the host of the copy, on the clock of its runtime (AL-208). The copy gives it only while
+   * the mark did not end. The watch of each other copy reads it. A copy of an older build gives none.
+   */
+  readonly deployUntil?: Instant;
 }
 
 /** The output of the procedure `alerts.log.entries` after its checks on the side of the reader. */
@@ -53,6 +58,8 @@ export interface ReceivedEntries {
   readonly drills?: Readonly<Record<string, Instant>>;
   /** This value tells if the copy is steady. An answer with no value, or with a value that is not a boolean, gives none. */
   readonly steady?: boolean;
+  /** The end of the deploy mark of the copy, on its clock. An answer with no end, or with an end that is not a finite number, gives none. */
+  readonly deployUntil?: Instant;
 }
 
 /** The parts of a runtime that serve the procedure `alerts.log.entries`. */
@@ -66,6 +73,8 @@ export interface EntriesSource {
   readonly drills?: () => Readonly<Record<string, Instant>>;
   /** This function tells if the runtime is steady. Without it, the answer tells nothing. */
   readonly steady?: () => boolean;
+  /** This function gives the end of the deploy mark of the host, or `undefined` with no mark (AL-208). Without it, the answer tells nothing. */
+  readonly deployUntil?: () => Instant | undefined;
 }
 
 /** The longest hash of a configuration that a reader accepts. */
@@ -81,19 +90,21 @@ export function serveEntries(source: EntriesSource, input: EntriesInput): Entrie
   if (!(Number.isSafeInteger(after) && after >= 0)) throw new Error("The position after is not a whole number of 0 or more.");
   if (limit !== undefined && !(Number.isSafeInteger(limit) && limit >= 1 && limit <= EXCHANGE_PAGE)) throw new Error(`The limit is not a whole number from 1 to ${EXCHANGE_PAGE}.`);
   const page = source.runtime.share(after, limit);
+  const deployUntil = source.deployUntil?.();
   return {
     page,
     time: source.clock.now(),
     configHash: source.configHash,
     ...(source.drills === undefined ? {} : { drills: source.drills() }),
     ...(source.steady === undefined ? {} : { steady: source.steady() }),
+    ...(deployUntil === undefined ? {} : { deployUntil }),
   };
 }
 
 /** This function checks the output of the procedure `alerts.log.entries` on the side of the reader. A problem holds no value. */
 export function parseEntries(value: unknown): Result<ReceivedEntries, readonly string[]> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return err(["The answer is not an object."]);
-  const { page, time, configHash, drills, steady } = value as Readonly<Record<string, unknown>>;
+  const { page, time, configHash, drills, steady, deployUntil } = value as Readonly<Record<string, unknown>>;
   const problems: string[] = [];
   if (!(typeof time === "number" && Number.isFinite(time))) problems.push("The time of the answer is not a finite number.");
   if (!(typeof configHash === "string" && configHash.length > 0 && configHash.length <= HASH_LENGTH)) problems.push(`The hash of the configuration is not a text of 1 to ${HASH_LENGTH} characters.`);
@@ -101,8 +112,9 @@ export function parseEntries(value: unknown): Result<ReceivedEntries, readonly s
   if (parsed.tag === "err") problems.push(...parsed.error);
   if (problems.length > 0 || parsed.tag === "err") return err(problems);
   const starts = drillStarts(drills);
-  // A steady value that is not a boolean gives none, and the read still passes, as with the starts of the drills.
-  return ok({ page: parsed.value, time: time as Instant, configHash: configHash as string, ...(starts === undefined ? {} : { drills: starts }), ...(typeof steady === "boolean" ? { steady } : {}) });
+  // A steady value that is not a boolean gives none, and the read still passes, as with the starts of the drills. A bad end of a deploy mark gives none too.
+  const until = typeof deployUntil === "number" && Number.isFinite(deployUntil) ? { deployUntil: deployUntil as Instant } : {};
+  return ok({ page: parsed.value, time: time as Instant, configHash: configHash as string, ...(starts === undefined ? {} : { drills: starts }), ...(typeof steady === "boolean" ? { steady } : {}), ...until });
 }
 
 // The longest id of a drill, as the schema of the configuration has it.
@@ -206,6 +218,8 @@ export function exchangeWorker(options: ExchangeWorkerOptions): ExchangeWorker {
   const starts = new Map<string, Readonly<Record<string, Instant>>>();
   // The first read that passed and told that the copy is not steady, after its last steady read, by the id of the copy (AL-108).
   const unsteady = new Map<string, Instant>();
+  // The end of the deploy mark of the last read that passed, on the clock of this copy, by the id of the copy (AL-208).
+  const deploys = new Map<string, Instant>();
   const failures = new Map<string, string>();
   // Each shift moves the times into a new frame. A read with a shift during its call has times of two frames.
   let frames = 0;
@@ -222,7 +236,17 @@ export function exchangeWorker(options: ExchangeWorkerOptions): ExchangeWorker {
       const read = reads.get(peer.id);
       const drills = starts.get(peer.id);
       const unsteadySince = unsteady.get(peer.id);
-      return { copy: peer.id, skewLimit, maxAge, since, ...(read === undefined ? {} : { read }), ...(drills === undefined ? {} : { drills }), ...(unsteadySince === undefined ? {} : { unsteadySince }) };
+      const deployUntil = deploys.get(peer.id);
+      return {
+        copy: peer.id,
+        skewLimit,
+        maxAge,
+        since,
+        ...(read === undefined ? {} : { read }),
+        ...(drills === undefined ? {} : { drills }),
+        ...(unsteadySince === undefined ? {} : { unsteadySince }),
+        ...(deployUntil === undefined ? {} : { deployUntil }),
+      };
     });
   // A new start of a drill of a copy changes the watch of the drills, thus it is a change of the round.
   const stagesAt = (at: Instant): string => JSON.stringify(watches().map((watch) => [copyStages(watch, at), watch.drills ?? null]));
@@ -300,6 +324,9 @@ export function exchangeWorker(options: ExchangeWorkerOptions): ExchangeWorker {
         // A copy of an older build tells nothing. Thus only an answer that tells `false` keeps the copy unsteady.
         if (entries.steady !== false) unsteady.delete(peer.id);
         else if (!unsteady.has(peer.id)) unsteady.set(peer.id, at);
+        // The end of the mark moves to the clock of this copy by the skew. A failed read keeps the last end (AL-208).
+        if (entries.deployUntil === undefined) deploys.delete(peer.id);
+        else deploys.set(peer.id, entries.deployUntil - (entries.time - at));
       }
       if (take.next >= entries.page.head || take.next === after) return result(false);
     }
@@ -332,6 +359,7 @@ export function exchangeWorker(options: ExchangeWorkerOptions): ExchangeWorker {
       since += size;
       for (const [copy, read] of reads) reads.set(copy, { ...read, at: read.at + size, skew: read.skew - size });
       for (const [copy, at] of unsteady) unsteady.set(copy, at + size);
+      for (const [copy, at] of deploys) deploys.set(copy, at + size);
       frames += 1;
     },
     ready() {
