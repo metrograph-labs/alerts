@@ -26770,5 +26770,83 @@
       "https://www.canadapost-postescanada.ca/cpc/en/support/kb/company-policies/terms-conditions/legal-terms-of-use-and-conditions.page"
     ],
     "round": 44
+  },
+  {
+    "id": "osc-investor-alerts",
+    "name": "Ontario Securities Commission investor alerts RSS",
+    "classes": [
+      "market.investor.alert"
+    ],
+    "url": "https://feeds.feedburner.com/rss_osc_investor_alerts_en",
+    "access": "feed",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.osc.ca/en/legal",
+      "automated": "allowed",
+      "redistribution": "forbidden",
+      "note": "The OSC gives the feed for subscription. The terms let non-commercial and informational use. They forbid publication or distribution of the content with no written permission."
+    },
+    "cost": "free",
+    "delay": "As published: the OSC posts an alert when it sees harmful activity in progress.",
+    "history": "The feed keeps the last 15 alerts. The warnings page keeps the older alerts.",
+    "rateLimit": "unknown",
+    "calibration": "not applicable",
+    "coverage": "Alerts of the OSC about firms and persons that are not registered, impersonations of real firms and new kinds of investment fraud.",
+    "origins": [
+      "osc"
+    ],
+    "path": [
+      "feeds.feedburner.com"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "A free official feed of investor alerts, a second origin next to the SEC. An alert goes only to its user, because the terms forbid redistribution.",
+    "evidence": [
+      "https://www.osc.ca/en/news-events/connect-us/rss-feeds",
+      "https://feeds.feedburner.com/rss_osc_investor_alerts_en",
+      "https://www.osc.ca/en/legal"
+    ],
+    "round": 45
+  },
+  {
+    "id": "king-county-cso-status",
+    "name": "King County combined sewer overflow status",
+    "classes": [
+      "env.water.sewage-overflow"
+    ],
+    "url": "https://your.kingcounty.gov/dnrp/library/wastewater/cso/img/CSO_metadata.CSV",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://kingcounty.gov/en/dept/kcit/data-information-services/gis-center/about/terms-conditions-copyrights",
+      "automated": "unclear",
+      "redistribution": "allowed",
+      "note": "The terms let each person copy, distribute and use the information, but not sell it. They say nothing about automated reading."
+    },
+    "cost": "free",
+    "delay": "Ten minutes: the status map of King County reads the file again each 10 minutes.",
+    "history": "None in the file. The annual reports to the Washington Department of Ecology keep the reviewed counts.",
+    "rateLimit": "unknown",
+    "calibration": "The page says that the real-time data is not reviewed for accuracy.",
+    "coverage": "The status of each combined sewer outfall of King County and the City of Seattle: overflow now, overflow in the last 48 hours, no recent overflow or no data.",
+    "origins": [
+      "king-county-wtd"
+    ],
+    "path": [
+      "your.kingcounty.gov"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "A free official file of overflows with no key, a second origin next to the overflow hub of Water UK. Each row has the point of its outfall.",
+    "evidence": [
+      "https://kingcounty.gov/en/dept/dnrp/waste-services/wastewater-treatment/sewer-system-services/cso-status",
+      "https://www.arcgis.com/sharing/rest/content/items/6de3cae45d914326a32ed120b5ace4f8/data?f=json",
+      "https://kingcounty.gov/en/dept/kcit/data-information-services/gis-center/about/terms-conditions-copyrights"
+    ],
+    "round": 45
   }
 ]

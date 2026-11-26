@@ -711,7 +711,7 @@
       "FEMA lifelines: Water Systems > Wastewater Management",
       "UNDRR-ISC HIPs 2025: TL0503 Wastewater, TL0214 Drain and Sewer Flooding"
     ],
-    "gap": "The storm overflow hub of Water UK gives the overflows of England. No second source was found. Round 31: the documentation page of Scottish Water gave 403. Round 33: the layer of Scottish Water on ArcGIS Online gives only the totals of each year. Round 41: the API of Scottish Water answers with no key, so the source is a plan. The gap stays open until a round reads its terms.",
+    "gap": null,
     "round": 1
   },
   {
@@ -1944,7 +1944,7 @@
     "references": [
       "https://www.sec.gov/about/rss-feeds"
     ],
-    "gap": "Only SEC feeds; investor.gov returned 403 and the FINRA RSS path returned 404.",
+    "gap": null,
     "round": 1
   },
   {

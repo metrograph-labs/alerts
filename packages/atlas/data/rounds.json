@@ -2180,5 +2180,50 @@
       "members": 1757,
       "cause": "Round 44 plans the Coinbase ticker, a second origin for stablecoin depegs. It closes the gap of the depeg class and of its parent market.crypto, so the gaps go from 62 to 60."
     }
+  },
+  {
+    "round": 45,
+    "date": "2026-11-26",
+    "by": "One session, with no subagent.",
+    "method": "The round took two classes with one source: sewage overflows and investor alerts. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The RSS feeds of the Ontario Securities Commission: https://www.osc.ca/en/news-events/connect-us/rss-feeds",
+      "The web map of the King County overflow status: https://www.arcgis.com/sharing/rest/content/items/6de3cae45d914326a32ed120b5ace4f8/data?f=json"
+    ],
+    "queries": [
+      "combined sewer overflow real-time notification open data API ArcGIS feature service",
+      "FCA warning list of unauthorised firms download data API",
+      "securities regulator investor alerts RSS feed warnings unregistered firms",
+      "King County combined sewer overflow real-time status data feed"
+    ],
+    "notes": [
+      "The warning list page of the FCA gave 403, so the round did not read it again.",
+      "The investor alerts feed of the Canadian Securities Administrators gave a challenge page, so the round stopped there.",
+      "The OSC gives a feed of investor alerts. Its terms let non-commercial use but forbid redistribution, so an alert goes only to its user.",
+      "The status map of King County reads a CSV file with the status of 126 outfalls. The terms let copies and distribution, but not sale.",
+      "With two origins each, the sewage overflow class and the investor alert class have no gap."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 58,
+      "cover": {
+        "adopted": 59,
+        "paths": 59,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 166,
+        "paths": 165,
+        "origins": 84
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 45 plans the OSC investor alerts and the King County overflow status, a second origin for each class. Thus the gaps go from 60 to 58."
+    }
   }
 ]
