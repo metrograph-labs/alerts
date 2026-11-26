@@ -9,7 +9,8 @@ import { ms, seconds } from "@procedures/client";
 import { describe, expect, it } from "vitest";
 import { CONFIG_FILES_FORMAT, type ConfigFiles } from "./config-sync.ts";
 import { EXCHANGE_FORMAT, EXCHANGE_PAGE, type ExchangePage } from "./exchange.ts";
-import { configFilesCall, EXCHANGE_BASE_PATH, EXCHANGE_TOKEN_LENGTH, exchangeBaseUrl, exchangeCall, exchangeHost } from "./exchange-http.ts";
+import { configFilesCall, EXCHANGE_BASE_PATH, EXCHANGE_TOKEN_LENGTH, exchangeBaseUrl, exchangeCall } from "./exchange-http.ts";
+import { runtimeHost } from "./procedures-host.ts";
 import { parseEntries, type EntriesInput, type EntriesSource } from "./peers.ts";
 
 const T0 = 1_775_066_400_000;
@@ -61,7 +62,7 @@ const sourceOf = (reads: EntriesInput[]): EntriesSource => ({
 
 async function serve(configFiles?: ConfigFiles): Promise<Served> {
   const reads: EntriesInput[] = [];
-  const host = exchangeHost({ source: sourceOf(reads), token: TOKEN, listen: LOOPBACK, ...(configFiles === undefined ? {} : { configFiles }) });
+  const host = runtimeHost({ exchange: { source: sourceOf(reads), token: TOKEN, listen: LOOPBACK, ...(configFiles === undefined ? {} : { configFiles }) } });
   const life = await host.declare(serviceOf("exchange-test")).run({ process: embeddedProcess() });
   const address = host.info.endpoints().find((endpoint) => endpoint.type === "http")?.address;
   if (address === undefined) {
@@ -155,9 +156,9 @@ describe("the HTTP transport of the exchange", () => {
 
   it("does not make a host with a short token, and the message holds no token", () => {
     const short = "fake-short-token";
-    expect(() => exchangeHost({ source: sourceOf([]), token: short, listen: LOOPBACK })).toThrow(`fewer than ${EXCHANGE_TOKEN_LENGTH} characters`);
+    expect(() => runtimeHost({ exchange: { source: sourceOf([]), token: short, listen: LOOPBACK } })).toThrow(`fewer than ${EXCHANGE_TOKEN_LENGTH} characters`);
     try {
-      exchangeHost({ source: sourceOf([]), token: short, listen: LOOPBACK });
+      runtimeHost({ exchange: { source: sourceOf([]), token: short, listen: LOOPBACK } });
     } catch (error) {
       expect(String(error)).not.toContain(short);
     }

@@ -2531,5 +2531,46 @@
       "members": 1757,
       "cause": "Round 53 adds ntsb-investigations as a later source. The classes keep their sources, so the gaps stay at 56."
     }
+  },
+  {
+    "round": 54,
+    "date": "2026-11-26",
+    "by": "One session, with no subagent.",
+    "method": "The round looked again at the shutoffs for wildfire safety, a class with no adopted source. It read the Cal OES outage layer and its item, the PSPS page of PG&E and its site terms, and searched for a PSPS feed of SCE. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json"
+    ],
+    "queries": [
+      "PSPS public safety power shutoff ArcGIS feature service open data Southern California Edison PG&E SDG&E",
+      "Southern California Edison PSPS FeatureServer OR geojson OR API public safety power shutoff circuits data",
+      "pge.com website terms of use automated means robots scraping Pacific Gas and Electric"
+    ],
+    "notes": [
+      "The field OutageType of the Cal OES layer has the values Planned, Not Planned and Unknown. On 2026-11-26 the layer had 26 incidents, all Not Planned.",
+      "The item of the Cal OES layer says Public Use, for Cal OES personnel and supporting partners to conduct emergency management.",
+      "The PSPS page of PG&E gives a geodatabase, the notices and a report for each of 14 events from 2024-10-17 to 2026-10-23. The site terms permit no bots without the consent of PG&E.",
+      "An SCE slide deck says that its Public Safety Partner Portal gives the PSPS areas and circuits as files and an API, only to the public safety partners of the CPUC."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 56,
+      "cover": {
+        "adopted": 59,
+        "paths": 59,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 167,
+        "paths": 166,
+        "origins": 85
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 34,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 54 adds pge-psps-events as a rejected source and sce-psps-partner-portal as a later source. The shutoffs keep no adopted source, so the gaps stay at 56."
+    }
   }
 ]

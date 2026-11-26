@@ -9,7 +9,9 @@ import { fakeWallClock, realClock, wallClock } from "@mark1russell7/algebra/cloc
 import { HEALTH_FORMAT, HISTORY_FORMAT, INTERESTS_FORMAT, MAP_FORMAT, type HealthPayload, type HistoryPayload, type Instant, type InterestsPayload, type MapPayload, type SourceId } from "@mark1russell7/alerts";
 import { describe, expect, it } from "vitest";
 import { EXCHANGE_FORMAT } from "./exchange.ts";
-import { EXCHANGE_TOKEN_LENGTH, exchangeHost } from "./exchange-http.ts";
+import { EXCHANGE_TOKEN_LENGTH } from "./exchange-http.ts";
+import { PROCEDURES_HOST, runtimeHost } from "./procedures-host.ts";
+import { TELL_TOKEN_LENGTH } from "./tell-intake.ts";
 import { EXCHANGE_WORKER, PAGE_INDEX, PROFILES, STOP_MESSAGE, createLoop, declare, outageDeployWorker, statusOf, type Pass, type Status } from "./index.ts";
 
 const s = (value: number) => ({ value, unit: "s" });
@@ -169,9 +171,10 @@ describe("the declaration of the service", () => {
     expect("copies" in statusOf(loop, outage)).toBe(false);
   });
 
-  it("declares the worker and the host of the exchange together, as a copy with peers and a listener has them", () => {
-    // A copy with peers and the address listen has the two parts. Each name of a server or a worker is unique in the service.
-    const host = exchangeHost({
+  it("declares the worker of the exchange and the one procedures host together, as a copy with peers, a listener and the intake has them", () => {
+    // A copy with peers and the address listen has the worker and the listener of the exchange. Each name of a server or a worker is unique in the service.
+    const host = runtimeHost({
+      exchange: {
       source: {
         runtime: { share: (after) => ({ format: EXCHANGE_FORMAT, copy: "copy-b", log: "started:run-b", after, next: after, head: after, items: [] }) },
         clock: fakeWallClock(0),
@@ -179,13 +182,17 @@ describe("the declaration of the service", () => {
       },
       token: "t".repeat(EXCHANGE_TOKEN_LENGTH),
       listen: { host: "127.0.0.1", port: 0 },
+      },
+      tell: { intake: { take: () => ({ persons: 1, link: "none" }), drain: () => [] }, token: "u".repeat(TELL_TOKEN_LENGTH), port: 0 },
     });
     const loop = loopOf();
-    const description = declare({ port: 0, probePort: 0, profile: PROFILES["pod"]!, loop, log: { close: () => undefined }, exchange: { loop: loopOf().worker, host } }).describe();
+    const description = declare({ port: 0, probePort: 0, profile: PROFILES["pod"]!, loop, log: { close: () => undefined }, exchange: { loop: loopOf().worker }, host }).describe();
     const names = description.transports.map((transport) => transport.name);
     expect(new Set(names).size).toBe(names.length);
     expect(description.transports.filter((transport) => transport.kind === "worker").map((transport) => transport.name)).toEqual(["passes", EXCHANGE_WORKER]);
-    expect(names).toContain("exchange");
+    // The one host declares its server parts under its name, and no part of the old hosts exchange and tell.
+    expect(names.some((name) => name === PROCEDURES_HOST || name.startsWith(`${PROCEDURES_HOST}.`))).toBe(true);
+    expect(names.some((name) => name === "tell" || name.startsWith("tell.") || name.startsWith("exchange."))).toBe(false);
     expect(lint(description, POD, [O10, O16]).filter((finding) => finding.verdict !== "holds")).toEqual([]);
   });
 });

@@ -63,9 +63,10 @@ import { configFilesOf, configSync } from "./config-sync.ts";
 import { alertsHome, ConfigRefused, configPath, envSecrets } from "./config.ts";
 import { pageFolder, pageWarning, readPageState } from "./api.ts";
 import { COPY_TOKEN_KEY } from "./copy.ts";
-import { configFilesCall, EXCHANGE_TOKEN_LENGTH, exchangeCall, exchangeHost } from "./exchange-http.ts";
+import { configFilesCall, EXCHANGE_TOKEN_LENGTH, exchangeCall } from "./exchange-http.ts";
 import { createPositionIntake, FIXES_FILE, readFixes, writeFixes } from "./position-intake.ts";
-import { createTellIntake, tellHost, tellToken } from "./tell-intake.ts";
+import { createTellIntake, tellToken } from "./tell-intake.ts";
+import { runtimeHost, type ExchangePart, type TellPart } from "./procedures-host.ts";
 import { heartbeat, heldOf } from "./heartbeat.ts";
 import type { Pass } from "./runtime.ts";
 import { COVERAGE_FILE, coverageFile } from "./coverage-file.ts";
@@ -435,13 +436,16 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
     return undefined;
   }
 
-  // The listener of the exchange is on the address listen of copy.json. Only the token check of the host guards it.
+  // The one procedures host (AL-95). The listener of the exchange is on the address listen of copy.json. Only the token check of the host guards it.
   const copies = instance.copies;
-  const host = copies === undefined || copy.listen === undefined || token === undefined ? undefined : exchangeHost({ source: copies.source, token, listen: copy.listen, configFiles: configFilesOf({ copy, use: loaded.use, texts: loaded.texts, configHash: configHash(config.config) }) });
-  const exchange = { ...(copies?.loop === undefined ? {} : { loop: copies.loop }), ...(host === undefined ? {} : { host }) };
+  const exchangePart: ExchangePart | undefined =
+    copies === undefined || copy.listen === undefined || token === undefined ? undefined : { source: copies.source, token, listen: copy.listen, configFiles: configFilesOf({ copy, use: loaded.use, texts: loaded.texts, configHash: configHash(config.config) }) };
+  const exchange = copies?.loop === undefined ? {} : { loop: copies.loop };
   // The listener of the intake is on the loopback address. The runtime makes the file tell.token at its first start with the entry.
-  const tell = tellIntake === undefined || tellConfig === undefined ? undefined : tellHost({ intake: tellIntake, token: await tellToken(home), port: tellConfig.port, ...(positionIntake === undefined ? {} : { position: positionIntake }) });
-  if (tell !== undefined) out.log("The intake of the messages of the operator is on the loopback address.");
+  const tellPart: TellPart | undefined =
+    tellIntake === undefined || tellConfig === undefined ? undefined : { intake: tellIntake, token: await tellToken(home), port: tellConfig.port, ...(positionIntake === undefined ? {} : { position: positionIntake }) };
+  const host = exchangePart === undefined && tellPart === undefined ? undefined : runtimeHost({ ...(exchangePart === undefined ? {} : { exchange: exchangePart }), ...(tellPart === undefined ? {} : { tell: tellPart }) });
+  if (tellPart !== undefined) out.log("The intake of the messages of the operator is on the loopback address.");
   if (positionIntake !== undefined) out.log(`The intake of the fixes of the moving places is on the same listener. It has the last fixes of ${countOf(positionIntake.fixes().size, "place")}.`);
 
   // The built local page. The line tells the state of the page, and it holds no path.
@@ -471,7 +475,7 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
     start: { use: loaded.use, reasons: loaded.fallback.length },
     ...(instance.copies?.worker === undefined ? {} : { copies: instance.copies.worker }),
     exchange,
-    ...(tell === undefined ? {} : { tell }),
+    ...(host === undefined ? {} : { host }),
     home: held.lock,
     telemetry,
   });

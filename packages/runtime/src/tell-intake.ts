@@ -3,8 +3,8 @@
  * gives a message to the procedure `alerts.tell` on the loopback address. The message goes into a buffer, and the
  * source `tell` gives it to the pipeline at its next fetch. Thus a message is an event of the log, as each alert is.
  *
- * - The procedures host of `@procedures/peer` checks the token of each call. The token is in the file `tell.token` of the home.
- * - The host is on the loopback address only. The entry `tell` of `config.json` gives its port.
+ * - The one procedures host of the runtime (`procedures-host.ts`, AL-95) checks the token of each call. The token is in the file `tell.token` of the home.
+ * - The listener of the intake is on the loopback address only. The entry `tell` of `config.json` gives its port.
  * - The intake takes `dailyCap` messages in 24 hours or fewer. It keeps the count in memory, thus a restart clears it.
  * - A message with no person, with a person that the configuration does not have, or with a link that a phone cannot open is refused.
  * - A refusal has the code `BAD_REQUEST`, and a message after the cap has the code `TOO_MANY_REQUESTS`.
@@ -12,8 +12,7 @@
 import { randomBytes } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { Client, createProcedure, createRegistry, hostPolicy, HttpTransport, ms, pathToMethod } from "@procedures/client";
-import { createProcedureHost, LOCAL_LISTENER_KNOBS, type ProcedureHost } from "@procedures/peer";
+import { Client, createProcedure, HttpTransport, pathToMethod, type AnyProcedure } from "@procedures/client";
 import {
   checkWith,
   DEFAULT_TELL_DAILY_CAP,
@@ -31,7 +30,7 @@ import {
   type TellConfig,
 } from "@mark1russell7/alerts";
 import * as z from "zod";
-import { basicPrincipal, POSITION_KEY, POSITION_PATH, type PositionIntake } from "./position-intake.ts";
+import { POSITION_PATH, type PositionIntake } from "./position-intake.ts";
 import { siteLink, TELL_LIFE, TELL_SOURCE, tellEventSchema, tellLines, tellPersons, tellStep, type TellDraft, type TellEvent, type TellReport } from "./tell-message.ts";
 
 /** The path of the procedure that takes a message. */
@@ -205,58 +204,28 @@ export function mapTell(observation: Observation): MapResult {
   return { reports, problems };
 }
 
-/** The options of `tellHost`. */
-export interface TellHostOptions {
-  readonly intake: TellIntake;
-  /** The token of the intake: the text of the file `tell.token`. */
-  readonly token: string;
-  /** The port on the loopback address: the field `port` of the entry `tell`. The port 0 takes a free port. */
-  readonly port: number;
-  /** The intake of the fixes of the moving places (AL-40). With it, the host also takes the procedure `alerts.position`. */
-  readonly position?: PositionIntake;
-}
-
-/**
- * This function gives the procedures host of the intake on the loopback address. It starts nothing: the service of the
- * process declares its parts (`host.declare(svc)`). Each call needs the token.
- *
- * @throws Error when the token is shorter than `TELL_TOKEN_LENGTH`. The message holds no token.
- */
-export function tellHost(options: TellHostOptions): ProcedureHost {
-  const { intake, token, port, position } = options;
-  if (token.length < TELL_TOKEN_LENGTH) throw new Error(`The token of the intake has fewer than ${TELL_TOKEN_LENGTH} characters.`);
-  return createProcedureHost({
-    name: "tell",
-    registry: createRegistry({
-      name: "alerts-tell",
-      procedures: [
-        createProcedure()
-          .path([...TELL_PATH])
-          .input(tellEventSchema)
-          .output(z.unknown())
-          .meta({ description: "Takes one message of the operator. The runtime routes it as a private report.", effects: { reads: ["alerts.config"], writes: ["alerts.log"] } })
-          .handler(async (input): Promise<unknown> => intake.take(input))
-          .build(),
-        ...(position === undefined
-          ? []
-          : [
-              createProcedure()
-                .path([...POSITION_PATH])
-                .input(z.unknown())
-                .output(z.unknown())
-                .meta({ description: "Takes one message of the phone app of a moving place. A location gives the fix of the place.", effects: { reads: ["alerts.config"], writes: ["alerts.fixes"] } })
-                .handler(async (input): Promise<unknown> => position.take(input))
-                .build(),
-            ]),
-      ],
-    }),
-    // A phone app sends the token as the password of HTTP Basic auth. The hook gives that password to the token check.
-    policy: hostPolicy({ token, principalOf: basicPrincipal, strictCalls: true, expose: position === undefined ? [TELL_KEY] : [TELL_KEY, POSITION_KEY], timeout: ms(TELL_CALL_LIMIT) }),
-    faces: { http: { basePath: TELL_BASE_PATH } },
-    listen: [{ name: "tell", host: "127.0.0.1", port, knobs: LOCAL_LISTENER_KNOBS }],
-    // The probes of the service are on the probe port. The listener of the intake gives no probe.
-    probes: false,
-  });
+/** This function gives the procedures of the intake: `alerts.tell`, and `alerts.position` with the intake of the fixes of the moving places (AL-40). */
+export function tellProcedures(intake: TellIntake, position?: PositionIntake): AnyProcedure[] {
+  return [
+    createProcedure()
+      .path([...TELL_PATH])
+      .input(tellEventSchema)
+      .output(z.unknown())
+      .meta({ description: "Takes one message of the operator. The runtime routes it as a private report.", effects: { reads: ["alerts.config"], writes: ["alerts.log"] } })
+      .handler(async (input): Promise<unknown> => intake.take(input))
+      .build(),
+    ...(position === undefined
+      ? []
+      : [
+          createProcedure()
+            .path([...POSITION_PATH])
+            .input(z.unknown())
+            .output(z.unknown())
+            .meta({ description: "Takes one message of the phone app of a moving place. A location gives the fix of the place.", effects: { reads: ["alerts.config"], writes: ["alerts.fixes"] } })
+            .handler(async (input): Promise<unknown> => position.take(input))
+            .build(),
+        ]),
+  ];
 }
 
 /** The options of `tellCall`. */

@@ -1075,7 +1075,18 @@ export const levelRuleSchema: z.ZodType<LevelRule, LevelRule> = schemaOf<LevelRu
  * line 278). `quietWindowProblems` finds a bad window.
  */
 export const quietWindowSchema: z.ZodType<QuietWindow, QuietWindow> = schemaOf<QuietWindow>()(
-  z.strictObject({ zone: z.string(), start: z.string(), end: z.string() }).readonly(),
+  z
+    .strictObject({
+      zone: z.string(),
+      start: z.string(),
+      end: z.string(),
+      // The sound rules of the window (AL-97). quietWindowProblems finds a bad rule.
+      sounds: z
+        .array(z.strictObject({ kinds: z.array(z.string()).readonly(), level: z.enum(["notice", "urgent"]), most: count() }).readonly())
+        .readonly()
+        .exactOptional(),
+    })
+    .readonly(),
 );
 
 /**

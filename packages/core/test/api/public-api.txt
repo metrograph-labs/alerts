@@ -117,6 +117,7 @@ DEFAULT_ENTRY_MAX: build/index.d.ts#DEFAULT_ENTRY_MAX
 DEFAULT_FAIL_AFTER: build/index.d.ts#DEFAULT_FAIL_AFTER
 DEFAULT_LINK_POLICY: build/index.d.ts#DEFAULT_LINK_POLICY
 DEFAULT_MAX_ACCURACY_KM: build/index.d.ts#DEFAULT_MAX_ACCURACY_KM
+DEFAULT_QUIET_SOUNDS: build/index.d.ts#DEFAULT_QUIET_SOUNDS
 DEFAULT_RELEVANCE_POLICY: build/index.d.ts#DEFAULT_RELEVANCE_POLICY
 DEFAULT_SEND_LIMITS: build/index.d.ts#DEFAULT_SEND_LIMITS
 DEFAULT_SOURCE_CLEAR: build/index.d.ts#DEFAULT_SOURCE_CLEAR
@@ -353,6 +354,7 @@ NodeKey: build/index.d.ts#NodeKey
 OBSERVE_DIGEST_PER_DAY: build/index.d.ts#OBSERVE_DIGEST_PER_DAY
 OBSERVE_WINDOW: build/index.d.ts#OBSERVE_WINDOW
 ONLY_COPY: build/index.d.ts#ONLY_COPY
+OPERATOR_SYSTEMS: build/index.d.ts#OPERATOR_SYSTEMS
 OPT_IN_WAYS: build/index.d.ts#OPT_IN_WAYS
 OPT_IN_WORDS: build/index.d.ts#OPT_IN_WORDS
 ORIGIN_RANK: build/index.d.ts#ORIGIN_RANK
@@ -410,11 +412,13 @@ QUIET_HORIZON: build/index.d.ts#QUIET_HORIZON
 QUOTA_KIND: build/index.d.ts#QUOTA_KIND
 QUOTA_STAGES: build/index.d.ts#QUOTA_STAGES
 QuietRule: build/index.d.ts#QuietRule
+QuietSound: build/index.d.ts#QuietSound
 QuietWindow: build/index.d.ts#QuietWindow
 QuotaHealth: build/index.d.ts#QuotaHealth
 QuotaStage: build/index.d.ts#QuotaStage
 RANK_DELAY_LIMIT: build/index.d.ts#RANK_DELAY_LIMIT
 REDUNDANCY_KIND: build/index.d.ts#REDUNDANCY_KIND
+REPORT_SYSTEMS: build/index.d.ts#REPORT_SYSTEMS
 RETENTION_HORIZON: build/index.d.ts#RETENTION_HORIZON
 RULED_STATUSES: build/index.d.ts#RULED_STATUSES
 RangeCheck: build/index.d.ts#RangeCheck
@@ -490,6 +494,8 @@ Significance: build/index.d.ts#Significance
 SoftwareMatch: build/index.d.ts#SoftwareMatch
 SoftwarePart: build/index.d.ts#SoftwarePart
 SoftwareStack: build/index.d.ts#SoftwareStack
+SoundDelivery: build/index.d.ts#SoundDelivery
+SoundIncident: build/index.d.ts#SoundIncident
 SourceClearConfig: build/index.d.ts#SourceClearConfig
 SourceClearPolicy: build/index.d.ts#SourceClearPolicy
 SourceDescriptor: build/index.d.ts#SourceDescriptor
@@ -975,6 +981,7 @@ softwareMatchText: build/index.d.ts#softwareMatchText
 softwareMatches: build/index.d.ts#softwareMatches
 softwarePartSchema: build/index.d.ts#softwarePartSchema
 softwareStackSchema: build/index.d.ts#softwareStackSchema
+soundsInQuiet: build/index.d.ts#soundsInQuiet
 sourceClearAt: build/index.d.ts#sourceClearAt
 sourceClearConfigSchema: build/index.d.ts#sourceClearConfigSchema
 sourceClearPolicy: build/index.d.ts#sourceClearPolicy
@@ -1019,6 +1026,7 @@ useLevelsReached: build/index.d.ts#useLevelsReached
 useStages: build/index.d.ts#useStages
 useUnreadAt: build/index.d.ts#useUnreadAt
 versRangeCheck: build/index.d.ts#versRangeCheck
+watchProblems: build/index.d.ts#watchProblems
 watchSchema: build/index.d.ts#watchSchema
 watchedDrillMiss: build/index.d.ts#watchedDrillMiss
 watchedDrillReportAt: build/index.d.ts#watchedDrillReportAt
@@ -1755,6 +1763,9 @@ export declare const DEFAULT_LINK_POLICY: LinkPolicy;
 ### build/index.d.ts#DEFAULT_MAX_ACCURACY_KM
 export declare const DEFAULT_MAX_ACCURACY_KM = 2;
 
+### build/index.d.ts#DEFAULT_QUIET_SOUNDS
+export declare const DEFAULT_QUIET_SOUNDS: readonly QuietSound[];
+
 ### build/index.d.ts#DEFAULT_RELEVANCE_POLICY
 export declare const DEFAULT_RELEVANCE_POLICY: RelevancePolicy;
 
@@ -2234,6 +2245,7 @@ export interface EscalationInput {
   readonly rankDelay?: Duration | undefined;
   readonly floors?: ReadonlyMap<ChannelId, Duration> | undefined;
   readonly quiet?: QuietWindow | undefined;
+  readonly sounds?: boolean | undefined;
   readonly episode?: number | undefined;
   readonly silent?: boolean | undefined;
   readonly now: Instant;
@@ -3366,6 +3378,9 @@ export declare const OBSERVE_WINDOW: Duration;
 ### build/index.d.ts#ONLY_COPY
 export declare const ONLY_COPY: CopySettings;
 
+### build/index.d.ts#OPERATOR_SYSTEMS
+export declare const OPERATOR_SYSTEMS: readonly string[];
+
 ### build/index.d.ts#OPT_IN_WAYS
 export declare const OPT_IN_WAYS: readonly ["written", "spoken"];
 
@@ -3733,11 +3748,19 @@ export interface QuietRule {
   readonly told?: Duration | undefined;
 }
 
+### build/index.d.ts#QuietSound
+export interface QuietSound {
+  readonly kinds: readonly string[];
+  readonly level: "notice" | "urgent";
+  readonly most: number;
+}
+
 ### build/index.d.ts#QuietWindow
 export interface QuietWindow {
   readonly zone: string;
   readonly start: string;
   readonly end: string;
+  readonly sounds?: readonly QuietSound[];
 }
 
 ### build/index.d.ts#QuotaHealth
@@ -3754,6 +3777,9 @@ export declare const RANK_DELAY_LIMIT: Duration;
 
 ### build/index.d.ts#REDUNDANCY_KIND
 export declare const REDUNDANCY_KIND = "system.redundancy";
+
+### build/index.d.ts#REPORT_SYSTEMS
+export declare const REPORT_SYSTEMS: readonly string[];
 
 ### build/index.d.ts#RETENTION_HORIZON
 export declare const RETENTION_HORIZON: Duration;
@@ -4274,6 +4300,21 @@ export interface SoftwarePart {
 ### build/index.d.ts#SoftwareStack
 export interface SoftwareStack {
   readonly parts: readonly SoftwarePart[];
+}
+
+### build/index.d.ts#SoundDelivery
+export interface SoundDelivery {
+  readonly incident: ReportId;
+  readonly level: Level;
+  readonly at: Instant;
+  readonly kind: string | undefined;
+}
+
+### build/index.d.ts#SoundIncident
+export interface SoundIncident {
+  readonly anchor: ReportId;
+  readonly reports: ReadonlySet<string>;
+  readonly kind: string;
 }
 
 ### build/index.d.ts#SourceClearConfig
@@ -5978,6 +6019,9 @@ export declare const softwarePartSchema: z.ZodType<SoftwarePart, SoftwarePart>;
 ### build/index.d.ts#softwareStackSchema
 export declare const softwareStackSchema: z.ZodType<SoftwareStack, SoftwareStack>;
 
+### build/index.d.ts#soundsInQuiet
+export declare function soundsInQuiet(window: QuietWindow | undefined, incident: SoundIncident, level: Level, deliveries: readonly SoundDelivery[], now: Instant): boolean;
+
 ### build/index.d.ts#sourceClearAt
 export declare function sourceClearAt(lines: SystemLines, snapshot: Pick<SystemSnapshot, "sources" | "health" | "sourceClear">, at: Instant): Instant[];
 
@@ -6109,6 +6153,9 @@ export declare function useUnreadAt(use: LimitUse): Instant;
 
 ### build/index.d.ts#versRangeCheck
 export declare const versRangeCheck: RangeCheck;
+
+### build/index.d.ts#watchProblems
+export declare function watchProblems(watches: readonly PersonWatch[]): string[];
 
 ### build/index.d.ts#watchSchema
 export declare const watchSchema: z.ZodType<Watch, Watch>;

@@ -8,6 +8,7 @@
  * - A writer of a part writes its new file outside the folder `parts`, then renames it to `parts/<name>.json`.
  * - The check uses the keys of `secrets.env`, the settings of the copy `copy.json` and the check of the live instance, the profile `daemon`.
  * - It finds each problem that stops the start: the form of a key, a missing key and a place that no regional source covers.
+ * - It also finds each system subject that no person watches (AL-121). The start does not refuse it, but the check does.
  * - The exit code is 0 for a valid file, 1 for a file with problems and 2 for a wrong command.
  * - It also tells if the inspector signal of the live supervisor and runtime is closed. This line does not change the exit code.
  *
@@ -15,7 +16,7 @@
  * value of a key and no path.
  */
 import { resolve } from "node:path";
-import { PART_NAME } from "@mark1russell7/alerts";
+import { PART_NAME, watchProblems } from "@mark1russell7/alerts";
 import { countOf } from "@mark1russell7/text";
 import { createPrinter } from "@mark1russell7/text/print";
 import { alertsHome, checkConfig, configPath, fileSource, type PartSource } from "./config.ts";
@@ -48,10 +49,15 @@ if (parsed === undefined) {
   const part: PartSource | undefined = parsed.part === undefined ? undefined : { name: parsed.part.name, source: fileSource(resolve(parsed.part.file)) };
   const copy = await readCopySettings(home);
   const result = copy.tag === "err" ? copy : await checkConfig(fileSource(path), home, daemonCheck(copy.value), part);
-  if (result.tag === "ok") {
+  const unread = result.tag === "ok" ? watchProblems(result.value.recipients.map((recipient) => recipient.watch)) : [];
+  if (result.tag === "ok" && unread.length === 0) {
     const { places, people, contacts, policies } = result.value.config;
     const counts = [countOf(places.length, "place"), countOf(people.length, "person", "people"), countOf(contacts.length, "contact"), countOf(policies.length, "policy", "policies")];
     print.line(`The configuration is valid${part === undefined ? "" : ` with the new part ${part.name}`}: ${counts.join(", ")}.`);
+  } else if (result.tag === "ok") {
+    // The start accepts this file, but a writer does not write it: a report with no reader is a check that nobody reads.
+    print.error(`The configuration starts, but it has ${countOf(unread.length, "problem")} of the watches:\n- ${unread.join("\n- ")}`);
+    process.exitCode = 1;
   } else {
     print.error(`The configuration has ${countOf(result.error.length, "problem")}:\n- ${result.error.join("\n- ")}`);
     process.exitCode = 1;

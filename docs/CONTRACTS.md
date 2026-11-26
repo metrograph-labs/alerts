@@ -742,6 +742,7 @@ The channel does not escalate. The core does:
 - An acknowledgment comes from any channel or from the UI. It stops the escalation of that level of that incident, and the core cancels the repeats on the other channels.
 - Only an acknowledgment proves that the person got a message. The Pushover receipt field `last_delivered_at` is the time of a retry of the server, not a proof.
 - The core decides the silent mode. `escalate` sets `quiet` on each send, and `Message.quiet` takes it. Each channel maps it to its silent mode: Pushover priority `-1`, or a text and no call on Twilio. No channel keeps its own rule about the time of day.
+- A sound rule of the quiet window (`QuietWindow.sounds`, AL-97) makes a send loud in the window. The first rule lets an urgent `needs-you` of the operator sound, at most 2 in one window. Each other message below `life-safety` stays quiet.
 - On an iPhone, an Emergency message of Pushover sounds through silent mode only when the Pushover app has Critical Alerts on for Emergency. A reset of the iOS permission of Pushover turns that setting off.
 - A channel with `why` in its descriptor gets a why line in `Message.why`: why the message reaches the person, in the limit of the channel. `WHY_LIMITS` in `why.ts` holds the limit of each kind of channel. Pushover takes the push limit, and puts the line first in the body.
 
@@ -2136,6 +2137,8 @@ A writer of the configuration does these steps, thus the live instance does not 
 
 The output of the check gives the count of the places, the people, the contacts and the policies, or the problems. It holds no value and no path.
 
+The check also refuses a file in which a system of `OPERATOR_SYSTEMS` has no watch (AL-121). A report of such a system reaches no person, thus nobody reads the check of that part of the system. The start of the runtime accepts such a file, because a start with one report that nobody reads is better than no start. A watch of an unknown system `alerts.*` is also a problem, because it matches no report.
+
 A writer of a part does these steps. The check reads `config.json` and the other parts, thus it finds an entry that is in two files.
 
 1. Write the new part in the folder `ALERTS_HOME`, not in the folder `parts`.
@@ -2197,7 +2200,7 @@ The format:
 
 The runtime:
 
-- The intake is the procedure `alerts.position` on the listener of the intake of the operator (`tellHost`). It needs the entry `tell`.
+- The intake is the procedure `alerts.position` on the listener of the intake of the operator (`runtimeHost`, AL-95). It needs the entry `tell`.
 - Give this URL to the phone: `http://<host>:<port>/tell/alerts/position`. A proxy of the private network takes the calls to the loopback listener.
 - The phone sends the token of `tell.token` as the password of HTTP Basic auth. A call with the Bearer token also passes.
 - The intake reads the JSON of OwnTracks, an open phone app: `_type` `location`, `lat`, `lon`, `acc` in meters and `tst` in seconds.

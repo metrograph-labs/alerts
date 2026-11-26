@@ -14,7 +14,6 @@ import {
   TELL_TOKEN_FILE,
   TELL_TOKEN_LENGTH,
   tellCall,
-  tellHost,
   tellObservation,
   tellSource,
   tellToken,
@@ -22,6 +21,7 @@ import {
   type TellIntake,
 } from "./tell-intake.ts";
 import { createPositionIntake } from "./position-intake.ts";
+import { runtimeHost } from "./procedures-host.ts";
 import { TELL_LIFE, type TellEvent } from "./tell-message.ts";
 
 const T0 = Date.UTC(2026, 10, 19, 18, 0);
@@ -142,7 +142,7 @@ function serviceOf(name: string): ServiceBuilder {
 describe("the host of the intake (AL-92)", () => {
   it("takes a call with the token, refuses a call with another token, and gives the reason of a refusal", async () => {
     const intake = intakeAt({ at: T0 });
-    const host = tellHost({ intake, token: TOKEN, port: 0 });
+    const host = runtimeHost({ tell: { intake, token: TOKEN, port: 0 } });
     const life = await host.declare(serviceOf("tell-test")).run({ process: embeddedProcess() });
     try {
       const address = host.info.endpoints().find((endpoint) => endpoint.type === "http")?.address;
@@ -169,7 +169,7 @@ describe("the host of the intake (AL-92)", () => {
       policies: [],
     };
     const position = createPositionIntake({ config });
-    const host = tellHost({ intake: intakeAt({ at: T0 }), token: TOKEN, port: 0, position });
+    const host = runtimeHost({ tell: { intake: intakeAt({ at: T0 }), token: TOKEN, port: 0, position } });
     const life = await host.declare(serviceOf("position-test")).run({ process: embeddedProcess() });
     try {
       const address = host.info.endpoints().find((endpoint) => endpoint.type === "http")?.address;
@@ -205,7 +205,7 @@ describe("the host of the intake (AL-92)", () => {
   });
 
   it("refuses a token shorter than the least length", () => {
-    expect(() => tellHost({ intake: intakeAt({ at: T0 }), token: "short", port: 0 })).toThrow(/fewer than/u);
+    expect(() => runtimeHost({ tell: { intake: intakeAt({ at: T0 }), token: "short", port: 0 } })).toThrow(/fewer than/u);
   });
 });
 

@@ -622,6 +622,27 @@ describe("route: the end of a person and a new episode", () => {
   });
 });
 
+describe("route: a sound rule of the quiet window (AL-97)", () => {
+  // T0 is 13:00 in Chicago, in the quiet window of the person. The rule lets one tornado watch sound in one window.
+  const base = recipient();
+  const ruled: Recipient = { ...base, watch: { ...base.watch, quiet: { zone: "America/Chicago", start: "12:00", end: "15:00", sounds: [{ kinds: ["met.tornado"], level: "urgent", most: 1 }] } } };
+  const plain: Recipient = { ...base, watch: { ...base.watch, quiet: { zone: "America/Chicago", start: "12:00", end: "15:00" } } };
+  const sends = (routes: readonly Route[]) => routes.flatMap((entry) => entry.plan.sends.map((send) => ({ incident: send.incident, level: send.level, quiet: send.quiet })));
+  const second = "c".repeat(64) as ReportId;
+
+  it("sends the first incident of the rule loud in the window, and a second incident quiet", () => {
+    const watch = incident(WATCH);
+    expect(sends(route(input({ incidents: [watch], recipients: [ruled] })))).toEqual([{ incident: anchor, level: "urgent", quiet: false }]);
+    // With the first rules only, a tornado watch stays quiet in the window.
+    expect(sends(route(input({ incidents: [watch], recipients: [plain] })))).toEqual([{ incident: anchor, level: "urgent", quiet: true }]);
+    // The first watch has a delivery at 12:30. A second watch at 13:00 is quiet.
+    const later = incident({ ...WATCH, anchor: second, reports: [second] });
+    const first = delivery("urgent", 0, T0 - 30 * MINUTE);
+    const routes = route(input({ incidents: [watch, later], recipients: [ruled], merge: { deliveries: [first] }, starts: [start("urgent", T0 - 30 * MINUTE)] }));
+    expect(sends(routes)).toEqual([{ incident: second, level: "urgent", quiet: true }]);
+  });
+});
+
 describe("route: a mute of the person (AL-35)", () => {
   // A public county in Kansas that the person does not watch.
   const away = incident({ areas: [{ type: "code", system: "ugc", code: "KSC079" }] });

@@ -10,8 +10,10 @@ import {
   quietWindowProblems,
   rankFloorProblems,
   rankFloors,
+  soundsInQuiet,
   type EscalationInput,
   type EscalationPlan,
+  type SoundDelivery,
 } from "./escalation.ts";
 
 const MINUTE = 60_000;
@@ -479,6 +481,14 @@ describe("quietWindowProblems", () => {
     ]);
     expect(quietWindowProblems({ zone: "UTC", start: "06:00", end: "06:00" })).toEqual([]);
   });
+
+  it("finds a bad sound rule (AL-97)", () => {
+    expect(quietWindowProblems({ zone: "UTC", start: "22:00", end: "07:00", sounds: [{ kinds: ["met.tornado"], level: "urgent", most: 2 }] })).toEqual([]);
+    expect(quietWindowProblems({ zone: "UTC", start: "22:00", end: "07:00", sounds: [{ kinds: [], level: "urgent", most: 1.5 }] })).toEqual([
+      "The sound rule 1: Each kind is a prefix that is not empty, and the rule has one kind or more.",
+      "The sound rule 1: The most is a whole number, 0 or more.",
+    ]);
+  });
 });
 
 describe("escalate with a quiet window", () => {
@@ -507,6 +517,73 @@ describe("escalate with a quiet window", () => {
   it("makes no send quiet out of the window or with no window", () => {
     expect(escalate(input({ policy: notice, quiet, since: atDay, now: atDay })).sends[0]?.quiet).toBe(false);
     expect(escalate(input({ policy: notice, since: atNight, now: atNight })).sends[0]?.quiet).toBe(false);
+  });
+
+  it("makes a send loud in the window when a sound rule passes it, but not in the silent mode of a mute (AL-97)", () => {
+    expect(escalate(input({ policy: notice, quiet, sounds: true, since: atNight, now: atNight })).sends[0]?.quiet).toBe(false);
+    expect(escalate(input({ policy: notice, quiet, sounds: true, silent: true, since: atNight, now: atNight })).sends[0]?.quiet).toBe(true);
+  });
+});
+
+describe("soundsInQuiet (AL-97)", () => {
+  // A test clock: each time is a fixed instant. The window is 22:00 to 07:00 UTC, and now is 23:00 on 15 January.
+  const quiet: QuietWindow = { zone: "UTC", start: "22:00", end: "07:00" };
+  const night = Date.UTC(2026, 0, 15, 23, 0);
+  const TELL = "system.tell.needs-you";
+  const own = { anchor, reports: new Set<string>([anchor, merged]), kind: TELL };
+  const other = (digit: number): ReportId => String(digit).repeat(64) as ReportId;
+  const sent = (incident: ReportId, at: number, kind: string | undefined = TELL, level: Level = "urgent"): SoundDelivery => ({ incident, level, at, kind });
+
+  it("lets an urgent needs-you of the operator sound by default, and keeps each other kind and level quiet", () => {
+    expect(soundsInQuiet(quiet, own, "urgent", [], night)).toBe(true);
+    expect(soundsInQuiet(quiet, own, "notice", [], night)).toBe(false);
+    expect(soundsInQuiet(quiet, { ...own, kind: "system.tell.live" }, "urgent", [], night)).toBe(false);
+    expect(soundsInQuiet(quiet, { ...own, kind: "met.tornado" }, "urgent", [], night)).toBe(false);
+  });
+
+  it("gives false out of the window and with no window, because then no send is quiet", () => {
+    expect(soundsInQuiet(quiet, own, "urgent", [], Date.UTC(2026, 0, 15, 12, 0))).toBe(false);
+    expect(soundsInQuiet(undefined, own, "urgent", [], night)).toBe(false);
+  });
+
+  it("lets at most 2 incidents sound in one window, and a repeat of a loud incident stays loud", () => {
+    const first = sent(other(1), night - 30 * MINUTE);
+    const second = sent(other(2), night - 20 * MINUTE);
+    expect(soundsInQuiet(quiet, own, "urgent", [first], night)).toBe(true);
+    expect(soundsInQuiet(quiet, own, "urgent", [first, second], night)).toBe(false);
+    // The own incident sounded before the second one, thus its repeat stays loud. A delivery to a merged report counts as own.
+    expect(soundsInQuiet(quiet, own, "urgent", [first, sent(merged, night - 25 * MINUTE), second], night)).toBe(true);
+    // The quiet third incident also counts after the first two. It does not move them.
+    expect(soundsInQuiet(quiet, { ...own, anchor: other(1), reports: new Set([other(1)]) }, "urgent", [first, second, sent(anchor, night - 10 * MINUTE)], night)).toBe(true);
+  });
+
+  it("counts only the deliveries of this window, of the rule and of a known incident", () => {
+    // A delivery of the last window and a delivery before the window of tonight do not count.
+    const lastNight = sent(other(1), night - 24 * 60 * MINUTE);
+    const evening = sent(other(2), Date.UTC(2026, 0, 15, 21, 0));
+    expect(soundsInQuiet(quiet, own, "urgent", [lastNight, evening, sent(other(3), night - MINUTE)], night)).toBe(true);
+    // A delivery of another kind, of a lower level or of an incident with no kind does not count.
+    const others = [sent(other(1), night - 3 * MINUTE, "met.tornado"), sent(other(2), night - 2 * MINUTE, TELL, "notice"), { incident: other(4), level: "urgent" as const, at: night - MINUTE, kind: undefined }];
+    expect(soundsInQuiet(quiet, own, "urgent", [...others, sent(other(3), night - MINUTE)], night)).toBe(true);
+    // The next window is a new window: at 22:30 on 16 January, the deliveries of the night before do not count.
+    expect(soundsInQuiet(quiet, own, "urgent", [sent(other(1), night), sent(other(2), night + MINUTE)], Date.UTC(2026, 0, 16, 22, 30))).toBe(true);
+  });
+
+  it("lets only one of two incidents with the same first time sound when the most is 1", () => {
+    const one: QuietWindow = { ...quiet, sounds: [{ kinds: [TELL], level: "urgent", most: 1 }] };
+    const at = night - MINUTE;
+    const mine = soundsInQuiet(one, own, "urgent", [sent(anchor, at), sent(other(1), at)], night);
+    const theirs = soundsInQuiet(one, { ...own, anchor: other(1), reports: new Set([other(1)]) }, "urgent", [sent(anchor, at), sent(other(1), at)], night);
+    expect([mine, theirs].filter(Boolean)).toHaveLength(1);
+  });
+
+  it("takes the rules of the window in place of the first rules, and an empty list or a bad rule keeps each message quiet", () => {
+    const tornado: QuietWindow = { ...quiet, sounds: [{ kinds: ["met.tornado"], level: "notice", most: 1 }] };
+    expect(soundsInQuiet(tornado, { ...own, kind: "met.tornado" }, "notice", [], night)).toBe(true);
+    expect(soundsInQuiet(tornado, own, "urgent", [], night)).toBe(false);
+    expect(soundsInQuiet(tornado, { ...own, kind: "met.tornado" }, "notice", [sent(other(1), night - MINUTE, "met.tornado", "notice")], night)).toBe(false);
+    expect(soundsInQuiet({ ...quiet, sounds: [] }, own, "urgent", [], night)).toBe(false);
+    expect(soundsInQuiet({ ...quiet, sounds: [{ kinds: [TELL], level: "urgent", most: -1 }] }, own, "urgent", [], night)).toBe(false);
   });
 });
 
