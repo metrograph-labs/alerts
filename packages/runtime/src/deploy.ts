@@ -26,8 +26,8 @@
  *
  * - `deploy <commit> [--page] [--alone]` does the whole deploy in one command (AL-186). Its steps are the stage and the swap.
  *   Then it folds when the fold version or the snapshot key changes, and it starts the new code. It stops the runtime only for a fold, or before the
- *   stage on a host with less free memory than `STAGE_MEMORY_FLOOR`. It stops the runtime only when each other copy had a
- *   read in the last `COPY_MAX_AGE`, each other copy is steady (AL-204), and no other copy deploys (AL-208). A restart takes the runtime down too, thus
+ *   stage on a host with less free memory than `STAGE_MEMORY_FLOOR`. A stop needs a read of each other copy in the last
+ *   `COPY_MAX_AGE`, and each other copy must be steady (AL-204). No other copy can deploy (AL-208). A restart takes the runtime down too, thus
  *   the check comes before the swap. A host with no other copy stops only with `--alone`. At the end, the runtime must run
  *   the new commit, with a start after the begin of the deploy. On Windows, a stop and a start change the boot task.
  *
