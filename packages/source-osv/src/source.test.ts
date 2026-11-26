@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 
 import { incidents, normalize, observeCut, type AssessPolicy, type FetchOutcome, type Observation, type ObservationId, type PersonId, type PersonWatch, type SourceId, type Watch } from "@mark1russell7/alerts";
+import { osvPackagePurl, osvPurl } from "@mark1russell7/package-id";
 import type { Exchange, Reply, Transport } from "polite-crawler/api";
 import { HostScheduler } from "polite-crawler/politeness";
 import { describe, expect, it } from "vitest";
@@ -17,7 +18,6 @@ import { createOsvMap, CVE_SYSTEM, OSV_SYSTEM, PURL_SYSTEM, RECORD_LIFE_MS } fro
 import { RECORDS_PER_FETCH } from "./options.ts";
 import { cwesOf, isWithdrawn, readOsv, readOsvText } from "./osv.ts";
 import { DAY_MS, MALICIOUS_KIND, OSV_PROVIDERS, type GithubFeed, type OsvProvider } from "./providers.ts";
-import { packagePurl, purlOf } from "./purl.ts";
 
 const NOW = Date.UTC(2026, 10, 25, 17, 30, 0);
 const WATCH: Watch = { places: [] };
@@ -127,17 +127,19 @@ describe("the OSV reader", () => {
 
 describe("the purl of a package", () => {
   it("gives the purl of each ecosystem with a purl type", () => {
-    expect(purlOf("npm", "@waline/client")).toBe("pkg:npm/%40waline/client");
-    expect(purlOf("PyPI", "Mcp_Diag.Tool")).toBe("pkg:pypi/mcp-diag-tool");
-    expect(purlOf("crates.io", "besk")).toBe("pkg:cargo/besk");
-    expect(purlOf("RubyGems", "rails")).toBe("pkg:gem/rails");
-    expect(purlOf("Maven", "org.example:core")).toBe("pkg:maven/org.example/core");
-    expect(purlOf("VSCode", "example.theme")).toBeUndefined();
+    expect(osvPurl("npm", "@waline/client")).toBe("pkg:npm/%40waline/client");
+    // The purl spec swaps only `_` for `-` in a PyPI name. A match key with the PEP 503 form is AL-206.
+    expect(osvPurl("PyPI", "Mcp_Diag.Tool")).toBe("pkg:pypi/mcp-diag.tool");
+    expect(osvPurl("crates.io", "besk")).toBe("pkg:cargo/besk");
+    expect(osvPurl("RubyGems", "rails")).toBe("pkg:gem/rails");
+    expect(osvPurl("Maven", "org.example:core")).toBe("pkg:maven/org.example/core");
+    expect(osvPurl("Debian:12", "openssl")).toBe("pkg:deb/debian/openssl");
+    expect(osvPurl("VSCode", "example.theme")).toBeUndefined();
   });
 
   it("takes the purl of the record first, with no version", () => {
-    expect(packagePurl({ ecosystem: "npm", name: "a", purl: "pkg:npm/a@1.0.0?arch=x#sub" })).toBe("pkg:npm/a");
-    expect(packagePurl({ ecosystem: "npm", name: "b" })).toBe("pkg:npm/b");
+    expect(osvPackagePurl({ ecosystem: "npm", name: "a", purl: "pkg:npm/a@1.0.0?arch=x#sub" })).toBe("pkg:npm/a");
+    expect(osvPackagePurl({ ecosystem: "npm", name: "b" })).toBe("pkg:npm/b");
   });
 });
 

@@ -31,7 +31,6 @@ export { DAY_MS, MALICIOUS_KIND, OSV_PROVIDERS } from "./providers.ts";
 export { packageRanges, rangeOfText } from "./ranges.ts";
 export type { RangeOfText } from "./ranges.ts";
 export type { ExportsFeed, GithubFeed, OsvProvider } from "./providers.ts";
-export { packagePurl, PURL_TYPES, purlOf } from "./purl.ts";
 
 /**
  * This function makes the procedures of the source of one provider. The source has a canary: the age of the newest change
