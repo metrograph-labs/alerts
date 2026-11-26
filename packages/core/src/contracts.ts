@@ -981,6 +981,11 @@ export interface CopyWatch {
    */
   readonly unsteadySince?: Instant;
   /**
+   * The end of the deploy mark of the other copy, on the clock of this copy (AL-208). The last read that passed gives it. A
+   * failed read keeps it. A copy with no mark, or of an older build, tells nothing, thus its watch has none.
+   */
+  readonly deployUntil?: Instant;
+  /**
    * The last billing read of the host of the copy in this stage `unread` (AL-70). The watch reads only when the copy has a
    * billing read in `copy.json`. A read that passes for the copy ends the billing read.
    */
