@@ -808,6 +808,9 @@ importers:
       '@mark1russell7/otel-ts':
         specifier: ^0.8.5
         version: 0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3)
+      '@mark1russell7/package-id':
+        specifier: ^0.0.2
+        version: 0.0.2
       '@mark1russell7/quantity':
         specifier: ^0.4.3
         version: 0.4.3(zod@4.6.7)
@@ -1946,6 +1949,9 @@ importers:
       '@mark1russell7/optional':
         specifier: ^1.5.0
         version: 1.5.0
+      '@mark1russell7/package-id':
+        specifier: ^0.0.2
+        version: 0.0.2
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
@@ -2738,6 +2744,10 @@ packages:
         optional: true
       '@opentelemetry/sdk-node':
         optional: true
+
+  '@mark1russell7/package-id@0.0.2':
+    resolution: {integrity: sha512-H1rtu6R8xcSX7o9KEUeY2ThktjsV/nJFfGmeh3ihVxkgPieS+lVXWt4gOYfzni+qikIUf/27fEp4ke7uMEe+AA==}
+    engines: {node: '>=22.12'}
 
   '@mark1russell7/predicates@0.1.5':
     resolution: {integrity: sha512-WXgTOliDm5650i3adkTjAj85Uzp22LD7KQFqwhETlQWG4CK3pDnd4I4ef9YrOAfzik1uTdChVk8RZaqdeP+YxA==}
@@ -5373,6 +5383,8 @@ snapshots:
       - supports-color
       - vite
       - zone.js
+
+  '@mark1russell7/package-id@0.0.2': {}
 
   '@mark1russell7/predicates@0.1.5': {}
 
