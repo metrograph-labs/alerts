@@ -18,6 +18,7 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { PUSHOVER_QUOTA, PUSHOVER_RESERVE_NOTICES, type PushoverChannelOptions } from "@mark1russell7/alerts-channel-pushover";
+import type { TwilioFetch } from "@mark1russell7/alerts-channel-twilio";
 import { openShapeCache, SHAPES_FILE } from "@mark1russell7/alerts-shapes-nws";
 import { realClock, wallClock, type WallClock } from "@mark1russell7/algebra/clock";
 import type { GcPause } from "@mark1russell7/lag/node";
@@ -241,6 +242,9 @@ const offline: Transport = () => Promise.reject(new Error(NO_NETWORK));
 /** This fetch refuses each send of a channel. */
 const noSend: PushoverChannelOptions["fetch"] = () => Promise.reject(new TypeError(NO_NETWORK));
 
+/** This fetch refuses each call, each text and each balance read of the Twilio channels (AL-202). */
+const noCall: TwilioFetch = () => Promise.reject(new TypeError(NO_NETWORK));
+
 // The default pause of `writeInChunks`: one timer of 0 ms.
 const oneTimer = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -363,6 +367,9 @@ export async function openMeasuredRuntime(home: string, options: MeasuredOptions
       pushover: channels === undefined ? noSend : fakeSend(channels, wall),
       // The fake of the channels is a fake of Pushover. The webhook of a measured start sends nothing.
       webhook: noSend,
+      // A configuration with the Twilio keys and a spend entry needs a fetch of the calls and a store of the spend count (AL-202).
+      twilio: noCall,
+      spendStore: quotas,
       pushoverQuota: quotaGate(PUSHOVER_QUOTA, { key: "pushover:app", store: quotas, now: () => wall.now() }),
       pushoverReserveNotices: quotaGate(PUSHOVER_RESERVE_NOTICES, { key: "pushover:reserve-notices", store: quotas, now: () => wall.now() }),
       run: randomUUID(),
