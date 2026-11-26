@@ -1411,11 +1411,15 @@ export function openInstance(options: InstanceOptions): Instance {
     // The keeper of the transit catalog reads the catalog when its copy is due. The pass does not wait for the two.
     // The two start at a pass after the good start (AL-75). The entry marks the start after this function, thus the pass that
     // makes the start good starts neither of them.
+    // The keeper of shapes gets the live incidents of each pass, also of the first pass. Thus the map of the first pass has
+    // the simplified shapes of the regions of the incidents, not their full outlines (AL-176). Before the good start, no
+    // refresh starts.
     onPass: async (pass) => {
       latest = keptPass(pass);
       first ??= { at: pass.at };
-      if (options.startGood?.() ?? true) {
-        shapes.afterPass(pass.view.incidents, refreshUntil(runtime.config.sources, (descriptor) => nextFetch(runtime.state(), descriptor)));
+      const good = options.startGood?.() ?? true;
+      shapes.afterPass(pass.view.incidents, good ? refreshUntil(runtime.config.sources, (descriptor) => nextFetch(runtime.state(), descriptor)) : undefined);
+      if (good) {
         transit?.afterPass();
         // The snapshot of the start (AL-105). The first write is at the first pass after the good start, when the log has
         // `snapshotFloor` new events since the last snapshot. The write has short transactions with pauses, thus the loop
