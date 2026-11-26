@@ -307,6 +307,7 @@ MAX_PLACE_CODES: build/index.d.ts#MAX_PLACE_CODES
 MAX_WEIGHTED_UNITS: build/index.d.ts#MAX_WEIGHTED_UNITS
 MEASURE_ID: build/index.d.ts#MEASURE_ID
 MIN_READS: build/index.d.ts#MIN_READS
+MODEL_SYSTEM: build/index.d.ts#MODEL_SYSTEM
 MOVES: build/index.d.ts#MOVES
 MandatoryRule: build/index.d.ts#MandatoryRule
 MapIncident: build/index.d.ts#MapIncident
@@ -327,6 +328,8 @@ MergeState: build/index.d.ts#MergeState
 Message: build/index.d.ts#Message
 MessageKeyInput: build/index.d.ts#MessageKeyInput
 MissRecord: build/index.d.ts#MissRecord
+ModelNumber: build/index.d.ts#ModelNumber
+ModelPattern: build/index.d.ts#ModelPattern
 Move: build/index.d.ts#Move
 MovingRule: build/index.d.ts#MovingRule
 Mute: build/index.d.ts#Mute
@@ -821,6 +824,8 @@ messageSchema: build/index.d.ts#messageSchema
 missLimit: build/index.d.ts#missLimit
 missRecord: build/index.d.ts#missRecord
 missedDrillAt: build/index.d.ts#missedDrillAt
+modelOfSubject: build/index.d.ts#modelOfSubject
+modelSubjectId: build/index.d.ts#modelSubjectId
 mostInWindow: build/index.d.ts#mostInWindow
 moveSchema: build/index.d.ts#moveSchema
 movingPlace: build/index.d.ts#movingPlace
@@ -2692,6 +2697,7 @@ export interface InstalledPackage {
   readonly purl: string;
   readonly version: string;
   readonly cpe?: string;
+  readonly model?: ModelNumber;
 }
 
 ### build/index.d.ts#Instant
@@ -3066,6 +3072,9 @@ export declare const MEASURE_ID: RegExp;
 ### build/index.d.ts#MIN_READS
 export declare const MIN_READS = 30;
 
+### build/index.d.ts#MODEL_SYSTEM
+export declare const MODEL_SYSTEM = "model";
+
 ### build/index.d.ts#MOVES
 export declare const MOVES: readonly Move[];
 
@@ -3241,6 +3250,18 @@ export interface MessageKeyInput {
 export interface MissRecord {
   readonly trials: number;
   readonly misses: number;
+}
+
+### build/index.d.ts#ModelNumber
+export interface ModelNumber {
+  readonly vendor: string;
+  readonly number: string;
+}
+
+### build/index.d.ts#ModelPattern
+export interface ModelPattern {
+  readonly vendor: string;
+  readonly pattern: string;
 }
 
 ### build/index.d.ts#Move
@@ -5490,6 +5511,12 @@ export declare function missRecord(record: readonly Decision[]): MissRecord;
 
 ### build/index.d.ts#missedDrillAt
 export declare function missedDrillAt(drill: DrillConfig, runs: readonly DrillRun[], at: Instant, quiet?: QuietWindow): Instant | undefined;
+
+### build/index.d.ts#modelOfSubject
+export declare function modelOfSubject(id: string): ModelPattern | undefined;
+
+### build/index.d.ts#modelSubjectId
+export declare function modelSubjectId(vendor: string, pattern: string): string;
 
 ### build/index.d.ts#mostInWindow
 export declare function mostInWindow(times: readonly Instant[], length: Duration): number;

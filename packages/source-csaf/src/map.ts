@@ -6,7 +6,7 @@
  * report. The report also joins the incident of the same flaw from a second source, for example the KEV catalog of CISA.
  */
 
-import { categoryOf, CPE_SYSTEM, kindLabel, PACKAGE_SYSTEM, Problems, reportId, type MapProblem, type MapResult, type Observation, type Report, type Severity, type Subject } from "@mark1russell7/alerts";
+import { categoryOf, CPE_SYSTEM, kindLabel, MODEL_SYSTEM, PACKAGE_SYSTEM, Problems, reportId, type MapProblem, type MapResult, type Observation, type Report, type Severity, type Subject } from "@mark1russell7/alerts";
 import { isRecord } from "@mark1russell7/optional/read";
 import { errorMessage } from "@mark1russell7/text";
 
@@ -66,7 +66,7 @@ function isRefused(fields: Record<string, unknown>): fields is Record<string, un
 
 /** This function tells if a body is the body of an advisory. */
 function isAdvisory(fields: Record<string, unknown>): fields is Record<string, unknown> & AdvisoryBody {
-  return ["url", "id", "version", "initial", "current", "title", "tlp"].every((name) => typeof fields[name] === "string") && Array.isArray(fields["flaws"]) && Array.isArray(fields["products"]) && (fields["packages"] === undefined || Array.isArray(fields["packages"])) && (fields["cpes"] === undefined || Array.isArray(fields["cpes"]));
+  return ["url", "id", "version", "initial", "current", "title", "tlp"].every((name) => typeof fields[name] === "string") && Array.isArray(fields["flaws"]) && Array.isArray(fields["products"]) && (fields["packages"] === undefined || Array.isArray(fields["packages"])) && (fields["cpes"] === undefined || Array.isArray(fields["cpes"])) && (fields["models"] === undefined || Array.isArray(fields["models"]));
 }
 
 /** This function makes the map function of one provider. The function does not throw. */
@@ -116,6 +116,7 @@ function reportOf(provider: CsafProvider, observation: Observation, advisory: Ad
   for (const pkg of advisory.packages ?? []) about.push({ system: PACKAGE_SYSTEM, id: pkg.purl, ...(pkg.ranges === undefined ? {} : { ranges: pkg.ranges }) });
   // Each affected CPE product is a subject too. Thus a part that names its CPE matches an advisory with no purl of it.
   for (const item of advisory.cpes ?? []) about.push({ system: CPE_SYSTEM, id: item.cpe, ...(item.ranges === undefined ? {} : { ranges: item.ranges }) });
+  for (const item of advisory.models ?? []) about.push({ system: MODEL_SYSTEM, id: item.model, ...(item.ranges === undefined ? {} : { ranges: item.ranges }) });
   const key = advisory.id;
   return {
     id: reportId({ source: provider.id, key, sent }),
@@ -155,6 +156,7 @@ function reportOf(provider: CsafProvider, observation: Observation, advisory: Ad
       product: advisory.products,
       package: [...new Set((advisory.packages ?? []).map((pkg) => pkg.purl))],
       cpe: [...new Set((advisory.cpes ?? []).map((item) => item.cpe))],
+      model: [...new Set((advisory.models ?? []).map((item) => item.model))],
       ...(advisory.packagesCut === undefined ? {} : { packagesCut: [String(advisory.packagesCut)] }),
       ...(advisory.severity === undefined ? {} : { aggregateSeverity: [advisory.severity] }),
       terms: [provider.terms.text],

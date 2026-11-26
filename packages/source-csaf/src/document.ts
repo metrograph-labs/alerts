@@ -5,7 +5,7 @@
 
 import { isRecord, type Fields } from "@mark1russell7/optional/read";
 
-import { affectedPackages, type ProductCpe, type ProductPackage } from "./products.ts";
+import { affectedPackages, type ProductCpe, type ProductModel, type ProductPackage } from "./products.ts";
 
 /** The TLP labels of a document that the source keeps: the labels for sharing with no limit. */
 export const SHARED_LABELS: ReadonlySet<string> = new Set(["CLEAR", "WHITE"]);
@@ -58,6 +58,8 @@ export interface AdvisoryBody {
   readonly packages?: readonly ProductPackage[];
   /** The affected CPE products, with the ranges of their versions. The body has the field only when the list is not empty. */
   readonly cpes?: readonly ProductCpe[];
+  /** The affected model number patterns, with the ranges of their versions. The body has the field only when the list is not empty. */
+  readonly models?: readonly ProductModel[];
   /** The count of the affected packages and CPE products above `MAX_PACKAGES` that the body leaves out. */
   readonly packagesCut?: number;
 }
@@ -166,6 +168,7 @@ export function readAdvisory(source: string, url: string): AdvisoryBody | Refuse
     fix,
     ...(affected.packages.length === 0 ? {} : { packages: affected.packages }),
     ...(affected.cpes.length === 0 ? {} : { cpes: affected.cpes }),
+    ...(affected.models.length === 0 ? {} : { models: affected.models }),
     ...(affected.cut === 0 ? {} : { packagesCut: affected.cut }),
   };
 }

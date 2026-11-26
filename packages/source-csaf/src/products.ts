@@ -10,12 +10,16 @@
  *
  * A product with a CPE name in its helper also gives the product of that name, as a subject of the system `cpe`. The
  * version of the name, or else the version branch above it, gives the range.
+ *
+ * A product with model numbers in its helper and a vendor branch above it gives each pattern as a subject of the
+ * system `model`. The version branch above it gives the range.
  */
 
 import { cpeProductOf, cpeVersionOf, formatPurl, formatVers, packagePurlOf, parseCpe, parsePurl, parseVers } from "@mark1russell7/package-id";
+import { modelSubjectId } from "@mark1russell7/alerts";
 import { isRecord, type Fields } from "@mark1russell7/optional/read";
 
-/** The most packages of one advisory body, and the most CPE products. */
+/** The most packages of one advisory body, the most CPE products and the most model numbers. */
 export const MAX_PACKAGES = 100;
 
 /** The most ranges of one package. A package with more ranges has no range, so the verdict of a match is `unknown`. */
@@ -40,10 +44,19 @@ export interface ProductCpe {
   readonly ranges?: readonly string[];
 }
 
-/** The affected packages and CPE products of a document, and the count of the items that the body leaves out. */
+/** One affected model number pattern of an advisory: the subject of the system `model` that the map gives. */
+export interface ProductModel {
+  /** The id of the subject, from `modelSubjectId`: the vendor, a slash and the pattern. */
+  readonly model: string;
+  /** The ranges of the affected versions. A pattern with no field `ranges` has no known range. */
+  readonly ranges?: readonly string[];
+}
+
+/** The affected packages, CPE products and model numbers of a document, and the count of the items that the body leaves out. */
 export interface AffectedPackages {
   readonly packages: readonly ProductPackage[];
   readonly cpes: readonly ProductCpe[];
+  readonly models: readonly ProductModel[];
   readonly cut: number;
 }
 
@@ -53,10 +66,11 @@ export interface ProductIdentity {
   readonly range?: string;
 }
 
-/** One product of the tree: its purl, its CPE product, or both. */
+/** One product of the tree: its purl, its CPE product and its model number patterns, when it has them. */
 export interface Product {
   readonly purl?: ProductIdentity;
   readonly cpe?: ProductIdentity;
+  readonly models?: readonly ProductIdentity[];
 }
 
 const text = (fields: unknown, name: string): string | undefined => (isRecord(fields) && typeof fields[name] === "string" ? fields[name] : undefined);
@@ -129,13 +143,23 @@ function cpeOf(helper: unknown, chain: Chain): ProductIdentity | undefined {
   return identity(product, rangeOf("generic", version ?? chain.version, version === undefined ? chain.range : undefined));
 }
 
-/** This function gives the product of a leaf of the tree, or `undefined` when the leaf has no purl, no CPE name and no names. */
+/** This function gives the model number patterns of the helper of a product, under the vendor of the chain. */
+function modelsOf(helper: unknown, chain: Chain): readonly ProductIdentity[] {
+  const vendor = chain.vendor;
+  if (vendor === undefined) return [];
+  const range = rangeOf("generic", chain.version, chain.range);
+  const patterns = texts(helper, "model_numbers").filter((pattern) => pattern.trim() !== "");
+  return [...new Set(patterns)].map((pattern) => identity(modelSubjectId(vendor, pattern), range));
+}
+
+/** This function gives the product of a leaf of the tree, or `undefined` when the leaf has no identity. */
 function productOf(product: unknown, chain: Chain): Product | undefined {
   const helper = isRecord(product) ? product["product_identification_helper"] : undefined;
   const purl = purlOf(helper, chain);
   const cpe = cpeOf(helper, chain);
-  if (purl === undefined && cpe === undefined) return undefined;
-  return { ...(purl === undefined ? {} : { purl }), ...(cpe === undefined ? {} : { cpe }) };
+  const models = modelsOf(helper, chain);
+  if (purl === undefined && cpe === undefined && models.length === 0) return undefined;
+  return { ...(purl === undefined ? {} : { purl }), ...(cpe === undefined ? {} : { cpe }), ...(models.length === 0 ? {} : { models }) };
 }
 
 /** This function gives the product of each product id of a product tree. */
@@ -192,11 +216,12 @@ class RangeTable {
   }
 }
 
-/** This function gives the affected packages and CPE products of a document: the products of the affected status of each vulnerability. */
+/** This function gives the affected packages, CPE products and model numbers of a document: the products of the affected status of each vulnerability. */
 export function affectedPackages(tree: unknown, vulnerabilities: readonly Fields[]): AffectedPackages {
   const products = productsOf(tree);
   const purls = new RangeTable();
   const cpes = new RangeTable();
+  const models = new RangeTable();
   for (const vulnerability of vulnerabilities) {
     const status = vulnerability["product_status"];
     for (const field of AFFECTED_STATUS) {
@@ -204,11 +229,13 @@ export function affectedPackages(tree: unknown, vulnerabilities: readonly Fields
         const product = products.get(id);
         if (product?.purl !== undefined) purls.add(product.purl);
         if (product?.cpe !== undefined) cpes.add(product.cpe);
+        for (const model of product?.models ?? []) models.add(model);
       }
     }
   }
   const packages = purls.list().map(({ id, ranges }) => ({ purl: id, ...(ranges === undefined ? {} : { ranges }) }));
   const cpeList = cpes.list().map(({ id, ranges }) => ({ cpe: id, ...(ranges === undefined ? {} : { ranges }) }));
-  const cut = Math.max(0, packages.length - MAX_PACKAGES) + Math.max(0, cpeList.length - MAX_PACKAGES);
-  return { packages: packages.slice(0, MAX_PACKAGES), cpes: cpeList.slice(0, MAX_PACKAGES), cut };
+  const modelList = models.list().map(({ id, ranges }) => ({ model: id, ...(ranges === undefined ? {} : { ranges }) }));
+  const cut = [packages, cpeList, modelList].reduce((sum, list) => sum + Math.max(0, list.length - MAX_PACKAGES), 0);
+  return { packages: packages.slice(0, MAX_PACKAGES), cpes: cpeList.slice(0, MAX_PACKAGES), models: modelList.slice(0, MAX_PACKAGES), cut };
 }

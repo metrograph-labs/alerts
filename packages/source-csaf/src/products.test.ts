@@ -90,6 +90,34 @@ describe("the CPE products of a tree", () => {
   });
 });
 
+const modelLeaf = (category: string, name: string, id: string, models: readonly string[]) => ({
+  category,
+  name,
+  product: { name: `${name} (${id})`, product_id: id, product_identification_helper: { model_numbers: models } },
+});
+const MODEL_TREE = {
+  branches: [
+    vendor("Example Controls", product("Compact PLC", modelLeaf("product_version_range", "<V4.5", "M1", ["6ES7212-1?E40-0XB0", "6ES7212-1?E40-0XB0", " "]))),
+    modelLeaf("product_version", "1.0", "M2", ["X-100"]),
+  ],
+};
+
+describe("the model numbers of a tree", () => {
+  it("gives each pattern under the vendor of the chain, with the range of the branch", () => {
+    expect(productsOf(MODEL_TREE).get("M1")?.models).toEqual([{ id: "example%20controls/6ES7212-1?E40-0XB0", range: "vers:generic/<V4.5" }]);
+  });
+
+  it("gives no model with no vendor branch", () => {
+    expect(productsOf(MODEL_TREE).get("M2")).toBeUndefined();
+  });
+
+  it("gives the affected models next to the packages", () => {
+    const { models, cut } = affectedPackages(MODEL_TREE, [vulnerability({ known_affected: ["M1", "M2"] })]);
+    expect(cut).toBe(0);
+    expect(models).toEqual([{ model: "example%20controls/6ES7212-1?E40-0XB0", ranges: ["vers:generic/<V4.5"] }]);
+  });
+});
+
 describe("the range of a product", () => {
   it("keeps a vers text, gives a bare range the scheme of the purl, and refuses a text that is not a range", () => {
     expect(rangeOf("generic", undefined, " vers:generic/<=2.9.1.0_FR ")).toBe("vers:generic/<=2.9.1.0_FR");
