@@ -257,7 +257,7 @@
     "references": [
       "No hazard list names this class. Found by the search for missing classes."
     ],
-    "gap": "No structured source found. Agencies post contingency plans.",
+    "gap": "No structured source found. Agencies post contingency plans. Round 52: the operating status of OPM was Open on 2025-10-01, the first day of a lapse, so it is not a signal of a shutdown. The Congress.gov API gives the appropriation laws, the first plan.",
     "round": 1
   },
   {

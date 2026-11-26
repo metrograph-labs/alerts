@@ -2874,5 +2874,11 @@
     "name": "EPPO, the European and Mediterranean Plant Protection Organization",
     "issues": null,
     "note": "The reports of eppo-reporting-service come from the national plant protection organizations of its member countries and from studies."
+  },
+  {
+    "id": "us-congress",
+    "name": "The US Congress, through Congress.gov of the Library of Congress",
+    "issues": null,
+    "note": "The bills, actions and laws of congress-gov-api come from the House and the Senate."
   }
 ]
