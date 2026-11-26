@@ -7,7 +7,7 @@
  * the version order of `@mark1russell7/package-id`.
  */
 
-import { cpeProductOf, modelNumberMatches, parseVers, versContains, versEnd } from "@mark1russell7/package-id";
+import { cpeProductOf, modelNumberMatches, packageKeyOf, parseVers, versContains, versEnd } from "@mark1russell7/package-id";
 import type { Subject } from "./contracts.ts";
 
 /** The system of the subject of a package: its purl with no version. */
@@ -138,7 +138,7 @@ export interface SoftwareMatch {
  */
 export function softwareMatches(about: readonly Subject[], stack: SoftwareStack, check: RangeCheck): SoftwareMatch[] {
   // The ranges of each package. `undefined` in the list: a subject of the package with no range.
-  // The key of a purl is the purl, and the key of a CPE name is its product.
+  // The key of a purl is its match key (PEP 503 for PyPI), and the key of a CPE name is its product.
   const named = new Map<string, (readonly string[] | undefined)[]>();
   // A pattern has wildcards, so the model subjects are a list, not keys of the map.
   const models: (ModelPattern & { readonly ranges: readonly string[] | undefined })[] = [];
@@ -162,7 +162,8 @@ export function softwareMatches(about: readonly Subject[], stack: SoftwareStack,
       const installed = pkg.model;
       const vendor = installed?.vendor.trim().toLowerCase();
       const modelLists = installed === undefined ? [] : models.filter((model) => model.vendor === vendor && modelNumberMatches(model.pattern, installed.number)).map((model) => model.ranges);
-      const lists = [...(named.get(`${PACKAGE_SYSTEM} ${pkg.purl}`) ?? []), ...(cpe === undefined ? [] : (named.get(cpe) ?? [])), ...modelLists];
+      const key = subjectKey(PACKAGE_SYSTEM, pkg.purl);
+      const lists = [...(key === undefined ? [] : (named.get(key) ?? [])), ...(cpe === undefined ? [] : (named.get(cpe) ?? [])), ...modelLists];
       if (lists.length === 0) continue;
       const result = verdictOf(lists, pkg.version, check);
       if (result === undefined) continue;
@@ -181,7 +182,8 @@ export function softwareMatches(about: readonly Subject[], stack: SoftwareStack,
 
 // The key of a subject in the map of the named packages, or `undefined` for a subject that is not a package.
 function subjectKey(system: string, id: string): string | undefined {
-  if (system === PACKAGE_SYSTEM) return `${PACKAGE_SYSTEM} ${id}`;
+  // Two names that the registry makes equal have one key, so an advisory for `mcp.diag-tool` matches `mcp-diag.tool`.
+  if (system === PACKAGE_SYSTEM) return `${PACKAGE_SYSTEM} ${packageKeyOf(id) ?? id}`;
   if (system !== CPE_SYSTEM) return undefined;
   const product = cpeProductOf(id);
   return product === undefined ? undefined : `${CPE_SYSTEM} ${product}`;

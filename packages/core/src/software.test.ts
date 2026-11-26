@@ -45,6 +45,14 @@ describe("the match of an advisory to the software of a stack", () => {
       ["worker", "affected", "9"],
     ]);
   });
+
+  it("matches two PyPI names that PEP 503 makes equal, and keeps the purl of the part", () => {
+    const python: SoftwareStack = { parts: [{ part: "tools", packages: [{ purl: "pkg:pypi/mcp-diag.tool", version: "3" }] }] };
+    expect(softwareMatches([pkg("pkg:pypi/mcp.diag-tool", ["vers:test/<5"])], python, check)).toEqual([
+      { part: "tools", purl: "pkg:pypi/mcp-diag.tool", installed: "3", verdict: "affected", fixed: "5" },
+    ]);
+    expect(softwareMatches([pkg("pkg:pypi/mcp-diag-tools", ["vers:test/<5"])], python, check)).toEqual([]);
+  });
 });
 
 describe("the match of a part by its CPE name", () => {
