@@ -51,6 +51,7 @@ import {
 import { isRecord } from "@mark1russell7/optional/read";
 import { wilson, Z95 } from "@mark1russell7/rigor-statistics";
 import { openDatabase } from "@mark1russell7/sqlite";
+import { works } from "@mark1russell7/system-stack";
 import { countOf, errorMessage } from "@mark1russell7/text";
 import { send, statusLine, type Pace, type Transport } from "polite-crawler/api";
 import { providerFragment, regionFragment, siteFragment, type ChanceOverride, type PartChance, type PlacementBase, type PlacementChances, type StatusRef } from "./placement.ts";
@@ -295,14 +296,22 @@ export function readChannelCalls(path: string, channel: string, limit: number = 
  * copies (AL-147). Each hour with a counted call is one trial. A call counts when the service answered, or when it
  * failed with a kind of `DOWN_CALL_KINDS` while the network of its copy worked. An hour is down when it has a counted
  * failure and no answered call of any copy. Thus a fault of the path of one copy is not a down time of the service.
+ *
+ * An hour that overlaps a span of `away` is not a trial (AL-216). These are the hours when the status page of a
+ * provider of the path showed that provider down. They belong to the measure of the provider.
  */
-export function measureChannel(chance: PartChance, calls: readonly CallRead[], now: number): PartMeasure {
+export function measureChannel(chance: PartChance, calls: readonly CallRead[], now: number, away: readonly TimeWindow[] = []): PartMeasure {
   const channel = chance.channel;
   if (channel === undefined) return { ok: false, reason: "The chance names no channel." };
   const hours = new Map<number, { answered: boolean; failed: boolean }>();
+  const skipped = new Set<number>();
   for (const call of calls) {
     if (!call.answered && !call.network) continue;
     const hour = Math.floor(call.time / HOUR_MS);
+    if (away.some((span) => span.from < (hour + 1) * HOUR_MS && span.to > hour * HOUR_MS)) {
+      skipped.add(hour);
+      continue;
+    }
     const entry = hours.get(hour) ?? { answered: false, failed: false };
     if (call.answered) entry.answered = true;
     else entry.failed = true;
@@ -318,15 +327,21 @@ export function measureChannel(chance: PartChance, calls: readonly CallRead[], n
   const source =
     `the calls of the channel ${channel} in the logs of the live copies from ${dayOf(window.from)} to ${dayOf(window.to)}: ` +
     `${String(downHours)} of ${String(trials)} hours with calls down (a call failed by network, time-out or server error, and no call had an answer), ` +
+    (skipped.size === 0 ? "" : `less ${countOf(skipped.size, "hour")} when a status page showed a provider of the path down, `) +
     `works ${(1 - down.share).toFixed(6)}, 95% Wilson interval ${low.toFixed(6)} to ${(1 - down.interval.low).toFixed(6)}, the input is the low end`;
   return { ok: true, chance: { ...chance, works: low, kind: "measured", source }, measure: { input: { id: chance.part, works: low, kind: "measured", source }, down, window } };
 }
 
 /**
  * This function measures each chance of a base that names a channel, from the calls of that channel (AL-147). `calls`
- * gives the calls of a channel from all logs. A chance with a short record keeps its input.
+ * gives the calls of a channel from all logs. A chance with a short record keeps its input. `pages` are the measures
+ * from status pages (`measureBase`). The rules against a double count (AL-216):
+ * - A chance that names a status page and a channel keeps its page measure. The page measures the provider, and the
+ *   calls measure the path that needs it. Thus the channel goes on the chance of the path.
+ * - The call measure of a path leaves out each hour when the page of a provider showed it down. This rule applies
+ *   to each provider whose failure stops the path in the stack.
  */
-export function measureBaseCalls(base: PlacementBase, calls: (channel: string) => readonly CallRead[], now: number): BaseMeasure {
+export function measureBaseCalls(base: PlacementBase, calls: (channel: string) => readonly CallRead[], now: number, pages: readonly ChanceMeasure[] = []): BaseMeasure {
   const chances: PartChance[] = [];
   const lines: string[] = [];
   const measures: ChanceMeasure[] = [];
@@ -335,7 +350,15 @@ export function measureBaseCalls(base: PlacementBase, calls: (channel: string) =
       chances.push(chance);
       continue;
     }
-    const measured = measureChannel(chance, calls(chance.channel), now);
+    if (chance.status !== undefined) {
+      chances.push(chance);
+      lines.push(`The base input ${chance.part} keeps its ${chance.kind} input from its status page: it also names the channel ${chance.channel}. Put the channel on the chance of the path that needs ${chance.part} (AL-216).`);
+      continue;
+    }
+    // A path that does not work with no part down, or that is not in the stack, has no provider to leave out.
+    const alive = works(base.stack, chance.part);
+    const away = alive ? pages.filter((page) => page.input.id !== chance.part && !works(base.stack, chance.part, [page.input.id])).flatMap((page) => page.spans ?? []) : [];
+    const measured = measureChannel(chance, calls(chance.channel), now, away);
     if (measured.ok) {
       chances.push(measured.chance);
       measures.push(measured.measure);
@@ -358,21 +381,25 @@ export function isDown(incident: HistoryIncident): boolean {
  * lasts to the end of the window. The time where two incidents overlap counts one time.
  */
 export function downTime(incidents: readonly HistoryIncident[], window: TimeWindow): number {
+  return downSpans(incidents, window).reduce((total, span) => total + span.to - span.from, 0);
+}
+
+/**
+ * This function gives the down spans of the incidents in a window, in their order. Two incidents that overlap give one
+ * span. An incident that is not resolved lasts to the end of the window.
+ */
+export function downSpans(incidents: readonly HistoryIncident[], window: TimeWindow): readonly TimeWindow[] {
   const spans = incidents
     .map((incident) => [Math.max(incident.start, window.from), Math.min(incident.end ?? window.to, window.to)] as const)
     .filter(([start, end]) => end > start)
     .sort((a, b) => a[0] - b[0]);
-  let total = 0;
-  let open: number | undefined;
-  let close = 0;
+  const merged: TimeWindow[] = [];
   for (const [start, end] of spans) {
-    if (open === undefined || start > close) {
-      if (open !== undefined) total += close - open;
-      open = start;
-      close = end;
-    } else close = Math.max(close, end);
+    const last = merged.at(-1);
+    if (last === undefined || start > last.to) merged.push({ from: start, to: end });
+    else merged[merged.length - 1] = { from: last.from, to: Math.max(last.to, end) };
   }
-  return open === undefined ? total : total + close - open;
+  return merged;
 }
 
 /** The down share of one part over a window. */
@@ -407,6 +434,8 @@ export interface ChanceMeasure {
   readonly down: DownShare;
   /** The window of the history. */
   readonly window: TimeWindow;
+  /** The down spans of a measure from a status page, in its window (AL-216). A call measure leaves out these hours. */
+  readonly spans?: readonly TimeWindow[] | undefined;
 }
 
 /** The history of one page: its incidents and the names of its components. */
@@ -457,8 +486,9 @@ function sourceText(feed: FeedRule, window: TimeWindow, down: DownShare): string
 }
 
 function measureOf(id: string, feed: FeedRule, incidents: readonly HistoryIncident[], window: TimeWindow): ChanceMeasure {
-  const down = downShare(downTime(incidents, window), window);
-  return { input: { id, works: 1 - down.interval.high, kind: "measured", source: sourceText(feed, window, down) }, down, window };
+  const spans = downSpans(incidents, window);
+  const down = downShare(spans.reduce((total, span) => total + span.to - span.from, 0), window);
+  return { input: { id, works: 1 - down.interval.high, kind: "measured", source: sourceText(feed, window, down) }, down, window, spans };
 }
 
 /**

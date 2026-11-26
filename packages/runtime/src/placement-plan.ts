@@ -390,7 +390,7 @@ if (typeof parsed === "string") {
   // Each chance of the base that names a status page gets a measured input, with the same pace as the providers.
   const baseMeasure = baseRead === undefined ? undefined : await measureBase(baseRead, { scheduler, now: () => Date.now() }, measureTransport, readAt, parsed.windowDays);
   // Each chance of the base that names a channel gets a measured input from the calls in the site logs (AL-147).
-  const callMeasure = baseMeasure === undefined ? undefined : measureBaseCalls(baseMeasure.base, (channel) => parsed.siteLogs.flatMap((log) => callsOrNone(log.path, channel).filter((call) => inLogWindow(call.time, log.window))), readAt);
+  const callMeasure = baseMeasure === undefined ? undefined : measureBaseCalls(baseMeasure.base, (channel) => parsed.siteLogs.flatMap((log) => callsOrNone(log.path, channel).filter((call) => inLogWindow(call.time, log.window))), readAt, baseMeasure.measures);
   const base: PlacementBase | undefined = callMeasure?.base;
   if (base === undefined) print.line("No base is named. The front leaves out the needs that all copies share.");
   else {

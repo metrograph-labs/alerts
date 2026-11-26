@@ -11,6 +11,7 @@ import {
   codePlace,
   DAY_MS,
   downShare,
+  downSpans,
   downTime,
   feedOf,
   FETCH_GAP_MS,
@@ -35,6 +36,7 @@ import {
   readPageHistory,
   withMeasures,
   type CallRead,
+  type ChanceMeasure,
   type HistorySource,
 } from "./placement-chances.ts";
 import { callsEvent } from "./events.ts";
@@ -96,6 +98,15 @@ describe("the method of the down share", () => {
     expect(downTime(INCIDENTS.filter((each) => each.id === "o1"), window)).toBe(2 * HOUR_MS);
     expect(downTime(INCIDENTS.filter((each) => each.id === "old"), window)).toBe(0);
     expect(downTime([], window)).toBe(0);
+  });
+
+  it("merges the down spans of incidents that overlap, and their sum is the down time", () => {
+    const window = { from: NOW - 60 * DAY_MS, to: NOW };
+    const both = INCIDENTS.filter((each) => each.id === "p1" || each.id === "p2");
+    const spans = downSpans(both, window);
+    expect(spans).toHaveLength(1);
+    expect(spans.reduce((total, span) => total + span.to - span.from, 0)).toBe(downTime(both, window));
+    expect(downSpans([], window)).toEqual([]);
   });
 
   it("counts a part of an hour as a whole hour, and refuses a window with no whole hour", () => {
@@ -334,6 +345,55 @@ describe("the measure of a shared channel from its calls (AL-147)", () => {
     const short = measureBaseCalls(base, () => [], NOW);
     expect(short.base.chances?.[0]).toEqual(CHANCE);
     expect(short.lines[0]).toContain("keeps its assumed input");
+  });
+
+  describe("the call measure of a path and the page measure of its provider (AL-216)", () => {
+    const stack = {
+      format: "system-stack/1",
+      parts: [
+        { id: "voice-api", kind: "service" },
+        { id: "other-api", kind: "service" },
+        { id: "call-path", kind: "service", needs: [{ all: ["voice-api"] }] },
+      ],
+    } as unknown as PlacementBase["stack"];
+    const PATH: PartChance = { part: "call-path", works: 0.99, kind: "assumed", source: "an assumed input", channel: "call" };
+    const status: StatusRef = { host: "status.example.com", read: "api" };
+    const PROVIDER: PartChance = { part: "voice-api", works: 0.999, kind: "measured", source: "a page measure", status, channel: "call" };
+    const page = (id: string, spans: readonly { from: number; to: number }[]): ChanceMeasure => {
+      const window = { from: START - 30 * DAY_MS, to: NOW };
+      return { input: { id, works: 0.999, kind: "measured", source: "a page measure" }, down: downShare(spans.reduce((total, span) => total + span.to - span.from, 0), window), window, spans };
+    };
+    // Hour 3: the calls failed with a working network. Hour 10: all calls had an answer.
+    const calls: CallRead[] = [...answered.filter((_, hour) => hour !== 3), { time: START + 3 * HOUR_MS + 60_000, answered: false, network: true }];
+    const base: PlacementBase = { stack, part: "call-path", chances: [PATH, PROVIDER] };
+
+    it("leaves out the hours when the page of a provider of the path showed it down", () => {
+      const pages = [page("voice-api", [{ from: START + 3 * HOUR_MS + 600_000, to: START + 3 * HOUR_MS + 1_200_000 }]), page("other-api", [{ from: START + 10 * HOUR_MS, to: START + 11 * HOUR_MS }])];
+      const plain = measureBaseCalls(base, () => calls, NOW);
+      expect(plain.measures[0]?.down).toMatchObject({ hours: 48, downHours: 1 });
+      const measured = measureBaseCalls(base, () => calls, NOW, pages);
+      // The provider hour 3 is not a trial of the path. The hour 10 of a part that the path does not need stays.
+      expect(measured.measures[0]?.down).toMatchObject({ hours: 47, downHours: 0 });
+      expect(measured.base.chances?.[0]?.source).toContain("less 1 hour when a status page showed a provider of the path down");
+    });
+
+    it("gives the call measure as it is when no call hour falls in a provider down hour", () => {
+      const late = [page("voice-api", [{ from: START + 100 * HOUR_MS, to: START + 102 * HOUR_MS }])];
+      expect(measureBaseCalls(base, () => calls, NOW, late)).toEqual(measureBaseCalls(base, () => calls, NOW));
+    });
+
+    it("keeps the page measure of a chance that names a page and a channel", () => {
+      const measured = measureBaseCalls(base, () => calls, NOW);
+      expect(measured.base.chances?.[1]).toEqual(PROVIDER);
+      expect(measured.measures.map((measure) => measure.input.id)).toEqual(["call-path"]);
+      expect(measured.lines[1]).toContain("keeps its measured input from its status page");
+    });
+
+    it("leaves out no hour for a path that is not in the stack", () => {
+      const lost: PlacementBase = { ...base, chances: [{ ...PATH, part: "lost-path" }] };
+      const pages = [page("voice-api", [{ from: START + 3 * HOUR_MS, to: START + 4 * HOUR_MS }])];
+      expect(measureBaseCalls(lost, () => calls, NOW, pages).measures[0]?.down).toMatchObject({ hours: 48, downHours: 1 });
+    });
   });
 
   it("reads the calls of one channel from the calls events of a log file", () => {
