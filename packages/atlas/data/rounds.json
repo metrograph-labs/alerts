@@ -2047,5 +2047,50 @@
       "members": 1757,
       "cause": "Round 41 moves one source from later to plan, with a risk on its terms. A source with a risk does not count in the cover, so the gaps stay at 63."
     }
+  },
+  {
+    "round": 42,
+    "date": "2026-11-26",
+    "by": "One session, with no subagent.",
+    "method": "The round took two classes with one origin: space debris reentry and software end of life. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The Red Hat Product Life Cycle Data API: https://access.redhat.com/product-life-cycles/api/v1/products",
+      "The distro-info-data files of Debian: https://salsa.debian.org/debian/distro-info-data"
+    ],
+    "queries": [
+      "reentry predictions JSON API satellite decay open data",
+      "ESA reentry predictions API access terms account",
+      "EU SST re-entry analysis service open data feed public",
+      "Microsoft product lifecycle API JSON end of support dates",
+      "Red Hat product life cycles API documentation"
+    ],
+    "notes": [
+      "The Red Hat API gives 236 products as JSON with no key. Its documentation host gave 403, so the source is a plan with a risk.",
+      "The Debian file distro-info-data gives the end-of-life dates of Debian and Ubuntu as CSV under the ISC licence. It is a second origin with no risk, so the class has no gap. The second origin covers only Debian and Ubuntu.",
+      "The search found no JSON API of the Microsoft lifecycle data. The documented way is an export to a spreadsheet.",
+      "For reentry, no new source qualifies. The ESA host gave no answer, its predictions need an account, and the Aerospace Corporation list gave 403."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 62,
+      "cover": {
+        "adopted": 59,
+        "paths": 59,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 166,
+        "paths": 165,
+        "origins": 84
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 42 plans the release dates of Debian, a second origin with no risk for software end of life. Thus the gaps go from 63 to 62."
+    }
   }
 ]

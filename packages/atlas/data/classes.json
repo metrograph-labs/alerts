@@ -469,7 +469,7 @@
     "references": [
       "No reference list names this class. Found by the search for missing classes."
     ],
-    "gap": "One planned source (endoflife.date). The Windows release health API is later. Vendor lifecycle pages are the primary sources but have no common format.",
+    "gap": null,
     "round": 1
   },
   {
@@ -928,7 +928,7 @@
     "references": [
       "UNDRR-ISC HIPs 2025: ET0206 Space Debris, ET0204 Space Hazard / Accident"
     ],
-    "gap": "Round 1 found 1 adopted or planned source with no risk: space-track-api. esa-reentry-predictions is later: see the reason of each.",
+    "gap": "Round 1 found 1 adopted or planned source with no risk: space-track-api. esa-reentry-predictions is later: see the reason of each. Round 42: the ESA host gave no answer, and its predictions need an account. The reentry list of the Aerospace Corporation gave 403. EU SST serves only registered bodies.",
     "round": 1
   },
   {

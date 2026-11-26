@@ -7890,7 +7890,7 @@
       "url": null,
       "automated": "unclear",
       "redistribution": "unclear",
-      "note": "The page showed only navigation to the fetch tool. No feed or terms seen."
+      "note": "A user guide of 2018 tells that a login is necessary for the predictions. The host gave no answer in 30 seconds in round 42, so the round read no terms."
     },
     "cost": "unknown",
     "delay": "unknown",
@@ -7908,9 +7908,10 @@
     "risks": [],
     "decision": "later",
     "adapter": null,
-    "reason": "A second opinion on re-entry windows; access needs a check in round 2.",
+    "reason": "A second opinion on re-entry windows. The predictions need an account, and the host gave no answer in round 42.",
     "evidence": [
-      "https://reentry.esoc.esa.int/home/reentrypredictions"
+      "https://reentry.esoc.esa.int/home/reentrypredictions",
+      "https://reentry.esoc.esa.int/files/public/GEN-REN-MAN-00232-OPS-GR ESA Re-entry Prediction Front-end User Guide.pdf"
     ],
     "round": 1
   },
@@ -26571,5 +26572,83 @@
       "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=publichealthagencyofcanada&sort=publishedDate&orderBy=desc&pick=40&format=json"
     ],
     "round": 40
+  },
+  {
+    "id": "redhat-product-life-cycles",
+    "name": "Red Hat Product Life Cycle Data API",
+    "classes": [
+      "cyber.software.end-of-life"
+    ],
+    "url": "https://access.redhat.com/product-life-cycles/api/v1/products",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://docs.redhat.com/en/documentation/red_hat_product_life_cycle_data_api/1.0/html/red_hat_product_life_cycle_data_api/overview",
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The documentation host gave 403 to the user agent of the round, also for its robots.txt. Thus the round read no terms."
+    },
+    "cost": "free",
+    "delay": "The same day: the reply of 2026-11-26 tells when the data was generated again, 9 minutes before the read.",
+    "history": "Each version of each product has its phases, with the start and end dates of each phase.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "236 Red Hat products in the read of 2026-11-26, with the support phases of each version.",
+    "origins": [
+      "redhat"
+    ],
+    "path": [
+      "access.redhat.com"
+    ],
+    "subjectIds": null,
+    "risks": [
+      "No round read the terms, because the documentation host gave 403. An adapter reads the terms before it ships."
+    ],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "The vendor gives its own support end dates as JSON, with no key. The terms are not read, so the source has a risk.",
+    "evidence": [
+      "https://access.redhat.com/product-life-cycles/api/v1/products",
+      "https://docs.redhat.com/en/documentation/red_hat_product_life_cycle_data_api/1.0/html/red_hat_product_life_cycle_data_api/index"
+    ],
+    "round": 42
+  },
+  {
+    "id": "debian-distro-info-data",
+    "name": "distro-info-data: the release and end-of-life dates of Debian and Ubuntu",
+    "classes": [
+      "cyber.software.end-of-life"
+    ],
+    "url": "https://salsa.debian.org/debian/distro-info-data/-/raw/main/debian.csv",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://salsa.debian.org/debian/distro-info-data/-/raw/main/debian/copyright",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The copyright file of the package gives the ISC licence."
+    },
+    "cost": "free",
+    "delay": "Days: the Debian maintainers change the file when a project announces a date.",
+    "history": "Each release since 1993 for Debian and since 2004 for Ubuntu, with its end of life, LTS and ESM dates.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "The releases of Debian and Ubuntu: one CSV file for each distribution, ubuntu.csv next to debian.csv.",
+    "origins": [
+      "debian"
+    ],
+    "path": [
+      "salsa.debian.org"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "The Debian project gives the end-of-life dates of Debian and Ubuntu as CSV under the ISC licence. Distributions use the file in their own tools.",
+    "evidence": [
+      "https://salsa.debian.org/debian/distro-info-data/-/raw/main/debian.csv",
+      "https://salsa.debian.org/debian/distro-info-data/-/raw/main/ubuntu.csv"
+    ],
+    "round": 42
   }
 ]
