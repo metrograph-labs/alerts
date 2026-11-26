@@ -11,9 +11,11 @@
  */
 
 import type { Machine, Transition } from "@mark1russell7/algebra";
-import { firstInstantOf, inWindow, localTime, windowProblems } from "@mark1russell7/algebra/clock";
+import { firstInstantOf, inWindow, localTime, nextBoundary, windowProblems } from "@mark1russell7/algebra/clock";
 import { compareCodeUnits } from "@mark1russell7/text/order";
+import { TELL_KIND } from "./assess.ts";
 import { LEVELS } from "./contracts.ts";
+import { hasKind } from "./kind-prefix.ts";
 import type {
   Acknowledgment,
   ChannelDescriptor,
@@ -26,6 +28,7 @@ import type {
   Instant,
   Level,
   PersonId,
+  QuietSound,
   QuietWindow,
   ReportId,
 } from "./contracts.ts";
@@ -150,6 +153,11 @@ export interface EscalationInput {
   /** The quiet window of the person, from `PersonWatch.quiet`. A send below `life-safety` in the window is quiet. */
   readonly quiet?: QuietWindow | undefined;
   /**
+   * True: a sound rule of the quiet window passes the incident at `now` (`soundsInQuiet`, AL-97). Thus its sends are not
+   * quiet in the window. The silent mode of a mute still makes each send quiet.
+   */
+  readonly sounds?: boolean | undefined;
+  /**
    * The episode of the escalation: the count of the earlier ends of the escalations of the person in the incident.
    * The default is 0. Each send has it, thus `messageKey` gives new keys after an end.
    */
@@ -255,7 +263,7 @@ const ACTIVE: ReadonlySet<EscalationState> = new Set(["sent", "last", "exhausted
  * - The delivery is at least once, not exactly once. A crash after a send and before its record
  *   gives a second send with the same `messageKey`. A channel that drops a repeated key drops it.
  * - A send below `life-safety` at `now` in the quiet window of the person is quiet. A send of
- *   `life-safety` is not quiet in the window.
+ *   `life-safety` is not quiet in the window. A send that a sound rule passes (`sounds`) is not quiet (AL-97).
  * - In the silent mode of a mute, each send is quiet, also at `life-safety`, and the exhaustion does not come.
  */
 export function escalate(input: EscalationInput): EscalationPlan {
@@ -274,7 +282,7 @@ export function escalate(input: EscalationInput): EscalationPlan {
   // Each step has its wait: a step of an exclusive channel waits at least the floor of the channel for each rank.
   const waits = steps.map((step) => rank * Math.max(delay, nonNegative(input.floors?.get(step.channel))));
   const silent = input.silent === true;
-  const quiet = silent || (level !== "life-safety" && inQuietWindow(input.quiet, now));
+  const quiet = silent || (level !== "life-safety" && input.sounds !== true && inQuietWindow(input.quiet, now));
 
   // A step time that is not a number of 0 or more counts as 0: escalationProblems reports it, and a send comes early, not late.
   const offsets = steps.map((step) => nonNegative(step.at));
@@ -393,9 +401,84 @@ export function inQuietWindow(window: QuietWindow | undefined, at: Instant): boo
   return window !== undefined && inWindow(at, window);
 }
 
-/** This function gives the problems of a quiet window: a bad time zone or a bad local time. With a problem, `inQuietWindow` gives `false`. */
+/**
+ * This function gives the problems of a quiet window: a bad time zone, a bad local time or a bad sound rule. With a problem
+ * of the time, `inQuietWindow` gives `false`. A sound rule with a problem passes no incident.
+ */
 export function quietWindowProblems(window: QuietWindow): string[] {
-  return windowProblems(window);
+  return [...windowProblems(window), ...(window.sounds ?? []).flatMap((rule, index) => soundProblems(rule).map((problem) => `The sound rule ${index + 1}: ${problem}`))];
+}
+
+/**
+ * The first sound rules of a quiet window (AL-97). An urgent `needs-you` of the operator sounds in the window, at most
+ * 2 of them in one window. Each other message below `life-safety` stays quiet. The person chose this rule.
+ */
+export const DEFAULT_QUIET_SOUNDS: readonly QuietSound[] = [{ kinds: [`${TELL_KIND}.needs-you`], level: "urgent", most: 2 }];
+
+// The problems of one sound rule. A rule with a problem passes no incident.
+function soundProblems(rule: QuietSound): string[] {
+  const problems: string[] = [];
+  if (rule.kinds.length === 0 || rule.kinds.some((kind) => kind.length === 0)) problems.push("Each kind is a prefix that is not empty, and the rule has one kind or more.");
+  if (rule.level !== "notice" && rule.level !== "urgent") problems.push("The level is notice or urgent.");
+  if (!Number.isInteger(rule.most) || rule.most < 0) problems.push("The most is a whole number, 0 or more.");
+  return problems;
+}
+
+/** One delivery to the person, with the kind of its incident. `soundsInQuiet` counts these deliveries. */
+export interface SoundDelivery {
+  readonly incident: ReportId;
+  readonly level: Level;
+  readonly at: Instant;
+  /** The kind code of the incident of the delivery, or `undefined` when the state does not hold that incident. */
+  readonly kind: string | undefined;
+}
+
+/** The incident of `soundsInQuiet`: its anchor, each of its reports and its kind code. */
+export interface SoundIncident {
+  readonly anchor: ReportId;
+  readonly reports: ReadonlySet<string>;
+  readonly kind: string;
+}
+
+/**
+ * This function tells if a sound rule of the quiet window passes the incident at `now` (AL-97). Then its sends at the
+ * level are not quiet in the window.
+ *
+ * - Out of the window, or with no window, the function gives `false`. Out of the window, no send is quiet.
+ * - The first rule (`QuietWindow.sounds`, else `DEFAULT_QUIET_SOUNDS`) with the kind and the level of the incident applies.
+ *   With no such rule, or with a rule that has a problem, the function gives `false`.
+ * - The deliveries of the person in this window give the incidents of the rule, in the order of their first delivery.
+ *   The incident sounds when fewer than `most` other incidents of the rule came before it. Thus a repeat of a loud
+ *   incident stays loud, and each copy with the same deliveries gives the same count.
+ * - A delivery is in this window when it is in the window, and the window did not close after it. A window of the full
+ *   day counts the last 24 hours.
+ * - A delivery of an incident that the state does not hold has no kind. It does not count. Thus an error gives fewer sounds.
+ */
+export function soundsInQuiet(window: QuietWindow | undefined, incident: SoundIncident, level: Level, deliveries: readonly SoundDelivery[], now: Instant): boolean {
+  if (window === undefined || !inQuietWindow(window, now)) return false;
+  const passes = (rule: QuietSound, kind: string | undefined, at: Level): boolean =>
+    kind !== undefined && hasKind(rule.kinds, kind) && LEVELS.indexOf(at) >= LEVELS.indexOf(rule.level);
+  const rule = (window.sounds ?? DEFAULT_QUIET_SOUNDS).find((item) => passes(item, incident.kind, level));
+  if (rule === undefined || soundProblems(rule).length > 0) return false;
+  const tonight = (at: Instant): boolean => {
+    if (!Number.isFinite(at) || at > now || !inQuietWindow(window, at)) return false;
+    const close = nextBoundary(at, window);
+    return close === undefined ? now - at < WALL_DAY : close.at > now;
+  };
+  // The first delivery of each incident of the rule in this window. The own incident has the key of its anchor.
+  const firsts = new Map<string, Instant>();
+  for (const delivery of deliveries) {
+    if (!tonight(delivery.at) || !passes(rule, delivery.kind, delivery.level)) continue;
+    const key = incident.reports.has(delivery.incident) ? incident.anchor : delivery.incident;
+    firsts.set(key, Math.min(firsts.get(key) ?? Number.POSITIVE_INFINITY, delivery.at));
+  }
+  const own = firsts.get(incident.anchor);
+  let before = 0;
+  for (const [key, at] of firsts) {
+    if (key === incident.anchor) continue;
+    if (own === undefined || at < own || (at === own && compareCodeUnits(key, incident.anchor) < 0)) before += 1;
+  }
+  return before < rule.most;
 }
 
 /** The form of a local time of each day: `HH:MM`, from `00:00` to `23:59`. */

@@ -33,7 +33,7 @@ import {
   type WatchedPlace,
   type WhyRecord,
 } from "./contracts.ts";
-import { dailyTimeProblems, digestTimeOf, escalate, escalationProblems, quietWindowProblems, rankDelayOf, rankFloors, type EscalationPlan, type EscalationSend, type RankDelays } from "./escalation.ts";
+import { dailyTimeProblems, digestTimeOf, escalate, escalationProblems, quietWindowProblems, rankDelayOf, rankFloors, soundsInQuiet, type SoundDelivery, type EscalationPlan, type EscalationSend, type RankDelays } from "./escalation.ts";
 import { messageKey } from "./ids.ts";
 import { heldPlaces, type PlaceHolds } from "./place-holds.ts";
 import type { Suppression } from "./throttle.ts";
@@ -310,6 +310,8 @@ function byReport<T extends { readonly incident: ReportId }>(items: readonly T[]
  *   The level still holds the top, thus a lower own level starts nothing. A later own assessment at that level sends.
  * - A kind with no class in an incident of only the sources of other copies (`RouteInput.sources`) gets `FOREIGN_TABLE`.
  * - A hold of a moving place (`RouteInput.holds`) keeps its match after the fix leaves the area. Thus a flap at the edge starts no new episode.
+ * - A sound rule of the quiet window of the person (`soundsInQuiet`) makes a send loud in the window (AL-97). The rule counts
+ *   the deliveries of the person to each incident of the pass in this window.
  */
 export function route(input: RouteInput): Route[] {
   const { state, now } = input;
@@ -323,6 +325,12 @@ export function route(input: RouteInput): Route[] {
   const acksOf = byReport(state.acks);
   const endsOf = byReport(input.ends ?? []);
   const isForeign = foreignIncidents(state.reports, input.sources);
+  // The kind of each report of each incident of the pass, and the deliveries of each person with these kinds (AL-97).
+  const kindOf = new Map<string, string>(input.incidents.flatMap((item) => [item.anchor, ...item.reports].map((id) => [id as string, item.kind.code] as const)));
+  const soundsBy = Map.groupBy(
+    state.deliveries.filter((delivery) => delivery.level !== "digest").map((delivery): SoundDelivery & { readonly person: PersonId } => ({ incident: delivery.incident, level: delivery.level, at: delivery.at, kind: kindOf.get(delivery.incident), person: delivery.person })),
+    (item) => item.person,
+  );
   for (const incident of input.incidents) {
     const reports = new Set<string>([incident.anchor, ...incident.reports]);
     const foreign = isForeign(incident);
@@ -431,6 +439,7 @@ export function route(input: RouteInput): Route[] {
             rankDelay: rankDelayOf(level, input.rankDelays, input.rankDelay),
             floors,
             quiet: recipient.watch.quiet,
+            sounds: !silent && soundsInQuiet(recipient.watch.quiet, { anchor: incident.anchor, reports, kind: incident.kind.code }, level, soundsBy.get(person) ?? [], now),
             episode,
             silent,
             now,
