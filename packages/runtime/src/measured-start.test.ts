@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { CONFIG_FORMAT, type AlertConfig, type ChannelId, type EscalationPolicy, type PersonId, type PlaceId, type SpendConfig } from "@mark1russell7/alerts";
+import { CONFIG_FORMAT, COPY_FORMAT, type AlertConfig, type ChannelId, type CopySettings, type EscalationPolicy, type PersonId, type PlaceId, type SourceId, type SpendConfig } from "@mark1russell7/alerts";
 import { fakeWallClock, wallClock } from "@mark1russell7/algebra/clock";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { isPushoverKey } from "@mark1russell7/alerts-channel-pushover";
@@ -251,6 +251,23 @@ describe("openMeasuredRuntime", { timeout: 30_000 }, () => {
     expect(measured.first.fetched.length).toBeGreaterThan(0);
     await measured.pass();
     expect(requests).not.toHaveBeenCalled();
+  });
+
+  it("opens the home as the copy of the option copy, and the copy reads no source that it leaves (AL-160)", async () => {
+    const left = ["gfz-hp30", "ndw"] as SourceId[];
+    const leaving: CopySettings = { format: COPY_FORMAT, id: "lab", rank: 1, listen: { host: "127.0.0.1", port: 9 }, peers: [{ id: "peer", url: "http://127.0.0.1:9" }], leaveSources: left };
+    const only = await open();
+    expect(only.first.fetched).toEqual(expect.arrayContaining(left));
+    await only.close();
+    // The first start fetched each source. A start one day later has each source due again.
+    const measured = await openMeasuredRuntime(home, { copy: leaving, wall: wallClock({ start: Date.now() + 24 * 60 * MINUTE }) });
+    opened.push(measured);
+    expect(measured.first.fetched.length).toBeGreaterThan(0);
+    expect(measured.first.fetched.filter((source) => left.includes(source))).toEqual([]);
+    expect(requests).not.toHaveBeenCalled();
+    await measured.close();
+    // A copy that leaves a source with no other copy does not pass the check of copy.json.
+    await expect(openMeasuredRuntime(home, { copy: { ...leaving, peers: [] } })).rejects.toThrow(/do not pass the check/);
   });
 
   it("refuses private files that do not pass the check, and frees the lock", async () => {
