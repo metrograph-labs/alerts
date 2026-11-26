@@ -566,6 +566,11 @@ export interface FetchRecord {
   readonly fatal: number;
   /** The count of lossy problems that the map gave for the observations of the fetch. An absent count is 0. */
   readonly lossy?: number;
+  /**
+   * The count of messages of the fetch that the map skipped by design, for example a CAP message with the scope Private or
+   * Restricted (AL-94). A skipped message is no problem of the source. An absent count is 0.
+   */
+  readonly skipped?: number;
   /** The result of the canary check of the observations of the fetch, when the source has a canary and the check decides. */
   readonly canary?: CanaryResult;
 }
