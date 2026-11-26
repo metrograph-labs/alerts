@@ -451,8 +451,8 @@ importers:
         specifier: ^1.5.0
         version: 1.5.0
       '@mark1russell7/package-id':
-        specifier: ^0.1.1
-        version: 0.1.1
+        specifier: ^0.1.2
+        version: 0.1.2
       '@mark1russell7/quantity':
         specifier: ^0.4.3
         version: 0.4.3(zod@4.6.7)
@@ -1289,8 +1289,8 @@ importers:
         specifier: ^1.5.0
         version: 1.5.0
       '@mark1russell7/package-id':
-        specifier: ^0.1.1
-        version: 0.1.1
+        specifier: ^0.1.2
+        version: 0.1.2
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
@@ -1956,8 +1956,8 @@ importers:
         specifier: ^1.5.0
         version: 1.5.0
       '@mark1russell7/package-id':
-        specifier: ^0.1.1
-        version: 0.1.1
+        specifier: ^0.1.2
+        version: 0.1.2
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
@@ -2763,8 +2763,8 @@ packages:
       '@opentelemetry/sdk-node':
         optional: true
 
-  '@mark1russell7/package-id@0.1.1':
-    resolution: {integrity: sha512-zXveBmxjZFs7qz5KjhXAZXTT82pO0DOVhVHzp5mA1teJrtNJm1+NEeoj2UzggUq/W6fE9FmK17LZOKq7EcbKpA==}
+  '@mark1russell7/package-id@0.1.2':
+    resolution: {integrity: sha512-0sO7xpqiED1dh5s5EUzn98MXd/FAKeLhY5X2GIQpUwfHEIVaMWxmIuzHRgXmLV9zg/kkamh4t+rBn9rPWoSPRw==}
     engines: {node: '>=22.12'}
 
   '@mark1russell7/predicates@0.1.5':
@@ -5436,7 +5436,7 @@ snapshots:
       - vite
       - zone.js
 
-  '@mark1russell7/package-id@0.1.1': {}
+  '@mark1russell7/package-id@0.1.2': {}
 
   '@mark1russell7/predicates@0.1.5': {}
 

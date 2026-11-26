@@ -365,13 +365,20 @@ export const subjectSchema: z.ZodType<Subject, Subject> = schemaOf<Subject>()(
   z.strictObject({ system: z.string(), id: z.string(), label: z.string().exactOptional(), ranges: z.array(z.string()).readonly().exactOptional() }).readonly(),
 );
 
-/** This schema checks one installed package of a part: a purl with no version, the version and a CPE name. */
+/** This schema checks one installed package of a part: a purl with no version, the version, a CPE name and a model number. */
 export const installedPackageSchema: z.ZodType<InstalledPackage, InstalledPackage> = schemaOf<InstalledPackage>()(
   z
     .strictObject({
       purl: z.string().regex(/^pkg:[a-z0-9.+-]+\/[^@?#]+$/u, "The purl of an installed package starts with pkg: and has no version, qualifiers or subpath."),
       version: z.string().min(1, "The version of an installed package is a non-empty text."),
       cpe: z.string().refine((text) => cpeProductOf(text) !== undefined, "The CPE name of an installed package is a CPE 2.3 or CPE 2.2 name with a vendor and a product.").exactOptional(),
+      model: z
+        .strictObject({
+          vendor: z.string().regex(/\S/u, "The vendor of a model number is a text with a character that is not a space."),
+          number: z.string().min(1, "A model number is a non-empty text."),
+        })
+        .readonly()
+        .exactOptional(),
     })
     .readonly(),
 );
