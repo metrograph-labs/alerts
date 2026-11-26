@@ -8,7 +8,7 @@ import { entryIndex } from "./entries.ts";
 import { envelope, type RuntimeEvent } from "./events.ts";
 import { importOf, sharedItem } from "./exchange.ts";
 import type { FoldSnapshot } from "@mark1russell7/sqlite";
-import { FOLD_VERSION, openStartSnapshot, openStartSnapshots, readSnapshot, snapshotFileName, START_SNAPSHOT_FILE, START_SNAPSHOTS_FOLDER, SNAPSHOT_UPGRADES, snapshotKey, snapshotRows, startReadText, type StartSnapshot } from "./start-snapshot.ts";
+import { contextKey, FOLD_VERSION, openStartSnapshot, openStartSnapshots, readSnapshot, snapshotFileName, START_SNAPSHOT_FILE, START_SNAPSHOTS_FOLDER, SNAPSHOT_UPGRADES, snapshotKey, snapshotRows, startReadText, type StartSnapshot } from "./start-snapshot.ts";
 import { EMPTY_RUNTIME, fold, rebuild, type FoldContext, type RuntimeState } from "./state.ts";
 
 const T0 = Date.UTC(2026, 3, 1, 18, 0, 0);
@@ -365,8 +365,20 @@ const DIGESTS: Readonly<Record<number, readonly string[]>> = {
     "19f892aac112680c4bf165f86f3e6b75410552fbacb20a80f142b1ca12154bab",
     "e929c3703c2d58fc5aa679c6d4401610af738a0de29fd99f51e23f4a9a8cab69",
   ],
-  // Version 5 (AL-189) keeps the run of the last start of a drill past the horizon. The seeded logs have no drill, thus the hashes stay.
+  // Version 5 (AL-177) retires old reports of a live incident. The reports of the seeded logs are heads, thus the hashes stay.
   5: [
+    "d1a591b9261f7cd3bd1d6af2b4e2ab3c815812a9e73b442473570b443d12de1d",
+    "ce9e3aa1a06a6c7b9157c1c132216efc1a3557de1e39496555f589207f1e4d4e",
+    "75890383cfb4f381773541b34afca7c5eed12b6fb1e976551b594d29847116bb",
+    "e664fc900fb57cbae22b938a87916db07f01573fd1ca5caf1ec91bce3830e1cf",
+    "bfade8145362d938d08b31c4e7cbffda0c6c4232a4079e3b067d98dccf6181a7",
+    "0a99d0eb9cf69a82ab8a21b4f06ea132e3611ff6560fb673d030b149cd754c50",
+    "ccbee4225413f0ceefdf24aff8b27f2b8a9632b74179f1d6cc60f2912d212779",
+    "19f892aac112680c4bf165f86f3e6b75410552fbacb20a80f142b1ca12154bab",
+    "e929c3703c2d58fc5aa679c6d4401610af738a0de29fd99f51e23f4a9a8cab69",
+  ],
+  // Version 6 (AL-189) keeps the run of the last start of a drill past the horizon. The seeded logs have no drill, thus the hashes stay.
+  6: [
     "d1a591b9261f7cd3bd1d6af2b4e2ab3c815812a9e73b442473570b443d12de1d",
     "ce9e3aa1a06a6c7b9157c1c132216efc1a3557de1e39496555f589207f1e4d4e",
     "75890383cfb4f381773541b34afca7c5eed12b6fb1e976551b594d29847116bb",
@@ -442,8 +454,8 @@ describe("the version of the fold (AL-105)", () => {
     expect(digests, `The digests of FOLD_VERSION ${String(FOLD_VERSION)}: ${JSON.stringify(digests)}`).toEqual(DIGESTS[FOLD_VERSION]);
   });
 
-  it("has no upgrade to version 3, 4 or 5 of the fold (AL-153, AL-172, AL-187, AL-189)", () => {
-    expect(FOLD_VERSION, "A new version of the fold also changes SNAPSHOT_UPGRADES and this test.").toBe(5);
+  it("has no upgrade to version 3, 4, 5 or 6 of the fold (AL-153, AL-172, AL-187, AL-177, AL-189)", () => {
+    expect(FOLD_VERSION, "A new version of the fold also changes SNAPSHOT_UPGRADES and this test.").toBe(6);
     // An upgrade gives a snapshot of FOLD_VERSION. A told incident of version 3 retires at another time, thus no upgrade gives its state.
     expect(Object.keys(SNAPSHOT_UPGRADES)).toEqual([]);
   });
@@ -467,5 +479,27 @@ describe("the fold under a write of the snapshot (AL-115)", () => {
         }
       }
     }
+  });
+});
+
+describe("the context key of a fold (AL-169)", () => {
+  it("keeps the value of the snapshot key of AL-156: the snapshots of a live copy stay valid", () => {
+    expect(snapshotKey({ sources: [], retention: {} }, { first: "event-1", recoveries: 2 }).key).toBe("b3d7dbe860c2cdfffe28ea9feb63778ece82eebae6d10fbef3f399af4e0aeeee");
+  });
+
+  it("reads no part of the log, and starts with the fold version", () => {
+    const context = { sources: [], retention: {} };
+    // The hash is pinned. The version comes from FOLD_VERSION, thus a new version of the fold does not change this test.
+    expect(contextKey(context)).toBe(`${String(FOLD_VERSION)}:7921159f7f68953ad57bbb40c564d533dd3118f51c812cd953fb82b4dd12c27b`);
+  });
+
+  it("changes when the snapshot key changes on the same log", () => {
+    const log = { first: "event-1", recoveries: 0 };
+    const other = { sources: [], retention: { quiet: 6 * HOUR } };
+    const base = { sources: [], retention: {} };
+    expect(contextKey(other) === contextKey(base)).toBe(snapshotKey(other, log).key === snapshotKey(base, log).key);
+    const linked = { ...base, link: { window: HOUR } as never };
+    expect(contextKey(linked)).not.toBe(contextKey(base));
+    expect(snapshotKey(linked, log).key).not.toBe(snapshotKey(base, log).key);
   });
 });

@@ -279,7 +279,7 @@
     "id": "cdc",
     "name": "US Centers for Disease Control and Prevention",
     "issues": null,
-    "note": "The records of cdc-han, cdc-nwss, cdc-travel-notices name this issuer."
+    "note": "The records of cdc-han, cdc-nwss, cdc-travel-notices, cdc-foodborne-investigations name this issuer."
   },
   {
     "id": "census",
@@ -675,7 +675,7 @@
     "id": "faa",
     "name": "US Federal Aviation Administration",
     "issues": null,
-    "note": "The records of faa-nas-status, faa-notam-api, faa-flight-prohibitions name this issuer."
+    "note": "The records of faa-nas-status, faa-notam-api, faa-flight-prohibitions, faa-preliminary-accident-notices name this issuer."
   },
   {
     "id": "fbi-ic3",
@@ -2543,7 +2543,7 @@
     "id": "phac",
     "name": "The Public Health Agency of Canada (PHAC)",
     "issues": null,
-    "note": "PHAC gives the Health Infobase data of Canada."
+    "note": "PHAC gives the Health Infobase data of Canada. The records of gc-news-phac name this issuer."
   },
   {
     "id": "chicago-pd",
@@ -2796,5 +2796,29 @@
     "name": "Democracy Club",
     "issues": null,
     "note": "Democracy Club collects the elections of the United Kingdom. The record of democracy-club-elections names this issuer."
+  },
+  {
+    "id": "uk-aaib",
+    "name": "The Air Accidents Investigation Branch of the United Kingdom (AAIB)",
+    "issues": null,
+    "note": "The records of aaib-deployments-govuk name this issuer."
+  },
+  {
+    "id": "uk-raib",
+    "name": "The Rail Accident Investigation Branch of the United Kingdom (RAIB)",
+    "issues": null,
+    "note": "The records of raib-notices-govuk name this issuer."
+  },
+  {
+    "id": "ca-tsb",
+    "name": "The Transportation Safety Board of Canada (TSB)",
+    "issues": null,
+    "note": "The records of tsb-canada-news name this issuer."
+  },
+  {
+    "id": "us-marad",
+    "name": "The Maritime Administration of the US Department of Transportation (MARAD)",
+    "issues": null,
+    "note": "The records of marad-msci-advisories name this issuer."
   }
 ]

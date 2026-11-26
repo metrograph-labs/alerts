@@ -27,7 +27,7 @@ import { withJoins, type FoldContext, type RuntimeState } from "./state.ts";
  * index. Then a start ignores each snapshot of the old fold, and it folds the whole log. The gate test of the digests fails
  * until the change raises the version.
  */
-export const FOLD_VERSION = 5;
+export const FOLD_VERSION = 6;
 
 /**
  * The upgrade of a snapshot of an old fold to the fold of `FOLD_VERSION`, with no fold of the log (AL-153). The field `since`
@@ -48,8 +48,10 @@ export const SNAPSHOT_UPGRADES: Readonly<Record<number, SnapshotUpgrade>> = {
   // Version 3 (AL-172) changes the retirement of an incident that a person knows. Only a fold of the log gives that state,
   // thus version 2 has no upgrade. The upgrade of version 1 (AL-88: the blocks of the event loop) gave version 2, not 3.
   // Version 4 (AL-187) keeps the incident of the last run of a drill. A snapshot of version 3 can hold that incident already
-  // retired, thus version 3 has no upgrade. Version 5 (AL-189) keeps that incident past the horizon. A snapshot of version 4
-  // can hold it already retired, thus version 4 has no upgrade.
+  // retired, thus version 3 has no upgrade. Version 5 (AL-177) retires old reports of a live incident. Only a fold of the
+  // log gives the times of those retirements, thus version 4 has no upgrade. Version 6 (AL-189) keeps the
+  // incident of the last run of a drill past the horizon. A snapshot of version 5 can hold that incident already retired,
+  // thus version 5 has no upgrade.
 };
 
 /** The content of a snapshot: the state and the entry index at the position of its mark. */
@@ -68,9 +70,22 @@ export interface SnapshotLog {
 
 /** This function gives the key of the snapshots of a fold context on a log. */
 export function snapshotKey(context: FoldContext, log: SnapshotLog): FoldKey {
-  const parts = {
-    first: log.first,
-    recoveries: log.recoveries,
+  // The canonical hash does not read the order of the fields. Thus the key has the same value as before `contextParts` (AL-169).
+  return { version: FOLD_VERSION, key: canonicalHash({ first: log.first, recoveries: log.recoveries, ...contextParts(context) }, { form: "json" }) };
+}
+
+/**
+ * This function gives the part of the key of a fold context with no part of the log (AL-169). Two builds with the same
+ * context key give the same snapshot key on each log. Thus a stage compares the context keys of the two slots, and it tells
+ * when the next start folds the whole log.
+ */
+export function contextKey(context: FoldContext): string {
+  return `${String(FOLD_VERSION)}:${canonicalHash(contextParts(context), { form: "json" })}`;
+}
+
+// The parts of the key that the fold context gives.
+function contextParts(context: FoldContext): Record<string, unknown> {
+  return {
     // Only the fields that the fold reads (AL-156). Thus a change of the kinds or of the text of a source keeps the snapshot.
     sources: context.sources.map(healthSource),
     health: context.health ?? null,
@@ -79,7 +94,6 @@ export function snapshotKey(context: FoldContext, log: SnapshotLog): FoldKey {
     link: context.link ?? DEFAULT_LINK_POLICY,
     expectations: context.expectations ?? [],
   };
-  return { version: FOLD_VERSION, key: canonicalHash(parts, { form: "json" }) };
 }
 
 // The paths of the objects that the rows split into their fields. The fields of each other object go into one row each.

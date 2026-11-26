@@ -13,6 +13,7 @@ AddressField: build/index.d.ts#AddressField
 AddressValue: build/index.d.ts#AddressValue
 AlertArea: build/index.d.ts#AlertArea
 AlertConfig: build/index.d.ts#AlertConfig
+AllRetirements: build/index.d.ts#AllRetirements
 Area: build/index.d.ts#Area
 AreaBlock: build/index.d.ts#AreaBlock
 AssessPolicy: build/index.d.ts#AssessPolicy
@@ -187,10 +188,14 @@ Exhaustion: build/index.d.ts#Exhaustion
 Expectation: build/index.d.ts#Expectation
 ExpectationConfig: build/index.d.ts#ExpectationConfig
 ExpectedHarm: build/index.d.ts#ExpectedHarm
+FEED_LAG_LEVEL: build/index.d.ts#FEED_LAG_LEVEL
+FEED_LAG_WINDOW: build/index.d.ts#FEED_LAG_WINDOW
 FIX_FUTURE_LIMIT_MS: build/index.d.ts#FIX_FUTURE_LIMIT_MS
 FLOAT_REACH: build/index.d.ts#FLOAT_REACH
 FOREIGN_TABLE: build/index.d.ts#FOREIGN_TABLE
 FUNCTION_SUBJECT: build/index.d.ts#FUNCTION_SUBJECT
+FeedLag: build/index.d.ts#FeedLag
+FeedLagOptions: build/index.d.ts#FeedLagOptions
 FetchFailure: build/index.d.ts#FetchFailure
 FetchOutcome: build/index.d.ts#FetchOutcome
 FetchRecord: build/index.d.ts#FetchRecord
@@ -267,11 +272,13 @@ LOOP_BLOCK_CLASSES: build/index.d.ts#LOOP_BLOCK_CLASSES
 LOOP_BLOCK_LIMIT: build/index.d.ts#LOOP_BLOCK_LIMIT
 LOOP_BLOCK_WINDOW: build/index.d.ts#LOOP_BLOCK_WINDOW
 LOOP_KIND: build/index.d.ts#LOOP_KIND
+LateOptions: build/index.d.ts#LateOptions
 Lateness: build/index.d.ts#Lateness
 LatenessFolds: build/index.d.ts#LatenessFolds
 LatenessLimit: build/index.d.ts#LatenessLimit
 LatenessState: build/index.d.ts#LatenessState
 LatenessStep: build/index.d.ts#LatenessStep
+LeavingInput: build/index.d.ts#LeavingInput
 Level: build/index.d.ts#Level
 LevelRule: build/index.d.ts#LevelRule
 LevelTable: build/index.d.ts#LevelTable
@@ -558,6 +565,7 @@ admits: build/index.d.ts#admits
 advanceHealth: build/index.d.ts#advanceHealth
 alertAreaSchema: build/index.d.ts#alertAreaSchema
 alertConfigSchema: build/index.d.ts#alertConfigSchema
+allRetirements: build/index.d.ts#allRetirements
 areaMeetsPlace: build/index.d.ts#areaMeetsPlace
 areaSchema: build/index.d.ts#areaSchema
 areasWithoutBlocks: build/index.d.ts#areasWithoutBlocks
@@ -691,6 +699,7 @@ expectationProblems: build/index.d.ts#expectationProblems
 expectedHarmSchema: build/index.d.ts#expectedHarmSchema
 expectedOf: build/index.d.ts#expectedOf
 failureDomains: build/index.d.ts#failureDomains
+feedLags: build/index.d.ts#feedLags
 fetchFailureSchema: build/index.d.ts#fetchFailureSchema
 fetchOutcomeSchema: build/index.d.ts#fetchOutcomeSchema
 fetchRecordSchema: build/index.d.ts#fetchRecordSchema
@@ -761,6 +770,7 @@ kindSchema: build/index.d.ts#kindSchema
 knownKind: build/index.d.ts#knownKind
 knowsReport: build/index.d.ts#knowsReport
 lastRun: build/index.d.ts#lastRun
+lateRetirements: build/index.d.ts#lateRetirements
 lateSources: build/index.d.ts#lateSources
 lateness: build/index.d.ts#lateness
 latenessLimitSchema: build/index.d.ts#latenessLimitSchema
@@ -768,6 +778,7 @@ latenessSchema: build/index.d.ts#latenessSchema
 latenessStateSchema: build/index.d.ts#latenessStateSchema
 latenessStep: build/index.d.ts#latenessStep
 latestIn: build/index.d.ts#latestIn
+leavingReports: build/index.d.ts#leavingReports
 levelRuleSchema: build/index.d.ts#levelRuleSchema
 levelSchema: build/index.d.ts#levelSchema
 levelTableSchema: build/index.d.ts#levelTableSchema
@@ -1048,6 +1059,12 @@ export interface AlertConfig {
   readonly sendLimit?: SendLimitConfig;
   readonly throttle?: ThrottleConfig;
   readonly tell?: TellConfig;
+}
+
+### build/index.d.ts#AllRetirements
+export interface AllRetirements {
+  readonly whole: ReportId[];
+  readonly late: ReportId[];
 }
 
 ### build/index.d.ts#Area
@@ -2273,6 +2290,12 @@ export interface ExpectedHarm {
   readonly injuries: Estimate;
 }
 
+### build/index.d.ts#FEED_LAG_LEVEL
+export declare const FEED_LAG_LEVEL = .95;
+
+### build/index.d.ts#FEED_LAG_WINDOW
+export declare const FEED_LAG_WINDOW: Duration;
+
 ### build/index.d.ts#FIX_FUTURE_LIMIT_MS
 export declare const FIX_FUTURE_LIMIT_MS = 6e4;
 
@@ -2284,6 +2307,25 @@ export declare const FOREIGN_TABLE: LevelTable;
 
 ### build/index.d.ts#FUNCTION_SUBJECT
 export declare const FUNCTION_SUBJECT = "alerts.function";
+
+### build/index.d.ts#FeedLag
+export interface FeedLag {
+  readonly source: SourceId;
+  readonly count: number;
+  readonly ahead: number;
+  readonly median: Duration;
+  readonly medianLow?: Duration;
+  readonly medianHigh?: Duration;
+  readonly p90High?: Duration;
+  readonly newest: Instant;
+}
+
+### build/index.d.ts#FeedLagOptions
+export interface FeedLagOptions {
+  readonly at: Instant;
+  readonly window?: Duration;
+  readonly level?: number;
+}
 
 ### build/index.d.ts#FetchFailure
 export type FetchFailure = {
@@ -2780,6 +2822,12 @@ export declare const LOOP_BLOCK_WINDOW: Duration;
 ### build/index.d.ts#LOOP_KIND
 export declare const LOOP_KIND = "system.loop";
 
+### build/index.d.ts#LateOptions
+export interface LateOptions {
+  readonly link?: LinkRule | undefined;
+  readonly keeps?: ((report: ReportId) => boolean) | undefined;
+}
+
 ### build/index.d.ts#Lateness
 export interface Lateness {
   readonly expectation: string;
@@ -2808,6 +2856,16 @@ export type LatenessState = "no-limit" | "no-data" | "met" | "late";
 export interface LatenessStep {
   readonly lateness: Lateness[];
   readonly folds: LatenessFolds;
+}
+
+### build/index.d.ts#LeavingInput
+export interface LeavingInput {
+  readonly state: MergeState;
+  readonly group: readonly ReportId[];
+  readonly order: readonly ReportId[];
+  readonly at: Instant;
+  readonly ended: ReadonlySet<ReportId>;
+  readonly link?: LinkRule | undefined;
 }
 
 ### build/index.d.ts#Level
@@ -4611,6 +4669,9 @@ export declare const alertAreaSchema: z.ZodType<AlertArea, AlertArea>;
 ### build/index.d.ts#alertConfigSchema
 export declare const alertConfigSchema: z.ZodType<AlertConfig, AlertConfig>;
 
+### build/index.d.ts#allRetirements
+export declare function allRetirements(state: MergeState, found: readonly Incident[], at: Instant, horizon?: Duration, quiet?: QuietRule, options?: LateOptions): AllRetirements;
+
 ### build/index.d.ts#areaMeetsPlace
 export declare function areaMeetsPlace(area: IndicatorArea, place: WatchedPlace, zones?: readonly ZoneRegions[]): boolean | undefined;
 
@@ -5010,6 +5071,9 @@ export declare function expectedOf(probability: Estimate, count: Estimate): Esti
 ### build/index.d.ts#failureDomains
 export declare function failureDomains(source: SourceDescriptor): readonly string[];
 
+### build/index.d.ts#feedLags
+export declare function feedLags(reports: readonly Report[], options: FeedLagOptions): FeedLag[];
+
 ### build/index.d.ts#fetchFailureSchema
 export declare const fetchFailureSchema: z.ZodType<FetchFailure, FetchFailure>;
 
@@ -5226,6 +5290,9 @@ export declare function knowsReport(state: MergeState, id: ReportId): boolean;
 ### build/index.d.ts#lastRun
 export declare function lastRun(runs: readonly DrillRun[], id: string): DrillRun | undefined;
 
+### build/index.d.ts#lateRetirements
+export declare function lateRetirements(state: MergeState, found: readonly Incident[], at: Instant, horizon?: Duration, quiet?: QuietRule, options?: LateOptions): ReportId[];
+
 ### build/index.d.ts#lateSources
 export declare function lateSources(states: readonly Lateness[]): SourceId[];
 
@@ -5248,6 +5315,9 @@ export declare function latenessStep(checks: readonly Carriage[], expectations: 
 export declare function latestIn<T extends {
   readonly at: Instant;
 }>(items: readonly T[], at: Instant, window: Duration): T | undefined;
+
+### build/index.d.ts#leavingReports
+export declare function leavingReports({ state, group: ids, order, at, ended, link }: LeavingInput): ReportId[];
 
 ### build/index.d.ts#levelRuleSchema
 export declare const levelRuleSchema: z.ZodType<LevelRule, LevelRule>;

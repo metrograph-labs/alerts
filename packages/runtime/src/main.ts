@@ -41,6 +41,7 @@
  * check stops the runtime. The supervisor starts it again.
  */
 import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
@@ -68,13 +69,14 @@ import { createTellIntake, tellHost, tellToken } from "./tell-intake.ts";
 import { heartbeat, heldOf } from "./heartbeat.ts";
 import type { Pass } from "./runtime.ts";
 import { COVERAGE_FILE, coverageFile } from "./coverage-file.ts";
+import { LAG_FILE, lagFile } from "./lag-file.ts";
 import { holdHome } from "./home-lock.ts";
 import { quotaNote } from "./quota.ts";
 import { replyNotes } from "./replies.ts";
 import { spendNotes } from "./balance.ts";
 import { USE_FILE, useFile } from "./spend-use.ts";
 import { PROFILES, declare } from "./index.ts";
-import { daemonCheck, instanceCheck, LOUD_PING_URL_KEY, openInstance, pingKeyOf, pingTargets, userAgent } from "./instance.ts";
+import { daemonCheck, instanceCheck, instanceContextKey, LOUD_PING_URL_KEY, openInstance, pingKeyOf, pingTargets, userAgent } from "./instance.ts";
 import { openCheckedRuntimeLog } from "./log.ts";
 import { blockLine, startLoopWatch, type LoopWatch } from "./loop-watch.ts";
 import { foldText, writeFold } from "./fold-mode.ts";
@@ -208,6 +210,11 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
     write: (text) => writeFileAtomic(join(home, COVERAGE_FILE), text, { mode: 0o600 }),
     onError: (error) => out.error(`A write of ${COVERAGE_FILE} failed: ${error instanceof Error ? error.name : typeof error}.`),
   });
+  // The lag of each feed from the reports of the merge state, for the delays of the atlas (AL-14). The measure reads each report, thus it comes at most one time in each hour.
+  const lagReport = lagFile({
+    write: (text) => writeFileAtomic(join(home, LAG_FILE), text, { mode: 0o600 }),
+    onError: (error) => out.error(`A measure or write of ${LAG_FILE} failed: ${error instanceof Error ? error.name : typeof error}.`),
+  });
   const pushoverQuota = quotaGate(PUSHOVER_QUOTA, { key: "pushover:app", store: quotas, now: () => wall.now() });
   const pushoverReserveNotices = quotaGate(PUSHOVER_RESERVE_NOTICES, { key: "pushover:reserve-notices", store: quotas, now: () => wall.now() });
 
@@ -289,6 +296,7 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
     // The use reads of the cap of Twilio go into the private folder when they change (AL-91).
     if (instance.useReads !== undefined) uses.update(instance.useReads());
     coverageReport.update(pass.view);
+    lagReport.update(pass.view.at, () => instance.runtime.state().merge.reports);
     if (marked || service.lifecycle?.state !== "running") return;
     marked = true;
     blockWatch?.phase("run after the good start");
@@ -467,7 +475,31 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
   return service;
 }
 
-const MODES = ["supervise", "load", "fold"];
+/**
+ * The mode `key` (AL-169) prints the context key of the fold for each set of a start. The sets are the private files and
+ * the last good set. The mode holds no lock of the home folder and writes no file, thus a live runtime can operate next to
+ * it. A stage starts it with the code of each slot, and it tells when the next start folds the whole log.
+ */
+async function keyMode(): Promise<void> {
+  const name = process.env["SERVICE_PROFILE"] ?? "local";
+  const home = alertsHome(process.env, process.cwd());
+  const checkOf: CheckOf = name === "daemon" ? daemonCheck : instanceCheck;
+  const files = privateFiles(home, configPath(process.env, process.cwd()));
+  const none = { write: () => Promise.resolve(), remove: () => Promise.resolve() };
+  const keyOf = async (pick: StartUse): Promise<string> => {
+    const loaded = await startConfig(files, checkOf, none, pick);
+    const config = loaded.parsed;
+    const tellConfig = config.config.tell;
+    const tell = tellConfig === undefined ? undefined : createTellIntake({ config: tellConfig, recipients: config.recipients, now: () => wallClock().now() });
+    const options = { config, secret: envSecrets(loaded.keys), transport: fetchTransport({ userAgent: userAgent(config.config.contact) }), transit: openTransitCache(join(home, TRANSIT_FILE)), copy: loaded.copy, ...(tell === undefined ? {} : { tell }) };
+    return instanceContextKey(options, realClock, wallClock());
+  };
+  const good = existsSync(join(home, GOOD_FILE)) ? await keyOf("good") : null;
+  // One line of JSON on the standard output. The stage reads the last line.
+  process.stdout.write(`${JSON.stringify({ files: await keyOf("files"), good })}\n`);
+}
+
+const MODES = ["supervise", "load", "fold", "key"];
 // The set of the mode fold: `files`, `good`, or no argument for the set of the next start (AL-169).
 function foldPick(argument: string | undefined): StartUse | undefined {
   if (argument === undefined || argument === "files" || argument === "good") return argument;
@@ -479,6 +511,11 @@ if (mode !== undefined && !MODES.includes(mode)) throw new Error(`The first argu
 // The static imports above loaded each module. Thus `load` stops here, before a service starts.
 if (mode === "load") {
   out.log("Each module of the runtime loads.");
+  process.exit(0);
+}
+
+if (mode === "key") {
+  await keyMode();
   process.exit(0);
 }
 

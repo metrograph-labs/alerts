@@ -2289,7 +2289,7 @@
     "id": "www.gov.uk",
     "name": "www.gov.uk",
     "kind": "host",
-    "note": "The host of the feed of fcdo-travel-advice-api."
+    "note": "The host of GOV.UK: the feed of fcdo-travel-advice-api and the search API of the AAIB and RAIB sources."
   },
   {
     "id": "www.hkcert.org",
@@ -3148,5 +3148,23 @@
     "name": "www.faa.gov",
     "kind": "host",
     "note": "The host of the main site of the FAA, the page of faa-flight-prohibitions."
+  },
+  {
+    "id": "www.tsb-bst.gc.ca",
+    "name": "www.tsb-bst.gc.ca",
+    "kind": "host",
+    "note": "The host of the site of the TSB of Canada, the feeds of tsb-canada-news."
+  },
+  {
+    "id": "www.maritime.dot.gov",
+    "name": "www.maritime.dot.gov",
+    "kind": "host",
+    "note": "The host of the site of MARAD, the page of marad-msci-advisories."
+  },
+  {
+    "id": "api.io.canada.ca",
+    "name": "api.io.canada.ca",
+    "kind": "host",
+    "note": "The host of the news API of the Government of Canada, the releases of gc-news-phac."
   }
 ]

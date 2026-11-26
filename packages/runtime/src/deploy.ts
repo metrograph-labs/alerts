@@ -20,6 +20,7 @@
  * - On Windows, `adopt` also relinks slot a, because the junctions of pnpm name the old path of the checkout.
  * - `fold` folds the log with the code of the live slot, and writes the snapshot of the start (AL-153). Start it while the
  *   runtime is stopped, after a swap that changes the fold version. The stage and the swap tell when the version changes.
+ *   The stage also tells when the snapshot key changes for the next start (AL-169): a new source, for example.
  *
  * A swap back to older code is a rollback. Do it only when the new code wrote no new kind of event to the log.
  * When the files of the supervisor change, the stage and the swap tell it. The supervisor takes them only at a restart
@@ -55,6 +56,8 @@ import {
   foreignLinks,
   liveRoot,
   installArgs,
+  keyChange,
+  keyStep,
   loadStep,
   otherSlot,
   parseDeployFile,
@@ -66,6 +69,7 @@ import {
   SERVICE_PACKAGE,
   slotsOfCheckout,
   STAGE_CHECKS,
+  startKeysOf,
   stageScope,
   SUPERVISOR_FILES,
   supervisorChanges,
@@ -77,6 +81,7 @@ import {
   type DeployFile,
   type ForeignLinks,
   type SlotName,
+  type StartKeys,
   type SwapTarget,
 } from "./slots.ts";
 import { codeReport, readRunningCode } from "./running.ts";
@@ -179,6 +184,26 @@ async function foldLive(): Promise<void> {
   if (sets.length === 1) print.line(`The home folder has no ${GOOD_FILE}, thus the fold was only for the private files.`);
 }
 
+/** The runner of one step of a stage. */
+type StepRun = (name: string, program: string, args: readonly string[], cwd: string, env?: Readonly<Record<string, string>>) => Promise<CommandResult>;
+
+/**
+ * This function prints the lines about the context keys of the fold from slot `from` to slot `to` (AL-169). The mode key
+ * of each slot reads the live home with the code of that slot. A failed step gives no keys, and the line tells it.
+ */
+async function tellKeys(from: SlotName, to: SlotName, run: StepRun): Promise<void> {
+  const keysOf = async (slot: SlotName): Promise<StartKeys | undefined> => {
+    const runtime = join(slots[slot], "packages", "runtime");
+    const key = keyStep(runtime, home, process.execPath);
+    try {
+      return startKeysOf((await run(`key ${slot}`, key.program, key.args, runtime, key.env)).stdout);
+    } catch {
+      return undefined;
+    }
+  };
+  for (const line of keyChange(await keysOf(from), await keysOf(to))) print.line(line);
+}
+
 /** This function reads the live slot, or throws when the live path is not a link to a slot. */
 async function liveSlot(): Promise<SlotName> {
   const live = await readLive(slots);
@@ -249,6 +274,7 @@ async function stage(commit: string, page: boolean): Promise<void> {
   print.line(`Slot ${slot} is staged at ${sha.slice(0, 7)}: ${STAGE_CHECKS.join(", ")} passed.`);
   await tellSupervisor(live, slot);
   await tellFold(live, slot);
+  await tellKeys(live, slot, heavy);
   print.line(`Start \`deploy.ts swap ${slot} ${sha.slice(0, 7)}\` to put it live.`);
 }
 
