@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <meta name="robots" content="noindex">
+<!-- The runtime on this computer serves the route /map, not this static site. Thus the site check accepts its 404 and checks the error view. -->
+<meta name="site-check-other-paths" content="^/map$">
 <title>alerts: the live map</title>
 <meta name="description" content="The live map of the alert runtime on this computer: the incidents, their levels, the watched places, the map of each past time, the health of each source and the indicators.">
 <link rel="stylesheet" href="./src/style.css">

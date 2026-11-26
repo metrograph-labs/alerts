@@ -81,6 +81,6 @@ describe("the pages of the alert texts", () => {
     for (const name of NAMES) expect(vite).toContain(`page("texts/${name}/index.html")`);
     // The site config of the repository gives the pages of the browser check to the shared workflows of the template.
     const site = JSON.parse(readFileSync(new URL("../../../.github/site.json", import.meta.url), "utf8")) as { readonly "site-check-pages"?: string };
-    expect(site["site-check-pages"]?.split(",")).toEqual(["/", "/releases/", "/status/", "/texts/privacy/", "/texts/terms/", "/texts/opt-in/"]);
+    expect(site["site-check-pages"]?.split(",")).toEqual(["/", "/local.html", "/releases/", "/status/", "/texts/privacy/", "/texts/terms/", "/texts/opt-in/"]);
   });
 });
