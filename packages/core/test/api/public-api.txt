@@ -1038,6 +1038,10 @@ whyLine: build/index.d.ts#whyLine
 whyRecordSchema: build/index.d.ts#whyRecordSchema
 workLayer: build/index.d.ts#workLayer
 
+## ./priors (build/priors.d.ts): names
+
+committedPriors: build/priors.d.ts#committedPriors
+
 ## Declarations
 
 ### build/index.d.ts#ASSESSED_LEVELS
@@ -6189,3 +6193,6 @@ export declare const whyRecordSchema: z.ZodType<WhyRecord, WhyRecord>;
 
 ### build/index.d.ts#workLayer
 export declare function workLayer(works: readonly string[], table?: Readonly<Record<string, WorkDefaults>>, date?: string): readonly InterestEdge[];
+
+### build/priors.d.ts#committedPriors
+export declare function committedPriors(): ScorePriors;

@@ -26,6 +26,11 @@
   "type": "module",
   "sideEffects": false,
   "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./priors": "./src/priors.ts",
+    "./package.json": "./package.json"
+  },
   "files": [
     "build"
   ],
@@ -38,6 +43,11 @@
         "types": "./build/index.d.ts",
         "import": "./build/index.js",
         "default": "./build/index.js"
+      },
+      "./priors": {
+        "types": "./build/priors.d.ts",
+        "import": "./build/priors.js",
+        "default": "./build/priors.js"
       },
       "./package.json": "./package.json"
     }
