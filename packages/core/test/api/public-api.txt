@@ -189,6 +189,7 @@ Exhaustion: build/index.d.ts#Exhaustion
 Expectation: build/index.d.ts#Expectation
 ExpectationConfig: build/index.d.ts#ExpectationConfig
 ExpectedHarm: build/index.d.ts#ExpectedHarm
+FAILURE_MESSAGE_LIMIT: build/index.d.ts#FAILURE_MESSAGE_LIMIT
 FEED_LAG_LEVEL: build/index.d.ts#FEED_LAG_LEVEL
 FEED_LAG_WINDOW: build/index.d.ts#FEED_LAG_WINDOW
 FIX_FUTURE_LIMIT_MS: build/index.d.ts#FIX_FUTURE_LIMIT_MS
@@ -544,6 +545,8 @@ TryEnd: build/index.d.ts#TryEnd
 TryRecord: build/index.d.ts#TryRecord
 UNKNOWN_KIND: build/index.d.ts#UNKNOWN_KIND
 UNKNOWN_WEIGHT: build/index.d.ts#UNKNOWN_WEIGHT
+URL_PATH_SHAPE: build/index.d.ts#URL_PATH_SHAPE
+URL_USER_SHAPE: build/index.d.ts#URL_USER_SHAPE
 USE_KIND: build/index.d.ts#USE_KIND
 USE_STAGES: build/index.d.ts#USE_STAGES
 US_GALLON_L: build/index.d.ts#US_GALLON_L
@@ -712,6 +715,7 @@ expectationProblems: build/index.d.ts#expectationProblems
 expectedHarmSchema: build/index.d.ts#expectedHarmSchema
 expectedOf: build/index.d.ts#expectedOf
 failureDomains: build/index.d.ts#failureDomains
+failureMessage: build/index.d.ts#failureMessage
 feedLags: build/index.d.ts#feedLags
 fetchFailureSchema: build/index.d.ts#fetchFailureSchema
 fetchOutcomeSchema: build/index.d.ts#fetchOutcomeSchema
@@ -2322,6 +2326,9 @@ export interface ExpectedHarm {
   readonly injuries: Estimate;
 }
 
+### build/index.d.ts#FAILURE_MESSAGE_LIMIT
+export declare const FAILURE_MESSAGE_LIMIT = 300;
+
 ### build/index.d.ts#FEED_LAG_LEVEL
 export declare const FEED_LAG_LEVEL = .95;
 
@@ -2436,7 +2443,7 @@ export declare const HEALTH_EVENTS: {
 };
 
 ### build/index.d.ts#HEALTH_FORMAT
-export declare const HEALTH_FORMAT = "alerts-health/4";
+export declare const HEALTH_FORMAT = "alerts-health/5";
 
 ### build/index.d.ts#HEALTH_KIND
 export declare const HEALTH_KIND = "system.health";
@@ -2487,6 +2494,7 @@ export interface HealthPayloadInput {
   readonly reads: readonly ReadHealth[];
   readonly channels?: readonly ChannelSnapshot[];
   readonly channelDown?: ChannelDownPolicy;
+  readonly secrets?: readonly Secret[];
 }
 
 ### build/index.d.ts#HealthSource
@@ -4314,6 +4322,7 @@ export interface SourceHealthView extends Omit<SourceHealth, "lastFailure"> {
   readonly lastFailure?: {
     readonly at: Instant;
     readonly kind: FetchFailure["kind"];
+    readonly message?: string;
   };
 }
 
@@ -4629,6 +4638,12 @@ export declare const UNKNOWN_KIND = "other.unknown";
 
 ### build/index.d.ts#UNKNOWN_WEIGHT
 export declare const UNKNOWN_WEIGHT: Estimate;
+
+### build/index.d.ts#URL_PATH_SHAPE
+export declare const URL_PATH_SHAPE: SecretShape;
+
+### build/index.d.ts#URL_USER_SHAPE
+export declare const URL_USER_SHAPE: SecretShape;
 
 ### build/index.d.ts#USE_KIND
 export declare const USE_KIND = "system.use";
@@ -5168,6 +5183,9 @@ export declare function expectedOf(probability: Estimate, count: Estimate): Esti
 
 ### build/index.d.ts#failureDomains
 export declare function failureDomains(source: SourceDescriptor): readonly string[];
+
+### build/index.d.ts#failureMessage
+export declare function failureMessage(message: string, secrets?: readonly Secret[]): string | undefined;
 
 ### build/index.d.ts#feedLags
 export declare function feedLags(reports: readonly Report[], options: FeedLagOptions): FeedLag[];
@@ -5979,7 +5997,7 @@ export declare const sourceDescriptorSchema: z.ZodType<SourceDescriptor, SourceD
 export declare const sourceHealthSchema: z.ZodType<SourceHealth, SourceHealth>;
 
 ### build/index.d.ts#sourceHealthView
-export declare function sourceHealthView(health: SourceHealth): SourceHealthView;
+export declare function sourceHealthView(health: SourceHealth, secrets?: readonly Secret[]): SourceHealthView;
 
 ### build/index.d.ts#sourceHealthViewSchema
 export declare const sourceHealthViewSchema: z.ZodType<SourceHealthView, SourceHealthView>;

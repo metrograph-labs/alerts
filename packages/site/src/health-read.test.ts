@@ -66,7 +66,7 @@ describe("the read of the health", () => {
       { ...HEALTH_FIXTURE, sources: [{ ...first, state: "broken" }] },
       // A stage that the page has no word for.
       { ...HEALTH_FIXTURE, quotas: [{ ...HEALTH_FIXTURE.quotas[0], stages: ["empty"] }] },
-      // The message of a failure: the payload holds only its kind.
+      // The raw failure of a source: the payload holds only its time, its kind and its redacted message.
       { ...HEALTH_FIXTURE, sources: [{ ...first, lastFailure: { at: 1, failure: { kind: "timeout", message: "The fetch passed its time limit." } } }] },
       // A time that is not a number.
       { ...HEALTH_FIXTURE, now: "2026-11-15T21:00:00Z" },
