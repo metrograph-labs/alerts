@@ -33,6 +33,7 @@
  * - `files <name> <source> [--alone]` writes one private file of the home folder: `config.json`, `secrets.env`, `copy.json`
  *   or `parts/<name>.json` (AL-220). It stops the runtime with the checks of `deploy`, and folds when the snapshot key changes.
  *   Then it starts the runtime. New files that give no key get the old text back. Do not write these files by hand.
+ * - `files --held [--alone]` writes the set that a sync held, because it changes the snapshot key (AL-179). The steps are the same.
  *
  * A swap back to older code is a rollback. Do it only when the new code wrote no new kind of event to the log.
  * When the files of the supervisor change, the stage and the swap tell it. The supervisor takes them only at a restart
@@ -44,9 +45,9 @@
  * `ALERTS_LIVE=<live> node <other slot>/packages/runtime/src/deploy.ts stage <commit>`, and then `swap`.
  * The exit code is 0 for success, 1 for a refusal or a failed step, and 2 for a wrong command. The output holds no value of a private file.
  */
-import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { constants, freemem, setPriority, tmpdir, totalmem } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { getHeapStatistics } from "node:v8";
@@ -56,10 +57,11 @@ import { valueIn } from "@mark1russell7/quantity";
 import { nodeHostPorts, probeOnce, startService, stopService, type ServiceOutcome } from "@mark1russell7/service/host";
 import { errorMessage } from "@mark1russell7/text";
 import { createPrinter } from "@mark1russell7/text/print";
-import { alertsHome, readText as readFileText } from "./config.ts";
+import { alertsHome, CONFIG_FILE, configPath, PARTS_FOLDER, readText as readFileText } from "./config.ts";
+import { heldTexts, SYNC_HELD_FOLDER, syncPlan } from "./config-sync.ts";
 import { COPY_MAX_AGE, EXCHANGE_LIMIT } from "./copy.ts";
 import { HOST_PORTS, hostFileText, hostFolder, hostReadyWindow, hostTask, PROBE_TIMEOUT, readinessProbe, supervisorDiscovery } from "./host.ts";
-import { GOOD_FILE } from "./reload.ts";
+import { GOOD_FILE, privateFiles, readStartTexts } from "./reload.ts";
 import {
   adoptLive,
   checkoutOf,
@@ -85,6 +87,7 @@ import {
   otherSlot,
   parseDeployArgs,
   parseFilesArgs,
+  parseHeldArgs,
   privatePath,
   filesOutcome,
   parseDeployFile,
@@ -126,7 +129,7 @@ import { codeReport, deployEndProblem, readRunningCode } from "./running.ts";
 // The output of this command for a person goes through one printer, which removes the shapes of tokens (no raw console).
 const print = createPrinter({ out: process.stdout, err: process.stderr });
 
-const USAGE = "The command is: node src/deploy.ts status | adopt | stage <commit> [--page] | swap <a|b> <commit> | relink [a|b] | fold | deploy <commit> [--page] [--alone] | files <name> <source> [--alone]";
+const USAGE = "The command is: node src/deploy.ts status | adopt | stage <commit> [--page] | swap <a|b> <commit> | relink [a|b] | fold | deploy <commit> [--page] [--alone] | files <name> <source> [--alone] | files --held [--alone]";
 
 const root = liveRoot(process.env, process.argv[1], join(fileURLToPath(new URL(".", import.meta.url)), ".."));
 const slots = await slotsOfCheckout(checkoutOf(root));
@@ -397,34 +400,68 @@ async function liveKeys(): Promise<StartKeys | undefined> {
 async function writeFiles(args: FilesArgs): Promise<void> {
   const path = privatePath(home, args.name);
   const next = await readFile(args.source, "utf8");
-  const old = await readText(path);
-  if (old === next) {
+  if ((await readText(path)) === next) {
     print.line(`The file ${args.name} has the same text. The command changes nothing.`);
     return;
   }
+  await changeFiles(`the new ${args.name}`, [{ path, text: next }], [], args.alone);
+}
+
+/**
+ * This function writes the held set of the sync into the private files (AL-179). A sync holds a set that changes the snapshot
+ * key. The writes make the files the same as the set, as the sync does. After the start, the function removes the held folder.
+ */
+async function writeHeld(alone: boolean): Promise<void> {
+  const held = join(hostFolder(home), SYNC_HELD_FOLDER);
+  const partsFolder = join(held, PARTS_FOLDER);
+  const names = await readdir(partsFolder).catch(() => [] as string[]);
+  const parts = await Promise.all(names.map(async (file) => ({ file, text: await readFile(join(partsFolder, file), "utf8") })));
+  const served = heldTexts(await readText(join(held, CONFIG_FILE)), parts);
+  if (served === undefined) throw new Error(`The folder ${SYNC_HELD_FOLDER} of the host has no held set.`);
+  const files = privateFiles(home, configPath(process.env, process.cwd()));
+  const plan = syncPlan(files, await readStartTexts(files), served);
+  if (plan.tag === "err") throw new Error(plan.error.join(" "));
+  if (plan.value !== "same") await changeFiles("the held set", plan.value.write, plan.value.remove, alone);
+  else print.line("The private files already have the held set.");
+  await rm(held, { recursive: true, force: true });
+}
+
+/**
+ * This function changes the private files of the live home (AL-220). A change of the sources changes the key of the fold.
+ * Then a start with no fold folds the whole log. On a small host, that start is not ready in its window.
+ * The function reads the keys before the change. It stops the runtime after the check of the other copies. Then it writes the
+ * files and reads the keys again. A new key gets a fold before the start. New files that give no key get the old texts back.
+ * The output names no text of a file.
+ */
+async function changeFiles(label: string, writes: readonly { readonly path: string; readonly text: string }[], removes: readonly string[], alone: boolean): Promise<void> {
+  const olds = await Promise.all([...writes.map((each) => each.path), ...removes].map(async (path) => ({ path, text: await readText(path) })));
   const before = await liveKeys();
   const running = (await liveCopies()) !== "down";
-  if (running) await stopLive(args.alone);
-  let wrote = false;
+  if (running) await stopLive(alone);
+  let changed = false;
   try {
-    await writeFileAtomic(path, next);
-    wrote = true;
+    changed = true;
+    for (const each of writes) {
+      await mkdir(dirname(each.path), { recursive: true, mode: 0o700 });
+      await writeFileAtomic(each.path, each.text, { mode: 0o600 });
+    }
+    for (const path of removes) await rm(path, { force: true });
     const outcome = filesOutcome(before, await liveKeys());
-    if (outcome === "bad") throw new Error(`The new ${args.name} gives no key of the fold. Look at the output of `main.ts key`.`);
+    if (outcome === "bad") throw new Error(`With ${label}, the files give no key of the fold. Look at the output of \`main.ts key\`.`);
     if (outcome === "fold") {
-      print.line(`The key of the fold changes with the new ${args.name}, thus the fold comes before the start.`);
+      print.line(`The key of the fold changes with ${label}, thus the fold comes before the start.`);
       await foldLive();
     } else print.line(`The key of the fold does not change, thus the start reads its snapshot.`);
   } catch (error) {
-    if (wrote) {
-      await (old === undefined ? rm(path, { force: true }) : writeFileAtomic(path, old));
-      print.error(`A step failed after the write. The old ${args.name} is back.`);
+    if (changed) {
+      for (const old of olds) await (old.text === undefined ? rm(old.path, { force: true }) : writeFileAtomic(old.path, old.text));
+      print.error(`A step failed after the change. The old files are back.`);
     }
     throw error;
   } finally {
     if (running) await startLive();
   }
-  print.line(`The new ${args.name} is in the home folder${running ? ", and the runtime is ready" : ". The runtime was not running, thus it stays stopped"}.`);
+  print.line(`The change of ${label} is done${running ? ", and the runtime is ready" : ". The runtime was not running, thus it stays stopped"}.`);
 }
 
 /** The runner of one step of a stage. */
@@ -578,6 +615,7 @@ const [command, ...rest] = process.argv.slice(2);
 const target = command === "swap" ? parseSwapTarget(rest) : undefined;
 const deployArgs = command === "deploy" ? parseDeployArgs(rest) : undefined;
 const filesArgs = command === "files" ? parseFilesArgs(rest) : undefined;
+const heldArgs = command === "files" ? parseHeldArgs(rest) : undefined;
 // Each command that changes a slot or the live link holds the deploy lock (AL-167). Thus two deploys do not cross.
 // The command also writes the deploy mark (AL-208). At the release, the mark ends `DEPLOY_MARK_TAIL` later.
 const locked = (work: () => Promise<void>): Promise<void> =>
@@ -605,6 +643,7 @@ try {
   } else if (command === "fold" && rest.length === 0) await locked(foldLive);
   else if (command === "deploy" && deployArgs !== undefined) await locked(() => deploy(deployArgs));
   else if (command === "files" && filesArgs !== undefined) await locked(() => writeFiles(filesArgs));
+  else if (command === "files" && heldArgs !== undefined) await locked(() => writeHeld(heldArgs.alone));
   else {
     print.error(USAGE);
     code = 2;
