@@ -11,8 +11,7 @@
 import { categoryOf, kindLabel, Problems, reportId, type MapResult, type Observation, type Report, type Subject } from "@mark1russell7/alerts";
 import { isRecord, readHttpTime, textOf, type Fields } from "@mark1russell7/optional/read";
 import { errorMessage } from "@mark1russell7/text";
-import { scanHtml } from "@mark1russell7/text/html";
-import { decodeReferences } from "@mark1russell7/text/references";
+import { plainText } from "@mark1russell7/text/references";
 
 import { AZURE_DOMAIN, AZURE_KIND, AZURE_ORIGIN, AZURE_PAGE, AZURE_SOURCE, categoriesOf, DOMAIN_SYSTEM, REGION_SYSTEM, regionId } from "./feed.ts";
 
@@ -28,15 +27,8 @@ function textsOf(fields: Fields, field: string): readonly string[] {
   return Array.isArray(value) ? value.filter((each): each is string => typeof each === "string" && each.trim() !== "").map((each) => each.trim()) : [];
 }
 
-/**
- * This function gives the plain text of the HTML of a description. It removes the tags, decodes the character references
- * and puts one space for each run of white space. An empty text gives `undefined`.
- */
-export function plainText(html: string | undefined): string | undefined {
-  if (html === undefined) return undefined;
-  const text = decodeReferences(scanHtml(html).text).replace(/\s+/g, " ").trim();
-  return text === "" ? undefined : text;
-}
+// The plain text of the HTML of a description comes from its home. The package keeps the export for its users.
+export { plainText };
 
 /** This function maps one observation of the feed. It does not throw. A body that it does not understand gives a fatal problem. */
 export function mapObservation(observation: Observation): MapResult {
