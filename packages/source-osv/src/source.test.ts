@@ -345,7 +345,7 @@ describe("the map", () => {
     expect(report.kind.code).toBe(MALICIOUS_KIND);
     expect(report.categories).toEqual(["cyber"]);
     expect(report.severity).toBe("severe");
-    expect(report.about).toEqual([{ system: PURL_SYSTEM, id: "pkg:npm/paystation-embed-app", label: "paystation-embed-app (npm)" }]);
+    expect(report.about).toEqual([{ system: PURL_SYSTEM, id: "pkg:npm/paystation-embed-app", label: "paystation-embed-app (npm)", ranges: ["vers:npm/1.0.0"] }]);
     expect(report.correlation).toEqual([{ system: OSV_SYSTEM, id: "MAL-2026-20607" }]);
     expect(report.origin).toBe("ossf");
     expect(report.expires).toBe(report.sent + RECORD_LIFE_MS);
@@ -357,7 +357,7 @@ describe("the map", () => {
   it("gives a CVE subject and key for a CVE alias", () => {
     const report = map(observation(bodyOf(ADVISORY))).reports[0]!;
     expect(report.about).toContainEqual({ system: CVE_SYSTEM, id: "CVE-2026-64670" });
-    expect(report.about).toContainEqual({ system: PURL_SYSTEM, id: "pkg:npm/%40waline/client", label: "@waline/client (npm)" });
+    expect(report.about).toContainEqual({ system: PURL_SYSTEM, id: "pkg:npm/%40waline/client", label: "@waline/client (npm)", ranges: ["vers:semver/<=3.16.2"] });
     expect(report.correlation).toContainEqual({ system: CVE_SYSTEM, id: "CVE-2026-64670" });
   });
 
