@@ -542,6 +542,7 @@ TryRecord: build/index.d.ts#TryRecord
 UNKNOWN_KIND: build/index.d.ts#UNKNOWN_KIND
 UNKNOWN_WEIGHT: build/index.d.ts#UNKNOWN_WEIGHT
 URL_PATH_SHAPE: build/index.d.ts#URL_PATH_SHAPE
+URL_USER_SHAPE: build/index.d.ts#URL_USER_SHAPE
 USE_KIND: build/index.d.ts#USE_KIND
 USE_STAGES: build/index.d.ts#USE_STAGES
 US_GALLON_L: build/index.d.ts#US_GALLON_L
@@ -4613,6 +4614,9 @@ export declare const UNKNOWN_WEIGHT: Estimate;
 
 ### build/index.d.ts#URL_PATH_SHAPE
 export declare const URL_PATH_SHAPE: SecretShape;
+
+### build/index.d.ts#URL_USER_SHAPE
+export declare const URL_USER_SHAPE: SecretShape;
 
 ### build/index.d.ts#USE_KIND
 export declare const USE_KIND = "system.use";

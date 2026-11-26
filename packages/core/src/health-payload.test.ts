@@ -98,6 +98,17 @@ describe("failureMessage", () => {
     expect(failureMessage("GET https://host.example gave 503")).toBe("GET https://host.example gave 503");
   });
 
+  it("removes the user part of a URL: a user with a password, and a user only", () => {
+    const withPassword = failureMessage("Request cannot be constructed from a URL that includes credentials: https://user:p4ss@host.example/x");
+    expect(withPassword).toBe("Request cannot be constructed from a URL that includes credentials: https://[secret]@host.example/…");
+    expect(withPassword).not.toContain("p4ss");
+    expect(withPassword).not.toContain("user:");
+    const userOnly = failureMessage("no answer: https://t0ken9f@host.example/repo.git");
+    expect(userOnly).toBe("no answer: https://[secret]@host.example/…");
+    // An @ in the path is not a user part.
+    expect(failureMessage("GET https://host.example/@me gave 404")).toBe("GET https://host.example/… gave 404");
+  });
+
   it("joins the white space, and cuts a long message to the limit with no split of a surrogate pair", () => {
     expect(failureMessage("a\n\n  b\tc")).toBe("a b c");
     const long = failureMessage("x".repeat(FAILURE_MESSAGE_LIMIT + 50)) ?? "";

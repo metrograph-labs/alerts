@@ -31,6 +31,17 @@ export const HEALTH_FORMAT = "alerts-health/5";
 export const FAILURE_MESSAGE_LIMIT = 300;
 
 /**
+ * The shape of the user part of a URL in a text, for example `user:password@` or `token@`. The redaction puts a mark in
+ * place of all of it. The shape `url-password` of `@mark1russell7/text` removes only a password and keeps the user, but a
+ * token can be the whole user part. The health keeps only the scheme and the host, thus the user goes too.
+ */
+export const URL_USER_SHAPE: SecretShape = Object.freeze({
+  id: "url-user",
+  label: "the user part of a URL",
+  pattern: /[A-Za-z][A-Za-z0-9+.-]*:\/\/(?<secret>[^\s/?#@]+)@/u,
+});
+
+/**
  * The shape of the path, the query and the fragment of a URL in a text. The redaction keeps the scheme and the host of
  * the URL, and puts a mark in place of the rest. Thus a key or a place in the address of a fetch does not go in.
  */
@@ -152,15 +163,17 @@ export interface HealthPayloadInput {
  * 1. `redactSecrets` of `@mark1russell7/text` removes each form of each secret of `secrets`.
  * 2. `redactSecretShapes` removes each token of a known shape (`SECRET_SHAPES`) and each value after the name of a
  *    secret (`CONTEXT_SHAPES`).
- * 3. The path, the query and the fragment of each URL go (`URL_PATH_SHAPE`). The scheme and the host stay.
- * 4. Each run of white space becomes one space, and the message is cut to `FAILURE_MESSAGE_LIMIT` code units.
+ * 3. The user part of each URL goes (`URL_USER_SHAPE`).
+ * 4. The path, the query and the fragment of each URL go (`URL_PATH_SHAPE`). The scheme and the host stay.
+ * 5. Each run of white space becomes one space, and the message is cut to `FAILURE_MESSAGE_LIMIT` code units.
  *
  * It gives `undefined` for a message with no text.
  */
 export function failureMessage(message: string, secrets: readonly Secret[] = []): string | undefined {
   const known = secrets.length === 0 ? message : redactSecrets(message, secrets);
   const shaped = redactSecretShapes(known, { shapes: [...SECRET_SHAPES, ...CONTEXT_SHAPES] });
-  const text = redactSecretShapes(shaped, { shapes: [URL_PATH_SHAPE], mark: "/…" }).replace(/\s+/gu, " ").trim();
+  const users = redactSecretShapes(shaped, { shapes: [URL_USER_SHAPE] });
+  const text = redactSecretShapes(users, { shapes: [URL_PATH_SHAPE], mark: "/…" }).replace(/\s+/gu, " ").trim();
   if (text === "") return undefined;
   if (text.length <= FAILURE_MESSAGE_LIMIT) return text;
   // The limit counts code units, as the schema does. A cut does not split a surrogate pair.
