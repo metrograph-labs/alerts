@@ -24,6 +24,7 @@
  */
 
 import { NO_HISTORIES, type Histories, type MapPayload } from "@mark1russell7/alerts";
+import { callTrace, type CallTrace } from "@mark1russell7/otel-ts/call-trace";
 import { errorView } from "@mark1russell7/otel-ts/error-view";
 import { byId, setupTheme } from "@mark1russell7/site-pages/chrome";
 import { replayOf, replayPause, replaySeek, replaySpan, type Replay } from "@mark1russell7/visuals";
@@ -274,7 +275,7 @@ let shownProblem: string | undefined;
  * This function shows the error view of a failed read of the map, or removes it after a good read. A failure with the
  * same words keeps the view. Thus an open list of details stays open after the next read.
  */
-function showProblem(text: string | undefined): void {
+function showProblem(text: string | undefined, call?: CallTrace): void {
   problem.hidden = text === undefined;
   if (text === shownProblem) return;
   shownProblem = text;
@@ -282,7 +283,7 @@ function showProblem(text: string | undefined): void {
     problem.replaceChildren();
     return;
   }
-  const view = errorView(readErrorRecord({ text, path: MAP_PATH, page: location.pathname }), { retry: true, report: "Report", summary: READ_ERROR_SUMMARY });
+  const view = errorView(readErrorRecord({ text, path: MAP_PATH, page: location.pathname, ...(call === undefined ? {} : { from: call.context }) }), { retry: true, report: "Report", summary: READ_ERROR_SUMMARY });
   view.addEventListener("otel-error-retry", (event) => event.detail.waitUntil(refresh()));
   view.addEventListener("otel-error-report", (event) => {
     window.open(reportAddress(event.detail.record), "_blank", "noopener");
@@ -294,7 +295,9 @@ async function refresh(): Promise<void> {
   if (reading || document.hidden) return;
   reading = true;
   try {
-    const get = (path: string): Promise<Response> => fetch(path, { cache: "no-store", credentials: "same-origin" });
+    // One trace for each refresh: each read sends its traceparent, so the runtime joins the trace, and a failed read has its id.
+    const call = callTrace();
+    const get = (path: string): Promise<Response> => fetch(path, { cache: "no-store", credentials: "same-origin", headers: call.headers });
     const result = await readMap(get);
     if (result.ok) {
       payload = result.payload;
@@ -314,7 +317,7 @@ async function refresh(): Promise<void> {
       setPicture();
       draw(false);
     }
-    showProblem(result.ok ? undefined : result.text);
+    showProblem(result.ok ? undefined : result.text, call);
     line.textContent = readLine(lastGood, !result.ok, time);
     // The health also comes after a good map, for the same reason. It is the last read, so a slow health does not hold the map.
     showHealth(result.ok ? await readHealth(get) : undefined);

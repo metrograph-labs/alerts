@@ -2,7 +2,14 @@ import { CONFIG_FORMAT, type AlertConfig, type Incident, type MapRegion, type Pl
 import type { Refreshed, RefreshInput, ShapeStore } from "@mark1russell7/alerts-shapes-nws";
 import { NWS_DESCRIPTOR, NWS_PROVIDER } from "@mark1russell7/alerts-source-nws-api";
 import { describe, expect, it } from "vitest";
-import { addZoneCodes, keepShapes, liveCodes, placeCodesKey, refreshUntil, shapeReport, wantedShapes, withZoneCodes, zoneCodesText, type ShapeOutcome } from "./shapes.ts";
+import { addZoneCodes, keepShapes, liveCodes, placeCodesKey, refreshUntil, shapeReport, wantedShapes, withZoneCodes, zoneCodesText, type ShapeKeeper, type ShapeOutcome } from "./shapes.ts";
+
+/** This function reads the basemap, waits for the build that the read starts, and gives the basemap of that build (AL-213). */
+async function settled(keeper: ShapeKeeper): Promise<readonly MapRegion[]> {
+  keeper.basemap();
+  await keeper.idle();
+  return keeper.basemap();
+}
 
 const T0 = Date.UTC(2026, 10, 15, 18, 0, 0);
 const RING = [
@@ -311,9 +318,9 @@ describe("keepShapes", () => {
   it("gives the regions of the places and of the live incidents, once each, and the lookup of the store", async () => {
     const fake = fakeStore(["KSZ083", "KSC173", "TXC167", "KSC015"]);
     const keeper = keepShapes({ store: fake.store, places: [KANSAS, TEXAS] });
-    expect(keeper.basemap().map((region) => region.code.code)).toEqual(["KSC173", "KSZ083"]);
+    expect((await settled(keeper)).map((region) => region.code.code)).toEqual(["KSC173", "KSZ083"]);
     keeper.afterPass([incident("a", [{ system: "ugc", code: "TXC167" }, { system: "ugc", code: "KSC173" }]), incident("b", [{ system: "ugc", code: "KSC015" }], false)], undefined);
-    expect(keeper.basemap().map((region) => region.code.code)).toEqual(["KSC173", "KSZ083", "TXC167"]);
+    expect((await settled(keeper)).map((region) => region.code.code)).toEqual(["KSC173", "KSZ083", "TXC167"]);
     expect(keeper.lookup({ system: "same", code: "020173" })).toHaveLength(1);
     expect(keeper.lookup({ system: "ugc", code: "TXC029" })).toBeUndefined();
     await keeper.close();
@@ -323,10 +330,10 @@ describe("keepShapes", () => {
     const forecast: MapRegion = { code: { system: "ugc", code: "KSZ083" }, name: "Forecast zone", shapes: [{ type: "polygon", rings: [RING] }] };
     const fake = fakeStore(["fire:KSZ083"], { KS: [forecast] });
     const keeper = keepShapes({ store: fake.store, places: [KANSAS] });
-    const keys = (): string[] => keeper.basemap().map((region) => `${region.code.system}:${region.code.code}`);
-    expect(keys()).toEqual(["ugc:KSZ083"]);
+    const keys = async (): Promise<string[]> => (await settled(keeper)).map((region) => `${region.code.system}:${region.code.code}`);
+    expect(await keys()).toEqual(["ugc:KSZ083"]);
     keeper.afterPass([incident("a", [{ system: "ugc-fire", code: "KSZ083" }])], undefined);
-    expect(keys().sort()).toEqual(["ugc-fire:KSZ083", "ugc:KSZ083"]);
+    expect((await keys()).sort()).toEqual(["ugc-fire:KSZ083", "ugc:KSZ083"]);
     await keeper.close();
   });
 
@@ -336,8 +343,9 @@ describe("keepShapes", () => {
     const lists: Record<string, readonly MapRegion[]> = { KS: [harvey] };
     const fake = fakeStore(["KSZ083", "KSC173", "TXC167"], lists);
     const outcomes: ShapeOutcome[] = [];
-    const keeper = keepShapes({ store: fake.store, places: [KANSAS], onShapes: (outcome) => outcomes.push(outcome) });
-    const first = keeper.basemap();
+    // Each build gives the event loop a turn after its first step, thus a read during the build gives the last build.
+    const keeper = keepShapes({ store: fake.store, places: [KANSAS], onShapes: (outcome) => outcomes.push(outcome), slices: { sliceMs: 0 } });
+    const first = await settled(keeper);
     expect(first.map((region) => region.code.code)).toEqual(["KSC079", "KSC173", "KSZ083"]);
     const ring = first[0]!.shapes[0]!.type === "polygon" ? first[0]!.shapes[0]!.rings[0]! : [];
     expect(ring).toHaveLength(5);
@@ -345,13 +353,16 @@ describe("keepShapes", () => {
     // The same regions give the same simplified copy.
     expect(keeper.basemap()).toBe(first);
     keeper.afterPass([incident("a", [{ system: "ugc", code: "TXC167" }])], undefined);
-    const second = keeper.basemap();
+    const second = await settled(keeper);
     expect(second).not.toBe(first);
     expect(second.map((region) => region.code.code)).toEqual(["KSC079", "KSC173", "KSZ083", "TXC167"]);
     // An incident outside the watched states does not simplify the states again.
     expect(second[0]).toBe(first[0]);
     // A new record of the store gives a new copy of the states.
     lists["KS"] = [{ ...harvey, shapes: [...harvey.shapes] }];
+    // Until the end of the new build, the read gives the last build.
+    expect(keeper.basemap()).toBe(second);
+    await keeper.idle();
     const third = keeper.basemap();
     expect(third[0]).not.toBe(first[0]);
     expect(third[0]).toEqual(first[0]);
@@ -363,10 +374,15 @@ describe("keepShapes", () => {
     // A public county of Kansas. Its south edge has a position that is 1 m from the line, thus the simplification removes it.
     const harvey: MapRegion = { code: { system: "ugc", code: "KSC079" }, name: "Harvey", shapes: [{ type: "polygon", rings: [[[-98, 37], [-97.5, 37.00001], [-97, 37], [-97, 38], [-98, 38], [-98, 37]]] }] };
     const fake = fakeStore(["KSC079", "KSZ083", "KSC173", "TXC167"], { KS: [harvey] });
-    const keeper = keepShapes({ store: fake.store, places: [KANSAS] });
+    // The geo steps give at least one turn, thus the build is in progress after the first read.
+    const keeper = keepShapes({ store: fake.store, places: [KANSAS], slices: { sliceMs: 0 } });
     const harveyCode: RegionCode = { system: "ugc", code: "KSC079" };
     // Before the first basemap, the display gives the full shapes.
     expect(keeper.display(harveyCode)).toBe(harvey.shapes);
+    // The first read starts the build and gives no region. During the build, the display gives no shapes for its regions.
+    expect(keeper.basemap()).toEqual([]);
+    expect(keeper.display(harveyCode)).toBeUndefined();
+    await keeper.idle();
     const first = keeper.basemap();
     const shapesOf = (map: readonly MapRegion[], code: string) => map.find((region) => region.code.code === code)!.shapes;
     expect(keeper.display(harveyCode)).toBe(shapesOf(first, "KSC079"));
@@ -377,6 +393,10 @@ describe("keepShapes", () => {
     expect(keeper.display({ system: "ugc", code: "TXC167" })).toBe(keeper.lookup({ system: "ugc", code: "TXC167" }));
     expect(keeper.display({ system: "ugc", code: "TXC029" })).toBeUndefined();
     keeper.afterPass([incident("a", [{ system: "ugc", code: "TXC167" }])], undefined);
+    // The pass starts the build. The new region has no shapes until its end, and the regions of the last build keep theirs.
+    expect(keeper.display({ system: "ugc", code: "TXC167" })).toBeUndefined();
+    expect(keeper.display(harveyCode)).toBe(shapesOf(first, "KSC079"));
+    await keeper.idle();
     const second = keeper.basemap();
     expect(keeper.display({ system: "ugc", code: "TXC167" })).toBe(shapesOf(second, "TXC167"));
     // A new region of an incident simplifies only that region: the copy of each other region stays.
@@ -395,7 +415,7 @@ describe("keepShapes", () => {
     const store: ShapeStore = { ...fake.store, lookup: (code) => zones[code.code]?.shapes, region: (code) => zones[code.code] };
     const keeper = keepShapes({ store, places: [TEXAS] });
     keeper.afterPass([incident("a", [{ system: "ugc", code: "AKZ191" }, { system: "ugc", code: "GUZ001" }])], undefined);
-    const map = keeper.basemap();
+    const map = await settled(keeper);
     expect(map.map((region) => region.code.code)).toEqual(["AKZ191", "GUZ001"]);
     for (const region of map) {
       const shape = region.shapes[0]!;
@@ -422,8 +442,13 @@ describe("keepShapes", () => {
     }
     const fake = fakeStore([]);
     const store: ShapeStore = { ...fake.store, lookup: (code) => zones.get(code.code)?.shapes, region: (code) => zones.get(code.code) };
-    const keeper = keepShapes({ store, places: [TEXAS] });
+    let turns = 0;
+    const keeper = keepShapes({ store, places: [TEXAS], slices: { sliceMs: 0, turn: () => Promise.resolve(void (turns += 1)) } });
     keeper.afterPass([incident("a", [...zones.keys()].map((code) => ({ system: "ugc", code })))], undefined);
+    // The gate of the turns (AL-213): the build of 432,300 positions gives the event loop a turn for each step of bounded work.
+    expect(keeper.basemap()).toEqual([]);
+    await keeper.idle();
+    expect(turns).toBeGreaterThan(100);
     const map = keeper.basemap();
     expect(map).toHaveLength(300);
     const full = JSON.stringify([...zones.values()]).length;
@@ -439,7 +464,7 @@ describe("keepShapes", () => {
     const fake = fakeStore([], { KS: [open] });
     const outcomes: ShapeOutcome[] = [];
     const keeper = keepShapes({ store: fake.store, places: [KANSAS], onShapes: (outcome) => outcomes.push(outcome) });
-    expect(keeper.basemap()).toEqual([open]);
+    expect(await settled(keeper)).toEqual([open]);
     expect(keeper.basemap()[0]).toBe(open);
     expect(outcomes).toHaveLength(1);
     expect(outcomes[0]).toMatchObject({ ok: false, step: "basemap" });
@@ -463,5 +488,32 @@ describe("keepShapes", () => {
     expect(fake.calls).toHaveLength(1);
     await keeper.close();
     expect(order).toEqual(["cache", "closed"]);
+  });
+
+  it("stops a build of the basemap at the close, with no report, and starts no build after the close (AL-213)", async () => {
+    const harvey: MapRegion = { code: { system: "ugc", code: "KSC079" }, name: "Harvey", shapes: [{ type: "polygon", rings: [[[-98, 37], [-97.5, 37.00001], [-97, 37], [-97, 38], [-98, 38], [-98, 37]]] }] };
+    const fake = fakeStore([], { KS: [harvey] });
+    const outcomes: ShapeOutcome[] = [];
+    // Each turn waits for the test, thus the build stays in progress.
+    let release: (() => void) | undefined;
+    const keeper = keepShapes({ store: fake.store, places: [KANSAS], onShapes: (outcome) => outcomes.push(outcome), slices: { sliceMs: 0, turn: () => new Promise<void>((resolve) => (release = resolve)) } });
+    expect(keeper.basemap()).toEqual([]);
+    const closed = keeper.close();
+    release?.();
+    await closed;
+    expect(outcomes).toEqual([]);
+    expect(keeper.basemap()).toEqual([]);
+    await keeper.idle();
+    expect(keeper.basemap()).toEqual([]);
+  });
+
+  it("starts one more build at the end of a build when the regions change during it (AL-213)", async () => {
+    const fake = fakeStore(["KSZ083", "KSC173", "TXC167"]);
+    const keeper = keepShapes({ store: fake.store, places: [KANSAS], slices: { sliceMs: 0 } });
+    keeper.basemap();
+    keeper.afterPass([incident("a", [{ system: "ugc", code: "TXC167" }])], undefined);
+    await keeper.idle();
+    expect(keeper.basemap().map((region) => region.code.code)).toEqual(["KSC173", "KSZ083", "TXC167"]);
+    await keeper.close();
   });
 });

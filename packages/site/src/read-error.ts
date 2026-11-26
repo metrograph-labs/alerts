@@ -2,8 +2,12 @@
  * The error of a failed read of the runtime, as data. A failed read gives a record of `@mark1russell7/otel-ts/error`,
  * and the local page shows the record in the shared error view. The view has a retry, a copy of the whole record and a
  * report. Thus a person can send the same record that the page shows.
+ *
+ * Each read sends the `traceparent` of `callTrace()` (local.ts), and the record has the context of that call. Thus the
+ * record has the trace id that the runtime got, also with no SDK on the page.
  */
 
+import type { CallTrace } from "@mark1russell7/otel-ts/call-trace";
 import { errorRecord, errorRecordText, type ErrorRecord } from "@mark1russell7/otel-ts/error";
 
 /** The name of the error of a failed read. */
@@ -25,6 +29,8 @@ export interface ReadFailure {
   readonly page: string;
   /** The time of the read. */
   readonly at?: Date;
+  /** The context of the call of the read (`callTrace().context`), for its trace id. Default: the active context. */
+  readonly from?: CallTrace["context"];
 }
 
 /** This function gives the error record of a failed read. The procedure is the read of the route. */
@@ -35,6 +41,7 @@ export function readErrorRecord(failure: ReadFailure): ErrorRecord {
     procedure: { name: `GET ${failure.path}` },
     attributes: { "url.path": failure.page, "runtime.route": failure.path },
     ...(failure.at === undefined ? {} : { at: failure.at }),
+    ...(failure.from === undefined ? {} : { from: failure.from }),
   });
 }
 
