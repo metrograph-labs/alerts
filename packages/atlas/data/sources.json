@@ -26848,5 +26848,44 @@
       "https://kingcounty.gov/en/dept/kcit/data-information-services/gis-center/about/terms-conditions-copyrights"
     ],
     "round": 45
+  },
+  {
+    "id": "entur-situations",
+    "name": "Entur situation exchange (SIRI-SX)",
+    "classes": [
+      "transport.transit.service-alert"
+    ],
+    "url": "https://api.entur.io/realtime/v1/rest/sx",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://developer.entur.no/terms-of-service",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The terms ask for the header ET-Client-Name with the name of the application. The data has the NLOD licence: free reuse with attribution to Entur."
+    },
+    "cost": "free",
+    "delay": "Minutes: each operator writes its situations into the national system of Entur, and the API gives the open ones.",
+    "history": "None in the API. Each situation has its creation time and its validity period.",
+    "rateLimit": "Lower limits for a client with no ET-Client-Name header. The terms give no number.",
+    "calibration": "None. Each situation has a severity, a report type, a summary and a description in Norwegian and English.",
+    "coverage": "The deviations of the public transport of Norway, from the operators of the national registry of Entur: detours, cancelled lines and closed stops.",
+    "origins": [
+      "entur"
+    ],
+    "path": [
+      "api.entur.io"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "A free national API of transit situations in SIRI-SX, with no key and an open licence. It is a second source next to the GTFS Realtime feeds.",
+    "evidence": [
+      "https://api.entur.io/realtime/v1/rest/sx",
+      "https://developer.entur.no/terms-of-service",
+      "https://developer.entur.no/open-data"
+    ],
+    "round": 46
   }
 ]
