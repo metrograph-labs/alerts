@@ -26927,5 +26927,43 @@
       "https://commission.europa.eu/legal-notice_en"
     ],
     "round": 47
+  },
+  {
+    "id": "bea-aero-notified-events",
+    "name": "BEA notified events (France)",
+    "classes": [
+      "transport.air.accident"
+    ],
+    "url": "https://bea.aero/en/investigation-reports/notified-events/",
+    "access": "page",
+    "auth": "none",
+    "terms": {
+      "url": "https://bea.aero/en/legal-notice/",
+      "automated": "unclear",
+      "redistribution": "limited",
+      "note": "The legal notice permits a copy with the source and the date. A commercial or promotional use needs a licence for the reuse of public information."
+    },
+    "cost": "free",
+    "delay": "Days: the page lists each event a few days after its notification to the BEA.",
+    "history": "The page lists the events of past years, with a detail page for each event.",
+    "rateLimit": "unknown",
+    "calibration": "None. Each event has its kind (accident or serious incident), the aircraft, the date and the place.",
+    "coverage": "The accidents and serious incidents in France, and the events abroad that the BEA joins, often with an aircraft built in France.",
+    "origins": [
+      "bea-aero"
+    ],
+    "path": [
+      "bea.aero"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "A list of events within days, also abroad. But a commercial use needs a licence, and the site has no feed. Such terms do not close a gap (AL-195).",
+    "evidence": [
+      "https://bea.aero/en/",
+      "https://bea.aero/en/legal-notice/"
+    ],
+    "round": 48
   }
 ]

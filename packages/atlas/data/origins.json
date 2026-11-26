@@ -2856,5 +2856,11 @@
     "name": "Entur AS",
     "issues": null,
     "note": "The records of entur-situations come from the operators of Norway through the national registry of Entur."
+  },
+  {
+    "id": "bea-aero",
+    "name": "BEA, the French safety investigation authority for civil aviation",
+    "issues": null,
+    "note": "The events of bea-aero-notified-events come from the notifications to the BEA."
   }
 ]

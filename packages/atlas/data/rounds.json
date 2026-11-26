@@ -2302,5 +2302,42 @@
       "members": 1757,
       "cause": "Round 47 plans the weekly outbreak report of ADIS, a second source of animal disease outbreaks. Thus the gaps go from 57 to 56."
     }
+  },
+  {
+    "round": 48,
+    "date": "2026-11-26",
+    "by": "One session, with no subagent.",
+    "method": "The round looked for a second source of air accidents. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json"
+    ],
+    "queries": [],
+    "notes": [
+      "The home page of the ATSB gave no answer in 30 s. The round did not try it again.",
+      "The BEA lists its notified events within days, also the events abroad that it joins. The site has no feed.",
+      "The legal notice of the BEA needs a licence for a commercial use, so its source does not close the gap.",
+      "The note of round 24 does not give the URL of the NTSB API, so the round did not read it again."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 56,
+      "cover": {
+        "adopted": 59,
+        "paths": 59,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 166,
+        "paths": 165,
+        "origins": 84
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 48 adds the notified events of the BEA as a later source. Its terms need a licence for a commercial use, so the gaps stay at 56."
+    }
   }
 ]

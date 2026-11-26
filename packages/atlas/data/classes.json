@@ -3272,7 +3272,7 @@
       "EM-DAT: Technological > Transport > Air",
       "UNDRR-ISC HIPs 2025: TL04 transport accidents"
     ],
-    "gap": "One live source, aaib-deployments-govuk, for the United Kingdom only. Round 24: the NTSB API returned 502. Round 39: TSB Canada returned 403, and the FAA preliminary notices are only a dashboard.",
+    "gap": "One live source, aaib-deployments-govuk, for the United Kingdom only. Round 24: the NTSB API returned 502. Round 39: TSB Canada returned 403, and the FAA preliminary notices are only a dashboard. Round 48: the ATSB site gave no answer in 30 s, and the terms of the BEA need a licence for a commercial use.",
     "round": 1
   },
   {
