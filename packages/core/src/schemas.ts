@@ -10,6 +10,7 @@
  * - The rules of the values that a type cannot hold are refinements. Each rule tells the line of the
  *   contract that states it.
  */
+import { cpeProductOf } from "@mark1russell7/package-id";
 import { tryParseUnit } from "@mark1russell7/quantity";
 import { z } from "zod";
 import {
@@ -364,12 +365,13 @@ export const subjectSchema: z.ZodType<Subject, Subject> = schemaOf<Subject>()(
   z.strictObject({ system: z.string(), id: z.string(), label: z.string().exactOptional(), ranges: z.array(z.string()).readonly().exactOptional() }).readonly(),
 );
 
-/** This schema checks one installed package of a part: a purl with no version, and the version. */
+/** This schema checks one installed package of a part: a purl with no version, the version and a CPE name. */
 export const installedPackageSchema: z.ZodType<InstalledPackage, InstalledPackage> = schemaOf<InstalledPackage>()(
   z
     .strictObject({
       purl: z.string().regex(/^pkg:[a-z0-9.+-]+\/[^@?#]+$/u, "The purl of an installed package starts with pkg: and has no version, qualifiers or subpath."),
       version: z.string().min(1, "The version of an installed package is a non-empty text."),
+      cpe: z.string().refine((text) => cpeProductOf(text) !== undefined, "The CPE name of an installed package is a CPE 2.3 or CPE 2.2 name with a vendor and a product.").exactOptional(),
     })
     .readonly(),
 );
