@@ -83,7 +83,7 @@ import { blockLine, startLoopWatch, type LoopWatch } from "./loop-watch.ts";
 import { foldText, writeFold } from "./fold-mode.ts";
 import { startBlockWatch, type BlockWatch } from "./block-watch.ts";
 import { fileBundleStore } from "./outage.ts";
-import type { ExchangeRound } from "./peers.ts";
+import { takeNoteText, type ExchangeRound } from "./peers.ts";
 import { loadPriors } from "./priors.ts";
 import { openReadingStore, READINGS_FILE } from "./readings.ts";
 import { GOOD_FILE, privateFiles, readStartTexts, reloadHook, startConfig, type CheckOf, type StartUse } from "./reload.ts";
@@ -384,7 +384,7 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
     copy,
     ...(tellIntake === undefined ? {} : { tell: tellIntake }),
     ...(positionIntake === undefined ? {} : { position: positionIntake }),
-    ...(token === undefined ? {} : { exchange: { call: exchangeCall({ token }), configHash: configHash(config.config) }, onExchange }),
+    ...(token === undefined ? {} : { exchange: { call: exchangeCall({ token }), configHash: configHash(config.config), onTake: (note) => out.log(takeNoteText(note)) }, onExchange }),
     onPass,
     // The output gets no secret, also when an error quotes a request.
     onError: (error, failures) => out.error(`A pass failed (${failures} in sequence): ${redactSecrets(errorMessage(error), values)}`),
@@ -419,6 +419,8 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
   if (instance.zones !== undefined) out.log(zoneCodesText(instance.zones));
   if (instance.transit !== undefined) out.log(transitText(instance.transit.chosen, instance.transit.copied));
   out.log(startReadText(instance.runtime.start));
+  // The read position of each other copy at the start (AL-222). Two starts with the same position read the same pages again.
+  for (const peer of copy.peers ?? []) out.log(`The start reads the copy ${peer.id} after the position ${String(instance.runtime.position(peer.id))}.`);
   if (instance.runtime.skipped > 0) {
     out.error(`The log has ${String(instance.runtime.skipped)} events of types that this build does not know. A later build wrote them. The runtime skips them.`);
   }
