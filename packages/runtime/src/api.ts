@@ -180,7 +180,7 @@ export function pageWarning(state: PageState): string | undefined {
   }
 }
 
-/** This function gives the status of the loop, of the deploy of the outage call, of the start and of the reads of the other copies. */
+/** This function gives the status of the loop, the outage deploy, the start and the reads of the other copies. */
 export function statusOf(loop: RuntimeLoop, outage?: { state(): OutageDeployState }, start?: StartStatus, copies?: { watches(): readonly CopyWatch[] }): Status {
   const last = loop.last();
   return {

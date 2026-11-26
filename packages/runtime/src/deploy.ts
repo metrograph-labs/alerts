@@ -22,8 +22,8 @@
  *   runtime is stopped, after a swap that changes the fold version. The stage and the swap tell when the version changes.
  *   The stage also tells when the snapshot key changes for the next start (AL-169): a new source, for example.
  *
- * - `deploy <commit> [--page] [--alone]` does the whole deploy in one command (AL-186): stage, swap, fold when the fold
- *   version or the snapshot key changes, and the start of the new code. It stops the runtime only for a fold, or before the
+ * - `deploy <commit> [--page] [--alone]` does the whole deploy in one command (AL-186). Its steps are the stage and the swap.
+ *   Then it folds when the fold version or the snapshot key changes, and it starts the new code. It stops the runtime only for a fold, or before the
  *   stage on a host with less free memory than `STAGE_MEMORY_FLOOR`. It stops the runtime only when each other copy had a
  *   read in the last `COPY_MAX_AGE`. A host with no other copy stops only with `--alone`. At the end, the runtime must run
  *   the new commit, with a start after the begin of the deploy. On Windows, a stop and a start change the boot task.
@@ -292,7 +292,7 @@ async function restartLive(): Promise<void> {
 
 /**
  * This function does the whole deploy of a commit (AL-186). Call it with the deploy lock. When a step fails after a stop,
- * it starts the runtime again on the code of the live path, thus the deploy does not leave the runtime stopped.
+ * it starts the runtime again on the code of the live path. Thus the deploy does not leave the runtime stopped.
  */
 async function deploy(args: DeployArgs): Promise<void> {
   const began = Date.now();
