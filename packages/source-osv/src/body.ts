@@ -5,9 +5,9 @@
  */
 
 import { isRecord, readText } from "@mark1russell7/optional/read";
+import { osvPackagePurl } from "@mark1russell7/package-id";
 
 import { cwesOf, readOsvText, type OsvRange, type OsvRecord } from "./osv.ts";
-import { packagePurl } from "./purl.ts";
 
 /** The longest text of the details of a record, in characters. A longer text is cut. */
 export const MAX_DETAILS = 2000;
@@ -106,7 +106,7 @@ export function recordBody(record: OsvRecord, url: string): RecordBody {
   const packages: PackageBody[] = [];
   for (const affected of record.affected) {
     if (affected.package === undefined || packages.length >= MAX_PACKAGES) continue;
-    const purl = packagePurl(affected.package);
+    const purl = osvPackagePurl(affected.package);
     packages.push({
       ecosystem: affected.package.ecosystem,
       name: affected.package.name,

@@ -2838,5 +2838,17 @@
     "name": "Canada Post",
     "issues": null,
     "note": "The records of canada-post-service-alerts name this issuer."
+  },
+  {
+    "id": "osc",
+    "name": "Ontario Securities Commission",
+    "issues": null,
+    "note": "The records of osc-investor-alerts name this issuer."
+  },
+  {
+    "id": "king-county-wtd",
+    "name": "King County Wastewater Treatment Division",
+    "issues": null,
+    "note": "The file of king-county-cso-status comes from this operator, with the City of Seattle."
   }
 ]

@@ -2,7 +2,7 @@ import { softwareMatches, versRangeCheck, type ObservationId, type SoftwareStack
 import { createOsvMap, fileBody, OSV_PROVIDERS } from "@mark1russell7/alerts-source-osv";
 import { describe, expect, it } from "vitest";
 
-// The gate of AL-197: advisories of five ecosystems, and a sample stack with known matches. The OSV map gives the
+// The gate of AL-197: advisories of six ecosystems, and a sample stack with known matches. The OSV map gives the
 // subjects with their ranges. The match gives 0 misses and 0 false matches.
 
 const NOW = Date.parse("2026-11-25T12:00:00Z");
@@ -28,6 +28,7 @@ const ADVISORIES = [
   record("TEST-6", "Maven", "org.example:lib", ecosystem({ introduced: "0" }, { fixed: "2.0" })),
   record("TEST-7", "npm", "absent", semver({ introduced: "0" })),
   record("TEST-8", "npm", "evil", { versions: ["1.0.0", "1.0.1"] }),
+  record("TEST-9", "Debian:12", "openssl", ecosystem({ introduced: "0" }, { fixed: "3.0.15-1~deb12u1" })),
 ];
 
 const STACK: SoftwareStack = {
@@ -55,6 +56,7 @@ const STACK: SoftwareStack = {
         { purl: "pkg:pypi/django", version: "5.1" },
         { purl: "pkg:golang/golang.org/x/net", version: "v0.30.0" },
         { purl: "pkg:cargo/hyper", version: "1.4.1" },
+        { purl: "pkg:deb/debian/openssl", version: "3.0.15-1~deb12u1" },
       ],
     },
     {
@@ -64,6 +66,7 @@ const STACK: SoftwareStack = {
         { purl: "pkg:cargo/hyper", version: "0.14.30" },
         { purl: "pkg:npm/left-pad", version: "1.2.0" },
         { purl: "pkg:npm/evil", version: "1.0.2" },
+        { purl: "pkg:deb/debian/openssl", version: "3.0.14-1~deb12u2" },
       ],
     },
   ],
@@ -78,6 +81,7 @@ const KNOWN = [
   "TEST-5 web pkg:npm/left-pad affected -",
   "TEST-6 api pkg:maven/org.example/lib unknown -",
   "TEST-8 web pkg:npm/evil affected -",
+  "TEST-9 tools pkg:deb/debian/openssl affected 3.0.15-1~deb12u1",
 ];
 
 const subjectsOf = (advisory: Record<string, unknown>): readonly Subject[] => {

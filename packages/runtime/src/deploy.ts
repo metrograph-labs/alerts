@@ -33,9 +33,10 @@
  * The exit code is 0 for success, 1 for a refusal or a failed step, and 2 for a wrong command. The output holds no value of a private file.
  */
 import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
-import { constants, setPriority, tmpdir, totalmem } from "node:os";
+import { constants, freemem, setPriority, tmpdir, totalmem } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { getHeapStatistics } from "node:v8";
 import { writeFileAtomic } from "@procedures/fs/files";
 import { runCommand, type CommandResult } from "@procedures/shell/command";
 import { nodeHostPorts } from "@mark1russell7/service/host";
@@ -51,6 +52,7 @@ import {
   DEPLOY_LOCK_FILE,
   FOLD_FILE,
   foldChange,
+  foldHeapLimit,
   foldStep,
   foldVersionOf,
   foreignLinks,
@@ -59,6 +61,7 @@ import {
   keyChange,
   keyStep,
   loadStep,
+  memInfoOf,
   otherSlot,
   parseDeployFile,
   parseSwapTarget,
@@ -79,6 +82,7 @@ import {
   withDeployLock,
   withMark,
   type DeployFile,
+  type FoldMemory,
   type ForeignLinks,
   type SlotName,
   type StartKeys,
@@ -177,11 +181,22 @@ async function foldLive(): Promise<void> {
   const runtime = join(slots[live], "packages", "runtime");
   const sets = (await readText(join(home, GOOD_FILE))) === undefined ? (["files"] as const) : (["files", "good"] as const);
   for (const set of sets) {
-    const fold = foldStep(runtime, home, process.execPath, set);
+    // Each fold reads the memory again: the fold before it gave its memory back (AL-175).
+    const heap = foldHeapLimit(await hostMemory(), Math.floor(getHeapStatistics().heap_size_limit / MIB));
+    if (heap !== undefined) print.line(`The fold ${set} has a heap limit of ${String(heap)} MiB, from the free memory and swap of the host (AL-175).`);
+    const fold = foldStep(runtime, home, process.execPath, set, heap);
     const result = await step(`fold ${set}`, fold.program, fold.args, runtime, fold.env);
     print.line(result.stdout.trim().split("\n").slice(-2).join("\n"));
   }
   if (sets.length === 1) print.line(`The home folder has no ${GOOD_FILE}, thus the fold was only for the private files.`);
+}
+
+const MIB = 1024 * 1024;
+
+/** This function gives the free memory of the host: `/proc/meminfo` on Linux, the free memory and no swap on other hosts (AL-175). */
+async function hostMemory(): Promise<FoldMemory> {
+  const linux = process.platform === "linux" ? memInfoOf((await readText("/proc/meminfo")) ?? "") : undefined;
+  return linux ?? { available: Math.floor(freemem() / MIB), swap: 0 };
 }
 
 /** The runner of one step of a stage. */

@@ -3202,5 +3202,17 @@
     "name": "www.canadapost-postescanada.ca",
     "kind": "host",
     "note": "The host of the page of canada-post-service-alerts."
+  },
+  {
+    "id": "feeds.feedburner.com",
+    "name": "feeds.feedburner.com",
+    "kind": "host",
+    "note": "The host of the feed of osc-investor-alerts."
+  },
+  {
+    "id": "your.kingcounty.gov",
+    "name": "your.kingcounty.gov",
+    "kind": "host",
+    "note": "The host of the file of king-county-cso-status."
   }
 ]
