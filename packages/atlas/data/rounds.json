@@ -2380,5 +2380,42 @@
       "members": 1757,
       "cause": "Round 49 adds the CFIA news releases as a later source of pest quarantines. Their terms need a permission for a commercial use, so the gaps stay at 56."
     }
+  },
+  {
+    "round": 50,
+    "date": "2026-11-26",
+    "by": "One session, with no subagent.",
+    "method": "The round looked again at the foodborne outbreaks, a class with no source. It read the terms of the later sources. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json"
+    ],
+    "queries": [],
+    "notes": [
+      "The website policies of the FDA tell that the content of www.fda.gov is in the public domain. The robots.txt permits the path, with a crawl delay of 30 s.",
+      "The table of the CORE investigations of the FDA listed 9 active investigations. Most had no product yet.",
+      "The intellectual property notices of ECDC license its content under CC BY 4.0, also for a commercial use. The two ECDC sources stay later, because the feed lagged five weeks in round 18.",
+      "The page of the RSS feeds of the FDA gave 404. The round found no feed of the investigations."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 56,
+      "cover": {
+        "adopted": 59,
+        "paths": 59,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 166,
+        "paths": 165,
+        "origins": 84
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 50 makes fda-core-investigations a plan: its content is in the public domain. The class gets 1 source of 2, so the gaps stay at 56."
+    }
   }
 ]
