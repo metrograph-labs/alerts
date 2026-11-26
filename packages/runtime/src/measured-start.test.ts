@@ -318,7 +318,7 @@ describe("the fake keys of a measure from the names of real keys (AL-176)", () =
     expect(new Set(Object.values(keys)).size).toBe(8);
     for (const name of ["USER_KEY_1", "PUSHOVER_USER_KEY"]) expect(isPushoverKey(keys[name])).toBe(true);
     for (const name of ["PHONE_1", "PHONE_2", "PHONE_3"]) expect(keys[name]).toMatch(/^\+999[0-9]{8}$/u);
-    expect(new URL(keys.HEALTHCHECKS_PING_URL ?? "").hostname).toBe("example.invalid");
+    expect(new URL(keys["HEALTHCHECKS_PING_URL"] ?? "").hostname).toBe("example.invalid");
     for (const name of ["OUTAGE_TOKEN", "NWWS_OI_USER_1"]) expect(keys[name]).toMatch(/^[A-Za-z0-9]{32}$/u);
   });
 });

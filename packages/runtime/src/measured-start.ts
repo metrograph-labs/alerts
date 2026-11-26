@@ -43,7 +43,7 @@ import { openTransitCache, TRANSIT_FILE } from "./transit.ts";
 export const MEASURE_KEYS: Readonly<Record<string, string>> = { PUSHOVER_APP_TOKEN: "t".repeat(30), PUSHOVER_USER_KEY: "u".repeat(30) };
 
 /**
- * The form of the fake value of a key of a measure (AL-176). A `phone` is a number of the country code +999, which has no
+ * The form of the fake value of a key of a measure (AL-176). A `phone` has the country code +999, which has no
  * country. A `pushover` is 30 letters and digits. A `url` is on the domain `invalid`, which no name server resolves. A
  * `token` is 32 letters and digits.
  */
@@ -65,7 +65,7 @@ const PHONE_CHANNELS: ReadonlySet<string> = new Set([TWILIO_CHANNEL, TEXT_CHANNE
 
 /**
  * This function gives the form of each key that a configuration or a part uses in an address. The document is the parsed
- * JSON of one file. A secret of an address of a Twilio channel and a number of the opt-in list are phones. The secret of
+ * JSON of one file. A secret of an address of a Twilio channel and each phone of the opt-in list are phones. The secret of
  * the field `user` of a Pushover address is a Pushover key. A field of a wrong type gives no form, and the check of the
  * start reports it.
  */
@@ -108,8 +108,9 @@ function fakeKey(form: KeyForm, index: number): string {
  * `secrets.env`, with no value. Thus a measured start opens the same channels and sources as the copy of the names.
  *
  * - The keys of Pushover, Twilio and the webhook get fixed values that pass the check of the instance.
- * - The other keys get the form that `forms` gives: the forms of `keyFormsOf`. A name with no form gets the form
- *   `pushover` when it starts with `PUSHOVER_`, `url` when it ends with `_URL`, and `token` in the other cases.
+ * - The other keys get the form that `forms` gives: the forms of `keyFormsOf`.
+ * - A name with no form that starts with `PUSHOVER_` gets the form `pushover`. A name that ends with `_URL` gets `url`.
+ *   The other names get `token`.
  * - Two names get two different values.
  */
 export function measureKeys(names: readonly string[], forms: ReadonlyMap<string, KeyForm> = new Map()): Readonly<Record<string, string>> {
