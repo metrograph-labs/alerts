@@ -988,6 +988,8 @@ export interface Instance {
   readonly transit?: InstanceTransit;
   /** The counts of the zone codes of the places at the start, from the outlines of the store. An instance with no store has none. */
   readonly zones?: ZoneCodeCounts;
+  /** The ids of the field `leaveSources` of the copy that name no source of the instance (AL-219). */
+  readonly strayLeaves: readonly string[];
   /** This function gives the state of each quota of the channels. Each call reads the stores of the gates. */
   readonly quotas: () => readonly ChannelQuota[];
   /** The watches of the balances of the paid provider accounts. */
@@ -1053,6 +1055,8 @@ export interface InstanceSourceBuild {
   readonly copy: CopySettings;
   readonly sources: readonly SourceProcedures[];
   readonly descriptors: readonly SourceDescriptor[];
+  /** The ids of the field `leaveSources` of the copy that name no source of the build (AL-219), in the order of the field. */
+  readonly strayLeaves: readonly string[];
 }
 
 /**
@@ -1118,12 +1122,30 @@ export function instanceSources(options: SourceBuildOptions, clock: Clock, wall:
   // A copy does not read a source that it leaves to the other copies (AL-160). The exchange gives it their reports. The
   // pace keeps a place for each made source, thus a left source only gives one more free place.
   const leftSources = new Set<string>(copy.leaveSources ?? []);
-  const sources: readonly SourceProcedures[] = [...polled, ...(stream === undefined ? [] : [stream]), ...(intake === undefined ? [] : [intake])].filter(
-    (source) => !leftSources.has(source.describe().id),
-  );
+  const made = [...polled, ...(stream === undefined ? [] : [stream]), ...(intake === undefined ? [] : [intake])];
+  const sources: readonly SourceProcedures[] = made.filter((source) => !leftSources.has(source.describe().id));
 
   const descriptors = sources.map((source) => source.describe());
-  return { transitCopy, chosen, pace, agent, copy, sources, descriptors };
+  const strayLeaves = strayLeaveIds(copy, made.map((source) => source.describe().id));
+  return { transitCopy, chosen, pace, agent, copy, sources, descriptors, strayLeaves };
+}
+
+/**
+ * This function gives the ids of the field `leaveSources` of a copy that are not in `made` (AL-219). The list `made` has the
+ * ids of the sources that the copy makes. Such an id leaves no source. A wrong name then keeps a heavy source on the copy with no sign.
+ */
+export function strayLeaveIds(copy: CopySettings, made: readonly string[]): string[] {
+  const known = new Set(made);
+  return (copy.leaveSources ?? []).filter((id) => !known.has(id));
+}
+
+/**
+ * This function gives the line of the start for the ids of `strayLeaveIds` (AL-219), or `undefined` for no id. The start
+ * does not stop for such an id. A source that the copy does not make here is not a fault, for example a source with no key.
+ */
+export function strayLeavesText(ids: readonly string[]): string | undefined {
+  if (ids.length === 0) return undefined;
+  return `The file ${COPY_FILE}: the field leaveSources names ${ids.join(", ")}, and this copy makes no source with that id. The copy reads each source that the field does not name. Correct the id, or remove it.`;
 }
 
 /**
@@ -1161,7 +1183,7 @@ export function openInstance(options: InstanceOptions): Instance {
   const { clock } = options;
   // A change of the wall clock of CLOCK_STEP_ABOVE or less is a drift. A larger change is a step of the clock.
   const wall = frameClock(options.wall, clock, { driftLimit: CLOCK_STEP_ABOVE });
-  const { transitCopy, chosen, pace, agent, copy, sources, descriptors } = instanceSources(options, clock, wall, () => runtime.state().merge.reports);
+  const { transitCopy, chosen, pace, agent, copy, sources, descriptors, strayLeaves } = instanceSources(options, clock, wall, () => runtime.state().merge.reports);
   const kinds = [...new Set(descriptors.flatMap((descriptor) => descriptor.kinds))];
 
   const { config, recipients } = options.config;
@@ -1534,6 +1556,7 @@ export function openInstance(options: InstanceOptions): Instance {
     shapes,
     ...(transit === undefined ? {} : { transit }),
     ...(start === undefined ? {} : { zones: start.counts }),
+    strayLeaves,
     quotas,
     balances,
     uses,
