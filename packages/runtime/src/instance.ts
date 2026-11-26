@@ -980,6 +980,8 @@ export interface InstanceExchange {
   readonly call: ExchangeCall;
   /** The hash of the configuration of this copy. */
   readonly configHash: string;
+  /** This function gives the end of the deploy mark of the host, or `undefined` (AL-208). The answer of the exchange tells it. */
+  readonly deployUntil?: () => Instant | undefined;
 }
 
 /** The exchange of an instance with the other copies. */
@@ -1552,7 +1554,7 @@ export function openInstance(options: InstanceOptions): Instance {
   const copies: InstanceCopies | undefined =
     options.exchange === undefined
       ? undefined
-      : { source: { runtime, clock: wall, configHash: options.exchange.configHash, drills: () => runtime.state().drills, steady: () => steadyPasses(first, latest) }, ...(worker === undefined || rounds === undefined ? {} : { worker, loop: rounds }) };
+      : { source: { runtime, clock: wall, configHash: options.exchange.configHash, drills: () => runtime.state().drills, steady: () => steadyPasses(first, latest), ...(options.exchange.deployUntil === undefined ? {} : { deployUntil: options.exchange.deployUntil }) }, ...(worker === undefined || rounds === undefined ? {} : { worker, loop: rounds }) };
   const outage = outageWorker(options, loop.times.passLimit);
   return {
     runtime,

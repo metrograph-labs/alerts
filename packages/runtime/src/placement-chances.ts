@@ -49,8 +49,9 @@ import {
   type HistoryRead,
 } from "@mark1russell7/alerts-source-statuspage";
 import { isRecord } from "@mark1russell7/optional/read";
-import { wilson, Z95 } from "@mark1russell7/rigor-statistics";
+import { proportionMean, wilson, Z95 } from "@mark1russell7/rigor-statistics";
 import { openDatabase } from "@mark1russell7/sqlite";
+import { works } from "@mark1russell7/system-stack";
 import { countOf, errorMessage } from "@mark1russell7/text";
 import { send, statusLine, type Pace, type Transport } from "polite-crawler/api";
 import { providerFragment, regionFragment, siteFragment, type ChanceOverride, type PartChance, type PlacementBase, type PlacementChances, type StatusRef } from "./placement.ts";
@@ -179,20 +180,55 @@ export function fetchGapTime(times: readonly number[], now: number, limit: numbe
 }
 
 /**
- * This function gives the measured chance input of a site from the fetch times of the log of its live copy. The window
- * starts at the first fetch and ends at `now`. It gives a reason and no input for a log shorter than `MIN_LOG_HOURS`.
+ * The window of the log of a site (AL-215). Each end is optional. With no start, the window starts at the first fetch.
+ * With no end, it ends at the read time. A fault before its fix and the time after the copy of a log are not in it.
  */
-export function measureSite(site: string, times: readonly number[], now: number, limit: number = FETCH_GAP_MS): { readonly ok: true; readonly measure: ChanceMeasure } | { readonly ok: false; readonly reason: string } {
-  const first = times[0];
-  if (first === undefined || now - first < MIN_LOG_HOURS * HOUR_MS) return { ok: false, reason: `The log of the site ${site} has less than ${String(MIN_LOG_HOURS)} hours of fetch events.` };
-  const window: TimeWindow = { from: first, to: now };
-  const down = downShare(fetchGapTime(times, now, limit), window);
+export interface LogWindow {
+  /** The start of the window. A gap from the start to the first fetch in the window is a down time. */
+  readonly from?: number | undefined;
+  /** The end of the window. For a copy of a log, this is the time of the copy. */
+  readonly to?: number | undefined;
+}
+
+/**
+ * This function gives the measured chance input of a site from the fetch times of the log of its live copy. The window
+ * starts at the first fetch and ends at `now`, or it is `window`. Only the fetches in the window count. It gives a
+ * reason and no input for a window shorter than `MIN_LOG_HOURS`.
+ */
+export function measureSite(site: string, times: readonly number[], now: number, limit: number = FETCH_GAP_MS, window: LogWindow = {}): { readonly ok: true; readonly measure: ChanceMeasure } | { readonly ok: false; readonly reason: string } {
+  const to = window.to ?? now;
+  const inside = times.filter((time) => (window.from === undefined || time >= window.from) && time <= to);
+  const from = window.from ?? inside[0];
+  if (from === undefined || inside.length === 0 || to - from < MIN_LOG_HOURS * HOUR_MS) return { ok: false, reason: `The log of the site ${site} has less than ${String(MIN_LOG_HOURS)} hours of fetch events in its window.` };
+  const span: TimeWindow = { from, to };
+  const down = downShare(fetchGapTime(window.from === undefined ? inside : [from, ...inside], to, limit), span);
   const low = 1 - down.interval.high;
   const source =
-    `the fetch events of the log of the site ${site} from ${dayOf(window.from)} to ${dayOf(window.to)}: ` +
+    `the fetch events of the log of the site ${site} from ${dayOf(span.from)} to ${dayOf(span.to)}: ` +
     `${String(down.downHours)} of ${String(down.hours)} hours down (no fetch for more than ${String(limit / 60_000)} minutes), ` +
     `works ${(1 - down.share).toFixed(6)}, 95% Wilson interval ${low.toFixed(6)} to ${(1 - down.interval.low).toFixed(6)}, the input is the low end`;
-  return { ok: true, measure: { input: { id: siteFragment(site), works: low, kind: "measured", source }, down, window } };
+  return { ok: true, measure: { input: { id: siteFragment(site), works: low, kind: "measured", source }, down, window: span } };
+}
+
+/**
+ * This function gives the time of the last event of any type in a runtime log file, or `undefined` for a log with no
+ * event. A live copy writes events all the time. Thus a last event long before the end of a window tells that the file
+ * is a copy. Then the end of the window is not the time of the copy (AL-215).
+ */
+export function readLogEnd(path: string): number | undefined {
+  const db = openDatabase(path, { readOnly: true });
+  try {
+    const row = db.prepare("SELECT max(at) AS last FROM events").get();
+    const last = row === undefined || row["last"] === null ? Number.NaN : Date.parse(String(row["last"]));
+    return Number.isFinite(last) ? last : undefined;
+  } finally {
+    db.close();
+  }
+}
+
+/** This function tells if a time is in a log window. A window with no end has no limit at that end. */
+export function inLogWindow(time: number, window: LogWindow): boolean {
+  return (window.from === undefined || time >= window.from) && (window.to === undefined || time <= window.to);
 }
 
 /** This function reads the times of the fetch events of a runtime log file, in their order. It opens the file to read only. */
@@ -260,14 +296,22 @@ export function readChannelCalls(path: string, channel: string, limit: number = 
  * copies (AL-147). Each hour with a counted call is one trial. A call counts when the service answered, or when it
  * failed with a kind of `DOWN_CALL_KINDS` while the network of its copy worked. An hour is down when it has a counted
  * failure and no answered call of any copy. Thus a fault of the path of one copy is not a down time of the service.
+ *
+ * An hour that overlaps a span of `away` is not a trial (AL-216). These are the hours when the status page of a
+ * provider of the path showed that provider down. They belong to the measure of the provider.
  */
-export function measureChannel(chance: PartChance, calls: readonly CallRead[], now: number): PartMeasure {
+export function measureChannel(chance: PartChance, calls: readonly CallRead[], now: number, away: readonly TimeWindow[] = []): PartMeasure {
   const channel = chance.channel;
   if (channel === undefined) return { ok: false, reason: "The chance names no channel." };
   const hours = new Map<number, { answered: boolean; failed: boolean }>();
+  const skipped = new Set<number>();
   for (const call of calls) {
     if (!call.answered && !call.network) continue;
     const hour = Math.floor(call.time / HOUR_MS);
+    if (away.some((span) => span.from < (hour + 1) * HOUR_MS && span.to > hour * HOUR_MS)) {
+      skipped.add(hour);
+      continue;
+    }
     const entry = hours.get(hour) ?? { answered: false, failed: false };
     if (call.answered) entry.answered = true;
     else entry.failed = true;
@@ -283,15 +327,21 @@ export function measureChannel(chance: PartChance, calls: readonly CallRead[], n
   const source =
     `the calls of the channel ${channel} in the logs of the live copies from ${dayOf(window.from)} to ${dayOf(window.to)}: ` +
     `${String(downHours)} of ${String(trials)} hours with calls down (a call failed by network, time-out or server error, and no call had an answer), ` +
+    (skipped.size === 0 ? "" : `less ${countOf(skipped.size, "hour")} when a status page showed a provider of the path down, `) +
     `works ${(1 - down.share).toFixed(6)}, 95% Wilson interval ${low.toFixed(6)} to ${(1 - down.interval.low).toFixed(6)}, the input is the low end`;
   return { ok: true, chance: { ...chance, works: low, kind: "measured", source }, measure: { input: { id: chance.part, works: low, kind: "measured", source }, down, window } };
 }
 
 /**
  * This function measures each chance of a base that names a channel, from the calls of that channel (AL-147). `calls`
- * gives the calls of a channel from all logs. A chance with a short record keeps its input.
+ * gives the calls of a channel from all logs. A chance with a short record keeps its input. `pages` are the measures
+ * from status pages (`measureBase`). The rules against a double count (AL-216):
+ * - A chance that names a status page and a channel keeps its page measure. The page measures the provider, and the
+ *   calls measure the path that needs it. Thus the channel goes on the chance of the path.
+ * - The call measure of a path leaves out each hour when the page of a provider showed it down. This rule applies
+ *   to each provider whose failure stops the path in the stack.
  */
-export function measureBaseCalls(base: PlacementBase, calls: (channel: string) => readonly CallRead[], now: number): BaseMeasure {
+export function measureBaseCalls(base: PlacementBase, calls: (channel: string) => readonly CallRead[], now: number, pages: readonly ChanceMeasure[] = []): BaseMeasure {
   const chances: PartChance[] = [];
   const lines: string[] = [];
   const measures: ChanceMeasure[] = [];
@@ -300,7 +350,15 @@ export function measureBaseCalls(base: PlacementBase, calls: (channel: string) =
       chances.push(chance);
       continue;
     }
-    const measured = measureChannel(chance, calls(chance.channel), now);
+    if (chance.status !== undefined) {
+      chances.push(chance);
+      lines.push(`The base input ${chance.part} keeps its ${chance.kind} input from its status page: it also names the channel ${chance.channel}. Put the channel on the chance of the path that needs ${chance.part} (AL-216).`);
+      continue;
+    }
+    // A path that does not work with no part down, or that is not in the stack, has no provider to leave out.
+    const alive = works(base.stack, chance.part);
+    const away = alive ? pages.filter((page) => page.input.id !== chance.part && !works(base.stack, chance.part, [page.input.id])).flatMap((page) => page.spans ?? []) : [];
+    const measured = measureChannel(chance, calls(chance.channel), now, away);
     if (measured.ok) {
       chances.push(measured.chance);
       measures.push(measured.measure);
@@ -323,21 +381,25 @@ export function isDown(incident: HistoryIncident): boolean {
  * lasts to the end of the window. The time where two incidents overlap counts one time.
  */
 export function downTime(incidents: readonly HistoryIncident[], window: TimeWindow): number {
+  return downSpans(incidents, window).reduce((total, span) => total + span.to - span.from, 0);
+}
+
+/**
+ * This function gives the down spans of the incidents in a window, in their order. Two incidents that overlap give one
+ * span. An incident that is not resolved lasts to the end of the window.
+ */
+export function downSpans(incidents: readonly HistoryIncident[], window: TimeWindow): readonly TimeWindow[] {
   const spans = incidents
     .map((incident) => [Math.max(incident.start, window.from), Math.min(incident.end ?? window.to, window.to)] as const)
     .filter(([start, end]) => end > start)
     .sort((a, b) => a[0] - b[0]);
-  let total = 0;
-  let open: number | undefined;
-  let close = 0;
+  const merged: TimeWindow[] = [];
   for (const [start, end] of spans) {
-    if (open === undefined || start > close) {
-      if (open !== undefined) total += close - open;
-      open = start;
-      close = end;
-    } else close = Math.max(close, end);
+    const last = merged.at(-1);
+    if (last === undefined || start > last.to) merged.push({ from: start, to: end });
+    else merged[merged.length - 1] = { from: last.from, to: Math.max(last.to, end) };
   }
-  return open === undefined ? total : total + close - open;
+  return merged;
 }
 
 /** The down share of one part over a window. */
@@ -372,6 +434,8 @@ export interface ChanceMeasure {
   readonly down: DownShare;
   /** The window of the history. */
   readonly window: TimeWindow;
+  /** The down spans of a measure from a status page, in its window (AL-216). A call measure leaves out these hours. */
+  readonly spans?: readonly TimeWindow[] | undefined;
 }
 
 /** The history of one page: its incidents and the names of its components. */
@@ -422,8 +486,9 @@ function sourceText(feed: FeedRule, window: TimeWindow, down: DownShare): string
 }
 
 function measureOf(id: string, feed: FeedRule, incidents: readonly HistoryIncident[], window: TimeWindow): ChanceMeasure {
-  const down = downShare(downTime(incidents, window), window);
-  return { input: { id, works: 1 - down.interval.high, kind: "measured", source: sourceText(feed, window, down) }, down, window };
+  const spans = downSpans(incidents, window);
+  const down = downShare(spans.reduce((total, span) => total + span.to - span.from, 0), window);
+  return { input: { id, works: 1 - down.interval.high, kind: "measured", source: sourceText(feed, window, down) }, down, window, spans };
 }
 
 /**
@@ -616,6 +681,46 @@ export interface BaseMeasure {
   readonly lines: readonly string[];
   /** The measure of each measured part, by the id of the part. */
   readonly measures: readonly ChanceMeasure[];
+}
+
+/**
+ * The estimate of a measured input from its down share (AL-147). `low` is the low end of the 95% Wilson interval, for
+ * a bound. `mean` is the Jeffreys posterior mean, (good + 1/2) / (hours + 1), for a point value. The low end of a
+ * short record with no down hour falls with the length of the record. The mean does not.
+ */
+export type Estimate = "low" | "mean";
+
+/** The estimates, in the order of the option `--estimate`. */
+export const ESTIMATES: readonly Estimate[] = ["low", "mean"];
+
+/** The text of the estimate of an input, for a source text. */
+const ESTIMATE_TEXT: Readonly<Record<Estimate, string>> = { low: "the input is the low end", mean: "the input is the Jeffreys posterior mean" };
+
+/**
+ * This function gives a measure with the input of an estimate. The low end gives the measure as it is. The source text
+ * tells the estimate and its value.
+ */
+export function estimated(measure: ChanceMeasure, estimate: Estimate): ChanceMeasure {
+  if (estimate === "low") return measure;
+  const { hours, downHours } = measure.down;
+  const works = proportionMean(hours - downHours, hours);
+  const text = `${ESTIMATE_TEXT.mean} ${works.toFixed(6)}`;
+  const source = measure.input.source.includes(ESTIMATE_TEXT.low) ? measure.input.source.replace(ESTIMATE_TEXT.low, text) : `${measure.input.source}, ${text}`;
+  return { ...measure, input: { ...measure.input, works, source } };
+}
+
+/**
+ * This function gives a base with the input of an estimate for each measured chance. `measures` are the measures of
+ * the chances of the base. A later measure of a part replaces an earlier one.
+ */
+export function estimatedBase(base: PlacementBase, measures: readonly ChanceMeasure[], estimate: Estimate): PlacementBase {
+  if (estimate === "low") return base;
+  const byPart = new Map(measures.map((measure) => [measure.input.id, estimated(measure, estimate).input] as const));
+  const chances = (base.chances ?? []).map((chance) => {
+    const input = byPart.get(chance.part);
+    return input === undefined || chance.kind !== "measured" ? chance : { ...chance, works: input.works, source: input.source };
+  });
+  return { ...base, chances };
 }
 
 /**

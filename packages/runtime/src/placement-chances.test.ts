@@ -11,12 +11,16 @@ import {
   codePlace,
   DAY_MS,
   downShare,
+  downSpans,
   downTime,
+  estimated,
+  estimatedBase,
   feedOf,
   FETCH_GAP_MS,
   fetchGapTime,
   googleHistory,
   historyWindow,
+  inLogWindow,
   HISTORY_GAPS,
   HISTORY_SOURCES,
   HOUR_MS,
@@ -30,9 +34,11 @@ import {
   measureSite,
   readChannelCalls,
   readFetchTimes,
+  readLogEnd,
   readPageHistory,
   withMeasures,
   type CallRead,
+  type ChanceMeasure,
   type HistorySource,
 } from "./placement-chances.ts";
 import { callsEvent } from "./events.ts";
@@ -94,6 +100,15 @@ describe("the method of the down share", () => {
     expect(downTime(INCIDENTS.filter((each) => each.id === "o1"), window)).toBe(2 * HOUR_MS);
     expect(downTime(INCIDENTS.filter((each) => each.id === "old"), window)).toBe(0);
     expect(downTime([], window)).toBe(0);
+  });
+
+  it("merges the down spans of incidents that overlap, and their sum is the down time", () => {
+    const window = { from: NOW - 60 * DAY_MS, to: NOW };
+    const both = INCIDENTS.filter((each) => each.id === "p1" || each.id === "p2");
+    const spans = downSpans(both, window);
+    expect(spans).toHaveLength(1);
+    expect(spans.reduce((total, span) => total + span.to - span.from, 0)).toBe(downTime(both, window));
+    expect(downSpans([], window)).toEqual([]);
   });
 
   it("counts a part of an hour as a whole hour, and refuses a window with no whole hour", () => {
@@ -211,6 +226,66 @@ describe("the measured chance of a site from its log", () => {
     expect(measureSite("site-a", [], NOW).ok).toBe(false);
   });
 
+  it("counts only the fetches in the window of a log (AL-215)", () => {
+    // A fetch each minute for 30 hours, with a fault of 3 hours in hour 2. The copy of the log ends 20 minutes before
+    // the read time. With no window, the fault and the time after the copy are down times.
+    const begin = NOW - 30 * HOUR_MS;
+    const copyEnd = NOW - 20 * MINUTE;
+    const fix = begin + 5 * HOUR_MS;
+    const steady = Array.from({ length: 30 * 60 }, (_, index) => begin + index * MINUTE).filter((time) => time <= copyEnd);
+    const open = measureSite("site-a", steady, NOW);
+    expect(open.ok && open.measure.down.downHours).toBe(1);
+    const copied = measureSite("site-a", steady, NOW, FETCH_GAP_MS, { to: copyEnd });
+    expect(copied.ok && copied.measure.down.downHours).toBe(0);
+    const log = steady.filter((time) => time < begin + 2 * HOUR_MS || time >= fix);
+    const closed = measureSite("site-a", log, NOW, FETCH_GAP_MS, { from: fix, to: copyEnd });
+    expect(closed.ok).toBe(true);
+    if (!closed.ok) return;
+    expect(closed.measure.down.downHours).toBe(0);
+    expect(closed.measure.window).toEqual({ from: fix, to: copyEnd });
+    expect(closed.measure.input.source).toContain("0 of");
+    // The end alone leaves the fault in the window: 3 hours and 1 minute.
+    const ended = measureSite("site-a", log, NOW, FETCH_GAP_MS, { to: copyEnd });
+    expect(ended.ok && ended.measure.down.downHours).toBe(4);
+  });
+
+  it("counts the gap from the start of a window to its first fetch, and refuses a short window", () => {
+    const begin = NOW - 30 * HOUR_MS;
+    const log = Array.from({ length: 30 * 60 }, (_, index) => begin + index * MINUTE);
+    const early = measureSite("site-a", log, NOW, FETCH_GAP_MS, { from: begin - 10 * MINUTE, to: NOW - MINUTE });
+    expect(early.ok && early.measure.down.downHours).toBe(1);
+    const short = measureSite("site-a", log, NOW, FETCH_GAP_MS, { from: NOW - 23 * HOUR_MS });
+    expect(short.ok).toBe(false);
+    if (!short.ok) expect(short.reason).toContain("in its window");
+    expect(measureSite("site-a", log, NOW, FETCH_GAP_MS, { from: NOW + HOUR_MS }).ok).toBe(false);
+  });
+
+  it("tells if a time is in a log window, with an open end on each side", () => {
+    expect(inLogWindow(5, {})).toBe(true);
+    expect(inLogWindow(5, { from: 5, to: 5 })).toBe(true);
+    expect(inLogWindow(4, { from: 5 })).toBe(false);
+    expect(inLogWindow(6, { to: 5 })).toBe(false);
+  });
+
+  it("reads the time of the last event of any type, and none for an empty log", () => {
+    const folder = mkdtempSync(join(tmpdir(), "alerts-log-end-"));
+    try {
+      const path = join(folder, "runtime.sqlite");
+      const db = openDatabase(path);
+      db.exec("CREATE TABLE events (seq INTEGER PRIMARY KEY, id TEXT NOT NULL UNIQUE, at TEXT NOT NULL, type TEXT NOT NULL, body TEXT NOT NULL) STRICT");
+      db.close();
+      expect(readLogEnd(path)).toBeUndefined();
+      const again = openDatabase(path);
+      const add = again.prepare("INSERT INTO events (id, at, type, body) VALUES (?, ?, ?, '{}')");
+      add.run("a", "2026-01-01T00:00:00.000Z", "fetch");
+      add.run("b", "2026-01-01T00:07:00.000Z", "delivery");
+      again.close();
+      expect(readLogEnd(path)).toBe(at("2026-01-01T00:07:00.000Z"));
+    } finally {
+      rmSync(folder, { recursive: true, force: true });
+    }
+  });
+
   it("reads the fetch times of a log file, and no other event", () => {
     const folder = mkdtempSync(join(tmpdir(), "alerts-site-log-"));
     try {
@@ -272,6 +347,81 @@ describe("the measure of a shared channel from its calls (AL-147)", () => {
     const short = measureBaseCalls(base, () => [], NOW);
     expect(short.base.chances?.[0]).toEqual(CHANCE);
     expect(short.lines[0]).toContain("keeps its assumed input");
+  });
+
+  describe("the call measure of a path and the page measure of its provider (AL-216)", () => {
+    const stack = {
+      format: "system-stack/1",
+      parts: [
+        { id: "voice-api", kind: "service" },
+        { id: "other-api", kind: "service" },
+        { id: "call-path", kind: "service", needs: [{ all: ["voice-api"] }] },
+      ],
+    } as unknown as PlacementBase["stack"];
+    const PATH: PartChance = { part: "call-path", works: 0.99, kind: "assumed", source: "an assumed input", channel: "call" };
+    const status: StatusRef = { host: "status.example.com", read: "api" };
+    const PROVIDER: PartChance = { part: "voice-api", works: 0.999, kind: "measured", source: "a page measure", status, channel: "call" };
+    const page = (id: string, spans: readonly { from: number; to: number }[]): ChanceMeasure => {
+      const window = { from: START - 30 * DAY_MS, to: NOW };
+      return { input: { id, works: 0.999, kind: "measured", source: "a page measure" }, down: downShare(spans.reduce((total, span) => total + span.to - span.from, 0), window), window, spans };
+    };
+    // Hour 3: the calls failed with a working network. Hour 10: all calls had an answer.
+    const calls: CallRead[] = [...answered.filter((_, hour) => hour !== 3), { time: START + 3 * HOUR_MS + 60_000, answered: false, network: true }];
+    const base: PlacementBase = { stack, part: "call-path", chances: [PATH, PROVIDER] };
+
+    it("leaves out the hours when the page of a provider of the path showed it down", () => {
+      const pages = [page("voice-api", [{ from: START + 3 * HOUR_MS + 600_000, to: START + 3 * HOUR_MS + 1_200_000 }]), page("other-api", [{ from: START + 10 * HOUR_MS, to: START + 11 * HOUR_MS }])];
+      const plain = measureBaseCalls(base, () => calls, NOW);
+      expect(plain.measures[0]?.down).toMatchObject({ hours: 48, downHours: 1 });
+      const measured = measureBaseCalls(base, () => calls, NOW, pages);
+      // The provider hour 3 is not a trial of the path. The hour 10 of a part that the path does not need stays.
+      expect(measured.measures[0]?.down).toMatchObject({ hours: 47, downHours: 0 });
+      expect(measured.base.chances?.[0]?.source).toContain("less 1 hour when a status page showed a provider of the path down");
+    });
+
+    it("gives the call measure as it is when no call hour falls in a provider down hour", () => {
+      const late = [page("voice-api", [{ from: START + 100 * HOUR_MS, to: START + 102 * HOUR_MS }])];
+      expect(measureBaseCalls(base, () => calls, NOW, late)).toEqual(measureBaseCalls(base, () => calls, NOW));
+    });
+
+    it("keeps the page measure of a chance that names a page and a channel", () => {
+      const measured = measureBaseCalls(base, () => calls, NOW);
+      expect(measured.base.chances?.[1]).toEqual(PROVIDER);
+      expect(measured.measures.map((measure) => measure.input.id)).toEqual(["call-path"]);
+      expect(measured.lines[1]).toContain("keeps its measured input from its status page");
+    });
+
+    it("leaves out no hour for a path that is not in the stack", () => {
+      const lost: PlacementBase = { ...base, chances: [{ ...PATH, part: "lost-path" }] };
+      const pages = [page("voice-api", [{ from: START + 3 * HOUR_MS, to: START + 4 * HOUR_MS }])];
+      expect(measureBaseCalls(lost, () => calls, NOW, pages).measures[0]?.down).toMatchObject({ hours: 48, downHours: 1 });
+    });
+  });
+
+  describe("the estimate of a measured input (AL-147)", () => {
+    const calls: CallRead[] = [...answered.slice(0, 35)];
+    const measured = measureChannel(CHANCE, calls, NOW);
+    if (!measured.ok) throw new Error(measured.reason);
+
+    it("gives the low end as it is, and the Jeffreys mean with its text", () => {
+      expect(estimated(measured.measure, "low")).toBe(measured.measure);
+      const mean = estimated(measured.measure, "mean");
+      expect(mean.input.works).toBeCloseTo(35.5 / 36, 12);
+      expect(mean.input.works).toBeGreaterThan(measured.measure.input.works);
+      expect(mean.input.source).toContain("the input is the Jeffreys posterior mean 0.986111");
+      expect(mean.input.source).not.toContain("the input is the low end");
+      expect(mean.down).toEqual(measured.measure.down);
+    });
+
+    it("sets the mean on each measured chance of a base, and keeps the other chances", () => {
+      const other: PartChance = { part: "feed-a", works: 0.9, kind: "assumed", source: "an assumed input" };
+      const base: PlacementBase = { stack: { format: "system-stack/1", parts: [] } as unknown as PlacementBase["stack"], part: "send", chances: [measured.chance, other] };
+      expect(estimatedBase(base, [measured.measure], "low")).toBe(base);
+      const mean = estimatedBase(base, [measured.measure], "mean");
+      expect(mean.chances?.[0]?.works).toBeCloseTo(35.5 / 36, 12);
+      expect(mean.chances?.[0]?.channel).toBe("push");
+      expect(mean.chances?.[1]).toEqual(other);
+    });
   });
 
   it("reads the calls of one channel from the calls events of a log file", () => {

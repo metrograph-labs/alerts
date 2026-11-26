@@ -16,7 +16,7 @@
     "@mark1russell7/alerts-format-cap": "workspace:*",
     "@mark1russell7/alerts-format-nws": "workspace:*",
     "@mark1russell7/algebra": "^0.9.9",
-    "@mark1russell7/service": "^0.12.2",
+    "@mark1russell7/service": "^0.12.4",
     "@mark1russell7/text": "^0.0.18",
     "@xmpp/client": "^0.14.0"
   },

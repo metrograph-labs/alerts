@@ -601,6 +601,14 @@ A copy that starts again and again is not steady (AL-108). It answers the exchan
 - A copy of an older build tells nothing. Its watch has no `unsteadySince`, and a read that passes ends `unread` as before.
 - On 2026-11-21, a copy made 125 starts. The line `unread` of the other copy opened at each stop and ended at each start, and no line told of the loop.
 
+A copy that deploys tells the other copies (AL-208). A copy that stages is up and steady, but it stops soon.
+
+- Each command of `deploy.ts` that takes the deploy lock writes the deploy mark `deploying.json` in the host folder. Its end is 1 hour after the take of the lock.
+- At the release of the lock, the end moves to 2 minutes later. Thus the mark also covers a restart after a swap.
+- The answer of the exchange gives the end of the mark (`deployUntil`) while the mark did not end. The watch keeps it on its own clock (`CopyWatch.deployUntil`), and `GET /status` gives it.
+- A deploy does not stop its runtime while another copy has a mark that did not end.
+- Before that check, the deploy waits for a read of each other copy that started after its own mark. Thus two deploys that start at about the same time both refuse, and no deploy stops two copies.
+
 An account can stop the billing of a copy host at a spend limit. Then the host stops, and the line `unread` of the copy names the billing stop (AL-70).
 
 - The field `billing` of a peer in `copy.json` names a command: `argv`, a JSON `field` and the values of a stop (`stoppedWhen`). It names no provider.
@@ -2137,6 +2145,8 @@ A writer of the configuration does these steps, thus the live instance does not 
 
 The output of the check gives the count of the places, the people, the contacts and the policies, or the problems. It holds no value and no path.
 
+The check also refuses a file in which a system of `OPERATOR_SYSTEMS` has no watch (AL-121). A report of such a system reaches no person, thus nobody reads the check of that part of the system. The start of the runtime accepts such a file, because a start with one report that nobody reads is better than no start. A watch of an unknown system `alerts.*` is also a problem, because it matches no report.
+
 A writer of a part does these steps. The check reads `config.json` and the other parts, thus it finds an entry that is in two files.
 
 1. Write the new part in the folder `ALERTS_HOME`, not in the folder `parts`.
@@ -2198,7 +2208,7 @@ The format:
 
 The runtime:
 
-- The intake is the procedure `alerts.position` on the listener of the intake of the operator (`tellHost`). It needs the entry `tell`.
+- The intake is the procedure `alerts.position` on the listener of the intake of the operator (`runtimeHost`, AL-95). It needs the entry `tell`.
 - Give this URL to the phone: `http://<host>:<port>/tell/alerts/position`. A proxy of the private network takes the calls to the loopback listener.
 - The phone sends the token of `tell.token` as the password of HTTP Basic auth. A call with the Bearer token also passes.
 - The intake reads the JSON of OwnTracks, an open phone app: `_type` `location`, `lat`, `lon`, `acc` in meters and `tst` in seconds.
