@@ -2377,6 +2377,7 @@ The change has the parts of the incident that the copy knew at that time:
 - The change has the live parts, as the map has only live incidents. With no live part, it has each part, and `live` is false.
 - The level is the highest level over each person at that time, with the policy of the delivery and the mutes.
 - Two parts of an incident before their merge give one change. The change has the higher level and severity, and the areas of the two parts.
+- `certainty` is the highest CAP certainty of the parts of the change, from `observed` to `unknown`. A reader tells an observed event from a forecast with it. A payload of an older copy has no `certainty`, and a reader then uses `unknown`.
 - `places` has each watched place in the areas, in the order of the input places. The level of a place is the highest level of the assessments with the place. A matched place with no assessment has the level `none`. The map uses the same rule.
 - The time of entry comes from the clock of this copy. Thus a late import of a report of another copy comes after the `since` of a reader.
 
