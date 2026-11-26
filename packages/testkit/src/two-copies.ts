@@ -5,7 +5,7 @@
  *
  * Each arm has two runtimes on one case clock: `home` with rank 0 and `cloud` with rank 1. Each runtime has the delivery
  * times of an instance, a rank delay of 0 at `life-safety`, and the rank floor of an instance (`RANK_FLOOR`). Each copy
- * serves its log on a procedures host (`exchangeHost`). The other copy reads it with `exchangeCall` through a fault proxy
+ * serves its log on the procedures host of the runtime (`runtimeHost`). The other copy reads it with `exchangeCall` through a fault proxy
  * of `@mark1russell7/rigor-proxy`. The worker and the loop of the exchange are the parts of an instance. The case clock
  * moves `speed` times faster than real time, and the clock of each proxy has its speed and its start.
  *
@@ -38,13 +38,13 @@ import {
   EXCHANGE_EVERY,
   EXCHANGE_LIMIT,
   exchangeCall,
-  exchangeHost,
   exchangeLoop,
   exchangeWorker,
   openRuntime,
   openRuntimeLog,
   RANK_DELAY,
   RANK_FLOOR,
+  runtimeHost,
   type EntriesSource,
   type Runtime,
 } from "@mark1russell7/alerts-runtime";
@@ -234,7 +234,7 @@ function hostService(name: string): ServiceBuilder {
 
 /** This function starts the procedures host of a copy on the loopback, and it gives its port. */
 async function serveCopy(source: EntriesSource, name: string): Promise<{ readonly port: number; stop(): Promise<void> }> {
-  const host = exchangeHost({ source, token: TOKEN, listen: { host: "127.0.0.1", port: 0 } });
+  const host = runtimeHost({ exchange: { source, token: TOKEN, listen: { host: "127.0.0.1", port: 0 } } });
   const life = await host.declare(hostService(name)).run({ process: embeddedProcess() });
   const address = host.info.endpoints().find((endpoint) => endpoint.type === "http")?.address;
   if (address === undefined) {

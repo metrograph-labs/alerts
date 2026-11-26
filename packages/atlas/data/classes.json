@@ -1516,7 +1516,7 @@
       "FEMA Lifelines: Energy > Power Grid",
       "No hazard list names this class."
     ],
-    "gap": "The CPUC page lists utilities and past events only. Round 37: caloes-power-outages is later. Its read had no PSPS cause, and it states no licence.",
+    "gap": "The CPUC page lists utilities and past events only. Round 54: the Cal OES layer has no PSPS type, the PG&E site terms forbid bots, and the SCE portal is only for public safety partners.",
     "round": 1
   },
   {

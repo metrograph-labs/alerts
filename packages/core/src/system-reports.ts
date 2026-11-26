@@ -97,6 +97,25 @@ export const FUNCTION_SUBJECT = "alerts.function";
 /** The subject system of a watched place (AL-40). The id of a subject is the id of a place. */
 export const PLACE_SUBJECT = "alerts.place";
 
+/**
+ * These systems hold the subjects of the reports about the system itself (AL-121). A report of one of them reaches a
+ * person only when the person watches its system in `PersonWatch.subjects`. Thus each system needs a person who watches it.
+ * The drill, person, place and incident reports have their own routes, and they are not in the list.
+ */
+export const OPERATOR_SYSTEMS: readonly string[] = [
+  SOURCE_SUBJECT,
+  CHANNEL_SUBJECT,
+  CLOCK_SUBJECT,
+  LOG_SUBJECT,
+  COPY_SUBJECT,
+  STORE_SUBJECT,
+  LIMIT_SUBJECT,
+  FUNCTION_SUBJECT,
+];
+
+/** These systems are each system of the subjects of a report. A watch of another system `alerts.*` matches no report. */
+export const REPORT_SYSTEMS: readonly string[] = [...OPERATOR_SYSTEMS, DRILL_SUBJECT, INCIDENT_SUBJECT, PERSON_SUBJECT, PLACE_SUBJECT];
+
 /** The stages of a quota, from the first to the last. */
 export const QUOTA_STAGES: readonly QuotaStage[] = ["low", "reserve", "spent"];
 
