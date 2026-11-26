@@ -583,8 +583,7 @@ describe("the one deploy command (AL-186)", () => {
     const now = 1_000_000;
     expect(deployMarkEnd(deployMarkText({ since: now - 1_000, until: now + DEPLOY_MARK_TAIL }), now)).toBe(now + DEPLOY_MARK_TAIL);
     expect(deployMarkEnd(deployMarkText({ since: now - 1_000, until: now }), now)).toBeUndefined();
-    expect(deployMarkText({ since: 1, until: 2 })).toBe('{"since":1,"until":2}
-');
+    expect(deployMarkText({ since: 1, until: 2 })).toBe('{"since":1,"until":2}\n');
     for (const text of [undefined, "", "{", "[]", "null", '{"since":1}', '{"since":"1","until":2000000}', '{"since":3000000,"until":2000000}']) expect(deployMarkEnd(text, now)).toBeUndefined();
     expect(DEPLOY_MARK_FILE).toBe("deploying.json");
     expect(DEPLOY_MARK_TAIL).toBeGreaterThan(60_000);

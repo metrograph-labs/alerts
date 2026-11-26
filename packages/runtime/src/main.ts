@@ -103,7 +103,6 @@ const out = outputOf(timedLogger());
 // supervisor writes that output to the log file of the runtime, thus a liveness stop in a block has its cause on file.
 let blockWatch: BlockWatch | undefined;
 
-/** This function gives a port from the environment, or the fallback when the variable is not set. */
 // The text of the deploy mark of the host, or undefined (AL-208). Each answer of the exchange reads the small file again, thus a new mark shows at once.
 const markText = (path: string): string | undefined => {
   try {
@@ -113,6 +112,7 @@ const markText = (path: string): string | undefined => {
   }
 };
 
+/** This function gives a port from the environment, or the fallback when the variable is not set. */
 const port = (name: string, fallback: number): number => {
   const text = process.env[name];
   const value = text === undefined ? fallback : Number(text);

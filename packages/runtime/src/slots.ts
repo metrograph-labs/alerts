@@ -602,13 +602,13 @@ export function stopRefusal(copies: readonly CopyReadStatus[] | "down" | undefin
 export const DEPLOY_MARK_FILE = "deploying.json";
 
 /** The end of a deploy mark while a deploy command holds the deploy lock: 1 hour after the take of the lock (AL-208). */
-export const DEPLOY_MARK_SPAN = 60 * 60_000;
+export const DEPLOY_MARK_SPAN: number = 60 * 60_000;
 
 /**
  * The end of a deploy mark after the release of the deploy lock: 2 minutes (AL-208). The mark thus also covers a restart after a
  * swap. After that time, the other copies have no read of a stopped copy in their `maxAge`, or a read that is not steady.
  */
-export const DEPLOY_MARK_TAIL = 2 * 60_000;
+export const DEPLOY_MARK_TAIL: number = 2 * 60_000;
 
 /** The deploy mark of a host (AL-208): the take of the deploy lock and the end of the mark, in milliseconds since the epoch. */
 export interface DeployMark {
@@ -617,8 +617,7 @@ export interface DeployMark {
 }
 
 /** This function gives the text of the file of a deploy mark. */
-export const deployMarkText = (mark: DeployMark): string => `${JSON.stringify(mark)}
-`;
+export const deployMarkText = (mark: DeployMark): string => `${JSON.stringify(mark)}\n`;
 
 /** This function gives the end of the deploy mark of a file text, when it is after `now`. No file, a bad file or an old mark give `undefined`. */
 export function deployMarkEnd(text: string | undefined, now: number): number | undefined {
