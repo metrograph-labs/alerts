@@ -22,7 +22,7 @@
     "directory": "packages/core"
   },
   "license": "MIT",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "sideEffects": false,
   "main": "./src/index.ts",
@@ -57,7 +57,7 @@
     "@mark1russell7/geo": "^0.5.3",
     "@mark1russell7/interval": "^0.1.0",
     "@mark1russell7/optional": "^1.5.0",
-    "@mark1russell7/package-id": "^0.0.2",
+    "@mark1russell7/package-id": "^0.1.0",
     "@mark1russell7/quantity": "^0.4.3",
     "@mark1russell7/rigor-generators": "^0.2.4",
     "@mark1russell7/rigor-statistics": "^0.2.21",
