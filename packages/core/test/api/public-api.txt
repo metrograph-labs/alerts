@@ -30,6 +30,7 @@ BalanceStage: build/index.d.ts#BalanceStage
 BaselinePolicy: build/index.d.ts#BaselinePolicy
 Breadth: build/index.d.ts#Breadth
 BucketReads: build/index.d.ts#BucketReads
+CANARY_LIMITS: build/index.d.ts#CANARY_LIMITS
 CAP_MESSAGE_SYSTEM: build/index.d.ts#CAP_MESSAGE_SYSTEM
 CATEGORIES: build/index.d.ts#CATEGORIES
 CATEGORY_LABELS: build/index.d.ts#CATEGORY_LABELS
@@ -56,6 +57,7 @@ COUNTED_CALLS: build/index.d.ts#COUNTED_CALLS
 COUNTED_FAILURES: build/index.d.ts#COUNTED_FAILURES
 COVERAGE_KIND: build/index.d.ts#COVERAGE_KIND
 CPE_SYSTEM: build/index.d.ts#CPE_SYSTEM
+CanaryLimitOptions: build/index.d.ts#CanaryLimitOptions
 CanaryResult: build/index.d.ts#CanaryResult
 CancelTarget: build/index.d.ts#CancelTarget
 CapMessageKeyInput: build/index.d.ts#CapMessageKeyInput
@@ -619,6 +621,7 @@ breadthOf: build/index.d.ts#breadthOf
 breadthUnits: build/index.d.ts#breadthUnits
 bucketOf: build/index.d.ts#bucketOf
 canReach: build/index.d.ts#canReach
+canaryLimit: build/index.d.ts#canaryLimit
 canaryResultSchema: build/index.d.ts#canaryResultSchema
 canonicalKind: build/index.d.ts#canonicalKind
 capMessageKey: build/index.d.ts#capMessageKey
@@ -898,6 +901,7 @@ positionSchema: build/index.d.ts#positionSchema
 probabilitySchema: build/index.d.ts#probabilitySchema
 providerBalanceSchema: build/index.d.ts#providerBalanceSchema
 pruneTombstones: build/index.d.ts#pruneTombstones
+publishGaps: build/index.d.ts#publishGaps
 quietWindowProblems: build/index.d.ts#quietWindowProblems
 quietWindowSchema: build/index.d.ts#quietWindowSchema
 quotaHealthSchema: build/index.d.ts#quotaHealthSchema
@@ -977,6 +981,7 @@ signalHistories: build/index.d.ts#signalHistories
 signalRate: build/index.d.ts#signalRate
 significanceSchema: build/index.d.ts#significanceSchema
 simplifyBasemap: build/index.d.ts#simplifyBasemap
+simplifyBasemapSteps: build/index.d.ts#simplifyBasemapSteps
 softwareMatchSchema: build/index.d.ts#softwareMatchSchema
 softwareMatchText: build/index.d.ts#softwareMatchText
 softwareMatches: build/index.d.ts#softwareMatches
@@ -1279,6 +1284,9 @@ export interface BucketReads {
   readonly units: readonly SignalUnit[];
 }
 
+### build/index.d.ts#CANARY_LIMITS
+export declare const CANARY_LIMITS: DelayLimitOptions;
+
 ### build/index.d.ts#CAP_MESSAGE_SYSTEM
 export declare const CAP_MESSAGE_SYSTEM = "cap";
 
@@ -1356,6 +1364,13 @@ export declare const COVERAGE_KIND = "system.coverage";
 
 ### build/index.d.ts#CPE_SYSTEM
 export declare const CPE_SYSTEM = "cpe";
+
+### build/index.d.ts#CanaryLimitOptions
+export interface CanaryLimitOptions {
+  readonly margin: Duration;
+  readonly quantile?: number;
+  readonly level?: number;
+}
 
 ### build/index.d.ts#CanaryResult
 export interface CanaryResult {
@@ -4929,6 +4944,9 @@ export declare function bucketOf(at: Instant, size?: Duration): Instant;
 ### build/index.d.ts#canReach
 export declare function canReach(input: RelevanceInput, graph: InterestGraph, policy: RelevancePolicy, options?: RelevanceOptions): boolean;
 
+### build/index.d.ts#canaryLimit
+export declare function canaryLimit(times: readonly Instant[], options: CanaryLimitOptions): Duration | undefined;
+
 ### build/index.d.ts#canaryResultSchema
 export declare const canaryResultSchema: z.ZodType<CanaryResult, CanaryResult>;
 
@@ -5777,6 +5795,9 @@ export declare const providerBalanceSchema: z.ZodType<ProviderBalance, ProviderB
 ### build/index.d.ts#pruneTombstones
 export declare function pruneTombstones(state: MergeState, at: Instant): MergeState;
 
+### build/index.d.ts#publishGaps
+export declare function publishGaps(times: readonly Instant[]): Duration[];
+
 ### build/index.d.ts#quietWindowProblems
 export declare function quietWindowProblems(window: QuietWindow): string[];
 
@@ -6013,6 +6034,9 @@ export declare const significanceSchema: z.ZodType<Significance, Significance>;
 
 ### build/index.d.ts#simplifyBasemap
 export declare function simplifyBasemap(regions: readonly MapRegion[], toleranceKm: number): MapRegion[];
+
+### build/index.d.ts#simplifyBasemapSteps
+export declare function simplifyBasemapSteps(regions: readonly MapRegion[], toleranceKm: number): SimplifySteps<MapRegion[]>;
 
 ### build/index.d.ts#softwareMatchSchema
 export declare const softwareMatchSchema: z.ZodType<SoftwareMatch, SoftwareMatch>;

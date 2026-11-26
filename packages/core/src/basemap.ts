@@ -1,10 +1,10 @@
 /**
  * This module makes the basemap small for the map. The outlines of the counties and zones of one state are many megabytes. The
  * page draws them in a view box of 1000 units. A position near the line of its neighbors, at less than half a unit, changes
- * no pixel. The module removes those positions with `simplifyRegions` of `@mark1russell7/geo`. The match of the places
+ * no pixel. The module removes those positions with the steps of `simplifyRegions` of `@mark1russell7/geo`. The match of the places
  * does not use this module: it reads the outlines of the store.
  */
-import { EARTH_MEAN_RADIUS_KM, simplifyRegions, type Region } from "@mark1russell7/geo";
+import { EARTH_MEAN_RADIUS_KM, simplifyRegionsSteps, type Region, type SimplifySteps } from "@mark1russell7/geo";
 import type { Position } from "./contracts.ts";
 import { regionRank, type MapRegion, type MapShape } from "./map.ts";
 
@@ -83,6 +83,21 @@ function shapesOf(region: Region): PolygonShape[] {
  * @throws GeoError - The errors of `simplifyRegions`, for example for a tolerance less than 0.
  */
 export function simplifyBasemap(regions: readonly MapRegion[], toleranceKm: number): MapRegion[] {
+  const steps = simplifyBasemapSteps(regions, toleranceKm);
+  for (;;) {
+    const next = steps.next();
+    if (next.done === true) return next.value;
+  }
+}
+
+/**
+ * This function gives the steps of `simplifyBasemap`, with the same result (AL-213). Each step does a bounded work of
+ * `simplifyRegionsSteps`. Thus a server gives its event loop a turn between two steps, and a large basemap does not stop
+ * the answers to its probes. The steps keep the regions of the input, so do not change them before the last step.
+ *
+ * @throws GeoError - The errors of `simplifyRegions`, at the step that examines the regions of a rank.
+ */
+export function* simplifyBasemapSteps(regions: readonly MapRegion[], toleranceKm: number): SimplifySteps<MapRegion[]> {
   const ranks = new Map<number, { readonly at: number[]; readonly regions: (Region)[] }>();
   for (const [at, region] of regions.entries()) {
     const geo = geoRegion(region.shapes.filter((shape): shape is PolygonShape => shape.type === "polygon"));
@@ -95,7 +110,7 @@ export function simplifyBasemap(regions: readonly MapRegion[], toleranceKm: numb
   }
   const simplified = new Map<number, PolygonShape[]>();
   for (const set of ranks.values()) {
-    const results = simplifyRegions(set.regions, toleranceKm);
+    const results = yield* simplifyRegionsSteps(set.regions, toleranceKm);
     for (const [index, at] of set.at.entries()) simplified.set(at, shapesOf(results[index]!));
   }
   return regions.map((region, at) => {

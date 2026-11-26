@@ -39,8 +39,8 @@ export function publishGaps(times: readonly Instant[]): Duration[] {
 }
 
 /**
- * This function gives the age limit of a canary from the publish times of a source: the upper bound of the quantile
- * of the gaps (`publishGaps`), plus the margin. The bound comes from `quantileInterval` of rigor-statistics, through
+ * This function gives the age limit of a canary from the publish times of a source. The limit is the upper bound of
+ * the quantile of the gaps (`publishGaps`), plus the margin. The bound comes from `quantileInterval` of rigor-statistics, through
  * `delayLimit`. A record with too few gaps for an upper bound gives `undefined`: no limit.
  */
 export function canaryLimit(times: readonly Instant[], options: CanaryLimitOptions): Duration | undefined {
