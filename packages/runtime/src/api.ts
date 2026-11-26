@@ -64,6 +64,11 @@ export interface CopyReadLine {
    * steady. A copy of an older build tells nothing, thus it has `null`.
    */
   readonly unsteadySince: Instant | null;
+  /**
+   * The end of the deploy mark of the copy, or `null` (AL-208). A deploy of this host does not stop the runtime before that
+   * time. A copy of an older build tells nothing, thus it has `null`.
+   */
+  readonly deployUntil: Instant | null;
 }
 
 /**
@@ -198,7 +203,7 @@ export function statusOf(loop: RuntimeLoop, outage?: { state(): OutageDeployStat
     ...(outage === undefined ? {} : { outage: outage.state() }),
     ...(start === undefined ? {} : { start }),
     ...(last?.modes === undefined ? {} : { modes: last.modes }),
-    ...(copies === undefined ? {} : { copies: copies.watches().map((watch) => ({ copy: watch.copy, readAt: watch.read?.at ?? null, unsteadySince: watch.unsteadySince ?? null })) }),
+    ...(copies === undefined ? {} : { copies: copies.watches().map((watch) => ({ copy: watch.copy, readAt: watch.read?.at ?? null, unsteadySince: watch.unsteadySince ?? null, deployUntil: watch.deployUntil ?? null })) }),
   };
 }
 

@@ -601,6 +601,14 @@ A copy that starts again and again is not steady (AL-108). It answers the exchan
 - A copy of an older build tells nothing. Its watch has no `unsteadySince`, and a read that passes ends `unread` as before.
 - On 2026-11-21, a copy made 125 starts. The line `unread` of the other copy opened at each stop and ended at each start, and no line told of the loop.
 
+A copy that deploys tells the other copies (AL-208). A copy that stages is up and steady, but it stops soon.
+
+- Each command of `deploy.ts` that takes the deploy lock writes the deploy mark `deploying.json` in the host folder. Its end is 1 hour after the take of the lock.
+- At the release of the lock, the end moves to 2 minutes later. Thus the mark also covers a restart after a swap.
+- The answer of the exchange gives the end of the mark (`deployUntil`) while the mark did not end. The watch keeps it on its own clock (`CopyWatch.deployUntil`), and `GET /status` gives it.
+- A deploy does not stop its runtime while another copy has a mark that did not end.
+- Before that check, the deploy waits for a read of each other copy that started after its own mark. Thus two deploys that start at about the same time both refuse, and no deploy stops two copies.
+
 An account can stop the billing of a copy host at a spend limit. Then the host stops, and the line `unread` of the copy names the billing stop (AL-70).
 
 - The field `billing` of a peer in `copy.json` names a command: `argv`, a JSON `field` and the values of a stop (`stoppedWhen`). It names no provider.

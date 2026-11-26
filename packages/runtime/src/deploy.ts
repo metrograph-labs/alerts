@@ -15,6 +15,8 @@
  *   a target slot that the live link names already, or a target slot with another commit.
  * - `stage`, `swap`, `relink`, `adopt` and `fold` hold the deploy lock in the host folder (AL-167). A second deploy on
  *   the host stops at its start. `status` takes no lock. It also tells the slot and the commit of the running runtime.
+ * - Each command that takes the deploy lock also writes the deploy mark `DEPLOY_MARK_FILE` (AL-208). The runtime tells the
+ *   other copies its end. Thus a deploy of another copy does not stop its runtime while this host deploys.
  * - `relink [a|b]` removes the `node_modules` folders of a slot and installs them again at its own path. With no
  *   name, it takes the other slot. For the live slot, stop the boot task first.
  * - On Windows, `adopt` also relinks slot a, because the junctions of pnpm name the old path of the checkout.
@@ -25,7 +27,7 @@
  * - `deploy <commit> [--page] [--alone]` does the whole deploy in one command (AL-186). Its steps are the stage and the swap.
  *   Then it folds when the fold version or the snapshot key changes, and it starts the new code. It stops the runtime only for a fold, or before the
  *   stage on a host with less free memory than `STAGE_MEMORY_FLOOR`. It stops the runtime only when each other copy had a
- *   read in the last `COPY_MAX_AGE`, and each other copy is steady (AL-204). A restart takes the runtime down too, thus
+ *   read in the last `COPY_MAX_AGE`, each other copy is steady (AL-204), and no other copy deploys (AL-208). A restart takes the runtime down too, thus
  *   the check comes before the swap. A host with no other copy stops only with `--alone`. At the end, the runtime must run
  *   the new commit, with a start after the begin of the deploy. On Windows, a stop and a start change the boot task.
  *
@@ -52,7 +54,7 @@ import { nodeHostPorts, probeOnce, startService, stopService, type ServiceOutcom
 import { errorMessage } from "@mark1russell7/text";
 import { createPrinter } from "@mark1russell7/text/print";
 import { alertsHome, readText as readFileText } from "./config.ts";
-import { COPY_MAX_AGE } from "./copy.ts";
+import { COPY_MAX_AGE, EXCHANGE_LIMIT } from "./copy.ts";
 import { HOST_PORTS, hostFileText, hostFolder, hostReadyWindow, hostTask, PROBE_TIMEOUT, readinessProbe, supervisorDiscovery } from "./host.ts";
 import { GOOD_FILE } from "./reload.ts";
 import {
@@ -61,6 +63,10 @@ import {
   copyReadsOf,
   DEPLOY_FILE,
   DEPLOY_LOCK_FILE,
+  DEPLOY_MARK_FILE,
+  DEPLOY_MARK_SPAN,
+  DEPLOY_MARK_TAIL,
+  deployMarkText,
   FOLD_FILE,
   foldChange,
   foldHeapLimit,
@@ -102,6 +108,7 @@ import {
   type FoldMemory,
   type CopyReadStatus,
   type DeployArgs,
+  type DeployMark,
   type ForeignLinks,
   type SlotName,
   type StartKeys,
@@ -118,6 +125,9 @@ const root = liveRoot(process.env, process.argv[1], join(fileURLToPath(new URL("
 const slots = await slotsOfCheckout(checkoutOf(root));
 const home = alertsHome(process.env, process.cwd());
 const deployPath = join(hostFolder(home), DEPLOY_FILE);
+// The deploy mark of this host (AL-208), and the time of its write by this command.
+const writeMark = (mark: DeployMark): Promise<void> => writeFileAtomic(join(hostFolder(home), DEPLOY_MARK_FILE), deployMarkText(mark));
+let markedAt: number | undefined;
 
 const readText = async (path: string): Promise<string | undefined> => {
   const file = await readFileText(() => readFile(path, "utf8"));
@@ -259,9 +269,21 @@ function outcomeProblem(outcome: ServiceOutcome): string | undefined {
   }
 }
 
-/** This function stops the deploy when a stop of the runtime is not safe at this time (AL-186, AL-204). */
+/**
+ * This function stops the deploy when a stop of the runtime is not safe at this time (AL-186, AL-204, AL-208). It first
+ * waits up to `COPY_MAX_AGE` for a read of each other copy that started after the deploy mark of this host. The middle of a
+ * read is `readAt`, thus a read with `readAt` after the mark plus `EXCHANGE_LIMIT` started after the mark.
+ */
 async function checkCopies(alone: boolean): Promise<void> {
-  const refusal = stopRefusal(await liveCopies(), Date.now(), COPY_MAX_AGE, alone);
+  const readAfter = markedAt === undefined ? undefined : markedAt + EXCHANGE_LIMIT;
+  const end = Date.now() + COPY_MAX_AGE;
+  let copies = await liveCopies();
+  const waits = (): boolean => readAfter !== undefined && copies !== undefined && copies !== "down" && copies.some((read) => read.readAt === null || read.readAt <= readAfter);
+  while (waits() && Date.now() < end) {
+    await sleep(2000);
+    copies = await liveCopies();
+  }
+  const refusal = stopRefusal(copies, Date.now(), COPY_MAX_AGE, alone, readAfter);
   if (refusal !== undefined) throw new Error(refusal);
 }
 
@@ -499,7 +521,18 @@ const [command, ...rest] = process.argv.slice(2);
 const target = command === "swap" ? parseSwapTarget(rest) : undefined;
 const deployArgs = command === "deploy" ? parseDeployArgs(rest) : undefined;
 // Each command that changes a slot or the live link holds the deploy lock (AL-167). Thus two deploys do not cross.
-const locked = (work: () => Promise<void>): Promise<void> => withDeployLock(join(hostFolder(home), DEPLOY_LOCK_FILE), nodeHostPorts(), work);
+// The command also writes the deploy mark (AL-208). At the release, the mark ends `DEPLOY_MARK_TAIL` later.
+const locked = (work: () => Promise<void>): Promise<void> =>
+  withDeployLock(join(hostFolder(home), DEPLOY_LOCK_FILE), nodeHostPorts(), async () => {
+    const since = Date.now();
+    await writeMark({ since, until: since + DEPLOY_MARK_SPAN });
+    markedAt = since;
+    try {
+      await work();
+    } finally {
+      await writeMark({ since, until: Date.now() + DEPLOY_MARK_TAIL }).catch((error: unknown) => print.error(`The write of the deploy mark failed: ${errorMessage(error)}`));
+    }
+  });
 let code = 0;
 try {
   if (command === "status" && rest.length === 0) await status();

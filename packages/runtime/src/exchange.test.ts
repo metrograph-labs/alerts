@@ -821,6 +821,42 @@ describe("two runtimes", () => {
       expect(bad.watches()[0]!.read).toBeDefined();
     });
 
+    it("keeps the end of the deploy mark of a copy on the clock of the reader (AL-208)", async () => {
+      const clock = fakeWallClock(T0);
+      const a = open("a", [], clock);
+      const b = open("b", [], clock);
+      let until: number | undefined = T0 + MINUTE;
+      let fail = false;
+      // The copy b is 2 s ahead of a. Thus its end is 2 s later on its own clock.
+      const call: ExchangeCall = async (_peer, input) => {
+        if (fail) throw new Error("The copy stopped.");
+        const answer = wire(serveEntries({ runtime: b.runtime, clock, configHash: HASH, deployUntil: () => until }, input)) as Record<string, unknown>;
+        return { ...answer, time: (answer["time"] as number) + 2 * SECOND, ...(until === undefined ? {} : { deployUntil: until + 2 * SECOND }) };
+      };
+      const worker = workerOf(a.runtime, call, clock);
+      await worker.round();
+      expect(worker.watches()[0]).toMatchObject({ read: { at: T0 }, deployUntil: T0 + MINUTE });
+      // A failed read keeps the end. A shift moves it.
+      fail = true;
+      await clock.advance(SECOND * 10);
+      await worker.round();
+      expect(worker.watches()[0]).toMatchObject({ deployUntil: T0 + MINUTE });
+      worker.shift(-4 * SECOND);
+      expect(worker.watches()[0]).toMatchObject({ deployUntil: T0 + MINUTE - 4 * SECOND });
+      // A read with no mark ends it.
+      fail = false;
+      until = undefined;
+      await worker.round();
+      expect(worker.watches()[0]).not.toHaveProperty("deployUntil");
+      // An end that is not a finite number gives none, and the read still passes.
+      const bad = workerOf(a.runtime, async (_peer, input) => ({ ...(wire(serveEntries({ runtime: b.runtime, clock, configHash: HASH }, input)) as object), deployUntil: "soon" }), clock);
+      expect((await bad.round()).problems).toEqual([]);
+      expect(bad.watches()[0]).not.toHaveProperty("deployUntil");
+      expect(bad.watches()[0]!.read).toBeDefined();
+      // The source with no mark gives no field.
+      expect(serveEntries({ runtime: b.runtime, clock, configHash: HASH, deployUntil: () => undefined }, { after: 0 })).not.toHaveProperty("deployUntil");
+    });
+
     it("tells that a start is steady after LOUD_STEADY of passes", () => {
       const pass = (at: number) => ({ at }) as Pass;
       expect(steadyPasses(undefined, undefined)).toBe(false);

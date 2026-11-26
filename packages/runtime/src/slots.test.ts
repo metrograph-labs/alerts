@@ -12,6 +12,11 @@ import {
   FOLD_FILE,
   foldChange,
   copyReadsOf,
+  DEPLOY_MARK_FILE,
+  DEPLOY_MARK_SPAN,
+  DEPLOY_MARK_TAIL,
+  deployMarkEnd,
+  deployMarkText,
   foldHeapLimit,
   FOLD_HEAP_RESERVE,
   keyChange,
@@ -531,18 +536,21 @@ describe("the one deploy command (AL-186)", () => {
     expect(copyReadsOf({ at: 1 })).toEqual([]);
     // A status of an older build has no field unsteadySince, thus the copy reads as steady (AL-204).
     expect(copyReadsOf({ copies: [{ copy: "b", readAt: 5 }, { copy: "c", readAt: null, unsteadySince: 4 }] })).toEqual([
-      { copy: "b", readAt: 5, unsteadySince: null },
-      { copy: "c", readAt: null, unsteadySince: 4 },
+      { copy: "b", readAt: 5, unsteadySince: null, deployUntil: null },
+      { copy: "c", readAt: null, unsteadySince: 4, deployUntil: null },
     ]);
     expect(copyReadsOf({ copies: [{ copy: "b", readAt: "5" }] })).toBeUndefined();
     expect(copyReadsOf({ copies: [{ copy: "b", readAt: 5, unsteadySince: "4" }] })).toBeUndefined();
+    // The end of a deploy mark (AL-208).
+    expect(copyReadsOf({ copies: [{ copy: "b", readAt: 5, unsteadySince: null, deployUntil: 9 }] })).toEqual([{ copy: "b", readAt: 5, unsteadySince: null, deployUntil: 9 }]);
+    expect(copyReadsOf({ copies: [{ copy: "b", readAt: 5, deployUntil: "9" }] })).toBeUndefined();
     expect(copyReadsOf({ copies: {} })).toBeUndefined();
     expect(copyReadsOf("text")).toBeUndefined();
   });
 
   it("stops the runtime only when each other copy had a recent read", () => {
     const now = 1_000_000;
-    const read = (copy: string, readAt: number | null, unsteadySince: number | null = null): CopyReadStatus => ({ copy, readAt, unsteadySince });
+    const read = (copy: string, readAt: number | null, unsteadySince: number | null = null, deployUntil: number | null = null): CopyReadStatus => ({ copy, readAt, unsteadySince, deployUntil });
     expect(stopRefusal([read("b", now - 10_000)], now, 60_000, false)).toBeUndefined();
     expect(stopRefusal([read("b", now - 10_000), read("c", now - 61_000)], now, 60_000, false)).toContain("The copies c had no read");
     expect(stopRefusal([read("b", null)], now, 60_000, true)).toContain("The copies b had no read");
@@ -555,6 +563,31 @@ describe("the one deploy command (AL-186)", () => {
     // The only copy stops only with the consent of the operator.
     expect(stopRefusal([], now, 60_000, false)).toContain("--alone");
     expect(stopRefusal([], now, 60_000, true)).toBeUndefined();
+  });
+
+  it("does not stop the runtime while another copy deploys, or before a read after the mark of this deploy (AL-208)", () => {
+    const now = 1_000_000;
+    const read = (copy: string, readAt: number | null, deployUntil: number | null = null): CopyReadStatus => ({ copy, readAt, unsteadySince: null, deployUntil });
+    expect(stopRefusal([read("b", now - 5_000, now + 60_000)], now, 60_000, false)).toContain("The copies b deploy at this time");
+    // A mark that ended is no deploy.
+    expect(stopRefusal([read("b", now - 5_000, now - 1)], now, 60_000, false)).toBeUndefined();
+    // With the time of the mark of this deploy, each other copy needs a read after it.
+    expect(stopRefusal([read("b", now - 5_000), read("c", now - 1_000)], now, 60_000, false, now - 3_000)).toContain("The copies b had no read after the deploy mark");
+    expect(stopRefusal([read("b", null)], now, 60_000, false, now - 3_000)).toContain("had no read in the last");
+    expect(stopRefusal([read("b", now - 1_000)], now, 60_000, false, now - 3_000)).toBeUndefined();
+    // Two deploys that start at about the same time: each read after the own mark shows the mark of the other, thus both refuse.
+    expect(stopRefusal([read("b", now - 1_000, now + DEPLOY_MARK_SPAN)], now, 60_000, false, now - 3_000)).toContain("deploy at this time");
+  });
+
+  it("reads the end of a deploy mark only while it did not end (AL-208)", () => {
+    const now = 1_000_000;
+    expect(deployMarkEnd(deployMarkText({ since: now - 1_000, until: now + DEPLOY_MARK_TAIL }), now)).toBe(now + DEPLOY_MARK_TAIL);
+    expect(deployMarkEnd(deployMarkText({ since: now - 1_000, until: now }), now)).toBeUndefined();
+    expect(deployMarkText({ since: 1, until: 2 })).toBe('{"since":1,"until":2}
+');
+    for (const text of [undefined, "", "{", "[]", "null", '{"since":1}', '{"since":"1","until":2000000}', '{"since":3000000,"until":2000000}']) expect(deployMarkEnd(text, now)).toBeUndefined();
+    expect(DEPLOY_MARK_FILE).toBe("deploying.json");
+    expect(DEPLOY_MARK_TAIL).toBeGreaterThan(60_000);
   });
 
   it("stops a running runtime only for a fold", () => {

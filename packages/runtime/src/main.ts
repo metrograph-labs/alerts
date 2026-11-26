@@ -41,7 +41,7 @@
  * check stops the runtime. The supervisor starts it again.
  */
 import { randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
@@ -90,7 +90,7 @@ import { shapeReport, zoneCodesText } from "./shapes.ts";
 import { openTransitCache, TRANSIT_FILE, transitReport, transitText } from "./transit.ts";
 import { hostFolder, signalWarning } from "./host.ts";
 import { recordRunningCode } from "./running.ts";
-import { checkoutOf, liveRoot, slotsOfCheckout } from "./slots.ts";
+import { checkoutOf, DEPLOY_MARK_FILE, deployMarkEnd, liveRoot, slotsOfCheckout } from "./slots.ts";
 import { openStartSnapshots, START_SNAPSHOTS_FOLDER, startReadText } from "./start-snapshot.ts";
 import { supervisor } from "./supervise.ts";
 import { outputOf, timedLogger } from "./output.ts";
@@ -104,6 +104,15 @@ const out = outputOf(timedLogger());
 let blockWatch: BlockWatch | undefined;
 
 /** This function gives a port from the environment, or the fallback when the variable is not set. */
+// The text of the deploy mark of the host, or undefined (AL-208). Each answer of the exchange reads the small file again, thus a new mark shows at once.
+const markText = (path: string): string | undefined => {
+  try {
+    return readFileSync(path, "utf8");
+  } catch {
+    return undefined;
+  }
+};
+
 const port = (name: string, fallback: number): number => {
   const text = process.env[name];
   const value = text === undefined ? fallback : Number(text);
@@ -383,7 +392,7 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
     copy,
     ...(tellIntake === undefined ? {} : { tell: tellIntake }),
     ...(positionIntake === undefined ? {} : { position: positionIntake }),
-    ...(token === undefined ? {} : { exchange: { call: exchangeCall({ token }), configHash: configHash(config.config) }, onExchange }),
+    ...(token === undefined ? {} : { exchange: { call: exchangeCall({ token }), configHash: configHash(config.config), deployUntil: () => deployMarkEnd(markText(join(hostFolder(home), DEPLOY_MARK_FILE)), Date.now()) }, onExchange }),
     onPass,
     // The output gets no secret, also when an error quotes a request.
     onError: (error, failures) => out.error(`A pass failed (${failures} in sequence): ${redactSecrets(errorMessage(error), values)}`),
