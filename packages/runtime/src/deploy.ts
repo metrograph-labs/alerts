@@ -30,6 +30,9 @@
  *   `COPY_MAX_AGE`, and each other copy must be steady (AL-204). No other copy can deploy (AL-208). A restart takes the runtime down too, thus
  *   the check comes before the swap. A host with no other copy stops only with `--alone`. At the end, the runtime must run
  *   the new commit, with a start after the begin of the deploy. On Windows, a stop and a start change the boot task.
+ * - `files <name> <source> [--alone]` writes one private file of the home folder: `config.json`, `secrets.env`, `copy.json`
+ *   or `parts/<name>.json` (AL-220). It stops the runtime with the checks of `deploy`, and folds when the snapshot key changes.
+ *   Then it starts the runtime. New files that give no key get the old text back. Do not write these files by hand.
  *
  * A swap back to older code is a rollback. Do it only when the new code wrote no new kind of event to the log.
  * When the files of the supervisor change, the stage and the swap tell it. The supervisor takes them only at a restart
@@ -81,6 +84,9 @@ import {
   memInfoOf,
   otherSlot,
   parseDeployArgs,
+  parseFilesArgs,
+  privatePath,
+  filesOutcome,
   parseDeployFile,
   parseSwapTarget,
   pnpmCall,
@@ -108,6 +114,7 @@ import {
   type FoldMemory,
   type CopyReadStatus,
   type DeployArgs,
+  type FilesArgs,
   type DeployMark,
   type ForeignLinks,
   type SlotName,
@@ -119,7 +126,7 @@ import { codeReport, deployEndProblem, readRunningCode } from "./running.ts";
 // The output of this command for a person goes through one printer, which removes the shapes of tokens (no raw console).
 const print = createPrinter({ out: process.stdout, err: process.stderr });
 
-const USAGE = "The command is: node src/deploy.ts status | adopt | stage <commit> [--page] | swap <a|b> <commit> | relink [a|b] | fold | deploy <commit> [--page] [--alone]";
+const USAGE = "The command is: node src/deploy.ts status | adopt | stage <commit> [--page] | swap <a|b> <commit> | relink [a|b] | fold | deploy <commit> [--page] [--alone] | files <name> <source> [--alone]";
 
 const root = liveRoot(process.env, process.argv[1], join(fileURLToPath(new URL(".", import.meta.url)), ".."));
 const slots = await slotsOfCheckout(checkoutOf(root));
@@ -370,6 +377,56 @@ async function deploy(args: DeployArgs): Promise<void> {
   print.line(`The deploy of ${sha.slice(0, 7)} is done: ${codeReport(await readLive(slots), await readRunningCode(hostFolder(home))).line}`);
 }
 
+/** This function gives the keys of the fold of the next start from the mode key of the live slot. A failed step gives undefined. */
+async function liveKeys(): Promise<StartKeys | undefined> {
+  const runtime = join(slots[await liveSlot()], "packages", "runtime");
+  const key = keyStep(runtime, home, process.execPath);
+  try {
+    return startKeysOf((await step("key", key.program, key.args, runtime, key.env)).stdout);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * This function writes one private file of the live home (AL-220). A change of the sources changes the key of the fold.
+ * Then a start with no fold folds the whole log. On a small host, that start is not ready in its window.
+ * The function reads the keys before the write. It stops the runtime after the check of the other copies. Then it writes the
+ * file and reads the keys again. A new key gets a fold before the start. New files that give no key get the old text back. The output names no text of a file.
+ */
+async function writeFiles(args: FilesArgs): Promise<void> {
+  const path = privatePath(home, args.name);
+  const next = await readFile(args.source, "utf8");
+  const old = await readText(path);
+  if (old === next) {
+    print.line(`The file ${args.name} has the same text. The command changes nothing.`);
+    return;
+  }
+  const before = await liveKeys();
+  const running = (await liveCopies()) !== "down";
+  if (running) await stopLive(args.alone);
+  let wrote = false;
+  try {
+    await writeFileAtomic(path, next);
+    wrote = true;
+    const outcome = filesOutcome(before, await liveKeys());
+    if (outcome === "bad") throw new Error(`The new ${args.name} gives no key of the fold. Look at the output of `main.ts key`.`);
+    if (outcome === "fold") {
+      print.line(`The key of the fold changes with the new ${args.name}, thus the fold comes before the start.`);
+      await foldLive();
+    } else print.line(`The key of the fold does not change, thus the start reads its snapshot.`);
+  } catch (error) {
+    if (wrote) {
+      await (old === undefined ? rm(path, { force: true }) : writeFileAtomic(path, old));
+      print.error(`A step failed after the write. The old ${args.name} is back.`);
+    }
+    throw error;
+  } finally {
+    if (running) await startLive();
+  }
+  print.line(`The new ${args.name} is in the home folder${running ? ", and the runtime is ready" : ". The runtime was not running, thus it stays stopped"}.`);
+}
+
 /** The runner of one step of a stage. */
 type StepRun = (name: string, program: string, args: readonly string[], cwd: string, env?: Readonly<Record<string, string>>) => Promise<CommandResult>;
 
@@ -520,6 +577,7 @@ async function swap(target: SwapTarget): Promise<void> {
 const [command, ...rest] = process.argv.slice(2);
 const target = command === "swap" ? parseSwapTarget(rest) : undefined;
 const deployArgs = command === "deploy" ? parseDeployArgs(rest) : undefined;
+const filesArgs = command === "files" ? parseFilesArgs(rest) : undefined;
 // Each command that changes a slot or the live link holds the deploy lock (AL-167). Thus two deploys do not cross.
 // The command also writes the deploy mark (AL-208). At the release, the mark ends `DEPLOY_MARK_TAIL` later.
 const locked = (work: () => Promise<void>): Promise<void> =>
@@ -546,6 +604,7 @@ try {
     await locked(async () => relink((rest[0] as SlotName | undefined) ?? otherSlot(await liveSlot())));
   } else if (command === "fold" && rest.length === 0) await locked(foldLive);
   else if (command === "deploy" && deployArgs !== undefined) await locked(() => deploy(deployArgs));
+  else if (command === "files" && filesArgs !== undefined) await locked(() => writeFiles(filesArgs));
   else {
     print.error(USAGE);
     code = 2;
