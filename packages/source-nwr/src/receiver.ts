@@ -11,16 +11,14 @@
 import type { Readable, Writable } from "node:stream";
 import { wallClock, type Cancel, type WallClock } from "@mark1russell7/algebra/clock";
 import { backoffDelay, type Backoff } from "@mark1russell7/service/backoff";
-import { spawnProgram } from "@procedures/shell/command";
+import { createLineSplitter, spawnProgram } from "@procedures/shell/command";
 import { errorMessage } from "@mark1russell7/text";
 import type { Instant } from "@mark1russell7/alerts";
 import type { LineFeed } from "./feed.ts";
 import { DECODER, decoderArgs, TUNER, tunerArgs, type TunerOptions } from "./programs.ts";
-import { createLineSplitter } from "./split.ts";
 
 export { checkHost, findOnPath, type FindProgram, type HostCheck, type ProgramCheck } from "./host.ts";
 export { DECODER, DECODER_SAMPLE_RATE, decoderArgs, NWR_FREQUENCIES, TUNER, tunerArgs, type TunerOptions } from "./programs.ts";
-export { createLineSplitter, type LineSplitter } from "./split.ts";
 
 /** One child process of the receiver. A `ChildProcess` of Node.js is one. A test gives a fake. */
 export interface ReceiverChild {

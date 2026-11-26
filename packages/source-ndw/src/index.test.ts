@@ -1,7 +1,7 @@
 import { checkWith, sourceDescriptorSchema, type Observation, type ObservationId } from "@mark1russell7/alerts";
 import { HostScheduler } from "polite-crawler/politeness";
 import { describe, expect, it } from "vitest";
-import { checkCanary, countBody, createNdwSource, FETCH_INTERVAL_MS, MIN_INTERVAL_MS, NDW_DESCRIPTOR, NDW_MEASURES, NDW_ORIGIN, PUBLISHED_MAX_AGE_MS, SOURCE_ID } from "./index.ts";
+import { checkCanary, countBody, createNdwSource, FETCH_INTERVAL_MS, MIN_INTERVAL_MS, NDW_DESCRIPTOR, NDW_MEASURES, NDW_ORIGIN, PUBLISHED_MAX_AGE_MS, RECORD_KIND, SOURCE_ID } from "./index.ts";
 
 const clock = { now: () => 0, sleep: async () => {} };
 const PUBLISHED = Date.parse("2026-11-25T01:12:00.002Z");
@@ -24,9 +24,19 @@ describe("createNdwSource", () => {
     expect(source.map({ observation: observe(PUBLISHED) }).readings?.length).toBe(7);
   });
 
-  it("describes a poll each 5 minutes with no key, no kind and seven count measures of the country, and passes the schema of the core", () => {
+  it("describes a snapshot poll each 5 minutes with no key, the kind of road incidents and seven count measures of the country, and passes the schema of the core", () => {
     expect(checkWith(sourceDescriptorSchema, NDW_DESCRIPTOR).tag).toBe("ok");
-    expect(NDW_DESCRIPTOR).toMatchObject({ id: SOURCE_ID, origins: [NDW_ORIGIN], dependsOn: ["provider:ndw"], kinds: [], coverage: [], transport: "poll", interval: FETCH_INTERVAL_MS, auth: "none" });
+    expect(NDW_DESCRIPTOR).toMatchObject({
+      id: SOURCE_ID,
+      origins: [NDW_ORIGIN],
+      dependsOn: ["provider:ndw"],
+      kinds: [RECORD_KIND],
+      coverage: [{ type: "code", system: "iso3166", code: "NL" }],
+      transport: "poll",
+      interval: FETCH_INTERVAL_MS,
+      auth: "none",
+      listing: "snapshot",
+    });
     expect(NDW_MEASURES.map((measure) => measure.id)).toEqual(["records", "accidents", "congestion", "obstructions", "closures", "works", "conditions"]);
     for (const measure of NDW_MEASURES) expect(measure).toMatchObject({ dimension: "road-events", unit: "{record}", area: "code", moves: "rise", cadence: FETCH_INTERVAL_MS });
     expect(new Set(NDW_MEASURES.map((measure) => measure.title)).size).toBe(NDW_MEASURES.length);

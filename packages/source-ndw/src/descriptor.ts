@@ -5,6 +5,7 @@
 import type { MeasureDeclaration, SourceDescriptor } from "@mark1russell7/alerts";
 
 import { ALL_RECORDS, GROUP_MEASURES, NDW_ORIGIN, RECORD_UNIT, SOURCE_ID } from "./map.ts";
+import { RECORD_KIND } from "./record.ts";
 
 /** The length of one minute, in milliseconds. */
 export const MINUTE_MS = 60_000;
@@ -40,22 +41,24 @@ export const NDW_MEASURES: readonly MeasureDeclaration[] = [
 ];
 
 /**
- * The descriptor of the NDW source. The source gives indicator readings and no event, so it has no kind and no coverage
- * of events. The file comes from one host of NDW. A publication that is too old tells of a stopped feed.
+ * The descriptor of the NDW source. The source gives indicator readings, and one report for each valid accident, closure
+ * and obstruction near a place with a position. Each complete fetch gives each of these records, so the source is a
+ * snapshot source. The file comes from one host of NDW. A publication that is too old tells of a stopped feed.
  */
 export const NDW_DESCRIPTOR: SourceDescriptor = {
   id: SOURCE_ID,
-  title: "NDW: the count of the road situations of the Netherlands by group, from the national road data portal",
+  title: "NDW: the road situations of the Netherlands, from the national road data portal: counts by group and the records near a place",
   origins: [NDW_ORIGIN],
   dependsOn: ["provider:ndw"],
   uses: ["internet", "dns", "power"],
-  kinds: [],
-  coverage: [],
+  kinds: [RECORD_KIND],
+  coverage: [{ type: "code", system: "iso3166", code: "NL" }],
   transport: "poll",
   interval: FETCH_INTERVAL_MS,
   slowAfter: 20_000,
   maxQuiet: 15 * MINUTE_MS,
   auth: "none",
+  listing: "snapshot",
   canary: "NDW writes the situation publication each minute. The check passes when the publication is at most 10 minutes older than its fetch.",
   measures: NDW_MEASURES,
 };
