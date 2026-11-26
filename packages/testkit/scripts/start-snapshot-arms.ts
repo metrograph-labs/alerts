@@ -7,8 +7,8 @@
  *
  * The script seeds one home for each size of the log, and a child of the mode `prepare` writes the snapshot of that home.
  * Before each child, the step `before` copies the home to a new folder. Thus each child starts on the same files.
- * The value of a child is the time from the start of its process to the end of the open with its first pass. The ready
- * window of the supervisor counts the same time. The line of the child also has the CPU time and the peak of the resident memory.
+ * The value of a child is the time from the start of its process to the end of the fold of its state. After that point,
+ * the probe `/readiness` of a live start passes soon. The line of the child also has the CPU time and the peak of the resident memory.
  *
  * The mode `verdict` reads the records of one or more jobs. For each arm and each value, it gives the growth over the
  * sizes of the log with `growthVerdict`. With the snapshot, the start does not grow with the age of the log. With no
@@ -28,6 +28,7 @@ import { appendFileSync, cpSync, readFileSync, rmSync, statSync } from "node:fs"
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { growthVerdict, type GrowthVerdict } from "@mark1russell7/rigor-bench";
+import { median } from "@mark1russell7/rigor-statistics";
 import { freshArms, peakRss, processMemory, type ArmProcess } from "@mark1russell7/rigor-bench/fresh";
 
 /** The two arms of the measure. */
@@ -99,12 +100,6 @@ export function childRecord(job: string, child: ArmProcess): ChildRecord {
     events: number("events", extra["logEvents"]),
   };
 }
-
-const median = (values: readonly number[]): number => {
-  const sorted = [...values].sort((a, b) => a - b);
-  const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 1 ? sorted[middle]! : (sorted[middle - 1]! + sorted[middle]!) / 2;
-};
 
 /** This function gives the growth verdict of each arm and value. Each job gives the median of its rounds at each size. */
 export function verdicts(records: readonly ChildRecord[]): { readonly arm: Arm; readonly value: Value; readonly verdict: GrowthVerdict }[] {
@@ -178,7 +173,10 @@ async function child(folder: string, id: string): Promise<void> {
   const measured = await openMeasuredRuntime(home, { wall: wallClock({ start: seed.end }), startSnapshot: arm === "snapshot" });
   const used = process.cpuUsage();
   const memory = processMemory();
-  const line = { ms: measured.opened, peakRss: peakRss(), cpuMs: (used.user + used.system) / 1000, rss: memory.rss, heapUsed: memory.heapUsed, logEvents: seed.events };
+  // Each arm proves its kind of start. Else the measure gives two arms of one kind.
+  const read = measured.instance.runtime.start;
+  if ((read.snapshot !== undefined) !== (arm === "snapshot")) throw new Error(`The start of the arm ${arm} ${read.snapshot === undefined ? "read no snapshot" : "read a snapshot"}.`);
+  const line = { ms: measured.opened, peakRss: peakRss(), cpuMs: (used.user + used.system) / 1000, rss: memory.rss, heapUsed: memory.heapUsed, logEvents: seed.events, foldedEvents: read.events };
   await measured.close();
   process.stdout.write(`${JSON.stringify(line)}\n`);
 }
@@ -190,6 +188,8 @@ async function prepare(home: string): Promise<void> {
   const { SEED_RECORD_FILE } = await import("../src/seed-home.ts");
   const seed = JSON.parse(readFileSync(join(home, SEED_RECORD_FILE), "utf8")) as { readonly end: number };
   const measured = await openMeasuredRuntime(home, { wall: wallClock({ start: seed.end }), startSnapshot: true, timeSnapshot: true });
+  // The first pass comes before the good start, thus the start writes its snapshot at the second pass.
+  await measured.pass();
   const writes = measured.snapshotWrites.length;
   await measured.close();
   const bytes = statSync(join(home, START_SNAPSHOT_FILE), { throwIfNoEntry: false })?.size ?? 0;
