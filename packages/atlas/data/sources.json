@@ -16918,33 +16918,36 @@
     "access": "file",
     "auth": "none",
     "terms": {
-      "url": "https://github.com/ossf/malicious-packages",
+      "url": "https://github.com/ossf/malicious-packages/blob/main/LICENSE",
       "automated": "allowed",
       "redistribution": "allowed",
-      "note": "Apache-2.0."
+      "note": "Apache-2.0. The adapter reads the commits through the GitHub API with no token and the record files through raw.githubusercontent.com."
     },
     "cost": "free",
-    "delay": "unknown",
-    "history": "unknown",
-    "rateLimit": "unknown",
+    "delay": "minutes: on 2026-11-25 the repository got 2 or more commits each hour",
+    "history": "On 2026-11-25 osv/withdrawn held 239 npm folders of withdrawn records. The commits give the full history of each record.",
+    "rateLimit": "The GitHub API gives 60 requests each hour to an address with no token. The adapter sends 1 conditional request each hour and at most 16 raw file reads.",
     "calibration": null,
     "coverage": "Reports of malicious packages in any OSV ecosystem (npm, PyPI, crates.io and others), with withdrawn false positives kept apart.",
     "origins": [
       "ossf"
     ],
     "path": [
-      "github.com",
+      "api.github.com",
+      "raw.githubusercontent.com",
       "provider:github"
     ],
     "subjectIds": [
       "purl"
     ],
     "risks": [],
-    "decision": "plan",
-    "adapter": null,
-    "reason": "A free, open source of the malicious-package class in OSV format. It takes bulk imports and automated feeds from several security teams.",
+    "decision": "adopt",
+    "adapter": "@mark1russell7/alerts-source-osv",
+    "reason": "The origin of the MAL records in OSV format. Each fetch compares the last read commit with the branch and reads only the added and changed record files.",
     "evidence": [
-      "https://github.com/ossf/malicious-packages"
+      "https://github.com/ossf/malicious-packages",
+      "https://api.github.com/repos/ossf/malicious-packages/commits?sha=main&per_page=1",
+      "https://raw.githubusercontent.com/ossf/malicious-packages/main/README.md"
     ],
     "round": 15,
     "families": [
@@ -16992,6 +16995,51 @@
       "https://osv.dev/"
     ],
     "round": 1
+  },
+  {
+    "id": "osv-export-malicious",
+    "name": "OSV.dev data exports: the MAL records of each ecosystem",
+    "classes": [
+      "cyber.supply-chain.malicious-package"
+    ],
+    "url": "https://osv-vulnerabilities.storage.googleapis.com/npm/modified_id.csv",
+    "access": "file",
+    "auth": "none",
+    "terms": {
+      "url": "https://github.com/ossf/malicious-packages/blob/main/LICENSE",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "The MAL records come from the OpenSSF repository under Apache-2.0. The bucket has no robots.txt (404 on 2026-11-25)."
+    },
+    "cost": "free",
+    "delay": "up to 1 hour: on 2026-11-25 OSV.dev changed the npm change list each hour at 30 minutes after the hour",
+    "history": "On 2026-11-25 the npm change list held 233,135 lines (8.8 MB), newest first. The first 64 KiB held the changes of 1 day.",
+    "rateLimit": "No published limit. The adapter reads the first 64 KiB of each change list with a Range header and an ETag each 15 minutes, and at most 16 record files.",
+    "calibration": null,
+    "coverage": "The MAL records of npm, PyPI, crates.io, RubyGems and NuGet. On 2026-11-25 the first parts of the lists of crates.io, RubyGems, NuGet and VSCode held 5, 268, 5 and 21 MAL lines.",
+    "origins": [
+      "ossf"
+    ],
+    "path": [
+      "osv-vulnerabilities.storage.googleapis.com",
+      "provider:google-cloud"
+    ],
+    "subjectIds": [
+      "purl"
+    ],
+    "risks": [],
+    "decision": "adopt",
+    "adapter": "@mark1russell7/alerts-source-osv",
+    "reason": "A second path to the MAL records, on Google Cloud and not on GitHub. The change list gives each changed id, so a fetch reads only the changed records.",
+    "evidence": [
+      "https://osv-vulnerabilities.storage.googleapis.com/npm/modified_id.csv",
+      "https://osv-vulnerabilities.storage.googleapis.com/ecosystems.txt",
+      "https://google.github.io/osv.dev/data/"
+    ],
+    "round": 31,
+    "families": [
+      "osv-ecosystems"
+    ]
   },
   {
     "id": "packagist-security-advisories-api",
