@@ -563,7 +563,7 @@ describe("soundsInQuiet (AL-97)", () => {
     const evening = sent(other(2), Date.UTC(2026, 0, 15, 21, 0));
     expect(soundsInQuiet(quiet, own, "urgent", [lastNight, evening, sent(other(3), night - MINUTE)], night)).toBe(true);
     // A delivery of another kind, of a lower level or of an incident with no kind does not count.
-    const others = [sent(other(1), night - 3 * MINUTE, "met.tornado"), sent(other(2), night - 2 * MINUTE, TELL, "notice"), sent(other(4), night - MINUTE, undefined)];
+    const others = [sent(other(1), night - 3 * MINUTE, "met.tornado"), sent(other(2), night - 2 * MINUTE, TELL, "notice"), { incident: other(4), level: "urgent" as const, at: night - MINUTE, kind: undefined }];
     expect(soundsInQuiet(quiet, own, "urgent", [...others, sent(other(3), night - MINUTE)], night)).toBe(true);
     // The next window is a new window: at 22:30 on 16 January, the deliveries of the night before do not count.
     expect(soundsInQuiet(quiet, own, "urgent", [sent(other(1), night), sent(other(2), night + MINUTE)], Date.UTC(2026, 0, 16, 22, 30))).toBe(true);
