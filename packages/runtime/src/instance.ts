@@ -138,7 +138,7 @@ import type { RuntimeLog } from "./log.ts";
 import { createLoop, loopTimes, shortestFetchLimit, type LoopTimes, type RuntimeLoop } from "./loop.ts";
 import { runtimeMetrics } from "./metrics.ts";
 import { outageDeploy, outageDeployWorker, outageSetup, type OutageDeployWorker } from "./outage.ts";
-import { exchangeLoop, exchangeWorker, type EntriesSource, type ExchangeCall, type ExchangeRound, type ExchangeWorker } from "./peers.ts";
+import { exchangeLoop, exchangeWorker, type EntriesSource, type ExchangeCall, type ExchangeRound, type ExchangeWorker, type TakeNote } from "./peers.ts";
 import { channelQuota } from "./quota.ts";
 import { keptPass, openRuntime, type CopyChecks, type KeptPass, type Pass, type Runtime, type RuntimeOptions } from "./runtime.ts";
 import { contextKey, START_SNAPSHOT_EVERY, START_SNAPSHOT_FLOOR } from "./start-snapshot.ts";
@@ -964,6 +964,8 @@ export interface InstanceExchange {
   readonly call: ExchangeCall;
   /** The hash of the configuration of this copy. */
   readonly configHash: string;
+  /** This function gets the notes of the large or slow imports of pages of the other copies (AL-222). */
+  readonly onTake?: (note: TakeNote) => void;
 }
 
 /** The exchange of an instance with the other copies. */
@@ -1272,6 +1274,7 @@ export function openInstance(options: InstanceOptions): Instance {
           call: options.exchange.call,
           clock: wall,
           configHash: options.exchange.configHash,
+          ...(options.exchange.onTake === undefined ? {} : { onTake: options.exchange.onTake }),
         });
   const quotas = (): readonly ChannelQuota[] => [
     ...(options.pushoverQuota === undefined ? [] : [channelQuota(CHANNEL_ID, options.pushoverQuota)]),
