@@ -14,7 +14,7 @@ import { isRecord } from "@mark1russell7/optional/read";
 export const SOURCE_ID = "firms" as SourceId;
 
 /** The origin of each report: the Fire Information for Resource Management System of NASA. */
-export const FIRMS_ORIGIN = "nasa-firms";
+export const FIRMS_ORIGIN = "nasa";
 
 /** The sender of each report. */
 export const FIRMS_SENDER = "NASA FIRMS (Fire Information for Resource Management System)";

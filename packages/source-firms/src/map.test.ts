@@ -35,7 +35,7 @@ describe("mapObservation", () => {
     const sent = Date.parse("2026-11-25T12:23:00Z");
     expect(report).toMatchObject({
       source: "firms",
-      origin: "nasa-firms",
+      origin: "nasa",
       key: "VIIRS_NOAA21_NRT:2026-11-25T12:23:00Z:8.53907,24.75465",
       correlation: [{ system: CELL_SYSTEM, id: "8.5,24.7" }],
       kind: { code: HOTSPOT_KIND, label: "Satellite fire detection" },
