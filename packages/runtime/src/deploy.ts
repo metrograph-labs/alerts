@@ -22,6 +22,12 @@
  *   runtime is stopped, after a swap that changes the fold version. The stage and the swap tell when the version changes.
  *   The stage also tells when the snapshot key changes for the next start (AL-169): a new source, for example.
  *
+ * - `deploy <commit> [--page] [--alone]` does the whole deploy in one command (AL-186): stage, swap, fold when the fold
+ *   version or the snapshot key changes, and the start of the new code. It stops the runtime only for a fold, or before the
+ *   stage on a host with less free memory than `STAGE_MEMORY_FLOOR`. It stops the runtime only when each other copy had a
+ *   read in the last `COPY_MAX_AGE`. A host with no other copy stops only with `--alone`. At the end, the runtime must run
+ *   the new commit, with a start after the begin of the deploy. On Windows, a stop and a start change the boot task.
+ *
  * A swap back to older code is a rollback. Do it only when the new code wrote no new kind of event to the log.
  * When the files of the supervisor change, the stage and the swap tell it. The supervisor takes them only at a restart
  * of the boot task.
@@ -35,19 +41,23 @@
 import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { constants, freemem, setPriority, tmpdir, totalmem } from "node:os";
 import { join } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { getHeapStatistics } from "node:v8";
 import { writeFileAtomic } from "@procedures/fs/files";
 import { runCommand, type CommandResult } from "@procedures/shell/command";
-import { nodeHostPorts } from "@mark1russell7/service/host";
+import { valueIn } from "@mark1russell7/quantity";
+import { nodeHostPorts, probeOnce, startService, stopService, type ServiceOutcome } from "@mark1russell7/service/host";
 import { errorMessage } from "@mark1russell7/text";
 import { createPrinter } from "@mark1russell7/text/print";
 import { alertsHome, readText as readFileText } from "./config.ts";
-import { hostFolder } from "./host.ts";
+import { COPY_MAX_AGE } from "./copy.ts";
+import { HOST_PORTS, hostFileText, hostFolder, hostReadyWindow, hostTask, PROBE_TIMEOUT, readinessProbe, supervisorDiscovery } from "./host.ts";
 import { GOOD_FILE } from "./reload.ts";
 import {
   adoptLive,
   checkoutOf,
+  copyReadsOf,
   DEPLOY_FILE,
   DEPLOY_LOCK_FILE,
   FOLD_FILE,
@@ -63,6 +73,7 @@ import {
   loadStep,
   memInfoOf,
   otherSlot,
+  parseDeployArgs,
   parseDeployFile,
   parseSwapTarget,
   pnpmCall,
@@ -70,10 +81,14 @@ import {
   readPackageLinks,
   runStep,
   SERVICE_PACKAGE,
+  STAGE_MEMORY_FLOOR,
   slotsOfCheckout,
   STAGE_CHECKS,
   startKeysOf,
   stageScope,
+  stepsAfterStage,
+  stopBeforeStage,
+  stopRefusal,
   SUPERVISOR_FILES,
   supervisorChanges,
   swapLink,
@@ -83,17 +98,19 @@ import {
   withMark,
   type DeployFile,
   type FoldMemory,
+  type CopyReadStatus,
+  type DeployArgs,
   type ForeignLinks,
   type SlotName,
   type StartKeys,
   type SwapTarget,
 } from "./slots.ts";
-import { codeReport, readRunningCode } from "./running.ts";
+import { codeReport, deployEndProblem, readRunningCode } from "./running.ts";
 
 // The output of this command for a person goes through one printer, which removes the shapes of tokens (no raw console).
 const print = createPrinter({ out: process.stdout, err: process.stderr });
 
-const USAGE = "The command is: node src/deploy.ts status | adopt | stage <commit> [--page] | swap <a|b> <commit> | relink [a|b] | fold";
+const USAGE = "The command is: node src/deploy.ts status | adopt | stage <commit> [--page] | swap <a|b> <commit> | relink [a|b] | fold | deploy <commit> [--page] [--alone]";
 
 const root = liveRoot(process.env, process.argv[1], join(fileURLToPath(new URL(".", import.meta.url)), ".."));
 const slots = await slotsOfCheckout(checkoutOf(root));
@@ -164,10 +181,14 @@ async function tellSupervisor(live: SlotName, slot: SlotName): Promise<void> {
   }
 }
 
-/** This function prints the line about the fold version from slot `from` to slot `to`, when the version changes (AL-153). */
-async function tellFold(from: SlotName, to: SlotName): Promise<void> {
+/**
+ * This function prints the line about the fold version from slot `from` to slot `to`, when the version changes (AL-153).
+ * It gives `true` when the version changes.
+ */
+async function tellFold(from: SlotName, to: SlotName): Promise<boolean> {
   const line = foldChange(foldVersionOf(await readText(join(slots[from], ...FOLD_FILE.split("/")))), foldVersionOf(await readText(join(slots[to], ...FOLD_FILE.split("/")))));
   if (line !== undefined) print.line(line);
+  return line !== undefined;
 }
 
 /**
@@ -199,14 +220,134 @@ async function hostMemory(): Promise<FoldMemory> {
   return linux ?? { available: Math.floor(freemem() / MIB), swap: 0 };
 }
 
+const PROBE_TIMEOUT_MS = valueIn(PROBE_TIMEOUT, "ms");
+// The boot task or the user unit of the supervisor, as `install.ts` makes it. A stop and a start of the deploy use it (AL-186).
+const spec = hostTask({ home, root, node: process.execPath });
+
+/**
+ * This function reads the reads of the other copies from the status of the live runtime (AL-186). A runtime that refuses
+ * the connection is `"down"`. A time-out or a bad answer gives `undefined`, thus the deploy does not stop the runtime.
+ */
+async function liveCopies(): Promise<readonly CopyReadStatus[] | "down" | undefined> {
+  let reply: Response;
+  try {
+    reply = await fetch(`http://127.0.0.1:${String(HOST_PORTS.port)}/status`, { signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) });
+  } catch (error) {
+    return error instanceof Error && error.name === "TimeoutError" ? undefined : "down";
+  }
+  if (!reply.ok) return undefined;
+  try {
+    return copyReadsOf(await reply.json());
+  } catch {
+    return undefined;
+  }
+}
+
+/** This function gives the problem of an outcome of the service host, or `undefined` for success. */
+function outcomeProblem(outcome: ServiceOutcome): string | undefined {
+  switch (outcome.kind) {
+    case "done":
+      return undefined;
+    case "failed":
+      return outcome.problem;
+    case "refused":
+      return outcome.problems.join(" ");
+    case "unsupported":
+      return `The platform ${outcome.platform} has no boot task.`;
+  }
+}
+
+/** This function stops the runtime and keeps it stopped, after the check of the other copies (AL-186). */
+async function stopLive(alone: boolean): Promise<void> {
+  const refusal = stopRefusal(await liveCopies(), Date.now(), COPY_MAX_AGE, alone);
+  if (refusal !== undefined) throw new Error(refusal);
+  const problem = outcomeProblem(await stopService(spec, nodeHostPorts(), { discovery: supervisorDiscovery(home) }));
+  if (problem !== undefined) throw new Error(`The stop of the runtime failed: ${problem}`);
+  print.line("The runtime is stopped. The other copies send the alerts until it is ready again.");
+}
+
+/** This function starts the runtime, and waits for its readiness for the ready window of the host (AL-186). */
+async function startLive(): Promise<void> {
+  const ports = nodeHostPorts();
+  const problem = outcomeProblem(await startService(spec, ports));
+  if (problem !== undefined) throw new Error(`The start of the runtime failed: ${problem}`);
+  const window = hostReadyWindow(home, hostFileText).ms;
+  const end = Date.now() + window;
+  for (;;) {
+    if ((await probeOnce(readinessProbe(), PROBE_TIMEOUT_MS, ports)).ok) {
+      print.line("The runtime is ready.");
+      return;
+    }
+    if (Date.now() >= end) throw new Error(`The runtime is not ready after ${String(Math.ceil(window / 1000))} s. A runtime that is not ready sends no alert: read its output.`);
+    await sleep(2000);
+  }
+}
+
+/** This function restarts the runtime on the code of the live path with `install.ts restart`. The restart waits for the readiness. */
+async function restartLive(): Promise<void> {
+  const runtime = join(slots.live, "packages", "runtime");
+  const result = await step("restart", process.execPath, [join(runtime, "src", "install.ts"), "restart"], runtime, { ALERTS_HOME: home });
+  print.line(result.stdout.trim());
+}
+
+/**
+ * This function does the whole deploy of a commit (AL-186). Call it with the deploy lock. When a step fails after a stop,
+ * it starts the runtime again on the code of the live path, thus the deploy does not leave the runtime stopped.
+ */
+async function deploy(args: DeployArgs): Promise<void> {
+  const began = Date.now();
+  let running = (await liveCopies()) !== "down";
+  let stopped = false;
+  let sha = "";
+  try {
+    if (running && stopBeforeStage(await hostMemory())) {
+      print.line(`The host has less than ${String(STAGE_MEMORY_FLOOR)} MiB of free memory, thus the runtime stops before the stage.`);
+      await stopLive(args.alone);
+      running = false;
+      stopped = true;
+      const after = await hostMemory();
+      if (stopBeforeStage(after)) throw new Error(`The host has ${String(after.available)} MiB of free memory after the stop. The stage needs ${String(STAGE_MEMORY_FLOOR)} MiB.`);
+    }
+    const staged = await stage(args.commit, args.page);
+    sha = staged.sha;
+    const steps = stepsAfterStage(running, staged.fold);
+    print.line(`The next steps of the deploy: ${steps.join(", ")}.`);
+    for (const next of steps) {
+      if (next === "stop") {
+        await stopLive(args.alone);
+        stopped = true;
+      } else if (next === "swap") await swap({ slot: staged.slot, commit: staged.sha });
+      else if (next === "fold") await foldLive();
+      else if (next === "start") {
+        await startLive();
+        stopped = false;
+      } else await restartLive();
+    }
+  } catch (error) {
+    if (stopped) {
+      print.error(`A step failed after the stop of the runtime. The deploy starts the runtime again on the code of the live path.`);
+      try {
+        await startLive();
+      } catch (again) {
+        print.error(`The start failed too: ${errorMessage(again)}`);
+      }
+    }
+    throw error;
+  }
+  const problem = deployEndProblem(await readRunningCode(hostFolder(home)), sha, began);
+  if (problem !== undefined) throw new Error(`The deploy did not end on the new code. ${problem}`);
+  print.line(`The deploy of ${sha.slice(0, 7)} is done: ${codeReport(await readLive(slots), await readRunningCode(hostFolder(home))).line}`);
+}
+
 /** The runner of one step of a stage. */
 type StepRun = (name: string, program: string, args: readonly string[], cwd: string, env?: Readonly<Record<string, string>>) => Promise<CommandResult>;
 
 /**
  * This function prints the lines about the context keys of the fold from slot `from` to slot `to` (AL-169). The mode key
  * of each slot reads the live home with the code of that slot. A failed step gives no keys, and the line tells it.
+ * It gives `true` when the next start can fold the whole log: a key changes, or a slot gave no key.
  */
-async function tellKeys(from: SlotName, to: SlotName, run: StepRun): Promise<void> {
+async function tellKeys(from: SlotName, to: SlotName, run: StepRun): Promise<boolean> {
   const keysOf = async (slot: SlotName): Promise<StartKeys | undefined> => {
     const runtime = join(slots[slot], "packages", "runtime");
     const key = keyStep(runtime, home, process.execPath);
@@ -216,7 +357,9 @@ async function tellKeys(from: SlotName, to: SlotName, run: StepRun): Promise<voi
       return undefined;
     }
   };
-  for (const line of keyChange(await keysOf(from), await keysOf(to))) print.line(line);
+  const lines = keyChange(await keysOf(from), await keysOf(to));
+  for (const line of lines) print.line(line);
+  return lines.length > 0;
 }
 
 /** This function reads the live slot, or throws when the live path is not a link to a slot. */
@@ -242,7 +385,14 @@ async function status(): Promise<void> {
   else print.line(report.line);
 }
 
-async function stage(commit: string, page: boolean): Promise<void> {
+/** The end of a stage: the staged slot, its commit, and if the next start folds the whole log. */
+interface Staged {
+  readonly slot: SlotName;
+  readonly sha: string;
+  readonly fold: boolean;
+}
+
+async function stage(commit: string, page: boolean): Promise<Staged> {
   const live = await liveSlot();
   // The stage and each program that it starts run at the lowest priority of the processor.
   setPriority(constants.priority.PRIORITY_LOW);
@@ -288,9 +438,10 @@ async function stage(commit: string, page: boolean): Promise<void> {
   await writeMarks(withMark(await readMarks(), slot, { sha, at: new Date().toISOString(), checks: [...STAGE_CHECKS] }));
   print.line(`Slot ${slot} is staged at ${sha.slice(0, 7)}: ${STAGE_CHECKS.join(", ")} passed.`);
   await tellSupervisor(live, slot);
-  await tellFold(live, slot);
-  await tellKeys(live, slot, heavy);
+  const version = await tellFold(live, slot);
+  const keys = await tellKeys(live, slot, heavy);
   print.line(`Start \`deploy.ts swap ${slot} ${sha.slice(0, 7)}\` to put it live.`);
+  return { slot, sha, fold: version || keys };
 }
 
 /** This function gives the package links of a slot that resolve outside the slot (AL-144). */
@@ -337,6 +488,7 @@ async function swap(target: SwapTarget): Promise<void> {
 
 const [command, ...rest] = process.argv.slice(2);
 const target = command === "swap" ? parseSwapTarget(rest) : undefined;
+const deployArgs = command === "deploy" ? parseDeployArgs(rest) : undefined;
 // Each command that changes a slot or the live link holds the deploy lock (AL-167). Thus two deploys do not cross.
 const locked = (work: () => Promise<void>): Promise<void> => withDeployLock(join(hostFolder(home), DEPLOY_LOCK_FILE), nodeHostPorts(), work);
 let code = 0;
@@ -344,11 +496,14 @@ try {
   if (command === "status" && rest.length === 0) await status();
   else if (command === "adopt" && rest.length === 0) await locked(adopt);
   else if (command === "stage" && rest.length >= 1 && rest.length <= 2 && (rest[1] === undefined || rest[1] === "--page") && rest[0] !== "--page") {
-    await locked(() => stage(rest[0] ?? "", rest[1] === "--page"));
+    await locked(async () => {
+      await stage(rest[0] ?? "", rest[1] === "--page");
+    });
   } else if (target !== undefined) await locked(() => swap(target));
   else if (command === "relink" && rest.length <= 1 && (rest[0] === undefined || rest[0] === "a" || rest[0] === "b")) {
     await locked(async () => relink((rest[0] as SlotName | undefined) ?? otherSlot(await liveSlot())));
   } else if (command === "fold" && rest.length === 0) await locked(foldLive);
+  else if (command === "deploy" && deployArgs !== undefined) await locked(() => deploy(deployArgs));
   else {
     print.error(USAGE);
     code = 2;

@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { codeReport, parseRunningCode, readRunningCode, recordRunningCode, runningCode, type RunningCode } from "./running.ts";
+import { codeReport, deployEndProblem, parseRunningCode, readRunningCode, recordRunningCode, runningCode, type RunningCode } from "./running.ts";
 import { DEPLOY_FILE, slotsOf, STAGE_CHECKS, type LiveState } from "./slots.ts";
 
 const SHA = "09f542f".padEnd(40, "0");
@@ -66,5 +66,21 @@ describe("the record of the running code (AL-167)", () => {
       expect(await readRunningCode(host)).toEqual(record);
       expect(await readRunningCode(join(top, "none"))).toBeUndefined();
     });
+  });
+});
+
+describe("the end of a deploy (AL-186)", () => {
+  const record: RunningCode = { format: 1, pid: 7, at: "2026-11-26T04:00:00.000Z", slot: "b", commit: "f998797abcdef" };
+  const began = Date.parse("2026-11-26T03:59:00.000Z");
+
+  it("passes a runtime on the new commit with a start after the begin", () => {
+    expect(deployEndProblem(record, "f998797", began)).toBeUndefined();
+  });
+
+  it("refuses old code, an old start and no record", () => {
+    expect(deployEndProblem(record, "3d5aea2", began)).toBe("The runtime runs f998797, not 3d5aea2.");
+    expect(deployEndProblem(record, "f998797", Date.parse("2026-11-26T04:01:00.000Z"))).toContain("before the deploy");
+    expect(deployEndProblem({ ...record, commit: undefined }, "f998797", began)).toContain("no stage");
+    expect(deployEndProblem(undefined, "f998797", began)).toContain("no record");
   });
 });
