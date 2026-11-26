@@ -142,7 +142,8 @@ describe("historyPayload", () => {
     expect(payload.incidents[0]?.changes.map((change) => [change.at, change.certainty])).toEqual([
       [T0, "possible"],
       [T0 + 5 * MINUTE, "observed"],
-      [T0 + 15 * MINUTE, "observed"],
+      // The link replaces the watch and the warning, thus its certainty is the only one that is live.
+      [T0 + 15 * MINUTE, "likely"],
     ]);
     expect(historyPayloadSchema.safeParse(payload).success).toBe(true);
   });
