@@ -1521,7 +1521,7 @@ The shadow score (`shadowScore`) is the first step. It operates next to the tabl
 - A factor that the priors do not give makes a score with no read. The score names each missing factor. It does not take 0 or a default value.
 - `assessWithShadow` adds the score as the last reason of an assessment with a reason of the table. The level and the other reasons stay those of `assess`. A seeded gate test holds this. An assessment whose reason `score` holds the score gets no second score.
 
-The priors come from the base rates of the package `rates` (`priorsOf`). The file `packages/rates/data/priors.json` holds them. A test holds it equal to the priors of `data/rates.json`:
+The priors come from the base rates of the package `rates` (`priorsOf`). The file `packages/core/src/data/priors.json` holds them, and the entry `@mark1russell7/alerts/priors` gives them. A test of `rates` holds the file equal to the priors of `data/rates.json`:
 
 - The verified share of a kind is the own share of IEM Cow. It is the share of the warnings that a storm report of the same hazard verified. Its interval is the gate interval of the share.
 - A share with a reason of no read gives no prior. A phenomenon that Cow does not verify gives no prior.

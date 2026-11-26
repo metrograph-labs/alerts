@@ -77,13 +77,13 @@ import { replyNotes } from "./replies.ts";
 import { spendNotes } from "./balance.ts";
 import { USE_FILE, useFile } from "./spend-use.ts";
 import { PROFILES, declare } from "./index.ts";
-import { daemonCheck, instanceCheck, instanceContextKey, LOUD_PING_URL_KEY, openInstance, pingKeyOf, pingTargets, userAgent } from "./instance.ts";
+import { daemonCheck, instanceCheck, instanceContextKey, LOUD_PING_URL_KEY, openInstance, pingKeyOf, pingTargets, strayLeavesText, userAgent } from "./instance.ts";
 import { openCheckedRuntimeLog } from "./log.ts";
 import { blockLine, startLoopWatch, type LoopWatch } from "./loop-watch.ts";
 import { foldText, writeFold } from "./fold-mode.ts";
 import { startBlockWatch, type BlockWatch } from "./block-watch.ts";
 import { fileBundleStore } from "./outage.ts";
-import type { ExchangeRound } from "./peers.ts";
+import { takeNoteText, type ExchangeRound } from "./peers.ts";
 import { loadPriors } from "./priors.ts";
 import { openReadingStore, READINGS_FILE } from "./readings.ts";
 import { GOOD_FILE, privateFiles, readStartTexts, reloadHook, startConfig, type CheckOf, type StartUse } from "./reload.ts";
@@ -397,7 +397,7 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
     copy,
     ...(tellIntake === undefined ? {} : { tell: tellIntake }),
     ...(positionIntake === undefined ? {} : { position: positionIntake }),
-    ...(token === undefined ? {} : { exchange: { call: exchangeCall({ token }), configHash: configHash(config.config), deployUntil: () => deployMarkEnd(markText(join(hostFolder(home), DEPLOY_MARK_FILE)), Date.now()) }, onExchange }),
+    ...(token === undefined ? {} : { exchange: { call: exchangeCall({ token }), configHash: configHash(config.config), deployUntil: () => deployMarkEnd(markText(join(hostFolder(home), DEPLOY_MARK_FILE)), Date.now()), onTake: (note) => out.log(takeNoteText(note)) }, onExchange }),
     onPass,
     // The output gets no secret, also when an error quotes a request.
     onError: (error, failures) => out.error(`A pass failed (${failures} in sequence): ${redactSecrets(errorMessage(error), values)}`),
@@ -430,8 +430,12 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
   });
   blockWatch?.phase("start: service and first pass");
   if (instance.zones !== undefined) out.log(zoneCodesText(instance.zones));
+  const strays = strayLeavesText(instance.strayLeaves);
+  if (strays !== undefined) out.error(strays);
   if (instance.transit !== undefined) out.log(transitText(instance.transit.chosen, instance.transit.copied));
   out.log(startReadText(instance.runtime.start));
+  // The read position of each other copy at the start (AL-222). Two starts with the same position read the same pages again.
+  for (const peer of copy.peers ?? []) out.log(`The start reads the copy ${peer.id} after the position ${String(instance.runtime.position(peer.id))}.`);
   if (instance.runtime.skipped > 0) {
     out.error(`The log has ${String(instance.runtime.skipped)} events of types that this build does not know. A later build wrote them. The runtime skips them.`);
   }

@@ -1,0 +1,94 @@
+# The measure of the start with the snapshot of the start and with no snapshot (AL-105). Each job seeds one home for each
+# size of the log and writes its snapshot. Then fresh processes start the runtime on a copy of the home, with the order of
+# the two arms turned in each round. The arm full folds the whole log, and the arm snapshot reads the snapshot. The job
+# verdict gives the growth of the time, the CPU time and the peak memory of each arm over the sizes of the log. Time on a
+# shared computer tells nothing, thus the measure runs in CI only. Five jobs give the spread. It is a measure, not a gate.
+name: Measure snapshot
+
+on:
+  # A pull request that changes the measure gets a run of the default sizes.
+  pull_request:
+    paths:
+      - packages/testkit/scripts/start-snapshot-arms.ts
+      - packages/runtime/src/start-snapshot.ts
+      - .github/workflows/measure-snapshot.yml
+  # A person starts a run of other sizes: gh workflow run measure-snapshot.yml -f sizes=48,192,768 -f rounds=4
+  workflow_dispatch:
+    inputs:
+      sizes:
+        description: The sizes of the log in MB, with commas
+        default: "24,96,384"
+      rounds:
+        description: The even count of rounds of each size
+        default: "4"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: measure-snapshot-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        run: [1, 2, 3, 4, 5]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Measure the two arms at each size of the log
+        working-directory: packages/testkit
+        env:
+          SIZES: ${{ inputs.sizes || '24,96,384' }}
+          ROUNDS: ${{ inputs.rounds || '4' }}
+          JOB: ${{ matrix.run }}
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/snapshot" "$RUNNER_TEMP/arms"
+          node scripts/start-snapshot-arms.ts measure "$RUNNER_TEMP/arms" "$JOB" "$SIZES" "$ROUNDS" | tee "$GITHUB_WORKSPACE/snapshot/records-$JOB.jsonl"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: measure-snapshot-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.run }}
+          path: snapshot/
+          if-no-files-found: error
+          retention-days: 90
+
+  verdict:
+    needs: measure
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: measure-snapshot-${{ github.run_id }}-${{ github.run_attempt }}-*
+          path: records
+          merge-multiple: true
+      - name: Give the growth of each arm over the sizes of the log
+        working-directory: packages/testkit
+        run: node scripts/start-snapshot-arms.ts verdict "$GITHUB_WORKSPACE"/records/records-*.jsonl

@@ -7,7 +7,8 @@
  * many megabytes. The keeper simplifies the regions of the watched states again only when the store changes them. An
  * incident changes only the small copy of the regions outside those states.
  */
-import { basemapToleranceKm, simplifyBasemap, type AlertConfig, type Duration, type Incident, type Instant, type MapRegion, type MapShape, type PlaceConfig, type Position, type RegionCode, type ShapeLookup, type SourceDescriptor, type SourceId, type StoreFill, type WatchedPlace } from "@mark1russell7/alerts";
+import { basemapToleranceKm, simplifyBasemapSteps, type AlertConfig, type Duration, type Incident, type Instant, type MapRegion, type MapShape, type PlaceConfig, type Position, type RegionCode, type ShapeLookup, type SourceDescriptor, type SourceId, type StoreFill, type WatchedPlace } from "@mark1russell7/alerts";
+import { runSlices, type SliceOptions } from "@mark1russell7/service/slices";
 import { stateOfCode } from "@mark1russell7/alerts-format-nws";
 import { compareCodes, ZONE_KINDS, zoneCodesNear, zoneKindOf, type Refreshed, type ShapeStore, type Wanted, type ZoneKind } from "@mark1russell7/alerts-shapes-nws";
 import { NWS_PROVIDER } from "@mark1russell7/alerts-source-nws-api";
@@ -218,12 +219,16 @@ export interface InstanceShapes {
   /**
    * This function gives the shapes of a region code for the page. These are the simplified shapes of the last `basemap` while
    * the record of the region stays the same. Else it gives the shapes of `lookup`. The map and the history use it (AL-176).
+   * A region of the build in progress gives `undefined` until the end of the build: its full outlines are too large (AL-213).
    */
   readonly display: ShapeLookup;
   /**
    * This function gives the regions under the map, in the order of the code. These are the counties and forecast zones of the
    * watched states, and the regions of the places and the live incidents. A region is a zone or a county with a UGC code.
-   * The outlines are simplified for the view box of the page with `simplifyBasemap`.
+   * The outlines are simplified for the view box of the page with `simplifyBasemapSteps`.
+   *
+   * The function does no simplification (AL-213). It gives the regions of the last build. When the wanted regions change, it
+   * starts a build in the background, in slices with turns of the event loop between them. The next read gives the new build.
    */
   basemap(): readonly MapRegion[];
   /**
@@ -232,7 +237,7 @@ export interface InstanceShapes {
    * With no store or no watched state, it gives no fill.
    */
   fill(since: Instant, within: Duration, sources: readonly SourceId[]): StoreFill[];
-  /** This function waits for the end of the refresh in progress. It does not throw. */
+  /** This function waits for the end of the refresh and of the build of the basemap in progress. It does not throw. */
   idle(): Promise<void>;
   /** This function stops the refresh in progress, waits for its end, and closes the cache of the store. */
   close(): Promise<void>;
@@ -264,7 +269,8 @@ export interface ShapeKeeper extends InstanceShapes {
   /**
    * This function keeps the live incidents of a pass and starts a refresh of the store, when no refresh is in progress. The
    * refresh starts no request that can end after `until`: the next fetch from the host of the store (`refreshUntil`). With no
-   * `until`, no refresh starts. The next `basemap` simplifies the regions of the kept incidents (AL-176).
+   * `until`, no refresh starts. The function also starts a build of the basemap with the regions of the kept incidents
+   * (AL-176, AL-213). Thus the build is ready before the next read of the page.
    */
   afterPass(incidents: readonly Incident[], until: Instant | undefined): void;
 }
@@ -279,6 +285,8 @@ export interface ShapeKeeperOptions {
   readonly onShapes?: ((outcome: ShapeOutcome) => void) | undefined;
   /** The keeper starts this function at its close, after the end of the refresh. The instance closes the cache of the store here. */
   readonly close?: (() => void) | undefined;
+  /** The slices of the build of the basemap (AL-213). The default is the slice time of `runSlices`, on the real clock. */
+  readonly slices?: Omit<SliceOptions, "signal"> | undefined;
 }
 
 // The count of the entries of each family of the store in the watched states. A fire zone counts only with each outline of its state.
@@ -323,26 +331,107 @@ export function keepShapes(options: ShapeKeeperOptions): ShapeKeeper {
   let last: { readonly watched: readonly MapRegion[]; readonly others: readonly MapRegion[]; readonly regions: readonly MapRegion[] } | undefined;
   // The simplified shapes of the last basemap, by the key of the code, with the shapes of the record that they come from.
   let shown = new Map<string, { readonly raw: readonly MapShape[]; readonly simple: readonly MapShape[] }>();
-  const copyOf = (raw: readonly MapRegion[], tolerance: number | undefined): BasemapCopy => {
+  // The keys of the regions of the build in progress that have no current copy. The display gives them no shapes (AL-213).
+  let pending = new Set<string>();
+  let building: Promise<void> | undefined;
+  let again = false;
+  function* copyOf(raw: readonly MapRegion[], tolerance: number | undefined): Generator<undefined, BasemapCopy, undefined> {
     if (tolerance === undefined) return { raw, simple: raw };
     try {
-      return { raw, simple: simplifyBasemap(raw, tolerance) };
+      return { raw, simple: yield* simplifyBasemapSteps(raw, tolerance) };
     } catch (error) {
       // The full outlines are correct, only larger. The keeper reports the error one time for each change of the regions.
       report({ ok: false, error, step: "basemap" });
       return { raw, simple: raw };
     }
-  };
+  }
 
-  const copyOne = (region: MapRegion, tolerance: number | undefined): MapRegion => {
+  function* copyOne(region: MapRegion, tolerance: number | undefined): Generator<undefined, MapRegion, undefined> {
     if (tolerance === undefined) return region;
     try {
-      return simplifyBasemap([region], tolerance)[0]!;
+      return (yield* simplifyBasemapSteps([region], tolerance))[0]!;
     } catch (error) {
       // The copy of the region keeps its full outlines. The keeper reports the error one time for each record.
       report({ ok: false, error, step: "basemap" });
       return region;
     }
+  }
+
+  // The regions under the map: the watched states, and the other regions of the places and the live incidents.
+  const wantedLists = (shapeStore: ShapeStore): { readonly own: readonly MapRegion[]; readonly other: readonly MapRegion[] } => {
+    // The key is the system and the code: a fire zone and a forecast zone can have one code (AL-33).
+    const own = new Map<string, MapRegion>();
+    for (const state of states) for (const region of shapeStore.basemap(state)) own.set(codeKey(region.code), region);
+    // A region of a place or of an incident can be outside the watched states, or not yet in the list of its state.
+    const other = new Map<string, MapRegion>();
+    for (const code of [...places.flatMap((place) => place.codes), ...liveCodes(incidents)]) {
+      const region = shapeStore.region(code);
+      if (region !== undefined && !own.has(codeKey(region.code))) other.set(codeKey(region.code), region);
+    }
+    return { own: byRegion(own.values()), other: byRegion(other.values()) };
+  };
+
+  // The steps of one build. The build changes the copies only at its end, thus a read during the build gives the last build.
+  function* buildSteps(ownList: readonly MapRegion[], otherList: readonly MapRegion[]): Generator<undefined, void, undefined> {
+    const nextWatched = watched === undefined || !sameRegions(watched.raw, ownList) ? yield* copyOf(ownList, basemapToleranceKm(ownList)) : watched;
+    let nextOthers = others;
+    let nextCopies = copies;
+    if (nextOthers === undefined || nextOthers.with !== nextWatched || !sameRegions(nextOthers.raw, otherList)) {
+      // The tolerance comes from the fit of all the regions. The page fits them all, thus it is on the safe side.
+      const fit = otherList.length === 0 ? undefined : basemapToleranceKm([...ownList, ...otherList]);
+      const tolerance = fit === undefined ? undefined : toleranceStep(fit);
+      const next = new Map<string, RegionCopy>();
+      const simple: MapRegion[] = [];
+      for (const region of otherList) {
+        const key = codeKey(region.code);
+        const old = copies.get(key);
+        const copy = old !== undefined && old.raw.shapes === region.shapes && old.raw.name === region.name && old.tolerance === tolerance ? old : { raw: region, tolerance, simple: yield* copyOne(region, tolerance) };
+        next.set(key, copy);
+        simple.push(copy.simple);
+      }
+      // A region that is not in the list loses its copy.
+      nextCopies = next;
+      nextOthers = { raw: otherList, simple, with: nextWatched };
+    }
+    watched = nextWatched;
+    others = nextOthers;
+    copies = nextCopies;
+    if (last === undefined || last.watched !== watched.simple || last.others !== others.simple) {
+      last = { watched: watched.simple, others: others.simple, regions: byRegion([...watched.simple, ...others.simple]) };
+      const index = new Map<string, { readonly raw: readonly MapShape[]; readonly simple: readonly MapShape[] }>();
+      for (const [at, region] of watched.raw.entries()) index.set(codeKey(region.code), { raw: region.shapes, simple: watched.simple[at]!.shapes });
+      for (const [at, region] of others.raw.entries()) index.set(codeKey(region.code), { raw: region.shapes, simple: others.simple[at]!.shapes });
+      shown = index;
+    }
+  }
+
+  // This function starts a build of the basemap when the wanted regions differ from the last build. One build runs at a time.
+  // A change during a build starts one more build at its end.
+  const build = (): void => {
+    if (store === undefined || closed) return;
+    if (building !== undefined) {
+      again = true;
+      return;
+    }
+    const { own: ownList, other: otherList } = wantedLists(store);
+    if (watched !== undefined && others !== undefined && others.with === watched && sameRegions(watched.raw, ownList) && sameRegions(others.raw, otherList)) return;
+    const keys = new Set<string>();
+    for (const region of [...ownList, ...otherList]) if (shown.get(codeKey(region.code))?.raw !== region.shapes) keys.add(codeKey(region.code));
+    pending = keys;
+    building = runSlices(buildSteps(ownList, otherList), { ...options.slices, signal: stop.signal })
+      .then(
+        () => undefined,
+        // The close aborts the build. That abort is not a fault.
+        (error: unknown) => (stop.signal.aborted ? undefined : report({ ok: false, error, step: "basemap" })),
+      )
+      .finally(() => {
+        building = undefined;
+        pending = new Set();
+        if (again) {
+          again = false;
+          build();
+        }
+      });
   };
 
   return {
@@ -351,47 +440,16 @@ export function keepShapes(options: ShapeKeeperOptions): ShapeKeeper {
       const shapes = store?.lookup(code);
       if (shapes === undefined || store === undefined) return shapes;
       const region = store.region(code);
-      const copy = region === undefined ? undefined : shown.get(codeKey(region.code));
-      return copy !== undefined && copy.raw === shapes ? copy.simple : shapes;
+      const key = region === undefined ? undefined : codeKey(region.code);
+      const copy = key === undefined ? undefined : shown.get(key);
+      if (copy !== undefined && copy.raw === shapes) return copy.simple;
+      // A region of the build in progress gets its simplified shapes at the end of the build. Its full outlines are too large (AL-213).
+      return key !== undefined && pending.has(key) ? undefined : shapes;
     },
     basemap() {
       if (store === undefined) return [];
-      // The key is the system and the code: a fire zone and a forecast zone can have one code (AL-33).
-      const own = new Map<string, MapRegion>();
-      for (const state of states) for (const region of store.basemap(state)) own.set(codeKey(region.code), region);
-      const ownList = byRegion(own.values());
-      if (watched === undefined || !sameRegions(watched.raw, ownList)) watched = copyOf(ownList, basemapToleranceKm(ownList));
-      // A region of a place or of an incident can be outside the watched states, or not yet in the list of its state.
-      const other = new Map<string, MapRegion>();
-      for (const code of [...places.flatMap((place) => place.codes), ...liveCodes(incidents)]) {
-        const region = store.region(code);
-        if (region !== undefined && !own.has(codeKey(region.code))) other.set(codeKey(region.code), region);
-      }
-      const otherList = byRegion(other.values());
-      if (others === undefined || others.with !== watched || !sameRegions(others.raw, otherList)) {
-        // The tolerance comes from the fit of all the regions. The page fits them all, thus it is on the safe side.
-        const fit = otherList.length === 0 ? undefined : basemapToleranceKm([...ownList, ...otherList]);
-        const tolerance = fit === undefined ? undefined : toleranceStep(fit);
-        const next = new Map<string, RegionCopy>();
-        const simple = otherList.map((region) => {
-          const key = codeKey(region.code);
-          const old = copies.get(key);
-          const copy = old !== undefined && old.raw.shapes === region.shapes && old.raw.name === region.name && old.tolerance === tolerance ? old : { raw: region, tolerance, simple: copyOne(region, tolerance) };
-          next.set(key, copy);
-          return copy.simple;
-        });
-        // A region that is not in the list loses its copy.
-        copies = next;
-        others = { raw: otherList, simple, with: watched };
-      }
-      if (last === undefined || last.watched !== watched.simple || last.others !== others.simple) {
-        last = { watched: watched.simple, others: others.simple, regions: byRegion([...watched.simple, ...others.simple]) };
-        const index = new Map<string, { readonly raw: readonly MapShape[]; readonly simple: readonly MapShape[] }>();
-        for (const [at, region] of watched.raw.entries()) index.set(codeKey(region.code), { raw: region.shapes, simple: watched.simple[at]!.shapes });
-        for (const [at, region] of others.raw.entries()) index.set(codeKey(region.code), { raw: region.shapes, simple: others.simple[at]!.shapes });
-        shown = index;
-      }
-      return last.regions;
+      build();
+      return last?.regions ?? [];
     },
     fill(since, within, sources) {
       if (store === undefined || states.length === 0) return [];
@@ -400,6 +458,7 @@ export function keepShapes(options: ShapeKeeperOptions): ShapeKeeper {
     },
     afterPass(live, until) {
       incidents = live;
+      build();
       if (store === undefined || until === undefined || closed || running !== undefined) return;
       const work = store.refresh({ wanted: wantedShapes(places, live), until, signal: stop.signal }).then(
         (refreshed) => report({ ok: true, refreshed }),
@@ -412,13 +471,14 @@ export function keepShapes(options: ShapeKeeperOptions): ShapeKeeper {
       });
     },
     idle: async () => {
-      await running;
+      // A build can start one more build at its end, thus the function waits until none runs.
+      while (running !== undefined || building !== undefined) await Promise.all([running, building]);
     },
     async close() {
       if (closed) return;
       closed = true;
       stop.abort(new Error("The instance closed the store of shapes."));
-      await running;
+      await Promise.all([running, building]);
       options.close?.();
     },
   };
