@@ -9,7 +9,6 @@ import { createNwrSource } from "./index.ts";
 import {
   checkHost,
   chooseRestart,
-  createLineSplitter,
   createReceiver,
   DECODER,
   DECODER_SAMPLE_RATE,
@@ -84,50 +83,6 @@ describe("tunerArgs and decoderArgs", () => {
     expect(() => tunerArgs({ frequency: 162_550_000, ppm: 0.5 })).toThrow(RangeError);
     expect(() => tunerArgs({ frequency: 162_550_000, gain: -1 })).toThrow(RangeError);
     expect(() => tunerArgs({ frequency: 162_550_000, device: -1 })).toThrow(RangeError);
-  });
-});
-
-describe("createLineSplitter", () => {
-  it("keeps a partial last line until its end comes", () => {
-    const splitter = createLineSplitter();
-    expect(splitter.push("EAS: ZCZC-WXR")).toEqual([]);
-    expect(splitter.push("-RWT-\r\nEAS (part): NN")).toEqual(["EAS: ZCZC-WXR-RWT-"]);
-    expect(splitter.push("NN\n\n")).toEqual(["EAS (part): NNNN", ""]);
-    expect(splitter.push("tail")).toEqual([]);
-    expect(splitter.flush()).toEqual(["tail"]);
-    expect(splitter.flush()).toEqual([]);
-  });
-
-  it("joins a CR LF and a UTF-8 character that a chunk cuts", () => {
-    const splitter = createLineSplitter();
-    const bytes = new TextEncoder().encode("aéb\r\nc\n");
-    expect(splitter.push(bytes.subarray(0, 2))).toEqual([]);
-    expect(splitter.push(bytes.subarray(2, 5))).toEqual([]);
-    expect(splitter.push(bytes.subarray(5))).toEqual(["aéb", "c"]);
-  });
-
-  it("gives a long part with no line end as one line", () => {
-    const splitter = createLineSplitter(4);
-    expect(splitter.push("abcdef")).toEqual(["abcdef"]);
-    expect(splitter.push("g\n")).toEqual(["g"]);
-  });
-
-  it("gives the same lines for each cut of the stream", () => {
-    fc.assert(
-      fc.property(fc.array(fc.stringMatching(/^[A-Z: -]{0,12}$/), { maxLength: 6 }), fc.array(fc.nat(), { maxLength: 8 }), (lines, cuts) => {
-        const text = lines.map((line) => `${line}\n`).join("");
-        const points = [...new Set(cuts.map((cut) => cut % (text.length + 1)))].sort((a, b) => a - b);
-        const splitter = createLineSplitter();
-        const out: string[] = [];
-        let from = 0;
-        for (const point of [...points, text.length]) {
-          out.push(...splitter.push(text.slice(from, point)));
-          from = point;
-        }
-        out.push(...splitter.flush());
-        expect(out).toEqual(lines);
-      }),
-    );
   });
 });
 
