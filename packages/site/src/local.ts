@@ -14,8 +14,9 @@
  *
  * The next panel tells each pair where the table of the levels and the shadow score disagree. The score is of the present.
  *
- * A failed read of the map shows the shared error view of `@mark1russell7/otel-ts/error-view`: the words of the failure, a
- * retry, a copy of the whole record and a report. The view of the same failure stays, with its record and its time.
+ * A failed read of the map shows the shared error view of `@mark1russell7/otel-ts/error-view`. The view has the words of
+ * the failure, a retry, a copy of the whole record and a report. The view of the same failure stays, with its record and
+ * its time.
  *
  * The last panel tells the interest graph of each person: each edge, its origin, its weight and its state. A default
  * edge that an edge of the person replaces stays as a row. The graph changes only with the configuration. Thus the page
