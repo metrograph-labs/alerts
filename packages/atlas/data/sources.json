@@ -27046,5 +27046,44 @@
       "https://data.eppo.int/data/Open_Licence.pdf"
     ],
     "round": 51
+  },
+  {
+    "id": "congress-gov-api",
+    "name": "Congress.gov API",
+    "classes": [
+      "civic.government-shutdown"
+    ],
+    "url": "https://api.congress.gov/",
+    "access": "api",
+    "auth": "key",
+    "terms": {
+      "url": "https://www.loc.gov/legal/",
+      "automated": "limited",
+      "redistribution": "allowed",
+      "note": "The legal notice of the Library of Congress blocks only a client that ignores robots.txt or loads the service. The bills and laws are works of the US government."
+    },
+    "cost": "free",
+    "delay": "Unknown: the round had no key. The README tells that the chambers deliver the data to Congress.gov.",
+    "history": "The bills, the actions and the laws of each Congress, with the text of each version.",
+    "rateLimit": "5,000 requests each hour, from the README of the API.",
+    "calibration": "None. A lapse of appropriations is a calculation: the end date in the text of the last continuing resolution, and no new appropriation law before it.",
+    "coverage": "The federal appropriations of the US: each continuing resolution and each appropriation act, with its actions.",
+    "origins": [
+      "us-congress"
+    ],
+    "path": [
+      "api.congress.gov"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "adapter": null,
+    "reason": "The law that ends or prevents a federal shutdown. The adapter needs a free key of api.data.gov, which the owner of the deploy makes.",
+    "evidence": [
+      "https://api.congress.gov/",
+      "https://raw.githubusercontent.com/LibraryOfCongress/api.congress.gov/main/README.md",
+      "https://www.loc.gov/legal/"
+    ],
+    "round": 52
   }
 ]

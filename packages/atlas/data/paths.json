@@ -3238,5 +3238,11 @@
     "name": "gd.eppo.int",
     "kind": "host",
     "note": "The host of the pages of eppo-reporting-service."
+  },
+  {
+    "id": "api.congress.gov",
+    "name": "api.congress.gov",
+    "kind": "host",
+    "note": "The host of congress-gov-api."
   }
 ]
