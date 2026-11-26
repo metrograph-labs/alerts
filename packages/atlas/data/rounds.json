@@ -2092,5 +2092,49 @@
       "members": 1757,
       "cause": "Round 42 plans the release dates of Debian, a second origin with no risk for software end of life. Thus the gaps go from 63 to 62."
     }
+  },
+  {
+    "round": 43,
+    "date": "2026-11-26",
+    "by": "One session, with no subagent.",
+    "method": "The round took two classes with one source: crypto chain halts and credit rating actions. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The SEC rule of 2014 on rating histories: https://www.govinfo.gov/content/pkg/FR-2014-09-15/html/2014-20890.htm",
+      "The Statuspage summary JSON of ten chains: Solana, Avalanche, Polygon, Base, Arbitrum, Optimism, Sui, Aptos, NEAR and Cosmos"
+    ],
+    "queries": [
+      "SEC Rule 17g-7 XBRL rating history files download",
+      "ESMA European Rating Platform credit ratings download API terms",
+      "blockchain network halt status page API",
+      "Solana public RPC endpoints rate limits production"
+    ],
+    "notes": [
+      "Avalanche, Polygon, Base and Sui give the Statuspage summary JSON, as Solana does. They join statuspage-crypto. Arbitrum and Optimism answered in another format. Aptos, NEAR and Cosmos gave no page.",
+      "The public RPC of Solana gives the newest slot. It is a second origin of a halt, but the endpoint is not for production, so it is later with a risk.",
+      "The SEC page on rating histories gave 403 to the user agent of the round. The rule of 2014 in the Federal Register lets an agency publish an action 12 months later, or 24 months for a rating that the issuer did not pay.",
+      "An ESMA opinion of 2021 tells that its European Rating Platform has no machine-readable bulk download. No free live source of rating actions was found."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 62,
+      "cover": {
+        "adopted": 59,
+        "paths": 59,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 166,
+        "paths": 165,
+        "origins": 84
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 43 adds four chain pages to a planned source and one later source with a risk. Neither counts as a second source with no risk, so the gaps stay at 62."
+    }
   }
 ]

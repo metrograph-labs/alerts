@@ -3184,5 +3184,11 @@
     "name": "salsa.debian.org",
     "kind": "host",
     "note": "The git host of the Debian project, the files of debian-distro-info-data."
+  },
+  {
+    "id": "api.mainnet.solana.com",
+    "name": "api.mainnet.solana.com",
+    "kind": "host",
+    "note": "The public RPC of Solana, the host of solana-rpc-tip."
   }
 ]
