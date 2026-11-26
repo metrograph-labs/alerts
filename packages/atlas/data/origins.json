@@ -2880,5 +2880,21 @@
     "name": "The US Congress, through Congress.gov of the Library of Congress",
     "issues": null,
     "note": "The bills, actions and laws of congress-gov-api come from the House and the Senate."
+  },
+  {
+    "id": "pge",
+    "name": "PG&E (Pacific Gas and Electric Company)",
+    "issues": [
+      "infra.power.psps"
+    ],
+    "note": "The records of pge-psps-events name this issuer."
+  },
+  {
+    "id": "sce",
+    "name": "SCE (Southern California Edison)",
+    "issues": [
+      "infra.power.psps"
+    ],
+    "note": "The records of sce-psps-partner-portal name this issuer."
   }
 ]
