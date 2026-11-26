@@ -9,7 +9,7 @@
     "id": "access.redhat.com",
     "name": "access.redhat.com",
     "kind": "host",
-    "note": "The host of the feed of redhat-security-data-api."
+    "note": "The host of the feeds of redhat-security-data-api and redhat-product-life-cycles."
   },
   {
     "id": "acleddata.com",
@@ -3178,5 +3178,11 @@
     "name": "api.scottishwater.co.uk",
     "kind": "host",
     "note": "The host of the API of Scottish Water, the overflow data of scottish-water-overflows."
+  },
+  {
+    "id": "salsa.debian.org",
+    "name": "salsa.debian.org",
+    "kind": "host",
+    "note": "The git host of the Debian project, the files of debian-distro-info-data."
   }
 ]

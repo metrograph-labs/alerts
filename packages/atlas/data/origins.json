@@ -495,7 +495,7 @@
     "id": "debian",
     "name": "The Debian Project",
     "issues": null,
-    "note": "The records of debian-dla-rss, debian-dsa-rss, debian-security-tracker-json name this issuer."
+    "note": "The records of debian-dla-rss, debian-dsa-rss, debian-security-tracker-json, debian-distro-info-data name this issuer."
   },
   {
     "id": "defillama",
@@ -1610,7 +1610,7 @@
     "id": "redhat",
     "name": "Red Hat",
     "issues": null,
-    "note": "The records of redhat-csaf-advisories, redhat-csaf-vex, redhat-security-data-api name this issuer."
+    "note": "The records of redhat-csaf-advisories, redhat-csaf-vex, redhat-product-life-cycles, redhat-security-data-api name this issuer."
   },
   {
     "id": "ree",
