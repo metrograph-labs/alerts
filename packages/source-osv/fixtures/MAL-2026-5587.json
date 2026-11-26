@@ -1,0 +1,62 @@
+{
+  "schema_version": "1.7.5",
+  "id": "MAL-2026-5587",
+  "published": "2026-06-11T07:16:13Z",
+  "modified": "2026-07-17T03:04:24.700359404Z",
+  "withdrawn": "2026-07-16T00:38:53Z",
+  "summary": "Malicious code in 0x2ai-demo1 (npm)",
+  "details": "\n---\n_-= Per source details. Do not edit below this line.=-_\n\n## Source: amazon-inspector (fdc7c661d4867578d3dd920010bccc1e79fcae8753b5bf549f44ea8a45cde502)\nThe fixture leaves out the rest of the text.\n",
+  "affected": [
+    {
+      "package": {
+        "name": "0x2ai-demo1",
+        "ecosystem": "npm",
+        "purl": "pkg:npm/0x2ai-demo1"
+      },
+      "versions": [
+        "2.0.2",
+        "1.2.0",
+        "2.0.0"
+      ],
+      "database_specific": {
+        "cwes": [
+          {
+            "cweId": "CWE-506",
+            "description": "The product contains code that appears to be malicious in nature.",
+            "name": "Embedded Malicious Code"
+          }
+        ],
+        "indicators": {
+          "evidence_files": [
+            {
+              "path": "bin/start.cjs",
+              "sha256": "adfcb1d45218ade2e6a9cc459514d59569de732412deca558842c629d3be908b",
+              "tlsh": "1e81728a5bee0b7b467412812c0b4137e959cc402364f5a0a17e8296bfc1da099b77df"
+            }
+          ]
+        },
+        "source": "https://github.com/ossf/malicious-packages/blob/main/osv/withdrawn/npm/0x2ai-demo1/MAL-2026-5587.json"
+      }
+    }
+  ],
+  "references": [
+    {
+      "type": "PACKAGE",
+      "url": "https://www.npmjs.com/package/0x2ai-demo1/v/2.0.2"
+    }
+  ],
+  "database_specific": {
+    "malicious-packages-origins": [
+      {
+        "id": "IN-MAL-2026-005669",
+        "import_time": "2026-06-11T07:49:39.081313234Z",
+        "modified_time": "2026-06-11T07:16:13Z",
+        "sha256": "b29f3d65354dd3bf54e23142f5c6577ad4c5a37b9ff109200309cbb6453b8c26",
+        "source": "amazon-inspector",
+        "versions": [
+          "2.0.2"
+        ]
+      }
+    ]
+  }
+}

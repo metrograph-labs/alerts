@@ -195,7 +195,7 @@
     "id": "api.github.com",
     "name": "api.github.com",
     "kind": "host",
-    "note": "The host of the feed of github-advisories-api."
+    "note": "The host of the feed of github-advisories-api, ossf-malicious-packages."
   },
   {
     "id": "api.greynoise.io",
@@ -1326,6 +1326,12 @@
     "note": "The host of the feed of dol-ui-weekly-claims."
   },
   {
+    "id": "osv-vulnerabilities.storage.googleapis.com",
+    "name": "osv-vulnerabilities.storage.googleapis.com",
+    "kind": "host",
+    "note": "The host of the data exports of osv-export-malicious: a Cloud Storage bucket of OSV.dev."
+  },
+  {
     "id": "packages.broadcom.com",
     "name": "packages.broadcom.com",
     "kind": "host",
@@ -1485,7 +1491,7 @@
     "id": "raw.githubusercontent.com",
     "name": "raw.githubusercontent.com",
     "kind": "host",
-    "note": "The host of the feed of cisa-csaf-github, cisa-vulnrichment, datadog-malicious-packages, metasploit-modules-metadata, nuclei-templates-cves."
+    "note": "The host of the feed of cisa-csaf-github, cisa-vulnrichment, datadog-malicious-packages, metasploit-modules-metadata, nuclei-templates-cves, ossf-malicious-packages."
   },
   {
     "id": "recalls-rappels.canada.ca",
@@ -3166,5 +3172,11 @@
     "name": "api.io.canada.ca",
     "kind": "host",
     "note": "The host of the news API of the Government of Canada, the releases of gc-news-phac."
+  },
+  {
+    "id": "api.scottishwater.co.uk",
+    "name": "api.scottishwater.co.uk",
+    "kind": "host",
+    "note": "The host of the API of Scottish Water, the overflow data of scottish-water-overflows."
   }
 ]
