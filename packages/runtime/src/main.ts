@@ -77,7 +77,7 @@ import { replyNotes } from "./replies.ts";
 import { spendNotes } from "./balance.ts";
 import { USE_FILE, useFile } from "./spend-use.ts";
 import { PROFILES, declare } from "./index.ts";
-import { daemonCheck, instanceCheck, instanceContextKey, LOUD_PING_URL_KEY, openInstance, pingKeyOf, pingTargets, userAgent } from "./instance.ts";
+import { daemonCheck, instanceCheck, instanceContextKey, LOUD_PING_URL_KEY, openInstance, pingKeyOf, pingTargets, strayLeavesText, userAgent } from "./instance.ts";
 import { openCheckedRuntimeLog } from "./log.ts";
 import { blockLine, startLoopWatch, type LoopWatch } from "./loop-watch.ts";
 import { foldText, writeFold } from "./fold-mode.ts";
@@ -430,6 +430,8 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
   });
   blockWatch?.phase("start: service and first pass");
   if (instance.zones !== undefined) out.log(zoneCodesText(instance.zones));
+  const strays = strayLeavesText(instance.strayLeaves);
+  if (strays !== undefined) out.error(strays);
   if (instance.transit !== undefined) out.log(transitText(instance.transit.chosen, instance.transit.copied));
   out.log(startReadText(instance.runtime.start));
   // The read position of each other copy at the start (AL-222). Two starts with the same position read the same pages again.
