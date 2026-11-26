@@ -219,7 +219,7 @@ describe("the routes of the delivery in the view (AL-154)", () => {
     await clock.advance(SECOND);
     const second = await runtime.pass();
     const reports = second.view.step.reports.filter((report) => report.kind.code === "system.store.routes");
-    expect(reports.map((report) => [report.op, report.parameters.routes?.[0], report.parameters.limit?.[0]])).toEqual([["alert", String(routes), "1"]]);
+    expect(reports.map((report) => [report.op, report.parameters["routes"]?.[0], report.parameters["limit"]?.[0]])).toEqual([["alert", String(routes), "1"]]);
     expect(routeLines(runtime)).toEqual(["routes/delivery"]);
     // The line only tells: the escalation of the incident goes on.
     expect(pushover.calls.send).toHaveLength(1);
