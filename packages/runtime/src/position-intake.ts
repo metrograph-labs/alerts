@@ -1,6 +1,6 @@
 /**
  * The intake of the fixes of the moving places (AL-40). A phone app sends its position to the procedure `alerts.position`
- * on the listener of the intake of the operator (`tellHost`). The body is the JSON of the HTTP mode of OwnTracks.
+ * on the listener of the intake of the operator (`runtimeHost`, AL-95). The body is the JSON of the HTTP mode of OwnTracks.
  *
  * Give this URL to the phone: `http://<host>:<port>/tell/alerts/position`. The port is the field `port` of the entry `tell`.
  * The listener is on the loopback address, thus a proxy of the private network takes the calls of the phone to it.

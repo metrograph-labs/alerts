@@ -2198,7 +2198,7 @@ The format:
 
 The runtime:
 
-- The intake is the procedure `alerts.position` on the listener of the intake of the operator (`tellHost`). It needs the entry `tell`.
+- The intake is the procedure `alerts.position` on the listener of the intake of the operator (`runtimeHost`, AL-95). It needs the entry `tell`.
 - Give this URL to the phone: `http://<host>:<port>/tell/alerts/position`. A proxy of the private network takes the calls to the loopback listener.
 - The phone sends the token of `tell.token` as the password of HTTP Basic auth. A call with the Bearer token also passes.
 - The intake reads the JSON of OwnTracks, an open phone app: `_type` `location`, `lat`, `lon`, `acc` in meters and `tst` in seconds.
