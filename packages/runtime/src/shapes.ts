@@ -262,8 +262,9 @@ export function refreshUntil(sources: readonly SourceDescriptor[], nextFetch: (s
 /** The outlines of the instance, with the step that the instance starts after each pass. */
 export interface ShapeKeeper extends InstanceShapes {
   /**
-   * This function starts a refresh of the store, when no refresh is in progress. The refresh starts no request that can end
-   * after `until`: the next fetch from the host of the store (`refreshUntil`). With no `until`, no refresh starts.
+   * This function keeps the live incidents of a pass and starts a refresh of the store, when no refresh is in progress. The
+   * refresh starts no request that can end after `until`: the next fetch from the host of the store (`refreshUntil`). With no
+   * `until`, no refresh starts. The next `basemap` simplifies the regions of the kept incidents (AL-176).
    */
   afterPass(incidents: readonly Incident[], until: Instant | undefined): void;
 }
