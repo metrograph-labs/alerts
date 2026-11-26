@@ -4,7 +4,7 @@
  * machine. It also reads the incident history of the status page of each provider. It reads no other source and opens
  * no account.
  *
- * `node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> (--assume-host <p> | --host-own <copy>) [--fixed <copy,copy>] [--assume-site <p>] [--assume-country <p>] [--site-log <site=file,site=file>] [--log-window <site=from/to,site=from/to>] [--base <file>] [--joint <file>] [--causes <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>] [--azure-sizes <n>]`
+ * `node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> (--assume-host <p> | --host-own <copy>) [--fixed <copy,copy>] [--assume-site <p>] [--assume-country <p>] [--site-log <site=file,site=file>] [--log-window <site=from/to,site=from/to>] [--base <file>] [--joint <file>] [--causes <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>] [--azure-sizes <n>] [--estimate low|mean]`
  *
  * - `--min-memory-mib` is the least memory of a host of a copy, in MiB.
  * - The three `--assume-*` values are assumed chance inputs, from 0 to 1, for each provider, region and host. The script
@@ -37,6 +37,9 @@
  *   copy, in place of `--assume-host` (AL-215). A new copy has the deploys and the code of the live copies. The input
  *   is measured when the joint inputs of that copy are measured. The own part of a copy at a provider also holds the
  *   down time of its provider and region. Thus the input can be low, but it is not high.
+ * - `--estimate` is `low` (the default) or `mean` (AL-147). With `low`, each measured input is the low end of its
+ *   95% Wilson interval: use it for a bound. With `mean`, each measured input is the Jeffreys posterior mean of its
+ *   good hours: use it for a point value. The output and the front tell the estimate.
  * - `--base` names a private JSON file with the function and the needs that all copies share (`readBase` of
  *   `placement.ts`). These needs limit the gain of each copy. The output names each of their inputs that is assumed or
  *   missing. A chance of the base can name the status page of its part (`status`). The script then measures the input
@@ -69,6 +72,9 @@ import { createPrinter } from "@mark1russell7/text/print";
 import { alertsHome, configPath } from "./config.ts";
 import {
   DEFAULT_WINDOW_DAYS,
+  ESTIMATES,
+  estimated,
+  estimatedBase,
   FETCH_GAP_MS,
   HISTORY_GAPS,
   inLogWindow,
@@ -85,6 +91,7 @@ import {
   withMeasures,
   type CallRead,
   type ChanceMeasure,
+  type Estimate,
   type LogWindow,
 } from "./placement-chances.ts";
 import {
@@ -117,7 +124,7 @@ import {
 const print = createPrinter({ out: process.stdout, err: process.stderr });
 
 const USAGE =
-  "The command is: node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> (--assume-host <p> | --host-own <copy>) [--fixed <copy,copy>] [--assume-site <p>] [--assume-country <p>] [--site-log <site=file,site=file>] [--log-window <site=from/to,site=from/to>] [--base <file>] [--joint <file>] [--causes <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>] [--azure-sizes <n>]";
+  "The command is: node src/placement-plan.ts --min-memory-mib <n> --assume-provider <p> --assume-region <p> (--assume-host <p> | --host-own <copy>) [--fixed <copy,copy>] [--assume-site <p>] [--assume-country <p>] [--site-log <site=file,site=file>] [--log-window <site=from/to,site=from/to>] [--base <file>] [--joint <file>] [--causes <file>] [--copies <n>] [--spend <provider>] [--terms <kind,kind>] [--window-days <n>] [--azure-sizes <n>] [--estimate low|mean]";
 
 /** The User-Agent of each request. It names no person and no project. */
 const USER_AGENT = "alerts-placement";
@@ -145,6 +152,8 @@ interface Command {
   readonly terms: readonly PriceTerm["kind"][];
   readonly windowDays: number;
   readonly azureSizes: number;
+  /** The estimate of each measured input. */
+  readonly estimate: Estimate;
 }
 
 // The command, or a problem of the command.
@@ -156,7 +165,7 @@ function command(args: readonly string[]): Command | string {
     if (name === undefined || !name.startsWith("--") || value === undefined || value.startsWith("--")) return `The argument ${String(name)} has no value.`;
     values.set(name.slice(2), value);
   }
-  const known = new Set(["min-memory-mib", "assume-provider", "assume-region", "assume-host", "assume-site", "assume-country", "fixed", "site-log", "log-window", "host-own", "base", "joint", "causes", "copies", "spend", "terms", "window-days", "azure-sizes"]);
+  const known = new Set(["min-memory-mib", "assume-provider", "assume-region", "assume-host", "assume-site", "assume-country", "fixed", "site-log", "log-window", "host-own", "base", "joint", "causes", "copies", "spend", "terms", "window-days", "azure-sizes", "estimate"]);
   const other = [...values.keys()].find((name) => !known.has(name));
   if (other !== undefined) return `The option --${other} is not known.`;
   const memory = Number(values.get("min-memory-mib"));
@@ -216,11 +225,14 @@ function command(args: readonly string[]): Command | string {
   const ownName = values.get("host-own");
   const hostOwn = ownName === undefined ? undefined : fixed.findIndex((copy) => (copy.kind === "site" ? copy.site : `${copy.provider}/${copy.region}`) === ownName);
   if (hostOwn === -1) return "The option --host-own names no copy of --fixed.";
+  const estimateName = values.get("estimate") ?? "low";
+  const estimate = ESTIMATES.find((each) => each === estimateName);
+  if (estimate === undefined) return `The estimate ${estimateName} is not ${ESTIMATES.join(" or ")}.`;
   const terms = (values.get("terms") ?? "on-demand").split(",");
   const bad = terms.find((term) => !TERM_KINDS.some((kind) => kind === term));
   if (bad !== undefined) return `The price term ${bad} is not on-demand, spot or committed.`;
   const chances = { provider, region, host, ...(site === undefined ? {} : { site }), ...(country === undefined ? {} : { country }) };
-  return { minMemoryMiB: memory, chances, copies, fixed, base: values.get("base"), joint: values.get("joint"), causes: values.get("causes"), siteLogs, hostOwn, spend: values.get("spend"), terms: terms as PriceTerm["kind"][], windowDays, azureSizes };
+  return { minMemoryMiB: memory, chances, copies, fixed, base: values.get("base"), joint: values.get("joint"), causes: values.get("causes"), siteLogs, hostOwn, spend: values.get("spend"), terms: terms as PriceTerm["kind"][], windowDays, azureSizes, estimate };
 }
 
 // The log window of one site from `site=from/to`. Each end is an ISO 8601 time or empty.
@@ -271,10 +283,11 @@ function measureRecord(measure: ChanceMeasure) {
 // both the joint file and the copy exist. The source names no copy, because the names go only to the private front file.
 function ownHost(joint: JointMeasure | undefined, index: number | undefined): ChanceInput {
   const input = index === undefined ? undefined : joint?.works[index];
-  const own = index === undefined || joint === undefined ? undefined : jointFit({ provider: joint.anyWorks, region: joint.anyWorks, host: joint.anyWorks, joint })?.own[index];
-  if (joint === undefined || input === undefined || own === undefined) throw new Error("The host input needs a joint measure and a live copy.");
-  const kind = input.kind === "measured" && joint.anyWorks.kind === "measured" ? "measured" : "assumed";
-  return { works: own, kind, source: `the own part of a live copy in the joint measure, from ${input.source}` };
+  const fit = joint === undefined ? undefined : jointFit({ provider: joint.anyWorks, region: joint.anyWorks, host: joint.anyWorks, joint });
+  const own = index === undefined ? undefined : fit?.own[index];
+  if (fit === undefined || input === undefined || own === undefined) throw new Error("The host input needs a joint measure and a live copy.");
+  // Each own part comes from all the inputs of the fit. Thus the kind is the kind of the fit: measured when each input is measured.
+  return { works: own, kind: fit.common.kind, source: `the own part of a live copy in the joint measure, from ${input.source}` };
 }
 
 // The calls of one channel in one site log. A log with no good read gives no call, and its site line tells the fault.
@@ -381,17 +394,18 @@ if (typeof parsed === "string") {
   for (const source of HISTORY_SOURCES.filter((each) => providers.has(each.provider))) {
     const outcome = await readPageHistory(source, { scheduler, now: () => Date.now() }, measureTransport);
     const measured = outcome.ok ? measureProvider(source, outcome.history, readAt, parsed.windowDays, regionsOf(source.provider)) : { ok: false as const, reason: outcome.problem };
-    if (measured.ok) measures.push(...measured.measures);
+    if (measured.ok) measures.push(...measured.measures.map((measure) => estimated(measure, parsed.estimate)));
     else gaps.push({ provider: source.provider, reason: measured.reason });
   }
   const known = new Set([...HISTORY_SOURCES, ...HISTORY_GAPS].map((each) => each.provider));
   for (const provider of [...providers].filter((each) => !known.has(each)).sort()) gaps.push({ provider, reason: "No status page history of this provider is known." });
+  print.line(`Each measured input is ${parsed.estimate === "mean" ? "the Jeffreys posterior mean of its good hours" : "the low end of its 95% Wilson interval"} (--estimate ${parsed.estimate}). The inputs of --joint stay as the file gives them.`);
   print.line(`The status page histories gave ${countOf(measures.length, "measured input")}. The other fragments and the hosts use the assumed inputs.`);
   // Each chance of the base that names a status page gets a measured input, with the same pace as the providers.
   const baseMeasure = baseRead === undefined ? undefined : await measureBase(baseRead, { scheduler, now: () => Date.now() }, measureTransport, readAt, parsed.windowDays);
   // Each chance of the base that names a channel gets a measured input from the calls in the site logs (AL-147).
   const callMeasure = baseMeasure === undefined ? undefined : measureBaseCalls(baseMeasure.base, (channel) => parsed.siteLogs.flatMap((log) => callsOrNone(log.path, channel).filter((call) => inLogWindow(call.time, log.window))), readAt, baseMeasure.measures);
-  const base: PlacementBase | undefined = callMeasure?.base;
+  const base: PlacementBase | undefined = callMeasure === undefined ? undefined : estimatedBase(callMeasure.base, [...(baseMeasure?.measures ?? []), ...callMeasure.measures], parsed.estimate);
   if (base === undefined) print.line("No base is named. The front leaves out the needs that all copies share.");
   else {
     for (const line of [...(baseMeasure?.lines ?? []), ...(callMeasure?.lines ?? [])]) print.line(line);
@@ -411,6 +425,7 @@ if (typeof parsed === "string") {
       site = { ok: false, reason: `The log of the site ${log.site} has no good read: ${errorMessage(error)}` };
     }
     if (site.ok) {
+      site = { ...site, measure: estimated(site.measure, parsed.estimate) };
       measures.push(site.measure);
       print.line(`The site ${log.site} has a measured input: ${site.measure.input.source}.`);
     } else print.line(`The site ${log.site} keeps the assumed input: ${site.reason}`);
@@ -452,6 +467,7 @@ if (typeof parsed === "string") {
         fixed: parsed.fixed,
         base: base === undefined ? null : { part: base.part, copies: base.copies ?? [], chances: base.chances ?? [], ...baseAssumed(base) },
         windowDays: parsed.windowDays,
+        estimate: parsed.estimate,
         chances,
         spend: parsed.spend ?? null,
         costLimit: costLimit ?? null,
