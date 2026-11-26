@@ -26693,5 +26693,80 @@
       "https://solana.com/docs/references/clusters"
     ],
     "round": 43
+  },
+  {
+    "id": "coinbase-exchange-ticker",
+    "name": "The public ticker of the Coinbase Exchange API",
+    "classes": [
+      "market.crypto.depeg"
+    ],
+    "url": "https://api.exchange.coinbase.com/products/USDT-USD/ticker",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.coinbase.com/legal/market_data",
+      "automated": "limited",
+      "redistribution": "forbidden",
+      "note": "The Market Data Terms give a personal licence: the data is only for personal or research use, and not for an application for other end users."
+    },
+    "cost": "free",
+    "delay": "Seconds: the reply of 2026-11-26 gave the time of the last trade.",
+    "history": "none: each read gives the price at that time. The candles endpoint gives past prices.",
+    "rateLimit": "10 requests in each second for each IP address, with bursts of 15, from the rate limit page.",
+    "calibration": null,
+    "coverage": "The traded price of each stablecoin pair on the exchange, for example USDT-USD at 0.99862 on 2026-11-26.",
+    "origins": [
+      "coinbase"
+    ],
+    "path": [
+      "api.exchange.coinbase.com"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "plan",
+    "reason": "A traded price of the main stablecoins from one exchange, with no key. It is an origin apart from the aggregate of DefiLlama.",
+    "evidence": [
+      "https://api.exchange.coinbase.com/products/USDT-USD/ticker",
+      "https://www.coinbase.com/legal/market_data",
+      "https://docs.cdp.coinbase.com/exchange/docs/rate-limits"
+    ],
+    "round": 44
+  },
+  {
+    "id": "canada-post-service-alerts",
+    "name": "Canada Post service alerts",
+    "classes": [
+      "infra.postal.disruption"
+    ],
+    "url": "https://www.canadapost-postescanada.ca/cpc/en/our-company/news-and-media/service-alerts.page",
+    "access": "page",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.canadapost-postescanada.ca/cpc/en/support/kb/company-policies/terms-conditions/legal-terms-of-use-and-conditions.page",
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The terms give a personal licence to use the site and say nothing about automated reading. The robots.txt does not stop the page."
+    },
+    "cost": "free",
+    "delay": "Hours: Canada Post posts a red or yellow alert when weather stops or slows delivery.",
+    "history": "An archive page keeps the past delivery interruptions.",
+    "rateLimit": "unknown",
+    "calibration": null,
+    "coverage": "Red and yellow alerts of mail delivery by area in Canada, and the international destinations that do not take mail.",
+    "origins": [
+      "canada-post"
+    ],
+    "path": [
+      "www.canadapost-postescanada.ca"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "later",
+    "reason": "Official delivery interruptions by area, but only as a page. A page source needs terms that let automated reading.",
+    "evidence": [
+      "https://www.canadapost-postescanada.ca/cpc/en/our-company/news-and-media/service-alerts.page",
+      "https://www.canadapost-postescanada.ca/cpc/en/support/kb/company-policies/terms-conditions/legal-terms-of-use-and-conditions.page"
+    ],
+    "round": 44
   }
 ]

@@ -2826,5 +2826,17 @@
     "name": "The Solana network (its validators)",
     "issues": null,
     "note": "The records of solana-rpc-tip name this issuer."
+  },
+  {
+    "id": "coinbase",
+    "name": "Coinbase",
+    "issues": null,
+    "note": "The records of coinbase-exchange-ticker name this issuer."
+  },
+  {
+    "id": "canada-post",
+    "name": "Canada Post",
+    "issues": null,
+    "note": "The records of canada-post-service-alerts name this issuer."
   }
 ]

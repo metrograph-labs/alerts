@@ -3190,5 +3190,17 @@
     "name": "api.mainnet.solana.com",
     "kind": "host",
     "note": "The public RPC of Solana, the host of solana-rpc-tip."
+  },
+  {
+    "id": "api.exchange.coinbase.com",
+    "name": "api.exchange.coinbase.com",
+    "kind": "host",
+    "note": "The host of the public market data of coinbase-exchange-ticker."
+  },
+  {
+    "id": "www.canadapost-postescanada.ca",
+    "name": "www.canadapost-postescanada.ca",
+    "kind": "host",
+    "note": "The host of the page of canada-post-service-alerts."
   }
 ]
