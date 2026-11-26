@@ -3272,7 +3272,7 @@
       "EM-DAT: Technological > Transport > Air",
       "UNDRR-ISC HIPs 2025: TL04 transport accidents"
     ],
-    "gap": "One live source, aaib-deployments-govuk, for the United Kingdom only. Round 24: the NTSB API returned 502. Round 39: TSB Canada returned 403, and the FAA preliminary notices are only a dashboard. Round 48: the ATSB site gave no answer in 30 s, and the terms of the BEA need a licence for a commercial use.",
+    "gap": "One live source, aaib-deployments-govuk, for the United Kingdom only. Round 24: the NTSB API returned 502. Round 39: TSB Canada returned 403, and the FAA preliminary notices are only a dashboard. Round 48: the ATSB site gave no answer in 30 s, and the terms of the BEA need a licence for a commercial use. Round 53: the NTSB page of investigations loads its list by a script from a path that robots.txt disallows, so the round did not read the list.",
     "round": 1
   },
   {
@@ -3351,7 +3351,7 @@
       "FEMA Lifelines: Transportation > Railway",
       "UNDRR-ISC HIPs 2025: TL04 transport accidents"
     ],
-    "gap": "Both are records after the fact, not live alerts. Round 39: the RAIB notices come 19 to 36 days after the event, and TSB Canada returned 403.",
+    "gap": "Both are records after the fact, not live alerts. Round 39: the RAIB notices come 19 to 36 days after the event, and TSB Canada returned 403. Round 53: the NTSB page of investigations loads its list by a script from a path that robots.txt disallows, so the round did not read the list.",
     "round": 1
   },
   {
