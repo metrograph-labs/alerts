@@ -1,4 +1,6 @@
-import { softwareMatches, versRangeCheck, type ObservationId, type SoftwareStack, type Subject } from "@mark1russell7/alerts";
+import { add, assess, EMPTY_STATE, incidents, policyWithSoftware, softwareMatches, versRangeCheck, type ObservationId, type PersonId, type PersonWatch, type Report, type SoftwareStack, type Subject } from "@mark1russell7/alerts";
+import { entryBody, mapObservation as mapKevObservation, SOURCE_ID as KEV_SOURCE } from "@mark1russell7/alerts-source-cisa-kev";
+import { createCsafMap, CSAF_PROVIDERS, readAdvisory } from "@mark1russell7/alerts-source-csaf";
 import { createOsvMap, fileBody, OSV_PROVIDERS } from "@mark1russell7/alerts-source-osv";
 import { describe, expect, it } from "vitest";
 
@@ -112,6 +114,92 @@ describe("the gate of the match of advisories to a stack", () => {
   });
 });
 
+// The CSAF cases: synthetic advisories in the shape of the vendor advisories, with products of no purl. The products
+// get purls of the type `generic`, and the ranges use the `generic` order of the versions of vendors.
+const csafDocument = (id: string, branches: readonly unknown[], affected: readonly string[]): Record<string, unknown> => ({
+  document: {
+    category: "csaf_security_advisory",
+    csaf_version: "2.0",
+    title: `A test advisory ${id}`,
+    publisher: { category: "vendor", name: "Example Controls", namespace: "https://example.org" },
+    distribution: { tlp: { label: "CLEAR" } },
+    tracking: { id, version: "1", status: "final", initial_release_date: "2026-11-20T00:00:00Z", current_release_date: "2026-11-20T00:00:00Z", revision_history: [] },
+  },
+  product_tree: { branches: [{ category: "vendor", name: "Example Controls", branches }] },
+  vulnerabilities: [{ cve: "CVE-2026-3000", product_status: { known_affected: affected } }],
+});
+const version = (category: string, name: string, id: string) => ({ category, name, product: { name: `${name} (${id})`, product_id: id } });
+const productName = (name: string, ...branches: readonly unknown[]) => ({ category: "product_name", name, branches });
+
+const CSAF_ADVISORIES = [
+  csafDocument("CSAF-1", [productName("Panel Studio", version("product_version_range", "<=V6.80", "A1"))], ["A1"]),
+  csafDocument("CSAF-2", [productName("Edge Box", version("product_version", "5.6.0", "B1"), version("product_version", "5.6.2", "B2"))], ["B1", "B2"]),
+  csafDocument("CSAF-3", [productName("Rapid Tool", version("product_version_range", "vers:generic/<=2.9.1.0_FR", "C1"))], ["C1"]),
+  csafDocument("CSAF-4", [productName("Desk Server", version("product_version_range", "vers:all/*", "D1"))], ["D1"]),
+  csafDocument("CSAF-5", [productName("Old Gateway", version("product_version_range", "all versions before the fix", "E1"))], ["E1"]),
+];
+
+const CSAF_STACK: SoftwareStack = {
+  parts: [
+    {
+      part: "plant",
+      packages: [
+        { purl: "pkg:generic/example%20controls/panel%20studio", version: "V6.70" },
+        { purl: "pkg:generic/example%20controls/edge%20box", version: "5.6.2" },
+        { purl: "pkg:generic/example%20controls/rapid%20tool", version: "2.9.1.0_ESP" },
+        { purl: "pkg:generic/example%20controls/desk%20server", version: "2.0" },
+      ],
+    },
+    {
+      part: "office",
+      packages: [
+        { purl: "pkg:generic/example%20controls/panel%20studio", version: "V6.81" },
+        { purl: "pkg:generic/example%20controls/edge%20box", version: "5.6.1" },
+        { purl: "pkg:generic/example%20controls/rapid%20tool", version: "2.8.5.0301_ESP" },
+        { purl: "pkg:generic/example%20controls/old%20gateway", version: "1.0" },
+      ],
+    },
+  ],
+};
+
+const CSAF_KNOWN = [
+  "CSAF-1 plant pkg:generic/example%20controls/panel%20studio affected -",
+  "CSAF-2 plant pkg:generic/example%20controls/edge%20box affected -",
+  "CSAF-3 plant pkg:generic/example%20controls/rapid%20tool unknown -",
+  "CSAF-3 office pkg:generic/example%20controls/rapid%20tool affected -",
+  "CSAF-4 plant pkg:generic/example%20controls/desk%20server affected -",
+  "CSAF-5 office pkg:generic/example%20controls/old%20gateway unknown -",
+];
+
+const csafSubjectsOf = (advisory: Record<string, unknown>): readonly Subject[] => {
+  const provider = CSAF_PROVIDERS[0]!;
+  const body = readAdvisory(JSON.stringify(advisory), "https://example.com/advisory.json");
+  const observation = {
+    id: "obs-2" as ObservationId,
+    source: provider.id,
+    fetched: NOW,
+    contentType: "application/json",
+    body: JSON.stringify(body),
+    transport: { url: "https://example.com/advisory.json", status: 200, latency: 10 },
+  };
+  const result = createCsafMap(provider)(observation);
+  expect(result.problems.filter((problem) => problem.fatal === true)).toEqual([]);
+  return result.reports.flatMap((report) => report.about);
+};
+
+describe("the gate of the match of CSAF advisories to a stack", () => {
+  it("gives each known match of the products of vendors, with 0 misses and 0 false matches", () => {
+    const found = CSAF_ADVISORIES.flatMap((advisory) => {
+      const id = String((advisory["document"] as { tracking: { id: string } }).tracking.id);
+      return softwareMatches(csafSubjectsOf(advisory), CSAF_STACK, versRangeCheck).map((m) => `${id} ${m.part} ${m.purl} ${m.verdict} ${m.fixed ?? "-"}`);
+    });
+    const misses = CSAF_KNOWN.filter((match) => !found.includes(match));
+    const falseMatches = found.filter((match) => !CSAF_KNOWN.includes(match));
+    expect({ misses, falseMatches }).toEqual({ misses: [], falseMatches: [] });
+    expect(found).toHaveLength(CSAF_KNOWN.length);
+  });
+});
+
 describe("the check of a version against a range", () => {
   it("gives the verdict and the fixed version", () => {
     expect(versRangeCheck("vers:npm/<2.4.1", "2.3.0")).toEqual({ affected: true, fixed: "2.4.1" });
@@ -122,5 +210,61 @@ describe("the check of a version against a range", () => {
   it("gives undefined for a text that is not a range, or for an unknown order", () => {
     expect(versRangeCheck("npm/<1.0.0", "0.9.0")).toEqual({ affected: undefined });
     expect(versRangeCheck("vers:maven/<2.0", "1.5")).toEqual({ affected: undefined });
+    expect(versRangeCheck("vers:generic/<=2.9.1.0_FR", "2.9.1.0_ESP")).toEqual({ affected: undefined });
+  });
+});
+
+// The raise by the KEV catalog of CISA: the advisory of a vendor and the KEV entry of the same CVE join one incident.
+// An affected part gets a higher level than with the advisory alone. A fixed part gets no level.
+const KEV_CVE = "CVE-2026-3100";
+const kevAdvisory = {
+  ...csafDocument("CSAF-K", [productName("Panel Studio", version("product_version_range", "<=V6.80", "K1"))], ["K1"]),
+  vulnerabilities: [{ cve: KEV_CVE, scores: [{ products: ["K1"], cvss_v3: { version: "3.1", baseScore: 7.5, baseSeverity: "HIGH" } }], product_status: { known_affected: ["K1"] } }],
+};
+const KEV_ENTRY = {
+  cveID: KEV_CVE,
+  vendorProject: "Example Controls",
+  product: "Panel Studio",
+  vulnerabilityName: "Example Controls Panel Studio Improper Authentication Vulnerability",
+  dateAdded: "2026-11-24",
+  shortDescription: "A test entry of the catalog.",
+  requiredAction: "Apply mitigations per vendor instructions.",
+  dueDate: "2026-12-15",
+  knownRansomwareCampaignUse: "Unknown",
+  notes: "",
+  cwes: ["CWE-287"],
+};
+
+const csafReports = (advisory: Record<string, unknown>): readonly Report[] => {
+  const provider = CSAF_PROVIDERS[0]!;
+  const body = readAdvisory(JSON.stringify(advisory), "https://example.com/advisory.json");
+  const observation = { id: "obs-3" as ObservationId, source: provider.id, fetched: NOW, contentType: "application/json", body: JSON.stringify(body), transport: { latency: 10 } };
+  return createCsafMap(provider)(observation).reports;
+};
+const kevReports = (): readonly Report[] => {
+  const result = mapKevObservation({ id: "obs-4" as ObservationId, source: KEV_SOURCE, fetched: NOW, contentType: "application/json", body: entryBody(KEV_ENTRY), transport: { latency: 10 } });
+  expect(result.problems).toEqual([]);
+  return result.reports;
+};
+
+describe("the raise of a match by the KEV catalog", () => {
+  const plant: SoftwareStack = { parts: [{ part: "plant", packages: [{ purl: "pkg:generic/example%20controls/panel%20studio", version: "V6.70" }] }] };
+  const office: SoftwareStack = { parts: [{ part: "office", packages: [{ purl: "pkg:generic/example%20controls/panel%20studio", version: "V6.81" }] }] };
+  const watcher: PersonWatch = { person: "p1" as PersonId, places: [], rules: [], subjects: [{ system: "software.part" }] };
+  const levelOf = (reports: readonly Report[], stack: SoftwareStack): string => {
+    const found = incidents(add(EMPTY_STATE, { reports }), NOW);
+    expect(found).toHaveLength(1);
+    return assess(found[0]!, watcher, [], policyWithSoftware(undefined, stack), NOW).level;
+  };
+
+  it("joins the advisory and the KEV entry, and raises the affected part from notice to urgent", () => {
+    const advisory = csafReports(kevAdvisory);
+    expect(advisory.map((report) => report.severity)).toEqual(["moderate"]);
+    expect(levelOf(advisory, plant)).toBe("notice");
+    expect(levelOf([...advisory, ...kevReports()], plant)).toBe("urgent");
+  });
+
+  it("gives no level to a part with a fixed version, also when attackers use the flaw", () => {
+    expect(levelOf([...csafReports(kevAdvisory), ...kevReports()], office)).toBe("none");
   });
 });
