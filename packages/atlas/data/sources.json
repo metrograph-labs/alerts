@@ -14253,7 +14253,9 @@
   {
     "id": "ndw-open-data",
     "name": "NDW open data (Netherlands)",
-    "classes": [],
+    "classes": [
+      "transport.road.incident"
+    ],
     "dimensions": [
       "road-events"
     ],
@@ -14284,7 +14286,7 @@
     "risks": [],
     "decision": "adopt",
     "adapter": "@mark1russell7/alerts-source-ndw",
-    "reason": "Open road situations for the Netherlands under CC0, with no key, in DATEX II version 3. The adapter counts the valid records of each group (accidents, congestion, obstructions, closures, works, conditions) for the country. A report for each record near a watched place is AL-178. The traffic speeds of NDW are not read.",
+    "reason": "Open road situations for the Netherlands under CC0, with no key, in DATEX II version 3. The adapter counts the valid records of each group (accidents, congestion, obstructions, closures, works, conditions) for the country. It also gives a report for each valid accident, closure and obstruction near a watched place with a position (AL-178). The traffic speeds of NDW are not read.",
     "evidence": [
       "https://opendata.ndw.nu/",
       "https://docs.ndw.nu/en/",
@@ -14296,9 +14298,7 @@
   {
     "id": "ndw-incidents-speeds",
     "name": "NDW road incidents near a place and traffic speeds (Netherlands)",
-    "classes": [
-      "transport.road.incident"
-    ],
+    "classes": [],
     "dimensions": [
       "road-traffic"
     ],
@@ -14327,7 +14327,7 @@
     "risks": [],
     "decision": "plan",
     "adapter": null,
-    "reason": "The parts of NDW that the adapter of ndw-open-data does not read yet. A report for each situation record near a watched place is AL-178: the same file and the same reader of DATEX II version 3. The traffic speeds are a separate file of NDW.",
+    "reason": "The traffic speeds of NDW, a separate file that the adapter of ndw-open-data does not read. The reports of the situation records near a watched place are in the adapter of ndw-open-data since AL-178.",
     "evidence": [
       "https://opendata.ndw.nu/",
       "https://docs.ndw.nu/en/",
