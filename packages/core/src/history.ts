@@ -6,9 +6,9 @@
 import { compareCodeUnits } from "@mark1russell7/text/order";
 import { assess, classOf, DEFAULT_ASSESS_POLICY, foreignIncidents, higherLevel, matchPlaces, reachedAssessment } from "./assess.ts";
 import { isPrivate } from "./audience.ts";
-import type { AssessedLevel, AssessPolicy, EndMark, Incident, Instant, Kind, MergeState, PersonWatch, PlaceId, RegionCode, Report, ReportId, Severity, Status } from "./contracts.ts";
+import type { AssessedLevel, AssessPolicy, Certainty, EndMark, Incident, Instant, Kind, MergeState, PersonWatch, PlaceId, RegionCode, Report, ReportId, Severity, Status } from "./contracts.ts";
 import { compareRegionCodes, regionCodeKey, SEVERITY_ORDER, type MapPlaceInput, type MapShape, type ShapeLookup } from "./map.ts";
-import { incidents, type IncidentOptions, type LinkRule } from "./merge.ts";
+import { CERTAINTY_ORDER, incidents, type IncidentOptions, type LinkRule } from "./merge.ts";
 import { areasWithoutBlocks, distinctShapes } from "./shapes.ts";
 
 /** The name of the format of the history payload. A change that breaks a reader gets a new name. */
@@ -42,6 +42,11 @@ export interface HistoryChange {
   readonly level: AssessedLevel;
   /** The highest severity of the parts at the time of the change. */
   readonly severity: Severity;
+  /**
+   * The highest certainty of the parts at the time of the change (AL-221). Thus a watch with a past onset does not read as a
+   * start. A runtime before this field gives no certainty.
+   */
+  readonly certainty?: Certainty;
   /** False when each part ended at the time of the change. */
   readonly live: boolean;
   /** The earliest onset of the parts. */
@@ -258,6 +263,7 @@ function changeOf(
     }
   }
   const severity = parts.map((part) => part.severity).reduce((a, b) => (SEVERITY_ORDER.indexOf(b) < SEVERITY_ORDER.indexOf(a) ? b : a));
+  const certainty = parts.map((part) => part.certainty).reduce((a, b) => (CERTAINTY_ORDER.indexOf(b) < CERTAINTY_ORDER.indexOf(a) ? b : a));
   const onsets = parts.flatMap((part) => (part.onset === undefined ? [] : [part.onset]));
   const expiries = parts.map((part) => part.expires);
   const codes = new Map<string, RegionCode>();
@@ -276,6 +282,7 @@ function changeOf(
     reports,
     level,
     severity,
+    certainty,
     live: live.length > 0,
     ...(onsets.length === 0 ? {} : { onset: Math.min(...onsets) }),
     ...(expiries.some((expires) => expires === undefined) ? {} : { expires: Math.max(...expiries.map((expires) => expires!)) }),

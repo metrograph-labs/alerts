@@ -34,6 +34,7 @@ CAP_MESSAGE_SYSTEM: build/index.d.ts#CAP_MESSAGE_SYSTEM
 CATEGORIES: build/index.d.ts#CATEGORIES
 CATEGORY_LABELS: build/index.d.ts#CATEGORY_LABELS
 CELL_RESOURCES: build/index.d.ts#CELL_RESOURCES
+CERTAINTY_ORDER: build/index.d.ts#CERTAINTY_ORDER
 CHAIN_MACHINE: build/index.d.ts#CHAIN_MACHINE
 CHANNEL_KIND: build/index.d.ts#CHANNEL_KIND
 CHANNEL_SUBJECT: build/index.d.ts#CHANNEL_SUBJECT
@@ -1285,6 +1286,9 @@ export declare const CATEGORY_LABELS: Readonly<Record<Category, string>>;
 
 ### build/index.d.ts#CELL_RESOURCES
 export declare const CELL_RESOURCES: readonly CellResource[];
+
+### build/index.d.ts#CERTAINTY_ORDER
+export declare const CERTAINTY_ORDER: readonly Certainty[];
 
 ### build/index.d.ts#CHAIN_MACHINE
 export declare const CHAIN_MACHINE: Machine;
@@ -2572,6 +2576,7 @@ export interface HistoryChange {
   readonly reports: readonly ReportId[];
   readonly level: AssessedLevel;
   readonly severity: Severity;
+  readonly certainty?: Certainty;
   readonly live: boolean;
   readonly onset?: Instant;
   readonly expires?: Instant;
