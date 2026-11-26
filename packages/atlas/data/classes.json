@@ -1722,7 +1722,7 @@
       "A rating agency cuts the US sovereign rating"
     ],
     "references": [],
-    "gap": "Not researched in round 1.",
+    "gap": "Round 43: no free machine-readable source of rating actions. An ESMA opinion of 2021 tells that its European Rating Platform has no bulk download. SEC rating history files come up to 12 or 24 months after each action.",
     "round": 1
   },
   {
@@ -1767,7 +1767,7 @@
     "references": [
       "https://status.solana.com/api/v2/status.json"
     ],
-    "gap": "Only the Solana status page; other chains were not researched.",
+    "gap": "The status pages of Solana, Avalanche, Polygon, Base and Sui are one source with one origin kind, the self-report of each chain. Round 43: the public RPC of Solana gives the tip of the chain, a second origin, but it is not for production.",
     "round": 1
   },
   {

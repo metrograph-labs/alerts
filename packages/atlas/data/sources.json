@@ -20537,14 +20537,14 @@
       "url": null,
       "automated": "unclear",
       "redistribution": "unclear",
-      "note": "The terms of each status page were not opened. Endpoints that returned JSON with no auth on 2026-11-15: Coinbase, Kraken, Gemini Exchange, Circle (USDC issuer), Solana."
+      "note": "The terms of each status page were not opened. Endpoints that returned JSON with no auth on 2026-11-15: Coinbase, Kraken, Gemini Exchange, Circle (USDC issuer), Solana. On 2026-11-26 the pages of Avalanche, Polygon, Base and Sui also gave the Statuspage summary JSON with no auth."
     },
     "cost": "free",
     "delay": "as each company posts an incident",
     "history": "incidents.json (not checked).",
     "rateLimit": "unknown",
     "calibration": "not applicable (self-reported)",
-    "coverage": "Exchange outages and degraded trading or withdrawals; the Solana page covers network halts.",
+    "coverage": "Exchange outages and degraded trading or withdrawals. The pages of Solana, Avalanche, Polygon, Base and Sui cover network halts.",
     "origins": [
       "service-vendors"
     ],
@@ -20562,7 +20562,11 @@
       "https://status.kraken.com/api/v2/status.json",
       "https://status.gemini.com/api/v2/status.json",
       "https://status.circle.com/api/v2/status.json",
-      "https://status.solana.com/api/v2/status.json"
+      "https://status.solana.com/api/v2/status.json",
+      "https://status.avax.network/api/v2/summary.json",
+      "https://status.polygon.technology/api/v2/summary.json",
+      "https://status.base.org/api/v2/summary.json",
+      "https://status.sui.io/api/v2/summary.json"
     ],
     "round": 1
   },
@@ -26650,5 +26654,44 @@
       "https://salsa.debian.org/debian/distro-info-data/-/raw/main/ubuntu.csv"
     ],
     "round": 42
+  },
+  {
+    "id": "solana-rpc-tip",
+    "name": "The newest slot of Solana from its public RPC",
+    "classes": [
+      "market.crypto.chain-halt"
+    ],
+    "url": "https://api.mainnet.solana.com",
+    "access": "api",
+    "auth": "none",
+    "terms": {
+      "url": "https://solana.com/docs/references/clusters",
+      "automated": "limited",
+      "redistribution": "unclear",
+      "note": "The Solana documentation gives a limit of 100 requests in each 10 seconds for each IP address. Guides tell that the public endpoints are not for production."
+    },
+    "cost": "free",
+    "delay": "Seconds: a slot that does not advance for minutes is a halt.",
+    "history": "none: each read gives the slot at that time.",
+    "rateLimit": "100 requests in each 10 seconds for each IP address, and 40 for one method.",
+    "calibration": null,
+    "coverage": "The Solana network only. Each chain has its own RPC and its own terms.",
+    "origins": [
+      "solana-network"
+    ],
+    "path": [
+      "api.mainnet.solana.com"
+    ],
+    "subjectIds": null,
+    "risks": [
+      "The public endpoint is for development, not for production, and it has no service level. A round reads the full terms before an adapter."
+    ],
+    "decision": "later",
+    "adapter": null,
+    "reason": "The chain itself shows a halt, with no report of a person. It is independent of the status page, but the endpoint is not for production.",
+    "evidence": [
+      "https://solana.com/docs/references/clusters"
+    ],
+    "round": 43
   }
 ]
