@@ -63,7 +63,7 @@ describe("the reports of one CAP message", () => {
     for (const scope of ["Private", "Restricted"]) {
       const { reports, problems } = mapText(messageText("TEST-S", THREE).replace("<scope>Public</scope>", `<scope>${scope}</scope>`));
       expect(reports).toEqual([]);
-      expect(problems.list).toEqual([{ path: "scope", message: expect.stringContaining(JSON.stringify(scope)), fatal: false }]);
+      expect(problems.list).toEqual([{ path: "scope", message: expect.stringContaining(JSON.stringify(scope)), fatal: false, skipped: true }]);
     }
     expect(mapText(messageText("TEST-S", THREE).replace("<scope>Public</scope>", "<scope>public</scope>")).reports).toHaveLength(3);
   });

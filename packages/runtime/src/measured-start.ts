@@ -17,29 +17,126 @@
  */
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
-import { PUSHOVER_QUOTA, PUSHOVER_RESERVE_NOTICES, type PushoverChannelOptions } from "@mark1russell7/alerts-channel-pushover";
-import type { TwilioFetch } from "@mark1russell7/alerts-channel-twilio";
+import { CHANNEL_ID as PUSHOVER_CHANNEL, PUSHOVER_QUOTA, PUSHOVER_RESERVE_NOTICES, type PushoverChannelOptions } from "@mark1russell7/alerts-channel-pushover";
+import { CHANNEL_ID as TWILIO_CHANNEL, TEXT_CHANNEL_ID, type TwilioFetch } from "@mark1russell7/alerts-channel-twilio";
 import { openShapeCache, SHAPES_FILE } from "@mark1russell7/alerts-shapes-nws";
 import { realClock, wallClock, type WallClock } from "@mark1russell7/algebra/clock";
 import type { GcPause } from "@mark1russell7/lag/node";
 import { nodeHostPorts } from "@mark1russell7/service/host";
 import type { ChunkOptions, FoldKey, FoldMark, FoldRow, FoldSnapshot, MarkLog } from "@mark1russell7/sqlite";
+import { fieldOf, recordOf, textOf } from "@mark1russell7/optional/read";
 import type { Meter } from "@opentelemetry/api";
 import { SqliteHostStateStore } from "polite-crawler";
 import { fetchTransport, quotaGate, type Transport } from "polite-crawler/api";
-import { CONFIG_FILE, envSecrets } from "./config.ts";
+import { CONFIG_FILE, envSecrets, type FileText } from "./config.ts";
 import { holdHome } from "./home-lock.ts";
-import { instanceCheck, openInstance, type Instance } from "./instance.ts";
+import { instanceCheck, openInstance, PUSHOVER_TOKEN, TWILIO_KEYS, TWILIO_TEXT_FROM_KEY, WEBHOOK_SECRET_KEY, type Instance } from "./instance.ts";
 import { openCheckedRuntimeLog, type RuntimeLog } from "./log.ts";
 import { loadPriors } from "./priors.ts";
 import { openReadingStore, READINGS_FILE } from "./readings.ts";
-import { checkStart, privateFiles, readStartTexts } from "./reload.ts";
+import { checkStart, privateFiles, readStartTexts, type StartTexts } from "./reload.ts";
 import type { Pass } from "./runtime.ts";
 import { openStartSnapshots, START_SNAPSHOTS_FOLDER, type OpenedStartSnapshot } from "./start-snapshot.ts";
 import { openTransitCache, TRANSIT_FILE } from "./transit.ts";
 
 /** The fake keys of a measure with no option `keys`: the token of the Pushover application and one Pushover user key. */
 export const MEASURE_KEYS: Readonly<Record<string, string>> = { PUSHOVER_APP_TOKEN: "t".repeat(30), PUSHOVER_USER_KEY: "u".repeat(30) };
+
+/**
+ * The form of the fake value of a key of a measure (AL-176). A `phone` has the country code +999, which has no
+ * country. A `pushover` is 30 letters and digits. A `url` is on the domain `invalid`, which no name server resolves. A
+ * `token` is 32 letters and digits.
+ */
+export type KeyForm = "phone" | "pushover" | "url" | "token";
+
+/** The fake values of the keys whose form the check of the instance examines: the keys of Pushover, Twilio and the webhook. */
+const FIXED_KEYS: Readonly<Record<string, string>> = {
+  [PUSHOVER_TOKEN]: "t".repeat(30),
+  [TWILIO_KEYS.accountSid]: `AC${"0".repeat(32)}`,
+  [TWILIO_KEYS.keySid]: `SK${"1".repeat(32)}`,
+  [TWILIO_KEYS.secret]: "s".repeat(32),
+  [TWILIO_KEYS.from]: "+99900000001",
+  [TWILIO_TEXT_FROM_KEY]: "+99900000002",
+  [WEBHOOK_SECRET_KEY]: `whsec_${Buffer.alloc(32, 1).toString("base64")}`,
+};
+
+/** The channels whose address is a phone number. */
+const PHONE_CHANNELS: ReadonlySet<string> = new Set([TWILIO_CHANNEL, TEXT_CHANNEL_ID]);
+
+/**
+ * This function gives the form of each key that a configuration or a part uses in an address. The document is the parsed
+ * JSON of one file. A secret of an address of a Twilio channel and each phone of the opt-in list are phones. The secret of
+ * the field `user` of a Pushover address is a Pushover key. A field of a wrong type gives no form, and the check of the
+ * start reports it.
+ */
+export function keyFormsOf(document: unknown): ReadonlyMap<string, KeyForm> {
+  const forms = new Map<string, KeyForm>();
+  const contacts = fieldOf(document, "contacts");
+  for (const contact of Array.isArray(contacts) ? contacts : []) {
+    const channel = textOf(contact, "channel");
+    for (const [field, value] of Object.entries(recordOf(contact, "address") ?? {})) {
+      const name = textOf(value, "secret");
+      if (name === undefined) continue;
+      if (channel !== undefined && PHONE_CHANNELS.has(channel)) forms.set(name, "phone");
+      else if (channel === PUSHOVER_CHANNEL && field === "user") forms.set(name, "pushover");
+    }
+  }
+  const optIn = fieldOf(document, "optIn");
+  for (const record of Array.isArray(optIn) ? optIn : []) {
+    const name = textOf(fieldOf(record, "number"), "secret");
+    if (name !== undefined) forms.set(name, "phone");
+  }
+  return forms;
+}
+
+/** This function gives the fake value of form `form` for the key at place `index` of the names. */
+function fakeKey(form: KeyForm, index: number): string {
+  switch (form) {
+    case "phone":
+      return `+999${String(10 + index).padStart(8, "0")}`;
+    case "pushover":
+      return `u${String(index).padStart(29, "0")}`;
+    case "url":
+      return `https://example.invalid/${String(index)}`;
+    case "token":
+      return `k${String(index).padStart(31, "0")}`;
+  }
+}
+
+/**
+ * This function gives a fake value of a valid form for each name of a key (AL-176). The names come from a real
+ * `secrets.env`, with no value. Thus a measured start opens the same channels and sources as the copy of the names.
+ *
+ * - The keys of Pushover, Twilio and the webhook get fixed values that pass the check of the instance.
+ * - The other keys get the form that `forms` gives: the forms of `keyFormsOf`.
+ * - A name with no form that starts with `PUSHOVER_` gets the form `pushover`. A name that ends with `_URL` gets `url`.
+ *   The other names get `token`.
+ * - Two names get two different values.
+ */
+export function measureKeys(names: readonly string[], forms: ReadonlyMap<string, KeyForm> = new Map()): Readonly<Record<string, string>> {
+  const keys: Record<string, string> = {};
+  for (const [index, name] of [...new Set(names)].entries()) {
+    const form = forms.get(name) ?? (name.startsWith("PUSHOVER_") ? "pushover" : name.endsWith("_URL") ? "url" : "token");
+    keys[name] = FIXED_KEYS[name] ?? fakeKey(form, index);
+  }
+  return keys;
+}
+
+/** This function gives the forms of the keys of the configuration and of each part of the texts of a start. */
+function startKeyForms(texts: StartTexts): ReadonlyMap<string, KeyForm> {
+  const files: readonly FileText[] = [texts.config, ...(texts.parts !== undefined && "files" in texts.parts ? texts.parts.files.map((part) => part.file) : [])];
+  return new Map(files.flatMap((file) => [...keyFormsOf(jsonOf(file))]));
+}
+
+/** This function gives the parsed JSON of a file, or `undefined` for a file that cannot be read or parsed. */
+function jsonOf(file: FileText): unknown {
+  if (!("text" in file)) return undefined;
+  try {
+    return JSON.parse(file.text) as unknown;
+  } catch {
+    return undefined;
+  }
+}
 
 /** The message of each fetch and each send of a measured start. */
 export const NO_NETWORK = "A measured start has no network.";
@@ -112,6 +209,11 @@ export interface MeasuredOptions {
    * Give no real key. The start sends nothing to a real service, thus a real key has no use in it.
    */
   readonly keys?: Readonly<Record<string, string>>;
+  /**
+   * The names of the keys of a real `secrets.env`, with no value (AL-176). The start gives each name a fake value with
+   * `measureKeys`, and the forms come from the addresses of the configuration and of its parts. The option `keys` comes first.
+   */
+  readonly keyNames?: readonly string[];
   /** This function gets each line that a live start writes to its output. Default: no output. */
   readonly report?: (line: string) => void;
   /**
@@ -333,9 +435,9 @@ export async function openMeasuredRuntime(home: string, options: MeasuredOptions
   const held = await holdHome(home, nodeHostPorts());
   try {
     // The texts of a start, with the fake keys in place of secrets.env and with no copy.json. The check is the check of main.ts.
-    const keys = options.keys ?? MEASURE_KEYS;
     const files = privateFiles(home, join(home, CONFIG_FILE));
     const read = await readStartTexts(files);
+    const keys = options.keys ?? (options.keyNames === undefined ? MEASURE_KEYS : measureKeys(options.keyNames, startKeyForms(read)));
     const secretsText = Object.entries(keys)
       .map(([name, value]) => `${name}=${value}\n`)
       .join("");

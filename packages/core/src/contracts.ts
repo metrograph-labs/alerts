@@ -529,6 +529,11 @@ export interface MapProblem {
    * absent for a note and for a fatal problem.
    */
   readonly lossy?: true;
+  /**
+   * True: the map skipped a good message by design and gave no report for it (AL-94). A skip is no problem of the
+   * source, thus it does not change the health. The field is absent for each other problem.
+   */
+  readonly skipped?: true;
 }
 
 /** The result of the map function. */

@@ -135,6 +135,20 @@ describe("the health of a source", () => {
     expect(run(BASE, [fetchAt(0), fetchAt(1, { lossy: 5 }), fetchAt(2)], START + 3 * MINUTE).health.state).toBe("healthy");
   });
 
+  it("stays healthy when the map skips messages by design, and tells the count of the last passed fetch (AL-94)", () => {
+    const at = START + 2 * MINUTE;
+    expect(run(BASE, [fetchAt(0), fetchAt(1, { skipped: 2 })], at).health).toMatchObject({
+      state: "healthy",
+      reason: "The last fetch passed. The map skipped 2 messages of the last passed fetch by design.",
+    });
+    expect(run(BASE, [fetchAt(0), fetchAt(1, { skipped: 1, lossy: 1 })], at).health).toMatchObject({
+      state: "changed",
+      reason: "The map gave 1 lossy problems for the last passed fetch. The map skipped 1 message of the last passed fetch by design.",
+    });
+    expect(run(BASE, [fetchAt(0), fetchAt(1, { skipped: 0 })], at).health.reason).toBe("The last fetch passed.");
+    expect(run(BASE, [fetchAt(0), fetchAt(1, { skipped: 2 }), fetchAt(2)], START + 3 * MINUTE).health.reason).toBe("The last fetch passed.");
+  });
+
   it("is failing while the last canary failed, through fetches with no canary", () => {
     const bad: CanaryResult = { pass: false, reason: "The newest test message is 40 minutes old." };
     const good: CanaryResult = { pass: true, reason: "The newest test message is 2 minutes old." };

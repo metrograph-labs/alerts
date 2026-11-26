@@ -27085,5 +27085,45 @@
       "https://www.loc.gov/legal/"
     ],
     "round": 52
+  },
+  {
+    "id": "ntsb-investigations",
+    "name": "NTSB investigations and news releases",
+    "classes": [
+      "transport.air.accident",
+      "transport.rail.accident"
+    ],
+    "url": "https://www.ntsb.gov/investigations/Pages/Investigations.aspx",
+    "access": "page",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.ntsb.gov/robots.txt",
+      "automated": "limited",
+      "redistribution": "allowed",
+      "note": "The pages are works of the US government. The robots.txt disallows /_layouts/ and /SiteAssets/, the paths of the script that loads the list of investigations."
+    },
+    "cost": "free",
+    "delay": "Unknown. The news releases tell of findings and recommendations: 8 releases from 2026-08-28 to 2026-11-17.",
+    "history": "The investigations of each mode, open and completed. The news releases of each year since 2020.",
+    "rateLimit": "unknown",
+    "calibration": "None. The list has the investigations of each surface mode, and only the aviation investigations with a large loss of life or of high public interest.",
+    "coverage": "The United States: aviation, highway, marine, pipeline, railroad and hazardous materials.",
+    "origins": [
+      "ntsb"
+    ],
+    "path": [
+      "www.ntsb.gov"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "The list of open investigations tells of each major accident. But the page loads the list by a script from a path that robots.txt disallows, and the news releases are not notices of accidents.",
+    "evidence": [
+      "https://www.ntsb.gov/investigations/Pages/Investigations.aspx",
+      "https://www.ntsb.gov/news/press-releases/Pages/default.aspx",
+      "https://www.ntsb.gov/robots.txt"
+    ],
+    "round": 53
   }
 ]

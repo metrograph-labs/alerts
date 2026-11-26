@@ -142,7 +142,17 @@ describe("the report check of a fetch (AL-157)", () => {
     expect(fetch.reports).toEqual([good, cancel]);
     expect(fetch.reports[0]).toBe(good);
     expect(fetch.record.lossy).toBeUndefined();
+    expect(fetch.record.skipped).toBeUndefined();
     expect(fetch.problems).toEqual([]);
+  });
+
+  it("counts each message that the map skipped by design, and the skip is no lossy problem (AL-94)", () => {
+    const skip = { path: "scope", message: "the scope is not Public", fatal: false, skipped: true } as const;
+    const step = fetchStep({ source: SOURCE, procedures: { map: () => ({ reports: [], problems: [skip] }) }, started: T0, ended: T0 + 100, outcome: { ok: true, observations: [observation, { ...observation, id: "observation-2" as ObservationId }], complete: true }, known: () => false });
+    const fetch = fetchOf(step);
+    expect(fetch.record.skipped).toBe(2);
+    expect(fetch.record.lossy).toBeUndefined();
+    expect(fetch.record.fatal).toBe(0);
   });
 
   it("keeps a report that fails the schema out of the log, as a lossy problem with no value", () => {

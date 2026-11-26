@@ -294,11 +294,11 @@ export function capReports(alert: CapAlert, observation: Observation, options: C
   const messageType = alert.msgType.trim().toLowerCase();
   if (CAP_NOT_ALERTS.has(messageType)) return [];
   // The addresses of a CAP message name no person of the configuration. A public report of a private or restricted
-  // message would reach each person, so the map function maps only the scope Public (AL-92). The skip is a note, not a
-  // fatal problem: the message is good, and the health of the source stays as it is.
+  // message would reach each person, so the map function maps only the scope Public (AL-92). The skip is not a fatal
+  // problem: the message is good, and the health of the source stays as it is. The fetch record counts it (AL-94).
   const scope = alert.scope.trim();
   if (scope.toLowerCase() !== "public") {
-    problems.add("scope", `the alert has the scope ${JSON.stringify(scope)}, and the map function maps only the scope Public`, "note");
+    problems.add("scope", `the alert has the scope ${JSON.stringify(scope)}, and the map function maps only the scope Public`, "skip");
     return [];
   }
 
