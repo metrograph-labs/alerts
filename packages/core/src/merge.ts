@@ -683,6 +683,9 @@ const SEVERITY: readonly Severity[] = ["unknown", "minor", "moderate", "severe",
 const URGENCY: readonly Urgency[] = ["unknown", "past", "future", "expected", "immediate"];
 const CERTAINTY: readonly Certainty[] = ["unknown", "unlikely", "possible", "likely", "observed"];
 
+/** The CAP certainty values from the highest, as `SEVERITY_ORDER` gives the severities. */
+export const CERTAINTY_ORDER: readonly Certainty[] = [...CERTAINTY].reverse();
+
 // The first item with the highest value. The reports come in the order of their ids, so a tie goes to the smallest id.
 function top<T>(items: readonly T[], rank: (item: T) => number): T {
   return items.reduce((best, item) => (rank(item) > rank(best) ? item : best));
