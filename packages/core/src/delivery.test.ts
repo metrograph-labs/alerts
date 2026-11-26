@@ -1124,13 +1124,9 @@ describe("messageOf", () => {
       { part: "api", purl: "pkg:npm/lib", installed: "1.0.0", verdict: "unknown" },
     ] as const;
     expect(messageOf(incident(), reports, send, undefined, software).body).toBe(
-      "The part web (The web server) has pkg:npm/lib 2.3.0. The first fixed version is 2.4.1.
-" +
-        "The part api has pkg:npm/lib 1.0.0. The advisory does not tell if this version is affected.
-" +
-        `The severity of the advisory is ${incident().severity}.
-
-A package is malicious.`,
+      "The part web (The web server) has pkg:npm/lib 2.3.0. The first fixed version is 2.4.1.\n" +
+        "The part api has pkg:npm/lib 1.0.0. The advisory does not tell if this version is affected.\n" +
+        `The severity of the advisory is ${incident().severity}.\n\nA package is malicious.`,
     );
     expect(messageOf(incident(), reports, send, undefined, []).body).toBe("A package is malicious.");
   });

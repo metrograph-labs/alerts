@@ -648,8 +648,7 @@ export function recipientProblems(recipient: Recipient, channels: readonly Chann
 export function messageOf(incident: Incident, reports: readonly Report[], send: EscalationSend, why?: string, software: readonly SoftwareMatch[] = []): Message {
   const report = textReport(incident, reports);
   const title = titleOf(incident, report);
-  const matches = software.length === 0 ? [] : [[...software.map(softwareMatchText), `The severity of the advisory is ${incident.severity}.`].join("
-")];
+  const matches = software.length === 0 ? [] : [[...software.map(softwareMatchText), `The severity of the advisory is ${incident.severity}.`].join("\n")];
   const body = [...matches, report?.instruction, report?.areaText, report?.description].flatMap((part) => (part === undefined || part.trim() === "" ? [] : [part.trim()])).join("\n\n");
   return {
     key: messageKey(send),
