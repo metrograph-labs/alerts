@@ -2417,5 +2417,45 @@
       "members": 1757,
       "cause": "Round 50 makes fda-core-investigations a plan: its content is in the public domain. The class gets 1 source of 2, so the gaps stay at 56."
     }
+  },
+  {
+    "round": 51,
+    "date": "2026-11-26",
+    "by": "One session, with no subagent.",
+    "method": "The round looked again at the pest quarantines, a class with no source. It read the Federal Register API and the EPPO Reporting Service. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json"
+    ],
+    "queries": [
+      "https://www.federalregister.gov/api/v1/documents.json?conditions[agencies][]=animal-and-plant-health-inspection-service&conditions[term]=quarantine",
+      "https://www.federalregister.gov/api/v1/documents.json?conditions[cfr][title]=7&conditions[cfr][part]=301"
+    ],
+    "notes": [
+      "The term query of the Federal Register API gave 2334 documents of APHIS. The newest 5 were notices, not changes of quarantined areas.",
+      "The query of 7 CFR part 301 gave 580 documents. The newest rule was a technical amendment of 2024-04-04.",
+      "The EPPO Reporting Service had 28 articles in its issue of October 2026, most of them on findings and incursions of quarantine pests.",
+      "The Open Data Licence of EPPO covers the EPPO Codes only. The round found no terms for the articles of the Reporting Service."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 56,
+      "cover": {
+        "adopted": 59,
+        "paths": 59,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 166,
+        "paths": 165,
+        "origins": 84
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 51 adds eppo-reporting-service as a later source. The class keeps 0 sources, so the gaps stay at 56."
+    }
   }
 ]

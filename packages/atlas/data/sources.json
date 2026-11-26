@@ -27006,5 +27006,45 @@
       "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=foodinspectionagency&sort=publishedDate&orderBy=desc&pick=50&format=atom"
     ],
     "round": 49
+  },
+  {
+    "id": "eppo-reporting-service",
+    "name": "EPPO Reporting Service",
+    "classes": [
+      "env.pest-quarantine"
+    ],
+    "url": "https://gd.eppo.int/reporting/",
+    "access": "page",
+    "auth": "none",
+    "terms": {
+      "url": "https://data.eppo.int/data/Open_Licence.pdf",
+      "automated": "unclear",
+      "redistribution": "unclear",
+      "note": "The Open Data Licence of EPPO covers the EPPO Codes only, not the articles of the Reporting Service. The round found no terms for the articles. The robots.txt does not block the path."
+    },
+    "cost": "free",
+    "delay": "About one month: on 2026-11-26 the newest issue was the issue of October 2026. Each month has one issue.",
+    "history": "The page lists each issue since 1974. Each issue has a page for each article.",
+    "rateLimit": "unknown",
+    "calibration": "None. Each article names the pest, the country and the kind of the report: a first finding, an incursion, an outbreak or an eradication.",
+    "coverage": "The quarantine pests and the pests of the EPPO Alert List in the member countries of EPPO and in other countries. The issue of October 2026 had 28 articles.",
+    "origins": [
+      "eppo"
+    ],
+    "path": [
+      "gd.eppo.int"
+    ],
+    "subjectIds": null,
+    "risks": [],
+    "decision": "later",
+    "adapter": null,
+    "reason": "A monthly source of the new pest incursions of many countries. But the site has no feed, and the round found no terms for the articles. Such terms do not close a gap (AL-195).",
+    "evidence": [
+      "https://gd.eppo.int/reporting/",
+      "https://gd.eppo.int/reporting/Rse-2026-10",
+      "https://gd.eppo.int/robots.txt",
+      "https://data.eppo.int/data/Open_Licence.pdf"
+    ],
+    "round": 51
   }
 ]
