@@ -1419,7 +1419,7 @@
     "references": [
       "CISA sectors: Transportation Systems > Postal and Shipping"
     ],
-    "gap": "One source, a web page with no feed. Other postal operators are for round 2.",
+    "gap": "One source, a web page with no feed. Other postal operators are for round 2. Round 44: the Canada Post service alerts are a page with no feed, and its terms say nothing about automated reading. No postal operator with a feed was found.",
     "round": 1
   },
   {
@@ -1753,7 +1753,7 @@
       "https://stablecoins.llama.fi/stablecoins?includePrices=true",
       "Owner request"
     ],
-    "gap": "The two planned sources give different children: the status pages give exchange outages and chain halts, and DefiLlama gives depegs. No leaf code has 2 sources.",
+    "gap": null,
     "round": 1
   },
   {
@@ -1781,7 +1781,7 @@
     "references": [
       "https://api-docs.defillama.com/llms-free.txt"
     ],
-    "gap": "DefiLlama is the only candidate; CoinGecko needs a key and its terms were not opened.",
+    "gap": null,
     "round": 1
   },
   {

@@ -2136,5 +2136,49 @@
       "members": 1757,
       "cause": "Round 43 adds four chain pages to a planned source and one later source with a risk. Neither counts as a second source with no risk, so the gaps stay at 62."
     }
+  },
+  {
+    "round": 44,
+    "date": "2026-11-26",
+    "by": "One session, with no subagent.",
+    "method": "The round took two classes with one source: stablecoin depegs and postal disruptions. One fetch went to each URL, with the user agent alerts-atlas-research/1.0.",
+    "lists": [
+      "The classes with a gap, from the atlas on main: packages/atlas/data/classes.json",
+      "The public tickers of Coinbase, Kraken and Bitstamp for USDT and USDC",
+      "The Coinbase Market Data Terms: https://www.coinbase.com/legal/market_data",
+      "The Canada Post service alerts and its terms of use"
+    ],
+    "queries": [
+      "Coinbase Exchange API market data terms of use redistribution",
+      "Bitstamp API terms of use market data",
+      "postal service disruption alerts RSS feed JSON"
+    ],
+    "notes": [
+      "The tickers of Coinbase, Kraken and Bitstamp gave stablecoin prices with no key. Only the Coinbase terms were read, so only Coinbase is a plan.",
+      "The Coinbase terms allow personal or research use only, the same limit as DefiLlama. Thus coinbase-exchange-ticker has the same terms values. With two origins, the depeg class and its parent market.crypto have no gap.",
+      "Canada Post gives red and yellow delivery alerts by area on a page. Its terms say nothing about automated reading, so the source is later.",
+      "The search found no feed of postal disruptions for Canada Post, Royal Mail or Australia Post."
+    ],
+    "studies": [],
+    "measures": {
+      "classes": 214,
+      "gaps": 60,
+      "cover": {
+        "adopted": 59,
+        "paths": 59,
+        "origins": 8
+      },
+      "total": {
+        "adopted": 166,
+        "paths": 165,
+        "origins": 84
+      },
+      "unknownOrigins": 15,
+      "unknownPaths": 33,
+      "dimensions": 10,
+      "families": 10,
+      "members": 1757,
+      "cause": "Round 44 plans the Coinbase ticker, a second origin for stablecoin depegs. It closes the gap of the depeg class and of its parent market.crypto, so the gaps go from 62 to 60."
+    }
   }
 ]
