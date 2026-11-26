@@ -151,8 +151,11 @@ export interface MapPayload {
   readonly surprise?: IndicatorSurprise;
 }
 
-/** The name of the format of the map payload. A change that breaks a reader gets a new name. */
-export const MAP_FORMAT = "alerts-map/1";
+/**
+ * The name of the format of the map payload. A change that breaks a reader gets a new name. Version 2 (AL-214) sends the
+ * payload in the wire form of `packMap`, with one table of the distinct shapes.
+ */
+export const MAP_FORMAT = "alerts-map/2";
 
 /** These are the inputs of the payload of the map route. */
 export interface MapPayloadInput extends Omit<MapInput, "assessments"> {
