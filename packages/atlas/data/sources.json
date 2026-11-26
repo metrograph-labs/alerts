@@ -13819,7 +13819,6 @@
     "id": "nasa-firms-api",
     "name": "NASA FIRMS active fire API",
     "classes": [
-      "fire.wildfire",
       "fire.wildfire.hotspot"
     ],
     "dimensions": [
