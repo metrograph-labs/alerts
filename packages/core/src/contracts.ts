@@ -1457,6 +1457,24 @@ export interface QuietWindow {
   readonly start: string;
   /** The end of the window, a local time `HH:MM`. The end is not in the window. An end before the start crosses midnight. An end equal to the start gives the full day. */
   readonly end: string;
+  /**
+   * The sound rules of the window (AL-97). When it is absent, `DEFAULT_QUIET_SOUNDS` applies. An empty list makes each
+   * message below `life-safety` quiet.
+   */
+  readonly sounds?: readonly QuietSound[];
+}
+
+/**
+ * A sound rule of a quiet window (AL-97). An incident of one of its kinds, at its level or above, sounds in the window.
+ * At most `most` incidents of the rule sound in one window. Each later incident of the rule is quiet.
+ */
+export interface QuietSound {
+  /** The prefixes of the kinds, as in the classes of `AssessPolicy`. */
+  readonly kinds: readonly string[];
+  /** The lowest level that sounds. A `life-safety` message sounds with no rule. */
+  readonly level: "notice" | "urgent";
+  /** The most incidents of the rule that sound in one window: a whole number, 0 or more. */
+  readonly most: number;
 }
 
 /**

@@ -26187,7 +26187,7 @@
       "url": null,
       "automated": "unclear",
       "redistribution": "unclear",
-      "note": "The layer states no licence. Its data comes from the public outage maps of the utilities, and these maps have their own terms."
+      "note": "The layer states no licence. The item of the layer on ArcGIS Online says Public Use, for Cal OES personnel and supporting partners to conduct emergency management. Its data comes from the public outage maps of the utilities, and these maps have their own terms."
     },
     "delay": "Minutes: the layer gets an update every 15 minutes.",
     "history": "None: the layer holds the active outages.",
@@ -26199,9 +26199,11 @@
       "services.arcgis.com",
       "provider:arcgis-online"
     ],
-    "reason": "The read of 2026-11-25 had no PSPS cause, so the round did not see a shutoff in the layer. The layer states no licence, and it copies the utility maps.",
+    "reason": "The read of 2026-11-25 had no PSPS cause. Round 54: the field OutageType has only the values Planned, Not Planned and Unknown, so a shutoff is not apart from planned work. The licence of the item names Cal OES and its partners.",
     "evidence": [
-      "https://services.arcgis.com/BLN4oKB0N1YSgvY8/arcgis/rest/services/Power_Outages_(View)/FeatureServer/0?f=pjson"
+      "https://services.arcgis.com/BLN4oKB0N1YSgvY8/arcgis/rest/services/Power_Outages_(View)/FeatureServer/0?f=pjson",
+      "https://www.arcgis.com/sharing/rest/content/items/439afad071eb4754903906aff1946719?f=json",
+      "https://catalog.data.gov/dataset/statewide-power-outages-public-view"
     ]
   },
   {
@@ -27129,5 +27131,81 @@
       "https://www.ntsb.gov/robots.txt"
     ],
     "round": 53
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 54,
+    "id": "pge-psps-events",
+    "name": "PG&E Public Safety Power Shutoff events and their files",
+    "classes": [
+      "infra.power.psps"
+    ],
+    "url": "https://www.pge.com/en/outages-and-safety/safety/community-wildfire-safety-program/public-safety-power-shutoffs.html",
+    "access": "page",
+    "auth": "none",
+    "terms": {
+      "url": "https://www.pge.com/en/privacy-center/disclosure.html",
+      "automated": "forbidden",
+      "redistribution": "forbidden",
+      "note": "The terms of use of the PG&E site permit no bots, spiders or other devices that monitor or copy its information, except with the consent of PG&E or of a customer of record."
+    },
+    "delay": "After the event: the page gives a file of the de-energized areas, the notices and a report for each event.",
+    "history": "The page of 2026-11-26 had the files of 14 events, from 2024-10-17 to 2026-10-23.",
+    "rateLimit": "unknown",
+    "coverage": "The service area of PG&E in northern and central California: the polygons of the de-energized areas of each PSPS event.",
+    "origins": [
+      "pge"
+    ],
+    "path": [
+      "www.pge.com"
+    ],
+    "decision": "reject",
+    "reason": "The site terms forbid automatic devices without the consent of PG&E. The files come after each event, so they are records, not alerts.",
+    "evidence": [
+      "https://www.pge.com/en/outages-and-safety/safety/community-wildfire-safety-program/public-safety-power-shutoffs.html",
+      "https://www.pge.com/en/privacy-center/disclosure.html"
+    ]
+  },
+  {
+    "cost": "free",
+    "calibration": null,
+    "subjectIds": null,
+    "risks": [],
+    "adapter": null,
+    "round": 54,
+    "id": "sce-psps-partner-portal",
+    "name": "SCE Public Safety Partner Portal",
+    "classes": [
+      "infra.power.psps"
+    ],
+    "url": "https://www.sce.com/outages-safety/outage-preparedness/outage-types/public-safety-power-shutoff-psps",
+    "access": "api",
+    "auth": "partner",
+    "terms": {
+      "url": null,
+      "automated": "limited",
+      "redistribution": "limited",
+      "note": "An SCE slide deck says that the portal gives the outage areas and the circuits of each PSPS as files and an API. Only the public safety partners of the CPUC and critical infrastructure customers get access. The round opened no page of the portal."
+    },
+    "delay": "unknown",
+    "history": "unknown",
+    "rateLimit": "unknown",
+    "coverage": "The service area of SCE in southern California: the circuits and the areas of each PSPS, before and during the event.",
+    "origins": [
+      "sce"
+    ],
+    "path": [
+      "unknown"
+    ],
+    "decision": "later",
+    "reason": "The portal is only for the public safety partners of the CPUC. A person with no such role gets no account.",
+    "evidence": [
+      "https://agourahillscity.org/home/showpublisheddocument/29044/638315789152730000",
+      "https://www.sce.com/outages-safety/outage-preparedness/outage-types/public-safety-power-shutoff-psps"
+    ]
   }
 ]

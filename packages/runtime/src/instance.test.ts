@@ -56,7 +56,7 @@ import { CSAF_PROVIDERS } from "@mark1russell7/alerts-source-csaf";
 import { DATE_FORMAT as EIA_DATE_FORMAT, EIA_930_DESCRIPTOR, HOUR_MS, periodEnd, periodText } from "@mark1russell7/alerts-source-eia-930";
 import { memoryQuotaStore, quotaGate, type Exchange, type Transport } from "polite-crawler/api";
 import { DEFAULT_POLICY } from "polite-crawler/politeness";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ACCOUNT_SOURCES, BOM_SWS_KEY, FIRMS_KEY, readsFirms, readsGdelt, CHECKS_KEY, EIA_KEY, CLOUDFLARE_RADAR_KEY, checksKeys, DAEMON_CHECK, daemonCheck, DELIVERY_TIMES, INSTANCE_CHANNELS, INSTANCE_CHECK, INSTANCE_EXPECTATIONS, instanceExpectations, INSTANCE_FETCH_LIMIT, INSTANCE_SOURCES, INSTANCE_TIMES, instanceCheck, instanceContextKey, instanceProblems, instanceServices, shownNode, shownServices, LOUD_PING_URL_KEY, LOUD_STEADY, nwwsKeys, nwwsSetup, openInstance, PING_URL_KEY, pingKeyOf, pingTargets, RANK_DELAY, RANK_FLOOR, SOURCE_POLICY, sourcePace, twilioSetup, USER_AGENT_NAME, instanceSenders, copySounderProblems, sounderOptions, WEBHOOK_SECRET_KEY, WEBHOOK_USER_AGENT, webhookSetup, type Instance, type InstanceOptions } from "./instance.ts";
 import { heartbeatGap } from "./heartbeat.ts";
 import { NO_PARTS } from "./config.ts";
@@ -65,7 +65,7 @@ import { createPositionIntake } from "./position-intake.ts";
 import { spendGates, spendQuota } from "./balance.ts";
 import { CLOCK_SKEW_LIMIT, COPY_TOKEN_KEY, EXCHANGE_EVERY, EXCHANGE_LIMIT } from "./copy.ts";
 import { overdueLimit } from "./delivery.ts";
-import type { ShapeOutcome } from "./shapes.ts";
+import type { ShapeKeeper, ShapeOutcome } from "./shapes.ts";
 import { CATALOG_REFRESH, type TransitCache, type TransitOutcome } from "./transit.ts";
 import { nextFetch } from "./view.ts";
 import { createTellIntake, TELL_DESCRIPTOR } from "./tell-intake.ts";
@@ -1094,6 +1094,17 @@ describe("openInstance", () => {
     await finish(clock, instance.shapes.idle());
     expect(outcomes).toEqual([{ ok: true, refreshed: expect.objectContaining({ stop: "done", failures: [] }) }]);
     expect(zones()).toBeGreaterThan(0);
+  });
+
+  it("gives the keeper of shapes the live incidents of a pass before the good start, with no limit of a refresh (AL-176)", async () => {
+    const net = network();
+    const { instance, clock } = open(store(SECRETS), CONFIG, 0, TEST_FETCH_LIMIT, { transport: withZones(net), shapes: memoryCache(), startGood: () => false });
+    // The keeper of the instance has the step after each pass. The map of the first pass gives the simplified shapes of the
+    // regions of these incidents, not their full outlines.
+    const seen = vi.spyOn(instance.shapes as ShapeKeeper, "afterPass");
+    const pass = await finish(clock, instance.runtime.pass());
+    expect(pass.view.incidents.length).toBeGreaterThan(0);
+    expect(seen).toHaveBeenCalledWith(pass.view.incidents, undefined);
   });
 
   it("gives a notice for each family of the store of shapes when the store gets no turn in its window after the start (AL-86)", async () => {

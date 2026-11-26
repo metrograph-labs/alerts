@@ -117,6 +117,7 @@ DEFAULT_ENTRY_MAX: build/index.d.ts#DEFAULT_ENTRY_MAX
 DEFAULT_FAIL_AFTER: build/index.d.ts#DEFAULT_FAIL_AFTER
 DEFAULT_LINK_POLICY: build/index.d.ts#DEFAULT_LINK_POLICY
 DEFAULT_MAX_ACCURACY_KM: build/index.d.ts#DEFAULT_MAX_ACCURACY_KM
+DEFAULT_QUIET_SOUNDS: build/index.d.ts#DEFAULT_QUIET_SOUNDS
 DEFAULT_RELEVANCE_POLICY: build/index.d.ts#DEFAULT_RELEVANCE_POLICY
 DEFAULT_SEND_LIMITS: build/index.d.ts#DEFAULT_SEND_LIMITS
 DEFAULT_SOURCE_CLEAR: build/index.d.ts#DEFAULT_SOURCE_CLEAR
@@ -410,6 +411,7 @@ QUIET_HORIZON: build/index.d.ts#QUIET_HORIZON
 QUOTA_KIND: build/index.d.ts#QUOTA_KIND
 QUOTA_STAGES: build/index.d.ts#QUOTA_STAGES
 QuietRule: build/index.d.ts#QuietRule
+QuietSound: build/index.d.ts#QuietSound
 QuietWindow: build/index.d.ts#QuietWindow
 QuotaHealth: build/index.d.ts#QuotaHealth
 QuotaStage: build/index.d.ts#QuotaStage
@@ -490,6 +492,8 @@ Significance: build/index.d.ts#Significance
 SoftwareMatch: build/index.d.ts#SoftwareMatch
 SoftwarePart: build/index.d.ts#SoftwarePart
 SoftwareStack: build/index.d.ts#SoftwareStack
+SoundDelivery: build/index.d.ts#SoundDelivery
+SoundIncident: build/index.d.ts#SoundIncident
 SourceClearConfig: build/index.d.ts#SourceClearConfig
 SourceClearPolicy: build/index.d.ts#SourceClearPolicy
 SourceDescriptor: build/index.d.ts#SourceDescriptor
@@ -975,6 +979,7 @@ softwareMatchText: build/index.d.ts#softwareMatchText
 softwareMatches: build/index.d.ts#softwareMatches
 softwarePartSchema: build/index.d.ts#softwarePartSchema
 softwareStackSchema: build/index.d.ts#softwareStackSchema
+soundsInQuiet: build/index.d.ts#soundsInQuiet
 sourceClearAt: build/index.d.ts#sourceClearAt
 sourceClearConfigSchema: build/index.d.ts#sourceClearConfigSchema
 sourceClearPolicy: build/index.d.ts#sourceClearPolicy
@@ -1755,6 +1760,9 @@ export declare const DEFAULT_LINK_POLICY: LinkPolicy;
 ### build/index.d.ts#DEFAULT_MAX_ACCURACY_KM
 export declare const DEFAULT_MAX_ACCURACY_KM = 2;
 
+### build/index.d.ts#DEFAULT_QUIET_SOUNDS
+export declare const DEFAULT_QUIET_SOUNDS: readonly QuietSound[];
+
 ### build/index.d.ts#DEFAULT_RELEVANCE_POLICY
 export declare const DEFAULT_RELEVANCE_POLICY: RelevancePolicy;
 
@@ -2234,6 +2242,7 @@ export interface EscalationInput {
   readonly rankDelay?: Duration | undefined;
   readonly floors?: ReadonlyMap<ChannelId, Duration> | undefined;
   readonly quiet?: QuietWindow | undefined;
+  readonly sounds?: boolean | undefined;
   readonly episode?: number | undefined;
   readonly silent?: boolean | undefined;
   readonly now: Instant;
@@ -3733,11 +3742,19 @@ export interface QuietRule {
   readonly told?: Duration | undefined;
 }
 
+### build/index.d.ts#QuietSound
+export interface QuietSound {
+  readonly kinds: readonly string[];
+  readonly level: "notice" | "urgent";
+  readonly most: number;
+}
+
 ### build/index.d.ts#QuietWindow
 export interface QuietWindow {
   readonly zone: string;
   readonly start: string;
   readonly end: string;
+  readonly sounds?: readonly QuietSound[];
 }
 
 ### build/index.d.ts#QuotaHealth
@@ -4274,6 +4291,21 @@ export interface SoftwarePart {
 ### build/index.d.ts#SoftwareStack
 export interface SoftwareStack {
   readonly parts: readonly SoftwarePart[];
+}
+
+### build/index.d.ts#SoundDelivery
+export interface SoundDelivery {
+  readonly incident: ReportId;
+  readonly level: Level;
+  readonly at: Instant;
+  readonly kind: string | undefined;
+}
+
+### build/index.d.ts#SoundIncident
+export interface SoundIncident {
+  readonly anchor: ReportId;
+  readonly reports: ReadonlySet<string>;
+  readonly kind: string;
 }
 
 ### build/index.d.ts#SourceClearConfig
@@ -5977,6 +6009,9 @@ export declare const softwarePartSchema: z.ZodType<SoftwarePart, SoftwarePart>;
 
 ### build/index.d.ts#softwareStackSchema
 export declare const softwareStackSchema: z.ZodType<SoftwareStack, SoftwareStack>;
+
+### build/index.d.ts#soundsInQuiet
+export declare function soundsInQuiet(window: QuietWindow | undefined, incident: SoundIncident, level: Level, deliveries: readonly SoundDelivery[], now: Instant): boolean;
 
 ### build/index.d.ts#sourceClearAt
 export declare function sourceClearAt(lines: SystemLines, snapshot: Pick<SystemSnapshot, "sources" | "health" | "sourceClear">, at: Instant): Instant[];
