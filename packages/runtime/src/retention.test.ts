@@ -477,8 +477,14 @@ function readerMoments(): Moment {
           return [stepped(steps, time, r.pick([-5, 5, 60]) * MINUTE)];
         case 13: {
           // A drill starts, and its run report goes to the person with a receipt. The person acknowledges some runs at once.
+          // The run report is a system report of the copy, as in the runtime. Thus a step of the clock moves its onset with the start.
           const drill = r.pick(DRILLS);
-          const { expires: _expires, ...run } = report(`run${index}`, time + SECOND, time + SECOND, {
+          const key = `drill/${COPY}/${drill.id}#${String(index)}`;
+          const observation: Observation = { id: `system:${key}` as ObservationId, source: SYSTEM_SOURCE, fetched: time + SECOND, contentType: "application/json", body: "{}", transport: { latency: 0 } };
+          const { expires: _expires, ...run } = report(key, time + SECOND, time + SECOND, {
+            id: reportId({ source: SYSTEM_SOURCE, key, sent: time + SECOND }),
+            source: SYSTEM_SOURCE,
+            observation: observation.id,
             kind: { code: "system.drill.run", label: "Drill run" },
             status: "system",
             onset: time,
@@ -489,7 +495,7 @@ function readerMoments(): Moment {
           const one: Made = { report: run, level: "life-safety", ended: false, started: false, closed: false };
           made.push(one);
           runs.push({ made: one, key: `k${index}` });
-          const events: RuntimeEvent[] = [{ ...envelope("drill", `drill:${COPY}:${drill.id}:${String(time)}`, time), drill: drill.id, copy: COPY }, fetched(`fetch:${index}`, time + SECOND, [run])];
+          const events: RuntimeEvent[] = [{ ...envelope("drill", `drill:${COPY}:${drill.id}:${String(time)}`, time), drill: drill.id, copy: COPY }, { ...envelope("system", `system:${key}`, time + SECOND), reports: [run], observations: [observation] }];
           if (r.chance(0.5)) events.push(start(one, "life-safety", time + 2 * SECOND));
           events.push(send(one, `k${index}`, "life-safety", time + 2 * SECOND, true));
           if (r.chance(0.6)) events.push(ack(sent.at(-1)!, time + 3 * SECOND));
