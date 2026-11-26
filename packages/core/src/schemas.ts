@@ -360,7 +360,7 @@ export const areaSchema: z.ZodType<Area, Area> = schemaOf<Area>()(
 
 /** This schema checks a thing that an event is about, other than a place. */
 export const subjectSchema: z.ZodType<Subject, Subject> = schemaOf<Subject>()(
-  z.strictObject({ system: z.string(), id: z.string(), label: z.string().exactOptional() }).readonly(),
+  z.strictObject({ system: z.string(), id: z.string(), label: z.string().exactOptional(), ranges: z.array(z.string()).readonly().exactOptional() }).readonly(),
 );
 
 /** This schema checks a key that two sources share for one real event. */

@@ -238,6 +238,7 @@ IndicatorArea: build/index.d.ts#IndicatorArea
 IndicatorAreaKind: build/index.d.ts#IndicatorAreaKind
 IndicatorBreadth: build/index.d.ts#IndicatorBreadth
 IndicatorSurprise: build/index.d.ts#IndicatorSurprise
+InstalledPackage: build/index.d.ts#InstalledPackage
 Instant: build/index.d.ts#Instant
 InterestDefaultsConfig: build/index.d.ts#InterestDefaultsConfig
 InterestEdge: build/index.d.ts#InterestEdge
@@ -318,6 +319,7 @@ MapRegion: build/index.d.ts#MapRegion
 MapResult: build/index.d.ts#MapResult
 MapShape: build/index.d.ts#MapShape
 MapView: build/index.d.ts#MapView
+MatchVerdict: build/index.d.ts#MatchVerdict
 MeasureDeclaration: build/index.d.ts#MeasureDeclaration
 MergeParts: build/index.d.ts#MergeParts
 MergeState: build/index.d.ts#MergeState
@@ -370,6 +372,7 @@ OutageConfig: build/index.d.ts#OutageConfig
 OutagePersonConfig: build/index.d.ts#OutagePersonConfig
 OutageReach: build/index.d.ts#OutageReach
 OwnBaseline: build/index.d.ts#OwnBaseline
+PACKAGE_SYSTEM: build/index.d.ts#PACKAGE_SYSTEM
 PART_NAME: build/index.d.ts#PART_NAME
 PATH_SYSTEMS: build/index.d.ts#PATH_SYSTEMS
 PERSON_SUBJECT: build/index.d.ts#PERSON_SUBJECT
@@ -409,6 +412,8 @@ RANK_DELAY_LIMIT: build/index.d.ts#RANK_DELAY_LIMIT
 REDUNDANCY_KIND: build/index.d.ts#REDUNDANCY_KIND
 RETENTION_HORIZON: build/index.d.ts#RETENTION_HORIZON
 RULED_STATUSES: build/index.d.ts#RULED_STATUSES
+RangeCheck: build/index.d.ts#RangeCheck
+RangeResult: build/index.d.ts#RangeResult
 RankDelays: build/index.d.ts#RankDelays
 ReachArithmetic: build/index.d.ts#ReachArithmetic
 ReachEnd: build/index.d.ts#ReachEnd
@@ -476,6 +481,9 @@ SignalHistory: build/index.d.ts#SignalHistory
 SignalRate: build/index.d.ts#SignalRate
 SignalUnit: build/index.d.ts#SignalUnit
 Significance: build/index.d.ts#Significance
+SoftwareMatch: build/index.d.ts#SoftwareMatch
+SoftwarePart: build/index.d.ts#SoftwarePart
+SoftwareStack: build/index.d.ts#SoftwareStack
 SourceClearConfig: build/index.d.ts#SourceClearConfig
 SourceClearPolicy: build/index.d.ts#SourceClearPolicy
 SourceDescriptor: build/index.d.ts#SourceDescriptor
@@ -949,6 +957,7 @@ signalHistories: build/index.d.ts#signalHistories
 signalRate: build/index.d.ts#signalRate
 significanceSchema: build/index.d.ts#significanceSchema
 simplifyBasemap: build/index.d.ts#simplifyBasemap
+softwareMatches: build/index.d.ts#softwareMatches
 sourceClearAt: build/index.d.ts#sourceClearAt
 sourceClearConfigSchema: build/index.d.ts#sourceClearConfigSchema
 sourceClearPolicy: build/index.d.ts#sourceClearPolicy
@@ -2660,6 +2669,12 @@ export interface IndicatorSurprise {
   readonly places: readonly PlaceSurprise[];
 }
 
+### build/index.d.ts#InstalledPackage
+export interface InstalledPackage {
+  readonly purl: string;
+  readonly version: string;
+}
+
 ### build/index.d.ts#Instant
 export type Instant = number;
 
@@ -3144,6 +3159,9 @@ export interface MapView {
   readonly unshaped: readonly RegionCode[];
 }
 
+### build/index.d.ts#MatchVerdict
+export type MatchVerdict = "affected" | "unknown";
+
 ### build/index.d.ts#MeasureDeclaration
 export interface MeasureDeclaration {
   readonly id: string;
@@ -3469,6 +3487,9 @@ export interface OutageReach {
 ### build/index.d.ts#OwnBaseline
 export type OwnBaseline = "none" | "expected" | "flag";
 
+### build/index.d.ts#PACKAGE_SYSTEM
+export declare const PACKAGE_SYSTEM = "purl";
+
 ### build/index.d.ts#PART_NAME
 export declare const PART_NAME: RegExp;
 
@@ -3687,6 +3708,15 @@ export declare const RETENTION_HORIZON: Duration;
 
 ### build/index.d.ts#RULED_STATUSES
 export declare const RULED_STATUSES: readonly Status[];
+
+### build/index.d.ts#RangeCheck
+export type RangeCheck = (range: string, version: string) => RangeResult;
+
+### build/index.d.ts#RangeResult
+export interface RangeResult {
+  readonly affected: boolean | undefined;
+  readonly fixed?: string;
+}
 
 ### build/index.d.ts#RankDelays
 export type RankDelays = Readonly<Partial<Record<Level, Duration>>>;
@@ -4168,6 +4198,28 @@ export interface SignalUnit {
 ### build/index.d.ts#Significance
 export type Significance = "warning" | "watch" | "advisory" | "statement" | "outlook" | "observation";
 
+### build/index.d.ts#SoftwareMatch
+export interface SoftwareMatch {
+  readonly part: string;
+  readonly label?: string;
+  readonly purl: string;
+  readonly installed: string;
+  readonly verdict: MatchVerdict;
+  readonly fixed?: string;
+}
+
+### build/index.d.ts#SoftwarePart
+export interface SoftwarePart {
+  readonly part: string;
+  readonly label?: string;
+  readonly packages: readonly InstalledPackage[];
+}
+
+### build/index.d.ts#SoftwareStack
+export interface SoftwareStack {
+  readonly parts: readonly SoftwarePart[];
+}
+
 ### build/index.d.ts#SourceClearConfig
 export interface SourceClearConfig {
   readonly floor?: Duration;
@@ -4287,6 +4339,7 @@ export interface Subject {
   readonly system: string;
   readonly id: string;
   readonly label?: string;
+  readonly ranges?: readonly string[];
 }
 
 ### build/index.d.ts#SubjectEntry
@@ -5831,6 +5884,9 @@ export declare const significanceSchema: z.ZodType<Significance, Significance>;
 
 ### build/index.d.ts#simplifyBasemap
 export declare function simplifyBasemap(regions: readonly MapRegion[], toleranceKm: number): MapRegion[];
+
+### build/index.d.ts#softwareMatches
+export declare function softwareMatches(about: readonly Subject[], stack: SoftwareStack, check: RangeCheck): SoftwareMatch[];
 
 ### build/index.d.ts#sourceClearAt
 export declare function sourceClearAt(lines: SystemLines, snapshot: Pick<SystemSnapshot, "sources" | "health" | "sourceClear">, at: Instant): Instant[];

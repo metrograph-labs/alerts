@@ -28,6 +28,8 @@ export type { OsvFetch, OsvFetchInput, OsvFetchOptions } from "./options.ts";
 export { cwesOf, EVENT_NAMES, isWithdrawn, RANGE_TYPES, readOsv, readOsvText } from "./osv.ts";
 export type { OsvAffected, OsvEvent, OsvRange, OsvRead, OsvRecord, OsvReference, OsvSeverity } from "./osv.ts";
 export { DAY_MS, MALICIOUS_KIND, OSV_PROVIDERS } from "./providers.ts";
+export { packageRanges, rangeOfText } from "./ranges.ts";
+export type { RangeOfText } from "./ranges.ts";
 export type { ExportsFeed, GithubFeed, OsvProvider } from "./providers.ts";
 export { packagePurl, PURL_TYPES, purlOf } from "./purl.ts";
 
