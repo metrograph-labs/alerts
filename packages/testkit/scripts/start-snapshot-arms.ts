@@ -187,8 +187,9 @@ async function prepare(home: string): Promise<void> {
   const { wallClock } = await import("@mark1russell7/algebra/clock");
   const { SEED_RECORD_FILE } = await import("../src/seed-home.ts");
   const seed = JSON.parse(readFileSync(join(home, SEED_RECORD_FILE), "utf8")) as { readonly end: number };
-  const measured = await openMeasuredRuntime(home, { wall: wallClock({ start: seed.end }), startSnapshot: true, timeSnapshot: true });
-  // The first pass comes before the good start, thus the start writes its snapshot at the second pass.
+  const measured = await openMeasuredRuntime(home, { wall: wallClock({ start: seed.end }), startSnapshot: true, timeSnapshot: true, snapshotFloor: 1 });
+  // The first pass comes before the good start, thus the start writes its snapshot at the second pass. The floor 1 permits a
+  // write for each size of the seed, also a seed with fewer events than `START_SNAPSHOT_FLOOR`.
   await measured.pass();
   const writes = measured.snapshotWrites.length;
   await measured.close();
