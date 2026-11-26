@@ -27,7 +27,7 @@ import { withJoins, type FoldContext, type RuntimeState } from "./state.ts";
  * index. Then a start ignores each snapshot of the old fold, and it folds the whole log. The gate test of the digests fails
  * until the change raises the version.
  */
-export const FOLD_VERSION = 5;
+export const FOLD_VERSION = 6;
 
 /**
  * The upgrade of a snapshot of an old fold to the fold of `FOLD_VERSION`, with no fold of the log (AL-153). The field `since`
@@ -49,7 +49,9 @@ export const SNAPSHOT_UPGRADES: Readonly<Record<number, SnapshotUpgrade>> = {
   // thus version 2 has no upgrade. The upgrade of version 1 (AL-88: the blocks of the event loop) gave version 2, not 3.
   // Version 4 (AL-187) keeps the incident of the last run of a drill. A snapshot of version 3 can hold that incident already
   // retired, thus version 3 has no upgrade. Version 5 (AL-177) retires old reports of a live incident. Only a fold of the
-  // log gives the times of those retirements, thus version 4 has no upgrade.
+  // log gives the times of those retirements, thus version 4 has no upgrade. Version 6 (AL-189) keeps the
+  // incident of the last run of a drill past the horizon. A snapshot of version 5 can hold that incident already retired,
+  // thus version 5 has no upgrade.
 };
 
 /** The content of a snapshot: the state and the entry index at the position of its mark. */
