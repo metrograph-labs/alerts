@@ -10,6 +10,7 @@
  * - The rules of the values that a type cannot hold are refinements. Each rule tells the line of the
  *   contract that states it.
  */
+import { cpeProductOf } from "@mark1russell7/package-id";
 import { tryParseUnit } from "@mark1russell7/quantity";
 import { z } from "zod";
 import {
@@ -182,7 +183,7 @@ import type { EscalationEnd, Recipient } from "./delivery.ts";
 import type { DrillConfig, DrillPath } from "./drill.ts";
 import { OPT_IN_WAYS, type OptInConfig, type OptInRecord } from "./opt-in.ts";
 import type { RankDelays } from "./escalation.ts";
-import { HEALTH_FORMAT, type BalanceHealth, type ChannelHealth, type CopyHealth, type HealthPayload, type QuotaHealth, type ReadHealth, type SourceHealthView } from "./health-payload.ts";
+import { FAILURE_MESSAGE_LIMIT, HEALTH_FORMAT, type BalanceHealth, type ChannelHealth, type CopyHealth, type HealthPayload, type QuotaHealth, type ReadHealth, type SourceHealthView } from "./health-payload.ts";
 import type { InterestRow } from "./interest-defaults.ts";
 import { INTERESTS_FORMAT, type InterestsPayload, type InterestsPerson } from "./interests-payload.ts";
 import { HISTORY_FORMAT, type HistoryChange, type HistoryIncident, type HistoryPayload, type HistoryPlace, type HistoryRegion } from "./history.ts";
@@ -364,12 +365,20 @@ export const subjectSchema: z.ZodType<Subject, Subject> = schemaOf<Subject>()(
   z.strictObject({ system: z.string(), id: z.string(), label: z.string().exactOptional(), ranges: z.array(z.string()).readonly().exactOptional() }).readonly(),
 );
 
-/** This schema checks one installed package of a part: a purl with no version, and the version. */
+/** This schema checks one installed package of a part: a purl with no version, the version, a CPE name and a model number. */
 export const installedPackageSchema: z.ZodType<InstalledPackage, InstalledPackage> = schemaOf<InstalledPackage>()(
   z
     .strictObject({
       purl: z.string().regex(/^pkg:[a-z0-9.+-]+\/[^@?#]+$/u, "The purl of an installed package starts with pkg: and has no version, qualifiers or subpath."),
       version: z.string().min(1, "The version of an installed package is a non-empty text."),
+      cpe: z.string().refine((text) => cpeProductOf(text) !== undefined, "The CPE name of an installed package is a CPE 2.3 or CPE 2.2 name with a vendor and a product.").exactOptional(),
+      model: z
+        .strictObject({
+          vendor: z.string().regex(/\S/u, "The vendor of a model number is a text with a character that is not a space."),
+          number: z.string().min(1, "A model number is a non-empty text."),
+        })
+        .readonly()
+        .exactOptional(),
     })
     .readonly(),
 );
@@ -1922,7 +1931,7 @@ export const copySettingsSchema: z.ZodType<CopySettings, CopySettings> = schemaO
 // The health payload
 // =============================================================================
 
-/** This schema checks the health of one source in the health payload: the kind of its last failure, with no message. */
+/** This schema checks the health of one source in the health payload: the time, the kind and the redacted message of its last failure. */
 export const sourceHealthViewSchema: z.ZodType<SourceHealthView, SourceHealthView> = schemaOf<SourceHealthView>()(
   z
     .strictObject({
@@ -1930,7 +1939,14 @@ export const sourceHealthViewSchema: z.ZodType<SourceHealthView, SourceHealthVie
       state: healthStateSchema,
       since: instantSchema,
       lastSuccess: instantSchema.exactOptional(),
-      lastFailure: z.strictObject({ at: instantSchema, kind: z.enum(["network", "timeout", "server", "rate-limited", "auth", "refused"]) }).readonly().exactOptional(),
+      lastFailure: z
+        .strictObject({
+          at: instantSchema,
+          kind: z.enum(["network", "timeout", "server", "rate-limited", "auth", "refused"]),
+          message: z.string().min(1).max(FAILURE_MESSAGE_LIMIT).exactOptional(),
+        })
+        .readonly()
+        .exactOptional(),
       reason: z.string(),
     })
     .readonly(),

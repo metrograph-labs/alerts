@@ -129,6 +129,16 @@ describe("the rows of the sources", () => {
     ]);
   });
 
+  it("gives the redacted message of the last failure after its kind and its age", () => {
+    const lastFailure = { at: HEALTH_AT - 2 * HOUR, kind: "network", message: "the connection failed: connect ETIMEDOUT 192.0.2.10:5222" } as const;
+    const sources: HealthPayload["sources"] = [{ source: "one" as SourceId, state: "failing", since: 0, lastFailure, reason: "The last fetch failed." }];
+    expect(sourceRows(health({ sources, lateness: [], coverage: [] }), HEALTH_AT, clock)[0]?.why).toEqual([
+      "The last fetch failed.",
+      "The last failure was a network failure, 2 hours ago.",
+      "Its message: the connection failed: connect ETIMEDOUT 192.0.2.10:5222",
+    ]);
+  });
+
   it("has words for each kind of failure", () => {
     const kinds = ["network", "timeout", "server", "rate-limited", "auth", "refused"] as const;
     const texts = kinds.map((kind) => {

@@ -584,7 +584,7 @@
       "EM-DAT: Biological > Infestation",
       "UNDRR-ISC HIPs 2025: BI0401 Insect Pest Infestations, BI0403 Invasive weed/species, BI0501-BI0503 plant diseases"
     ],
-    "gap": "APHIS has pest pages and an IPHIS system, but no quarantine feed was confirmed. The Federal Register carries the federal orders (see civic.regulation). Round 49: 1 of the newest 20 quarantine documents of APHIS in the Federal Register changed quarantined areas. The APHIS site gave 403. The CFIA news releases give the new regulated areas of Canada, but a commercial use needs a permission.",
+    "gap": "APHIS has pest pages and an IPHIS system, but no quarantine feed was confirmed. The Federal Register carries the federal orders (see civic.regulation). Round 49: 1 of the newest 20 quarantine documents of APHIS in the Federal Register changed quarantined areas. The APHIS site gave 403. The CFIA news releases give the new regulated areas of Canada, but a commercial use needs a permission. Round 51: the newest rule of the Federal Register for 7 CFR part 301 is of 2024-04-04. Since a rule of 2022, APHIS lists the quarantined areas on its site, not in the CFR. The EPPO Reporting Service gives the incursions of each month with a delay of about one month, but it has no feed and no terms for its articles.",
     "round": 1
   },
   {

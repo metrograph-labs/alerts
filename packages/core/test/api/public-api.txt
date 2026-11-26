@@ -54,6 +54,7 @@ COPY_SUBJECT: build/index.d.ts#COPY_SUBJECT
 COUNTED_CALLS: build/index.d.ts#COUNTED_CALLS
 COUNTED_FAILURES: build/index.d.ts#COUNTED_FAILURES
 COVERAGE_KIND: build/index.d.ts#COVERAGE_KIND
+CPE_SYSTEM: build/index.d.ts#CPE_SYSTEM
 CanaryResult: build/index.d.ts#CanaryResult
 CancelTarget: build/index.d.ts#CancelTarget
 CapMessageKeyInput: build/index.d.ts#CapMessageKeyInput
@@ -188,6 +189,7 @@ Exhaustion: build/index.d.ts#Exhaustion
 Expectation: build/index.d.ts#Expectation
 ExpectationConfig: build/index.d.ts#ExpectationConfig
 ExpectedHarm: build/index.d.ts#ExpectedHarm
+FAILURE_MESSAGE_LIMIT: build/index.d.ts#FAILURE_MESSAGE_LIMIT
 FEED_LAG_LEVEL: build/index.d.ts#FEED_LAG_LEVEL
 FEED_LAG_WINDOW: build/index.d.ts#FEED_LAG_WINDOW
 FIX_FUTURE_LIMIT_MS: build/index.d.ts#FIX_FUTURE_LIMIT_MS
@@ -306,6 +308,7 @@ MAX_PLACE_CODES: build/index.d.ts#MAX_PLACE_CODES
 MAX_WEIGHTED_UNITS: build/index.d.ts#MAX_WEIGHTED_UNITS
 MEASURE_ID: build/index.d.ts#MEASURE_ID
 MIN_READS: build/index.d.ts#MIN_READS
+MODEL_SYSTEM: build/index.d.ts#MODEL_SYSTEM
 MOVES: build/index.d.ts#MOVES
 MandatoryRule: build/index.d.ts#MandatoryRule
 MapIncident: build/index.d.ts#MapIncident
@@ -326,6 +329,8 @@ MergeState: build/index.d.ts#MergeState
 Message: build/index.d.ts#Message
 MessageKeyInput: build/index.d.ts#MessageKeyInput
 MissRecord: build/index.d.ts#MissRecord
+ModelNumber: build/index.d.ts#ModelNumber
+ModelPattern: build/index.d.ts#ModelPattern
 Move: build/index.d.ts#Move
 MovingRule: build/index.d.ts#MovingRule
 Mute: build/index.d.ts#Mute
@@ -540,6 +545,8 @@ TryEnd: build/index.d.ts#TryEnd
 TryRecord: build/index.d.ts#TryRecord
 UNKNOWN_KIND: build/index.d.ts#UNKNOWN_KIND
 UNKNOWN_WEIGHT: build/index.d.ts#UNKNOWN_WEIGHT
+URL_PATH_SHAPE: build/index.d.ts#URL_PATH_SHAPE
+URL_USER_SHAPE: build/index.d.ts#URL_USER_SHAPE
 USE_KIND: build/index.d.ts#USE_KIND
 USE_STAGES: build/index.d.ts#USE_STAGES
 US_GALLON_L: build/index.d.ts#US_GALLON_L
@@ -708,6 +715,7 @@ expectationProblems: build/index.d.ts#expectationProblems
 expectedHarmSchema: build/index.d.ts#expectedHarmSchema
 expectedOf: build/index.d.ts#expectedOf
 failureDomains: build/index.d.ts#failureDomains
+failureMessage: build/index.d.ts#failureMessage
 feedLags: build/index.d.ts#feedLags
 fetchFailureSchema: build/index.d.ts#fetchFailureSchema
 fetchOutcomeSchema: build/index.d.ts#fetchOutcomeSchema
@@ -820,6 +828,8 @@ messageSchema: build/index.d.ts#messageSchema
 missLimit: build/index.d.ts#missLimit
 missRecord: build/index.d.ts#missRecord
 missedDrillAt: build/index.d.ts#missedDrillAt
+modelOfSubject: build/index.d.ts#modelOfSubject
+modelSubjectId: build/index.d.ts#modelSubjectId
 mostInWindow: build/index.d.ts#mostInWindow
 moveSchema: build/index.d.ts#moveSchema
 movingPlace: build/index.d.ts#movingPlace
@@ -1327,6 +1337,9 @@ export declare const COUNTED_FAILURES: readonly ChannelFailureKind[];
 
 ### build/index.d.ts#COVERAGE_KIND
 export declare const COVERAGE_KIND = "system.coverage";
+
+### build/index.d.ts#CPE_SYSTEM
+export declare const CPE_SYSTEM = "cpe";
 
 ### build/index.d.ts#CanaryResult
 export interface CanaryResult {
@@ -2313,6 +2326,9 @@ export interface ExpectedHarm {
   readonly injuries: Estimate;
 }
 
+### build/index.d.ts#FAILURE_MESSAGE_LIMIT
+export declare const FAILURE_MESSAGE_LIMIT = 300;
+
 ### build/index.d.ts#FEED_LAG_LEVEL
 export declare const FEED_LAG_LEVEL = .95;
 
@@ -2427,7 +2443,7 @@ export declare const HEALTH_EVENTS: {
 };
 
 ### build/index.d.ts#HEALTH_FORMAT
-export declare const HEALTH_FORMAT = "alerts-health/4";
+export declare const HEALTH_FORMAT = "alerts-health/5";
 
 ### build/index.d.ts#HEALTH_KIND
 export declare const HEALTH_KIND = "system.health";
@@ -2478,6 +2494,7 @@ export interface HealthPayloadInput {
   readonly reads: readonly ReadHealth[];
   readonly channels?: readonly ChannelSnapshot[];
   readonly channelDown?: ChannelDownPolicy;
+  readonly secrets?: readonly Secret[];
 }
 
 ### build/index.d.ts#HealthSource
@@ -2688,6 +2705,8 @@ export interface IndicatorSurprise {
 export interface InstalledPackage {
   readonly purl: string;
   readonly version: string;
+  readonly cpe?: string;
+  readonly model?: ModelNumber;
 }
 
 ### build/index.d.ts#Instant
@@ -3062,6 +3081,9 @@ export declare const MEASURE_ID: RegExp;
 ### build/index.d.ts#MIN_READS
 export declare const MIN_READS = 30;
 
+### build/index.d.ts#MODEL_SYSTEM
+export declare const MODEL_SYSTEM = "model";
+
 ### build/index.d.ts#MOVES
 export declare const MOVES: readonly Move[];
 
@@ -3238,6 +3260,18 @@ export interface MessageKeyInput {
 export interface MissRecord {
   readonly trials: number;
   readonly misses: number;
+}
+
+### build/index.d.ts#ModelNumber
+export interface ModelNumber {
+  readonly vendor: string;
+  readonly number: string;
+}
+
+### build/index.d.ts#ModelPattern
+export interface ModelPattern {
+  readonly vendor: string;
+  readonly pattern: string;
 }
 
 ### build/index.d.ts#Move
@@ -4291,6 +4325,7 @@ export interface SourceHealthView extends Omit<SourceHealth, "lastFailure"> {
   readonly lastFailure?: {
     readonly at: Instant;
     readonly kind: FetchFailure["kind"];
+    readonly message?: string;
   };
 }
 
@@ -4606,6 +4641,12 @@ export declare const UNKNOWN_KIND = "other.unknown";
 
 ### build/index.d.ts#UNKNOWN_WEIGHT
 export declare const UNKNOWN_WEIGHT: Estimate;
+
+### build/index.d.ts#URL_PATH_SHAPE
+export declare const URL_PATH_SHAPE: SecretShape;
+
+### build/index.d.ts#URL_USER_SHAPE
+export declare const URL_USER_SHAPE: SecretShape;
 
 ### build/index.d.ts#USE_KIND
 export declare const USE_KIND = "system.use";
@@ -5146,6 +5187,9 @@ export declare function expectedOf(probability: Estimate, count: Estimate): Esti
 ### build/index.d.ts#failureDomains
 export declare function failureDomains(source: SourceDescriptor): readonly string[];
 
+### build/index.d.ts#failureMessage
+export declare function failureMessage(message: string, secrets?: readonly Secret[]): string | undefined;
+
 ### build/index.d.ts#feedLags
 export declare function feedLags(reports: readonly Report[], options: FeedLagOptions): FeedLag[];
 
@@ -5489,6 +5533,12 @@ export declare function missRecord(record: readonly Decision[]): MissRecord;
 
 ### build/index.d.ts#missedDrillAt
 export declare function missedDrillAt(drill: DrillConfig, runs: readonly DrillRun[], at: Instant, quiet?: QuietWindow): Instant | undefined;
+
+### build/index.d.ts#modelOfSubject
+export declare function modelOfSubject(id: string): ModelPattern | undefined;
+
+### build/index.d.ts#modelSubjectId
+export declare function modelSubjectId(vendor: string, pattern: string): string;
 
 ### build/index.d.ts#mostInWindow
 export declare function mostInWindow(times: readonly Instant[], length: Duration): number;
@@ -5950,7 +6000,7 @@ export declare const sourceDescriptorSchema: z.ZodType<SourceDescriptor, SourceD
 export declare const sourceHealthSchema: z.ZodType<SourceHealth, SourceHealth>;
 
 ### build/index.d.ts#sourceHealthView
-export declare function sourceHealthView(health: SourceHealth): SourceHealthView;
+export declare function sourceHealthView(health: SourceHealth, secrets?: readonly Secret[]): SourceHealthView;
 
 ### build/index.d.ts#sourceHealthViewSchema
 export declare const sourceHealthViewSchema: z.ZodType<SourceHealthView, SourceHealthView>;

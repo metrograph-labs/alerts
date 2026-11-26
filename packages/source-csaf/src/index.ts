@@ -16,7 +16,7 @@ export { csafDescriptor } from "./descriptor.ts";
 export { flawsOf, MAX_FLAWS, MAX_PRODUCTS, MAX_SUMMARY, productNames, readAdvisory, SHARED_LABELS } from "./document.ts";
 export type { AdvisoryBody, Flaw, RefusedBody } from "./document.ts";
 export { AFFECTED_STATUS, affectedPackages, MAX_PACKAGES, MAX_RANGES, productsOf, rangeOf } from "./products.ts";
-export type { AffectedPackages, ProductPackage } from "./products.ts";
+export type { AffectedPackages, Product, ProductCpe, ProductIdentity, ProductModel, ProductPackage } from "./products.ts";
 export { compareEntries, readFeed, selectEntries } from "./feed.ts";
 export type { Feed, FeedEntry, Selection } from "./feed.ts";
 export { ADVISORIES_PER_FETCH, BACKFILL_MS, createCsafFetch, CSAF_CONTENT_TYPE, CSAF_TIMEOUT_MS, cursorOf, headOf, readCursor } from "./fetch.ts";

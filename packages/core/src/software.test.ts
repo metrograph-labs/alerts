@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Subject } from "./contracts.ts";
 import { alertConfigSchema, subjectSchema, softwareStackSchema } from "./schemas.ts";
-import { softwareMatches, softwareMatchText, versRangeCheck, type RangeCheck, type SoftwareStack } from "./software.ts";
+import { modelOfSubject, modelSubjectId, softwareMatches, softwareMatchText, versRangeCheck, type RangeCheck, type SoftwareStack } from "./software.ts";
 
 // A check for the tests: a range `vers:test/<N` holds each whole number below N, and gives N as the fixed version. A
 // range `vers:test/?` has no known order.
@@ -44,6 +44,65 @@ describe("the match of an advisory to the software of a stack", () => {
       ["web", "affected", "9"],
       ["worker", "affected", "9"],
     ]);
+  });
+});
+
+describe("the match of a part by its CPE name", () => {
+  const plc = "cpe:2.3:o:example:panel_plc_firmware:*:*:*:*:*:*:*:*";
+  const devices: SoftwareStack = {
+    parts: [
+      { part: "plant", packages: [{ purl: "pkg:generic/example/panel", version: "3.1.4", cpe: "cpe:2.3:o:Example:Panel_PLC_Firmware:3.1.4:*:*:*:*:*:*:*" }] },
+      { part: "office", packages: [{ purl: "pkg:generic/example/panel", version: "3.1.5", cpe: "cpe:/o:example:panel_plc_firmware:3.1.5" }] },
+      { part: "lab", packages: [{ purl: "pkg:generic/example/panel", version: "3.1.4" }] },
+    ],
+  };
+
+  it("matches the product of the name, with the installed version, and needs the CPE of the part", () => {
+    const about: Subject[] = [{ system: "cpe", id: plc, ranges: ["vers:generic/<3.1.5"] }];
+    expect(softwareMatches(about, devices, versRangeCheck)).toEqual([{ part: "plant", purl: "pkg:generic/example/panel", installed: "3.1.4", verdict: "affected", fixed: "3.1.5" }]);
+  });
+
+  it("gives the verdict unknown for a CPE subject with no range, and no match for another product", () => {
+    expect(softwareMatches([{ system: "cpe", id: plc }], devices, versRangeCheck).map((match) => `${match.part} ${match.verdict}`)).toEqual(["plant unknown", "office unknown"]);
+    expect(softwareMatches([{ system: "cpe", id: "cpe:2.3:o:example:other_firmware:*:*:*:*:*:*:*:*" }], devices, versRangeCheck)).toEqual([]);
+    expect(softwareMatches([{ system: "cpe", id: "not a cpe" }], devices, versRangeCheck)).toEqual([]);
+  });
+
+  it("keeps a CPE name in the schema, and refuses a name with no product", () => {
+    expect(softwareStackSchema.parse(devices)).toEqual(devices);
+    expect(softwareStackSchema.safeParse({ parts: [{ part: "x", packages: [{ purl: "pkg:generic/a/b", version: "1", cpe: "cpe:2.3:o:example:*" }] }] }).success).toBe(false);
+  });
+});
+
+describe("the match of a part by its model number", () => {
+  const plant: SoftwareStack = {
+    parts: [
+      { part: "line-1", packages: [{ purl: "pkg:generic/example/plc", version: "4.2", model: { vendor: "Example Controls", number: "6ES7212-1BE40-0XB0" } }] },
+      { part: "line-2", packages: [{ purl: "pkg:generic/example/plc", version: "4.2", model: { vendor: "Other Works", number: "6ES7212-1BE40-0XB0" } }] },
+      { part: "line-3", packages: [{ purl: "pkg:generic/example/plc", version: "4.2", model: { vendor: "example controls", number: "6ES7215-1AG40-0XB0" } }] },
+    ],
+  };
+
+  it("matches a pattern of the same vendor, with the range of the version", () => {
+    const about: Subject[] = [{ system: "model", id: modelSubjectId("EXAMPLE CONTROLS", "6ES7212-1?E40-0XB0"), ranges: ["vers:generic/<4.5"] }];
+    expect(softwareMatches(about, plant, versRangeCheck)).toEqual([{ part: "line-1", purl: "pkg:generic/example/plc", installed: "4.2", verdict: "affected", fixed: "4.5" }]);
+  });
+
+  it("matches each model of a star pattern, and refuses an id with no pattern", () => {
+    const about: Subject[] = [{ system: "model", id: modelSubjectId("Example Controls", "6ES721*") }];
+    expect(softwareMatches(about, plant, versRangeCheck).map((match) => `${match.part} ${match.verdict}`)).toEqual(["line-1 unknown", "line-3 unknown"]);
+    expect(softwareMatches([{ system: "model", id: "example%20controls/" }], plant, versRangeCheck)).toEqual([]);
+  });
+
+  it("gives the vendor in percent codes, and reads it back", () => {
+    expect(modelSubjectId(" A/B Works ", "X*")).toBe("a%2Fb%20works/X*");
+    expect(modelOfSubject("a%2Fb%20works/X*")).toEqual({ vendor: "a/b works", pattern: "X*" });
+    expect(modelOfSubject("%E0/X")).toBeUndefined();
+  });
+
+  it("keeps a model number in the schema, and refuses a blank vendor", () => {
+    expect(softwareStackSchema.parse(plant)).toEqual(plant);
+    expect(softwareStackSchema.safeParse({ parts: [{ part: "x", packages: [{ purl: "pkg:generic/a/b", version: "1", model: { vendor: " ", number: "1" } }] }] }).success).toBe(false);
   });
 });
 
