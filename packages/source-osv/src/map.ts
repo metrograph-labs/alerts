@@ -4,6 +4,8 @@
  *
  * - The subject of a report is each package of the record, as a purl with no version. Thus a person who names a package
  *   gets the report. A CVE alias of the record is also a subject.
+ * - The subject of a package has the ranges of its affected versions as `vers` texts (`packageRanges`). Thus a query
+ *   matches the advisory to the installed versions of a stack.
  * - The id of the record and each alias are correlation keys. The two providers have one origin, so the merge counts
  *   their reports of one record as copies.
  * - A withdrawn record gives a cancel. A cancel is not live at any time. Thus it gives no alert. It ends the earlier
@@ -15,6 +17,7 @@ import { errorMessage } from "@mark1russell7/text";
 
 import { isHeadBody, isRecordBody, isRefusedBody, type RecordBody } from "./body.ts";
 import { DAY_MS, type OsvProvider } from "./providers.ts";
+import { packageRanges } from "./ranges.ts";
 
 /** The system of the subject of a package: its purl with no version. */
 export const PURL_SYSTEM = "purl";
@@ -80,7 +83,10 @@ function reportOf(provider: OsvProvider, observation: Observation, record: Recor
   record.packages.forEach((pkg, index) => {
     const label = `${pkg.name} (${pkg.ecosystem})`;
     if (pkg.purl === undefined) problems.add(`packages[${String(index)}]`, `the ecosystem ${pkg.ecosystem} has no purl type: the report has no subject for ${label}`, "note");
-    else about.push({ system: PURL_SYSTEM, id: pkg.purl, label });
+    else {
+      const ranges = packageRanges(pkg);
+      about.push({ system: PURL_SYSTEM, id: pkg.purl, label, ...(ranges === undefined ? {} : { ranges }) });
+    }
   });
   for (const cve of cves) about.push({ system: CVE_SYSTEM, id: cve });
   const names = record.packages.slice(0, 3).map((pkg) => `${pkg.name} (${pkg.ecosystem})`);
