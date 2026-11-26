@@ -99,10 +99,12 @@ describe("failureMessage", () => {
   });
 
   it("removes the user part of a URL: a user with a password, and a user only", () => {
-    const withPassword = failureMessage("Request cannot be constructed from a URL that includes credentials: https://user:p4ss@host.example/x");
-    expect(withPassword).toBe("Request cannot be constructed from a URL that includes credentials: https://[secret]@host.example/…");
-    expect(withPassword).not.toContain("p4ss");
-    expect(withPassword).not.toContain("user:");
+    const withPassword = failureMessage("the fetch of https://user:p4ss@host.example/x failed");
+    expect(withPassword).toBe("the fetch of https://[secret]@host.example/… failed");
+    // The message of undici: the name "credentials" is a name of a secret, thus the shape secret-parameter of text takes all of the URL.
+    const undici = failureMessage("Request cannot be constructed from a URL that includes credentials: https://user:p4ss@host.example/x") ?? "";
+    expect(undici).not.toContain("p4ss");
+    expect(undici).not.toContain("user");
     const userOnly = failureMessage("no answer: https://t0ken9f@host.example/repo.git");
     expect(userOnly).toBe("no answer: https://[secret]@host.example/…");
     // An @ in the path is not a user part.
