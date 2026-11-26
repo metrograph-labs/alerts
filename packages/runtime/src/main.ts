@@ -467,6 +467,7 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
     page,
     ...(instance.outage === undefined ? {} : { outage: instance.outage }),
     start: { use: loaded.use, reasons: loaded.fallback.length },
+    ...(instance.copies?.worker === undefined ? {} : { copies: instance.copies.worker }),
     exchange,
     ...(tell === undefined ? {} : { tell }),
     home: held.lock,
