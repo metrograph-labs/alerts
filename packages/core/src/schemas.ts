@@ -1413,7 +1413,7 @@ export const assessReasonSchema: z.ZodType<AssessReason, AssessReason> = schemaO
         zoneFallback: z.literal(true).exactOptional(),
       }),
       z.strictObject({ kind: z.literal("subject"), subject: subjectWatchSchema }),
-      z.strictObject({ kind: z.literal("software"), match: softwareMatchSchema }),
+      z.strictObject({ kind: z.literal("software"), match: softwareMatchSchema, exploited: assessedLevelSchema.exactOptional() }),
       z.strictObject({ kind: z.literal("place-table"), place: placeIdSchema, reports: z.array(reportIdSchema).min(1).readonly(), level: assessedLevelSchema }),
       z.strictObject({
         kind: z.literal("table"),

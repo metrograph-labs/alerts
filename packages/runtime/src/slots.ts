@@ -540,6 +540,8 @@ export const stopBeforeStage = (memory: FoldMemory): boolean => memory.available
 export interface CopyReadStatus {
   readonly copy: string;
   readonly readAt: number | null;
+  /** The first read that told that the copy is not steady, or `null` (AL-204). A status of an older build gives `null`. */
+  readonly unsteadySince: number | null;
 }
 
 /**
@@ -556,7 +558,9 @@ export function copyReadsOf(value: unknown): readonly CopyReadStatus[] | undefin
     if (!isRecord(item) || typeof item["copy"] !== "string") return undefined;
     const readAt = item["readAt"];
     if (readAt !== null && typeof readAt !== "number") return undefined;
-    reads.push({ copy: item["copy"], readAt });
+    const unsteadySince = item["unsteadySince"] ?? null;
+    if (unsteadySince !== null && typeof unsteadySince !== "number") return undefined;
+    reads.push({ copy: item["copy"], readAt, unsteadySince });
   }
   return reads;
 }
@@ -567,14 +571,20 @@ export function copyReadsOf(value: unknown): readonly CopyReadStatus[] | undefin
  *
  * - `"down"` is a runtime that does not answer. A stop of it removes no copy, thus the function gives `undefined`.
  * - A host with no other copy stops only with `alone`: no copy sends the alerts during the stop.
+ * - Each other copy must be steady (AL-204). A copy that started a short time ago is not steady. Thus a deploy of the
+ *   second copy waits until the first copy has its passes and its heartbeats again. One bad release then stops one copy only.
  */
 export function stopRefusal(copies: readonly CopyReadStatus[] | "down" | undefined, now: number, maxAge: number, alone: boolean): string | undefined {
   if (copies === "down") return undefined;
   if (copies === undefined) return "The status of the live runtime has no good list of the other copies. The deploy does not stop the runtime.";
   if (copies.length === 0) return alone ? undefined : "This runtime has no other copy, thus a stop leaves no copy up. Add `--alone` to accept the gap.";
   const old = copies.filter((read) => read.readAt === null || now - read.readAt > maxAge).map((read) => read.copy);
-  if (old.length === 0) return undefined;
-  return `The copies ${old.join(", ")} had no read in the last ${String(Math.round(maxAge / 1000))} s, thus a stop can leave no copy up. The deploy does not stop the runtime.`;
+  if (old.length > 0) {
+    return `The copies ${old.join(", ")} had no read in the last ${String(Math.round(maxAge / 1000))} s, thus a stop can leave no copy up. The deploy does not stop the runtime.`;
+  }
+  const unsteady = copies.filter((read) => read.unsteadySince !== null).map((read) => read.copy);
+  if (unsteady.length === 0) return undefined;
+  return `The copies ${unsteady.join(", ")} are not steady: they started a short time ago. The deploy does not stop the runtime. Deploy again when they are steady.`;
 }
 
 /** The arguments of `deploy.ts deploy` (AL-186): the commit, the build of the page, and the consent to a stop with no other copy. */
@@ -603,6 +613,9 @@ export function stepsAfterStage(running: boolean, fold: boolean): readonly Deplo
   if (!running) return fold ? ["swap", "fold", "start"] : ["swap", "start"];
   return fold ? ["stop", "swap", "fold", "start"] : ["swap", "restart"];
 }
+
+/** This function tells if the steps take a running runtime down: a stop, or a restart for its start (AL-204). */
+export const takesDown = (steps: readonly DeployStep[]): boolean => steps.includes("stop") || steps.includes("restart");
 
 /**
  * This function gives the key step: `main.ts key` of a slot on the live home (AL-169). The step holds no lock and writes no

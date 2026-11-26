@@ -105,7 +105,7 @@ export function reasonText(reason: AssessReason, incident: Pick<Incident, "sever
     case "subject":
       return `The person watches the subject ${reason.subject.system}${reason.subject.id === undefined ? "" : ` ${reason.subject.id}`}.`;
     case "software":
-      return `${softwareMatchText(reason.match)} The person watches the part.`;
+      return `${softwareMatchText(reason.match)} The person watches the part.${reason.exploited === undefined ? "" : ` Attackers use the flaw at this time, so the part gets the level ${reason.exploited}.`}`;
     case "table": {
       // A kind with no class from the sources of another copy only gets the quiet table (AL-76).
       const table =

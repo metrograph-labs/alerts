@@ -1185,7 +1185,7 @@
       "UNDRR-ISC HIPs 2025: BI0104 Foodborne Diseases, BI0210 E. coli, BI0218 Listeriosis",
       "CISA sectors: Food and Agriculture"
     ],
-    "gap": "Round 1 found 0 adopted or planned sources with no risk. fda-core-investigations is later, fsis-recall-api is later: see the reason of each. Round 34: the feed of public health updates of the PHAC gave no answer in 120 seconds. Round 40: the CDC page of investigations returned 403, and the CDC content API has no feed of them. The news API of Canada has no food notices.",
+    "gap": "Round 1 found 0 adopted or planned sources with no risk. fda-core-investigations is later, fsis-recall-api is later: see the reason of each. Round 34: the feed of public health updates of the PHAC gave no answer in 120 seconds. Round 40: the CDC page of investigations returned 403, and the CDC content API has no feed of them. The news API of Canada has no food notices. Round 50: the website policies of the FDA put its content in the public domain, so fda-core-investigations is a plan.",
     "round": 1
   },
   {

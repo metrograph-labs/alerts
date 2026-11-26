@@ -1150,6 +1150,7 @@ export type AssessReason = {
 } | {
   readonly kind: "software";
   readonly match: SoftwareMatch;
+  readonly exploited?: AssessedLevel;
 } | {
   readonly kind: "place-table";
   readonly place: PlaceId;
