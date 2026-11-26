@@ -28,6 +28,7 @@ import type {
   ReportId,
   ScorePriors,
   ScoreRule,
+  Severity,
   SubjectEntry,
   SubjectKind,
   SubjectSystem,
@@ -797,13 +798,32 @@ export function assess(
   }
   // Each kind of the other entries that count gets its own rule. Thus a rule through topics does not lower an entity.
   for (const through of plan?.others ?? []) level = higherLevel(level, atMatch(undefined, entryLevel, through));
+  // A flaw that attackers use at this time raises the level of each watched part with an affected version (AL-197).
+  const affected = software.filter((match) => match.verdict === "affected");
+  const exploited = affected.length > 0 && isExploited(incident) ? higherLevel(incidentLevel, tableLevel(policy, { ...incident, severity: atLeastSevere(incident.severity) }, at, foreign).level) : undefined;
+  const affectedParts = affected.map((match) => ({ system: SOFTWARE_PART_SYSTEM, id: match.part }));
   for (const subject of subjects) {
     reasons.push({ kind: "subject", subject });
-    level = higherLevel(level, atMatch(undefined, incidentLevel, kindOfNode(subjectNode({ system: subject.system, id: subject.id ?? "*" })) ?? "entity"));
+    const raised = exploited !== undefined && subject.system === SOFTWARE_PART_SYSTEM && matchSubjects({ about: affectedParts }, [subject]).length > 0;
+    level = higherLevel(level, atMatch(undefined, raised ? exploited : incidentLevel, kindOfNode(subjectNode({ system: subject.system, id: subject.id ?? "*" })) ?? "entity"));
   }
-  for (const match of software) reasons.push({ kind: "software", match });
+  for (const match of software) reasons.push({ kind: "software", match, ...(exploited === undefined || match.verdict !== "affected" ? {} : { exploited }) });
   return result(level);
 }
+
+/**
+ * The kinds of the reports of a flaw that attackers use at this time, for example the entries of the KEV catalog of CISA. Each
+ * head of an incident with another kind gives a line of its own. Thus a line shows each such head.
+ */
+const EXPLOITED_KINDS: readonly string[] = ["cyber.vulnerability.exploited"];
+
+// This function tells if a head of an incident is a report of a flaw that attackers use at this time.
+function isExploited(incident: Incident): boolean {
+  return [incident.kind, ...(incident.lines ?? []).map((line) => line.kind)].some((kind) => hasKind(EXPLOITED_KINDS, kind.code));
+}
+
+// This function gives the severity `severe` for each severity below it.
+const atLeastSevere = (severity: Severity): Severity => (severity === "extreme" ? severity : "severe");
 
 // The matches of the advisories of the subjects to the software of the stack, for the parts that the person watches.
 function watchedMatches(about: Incident["about"], stack: SoftwareStack | undefined, watches: readonly SubjectWatch[]): SoftwareMatch[] {
