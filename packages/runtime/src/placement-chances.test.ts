@@ -13,6 +13,8 @@ import {
   downShare,
   downSpans,
   downTime,
+  estimated,
+  estimatedBase,
   feedOf,
   FETCH_GAP_MS,
   fetchGapTime,
@@ -393,6 +395,32 @@ describe("the measure of a shared channel from its calls (AL-147)", () => {
       const lost: PlacementBase = { ...base, chances: [{ ...PATH, part: "lost-path" }] };
       const pages = [page("voice-api", [{ from: START + 3 * HOUR_MS, to: START + 4 * HOUR_MS }])];
       expect(measureBaseCalls(lost, () => calls, NOW, pages).measures[0]?.down).toMatchObject({ hours: 48, downHours: 1 });
+    });
+  });
+
+  describe("the estimate of a measured input (AL-147)", () => {
+    const calls: CallRead[] = [...answered.slice(0, 35)];
+    const measured = measureChannel(CHANCE, calls, NOW);
+    if (!measured.ok) throw new Error(measured.reason);
+
+    it("gives the low end as it is, and the Jeffreys mean with its text", () => {
+      expect(estimated(measured.measure, "low")).toBe(measured.measure);
+      const mean = estimated(measured.measure, "mean");
+      expect(mean.input.works).toBeCloseTo(35.5 / 36, 12);
+      expect(mean.input.works).toBeGreaterThan(measured.measure.input.works);
+      expect(mean.input.source).toContain("the input is the Jeffreys posterior mean 0.986111");
+      expect(mean.input.source).not.toContain("the input is the low end");
+      expect(mean.down).toEqual(measured.measure.down);
+    });
+
+    it("sets the mean on each measured chance of a base, and keeps the other chances", () => {
+      const other: PartChance = { part: "feed-a", works: 0.9, kind: "assumed", source: "an assumed input" };
+      const base: PlacementBase = { stack: { format: "system-stack/1", parts: [] } as unknown as PlacementBase["stack"], part: "send", chances: [measured.chance, other] };
+      expect(estimatedBase(base, [measured.measure], "low")).toBe(base);
+      const mean = estimatedBase(base, [measured.measure], "mean");
+      expect(mean.chances?.[0]?.works).toBeCloseTo(35.5 / 36, 12);
+      expect(mean.chances?.[0]?.channel).toBe("push");
+      expect(mean.chances?.[1]).toEqual(other);
     });
   });
 
