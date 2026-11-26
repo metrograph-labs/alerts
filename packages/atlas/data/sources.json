@@ -26724,6 +26724,7 @@
     "subjectIds": null,
     "risks": [],
     "decision": "plan",
+    "adapter": null,
     "reason": "A traded price of the main stablecoins from one exchange, with no key. It is an origin apart from the aggregate of DefiLlama.",
     "evidence": [
       "https://api.exchange.coinbase.com/products/USDT-USD/ticker",
@@ -26762,6 +26763,7 @@
     "subjectIds": null,
     "risks": [],
     "decision": "later",
+    "adapter": null,
     "reason": "Official delivery interruptions by area, but only as a page. A page source needs terms that let automated reading.",
     "evidence": [
       "https://www.canadapost-postescanada.ca/cpc/en/our-company/news-and-media/service-alerts.page",
