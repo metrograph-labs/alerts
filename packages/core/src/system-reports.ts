@@ -358,6 +358,21 @@ export function atBound(bound: StoreBound): boolean {
   return bound.entries >= bound.limit || bound.waiting > 0;
 }
 
+/**
+ * The routes of the last delivery step, with their limit (AL-154). A route is one live incident for one person. The heap
+ * and the peak memory of a start grow with the count of the routes. Over the limit, a start can fill its heap.
+ */
+export interface RouteLoad {
+  /** The count of the routes of the last delivery step. */
+  readonly routes: number;
+  /** The count of the routes at which the line opens. */
+  readonly limit: number;
+}
+
+/** The store and the family of the routes in the line `system.store.routes` (AL-154). */
+export const ROUTE_STORE = "delivery";
+export const ROUTE_FAMILY = "routes";
+
 /** The time after a start in which each family of a store gets its first entry (AL-86). */
 export const STORE_FILL_WINDOW: Duration = 60 * 60 * 1000;
 
@@ -492,6 +507,11 @@ export interface SystemSnapshot {
    * bound stays open.
    */
   readonly bounds?: readonly StoreBound[];
+  /**
+   * The routes of the last delivery step (AL-154). A count at the limit or more is a condition. The copies count the routes
+   * from the same log, thus only one copy reports it (`reportsShared`). With no field, an open line of the routes stays open.
+   */
+  readonly routes?: RouteLoad;
   /**
    * The drills of the copy. A run that waits for its acknowledgment is a condition, and a failed last run is a condition.
    * With no drills, each open line of a drill stays open.
@@ -899,6 +919,7 @@ export function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: 
     if (fill.entries === 0 && (at >= storeEmptyAt(fill) || lines.open[name] !== undefined)) conditions.set(name, storeCondition(fill, titles));
   }
   for (const bound of snapshot.bounds ?? []) if (atBound(bound)) conditions.set(boundName(bound), boundCondition(bound, titles));
+  if (shared && snapshot.routes !== undefined && snapshot.routes.routes >= snapshot.routes.limit) conditions.set(ROUTES_LINE, routesCondition(snapshot.routes));
   for (const state of snapshot.redundancy ?? []) {
     const stage = redundancyStage(state);
     if (stage !== undefined) conditions.set(redundancyName(state.function.id, stage), redundancyCondition(state, stage));
@@ -929,6 +950,8 @@ export function systemReports(lines: SystemLines, snapshot: SystemSnapshot, at: 
     if (condition === undefined && snapshot.observing === undefined && name.startsWith(OBSERVE_LINE)) continue;
     if (condition === undefined && snapshot.stores === undefined && name.startsWith(STORE_LINE)) continue;
     if (condition === undefined && snapshot.bounds === undefined && name.startsWith(BOUND_LINE)) continue;
+    // Only the copy that reports the shared facts ends the line of the routes. Thus the other copy does not end it at each pass.
+    if (condition === undefined && (snapshot.routes === undefined || !shared) && name === ROUTES_LINE) continue;
     if (condition === undefined && snapshot.redundancy === undefined && name.startsWith(REDUNDANCY_LINE)) continue;
     // A copy ends only its own lines of the stale places. Each other copy watches the fixes of its own phones.
     if (condition === undefined && name.startsWith(PLACE_LINE) && (snapshot.stale === undefined || !name.startsWith(placePrefix(snapshot.copy)))) continue;
@@ -1991,6 +2014,27 @@ function storeCondition(fill: StoreFill, titles: ReadonlyMap<SourceId, string>):
     description: "The store did not fill in the time. Its sources can be down, or the store gets no turn to fetch. Each feature that reads the family works without it.",
     instruction: "Examine the health of the sources of the store and the log of its refreshes.",
     parameters: { entries: [String(fill.entries)], within: [String(fill.within)] },
+  };
+}
+
+const ROUTES_LINE = `${ROUTE_FAMILY}/${ROUTE_STORE}`;
+
+// The routes keep each send: the line only tells of the risk to the start, thus it gets `notice` at most (AL-154). The counts
+// are not facts. Thus a change of a count gives no update, and the line ends when the count falls below the limit.
+function routesCondition(load: RouteLoad): Condition {
+  const code = `${STORE_KIND}.routes`;
+  return {
+    facts: { store: ROUTE_STORE, family: ROUTE_FAMILY },
+    kind: { code, label: kindLabel(code) },
+    severity: "moderate",
+    urgency: "expected",
+    response: ["assess"],
+    areas: [],
+    about: [{ system: STORE_SUBJECT, id: `${ROUTE_STORE}/${ROUTE_FAMILY}`, label: `Store ${ROUTE_STORE}, family ${ROUTE_FAMILY}` }],
+    headline: `The delivery has ${countOf(load.routes, "route")}, at or over its limit of ${countOf(load.limit, "route")}.`,
+    description: "A route is one live incident for one person. The heap of a start grows with the count of the routes. Over the limit, a start can fill its heap. Each send still goes.",
+    instruction: "Remove the persons and the watched places that you do not use, or move the copies to hosts with more memory.",
+    parameters: { routes: [String(load.routes)], limit: [String(load.limit)] },
   };
 }
 

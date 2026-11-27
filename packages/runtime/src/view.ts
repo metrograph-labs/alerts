@@ -60,6 +60,7 @@ import {
   type LimitUse,
   type LinkPolicy,
   type ObserveCondition,
+  type RouteLoad,
   type SourceDescriptor,
   type SourceClearConfig,
   type SourceHealth,
@@ -195,6 +196,8 @@ export interface SystemParts {
   readonly stores?: readonly StoreFill[];
   /** The stores with a bound (AL-145), as the merge state with `REPORT_LIMIT`. With no list, each open line of a bound stays open. */
   readonly bounds?: readonly StoreBound[];
+  /** The routes of the last delivery step, with their limit (AL-154). With no field, an open line of the routes stays open. */
+  readonly routes?: RouteLoad;
   /** The stale moving places of this copy (AL-40). With no list, each open line of a moving place stays open. */
   readonly stale?: readonly StalePlace[];
   /**
@@ -222,14 +225,14 @@ export interface SystemParts {
  * - The folds are the folds of the last view (`latenessStep`). With no folds, each fold starts again. The view is the same.
  */
 export function systemView(state: RuntimeState, config: ViewConfig, at: Instant, parts: SystemParts = {}): SystemView {
-  const { quotas, balances, uses, joint, drift, copies, copy, folds, drills, drillWatches, exhausted, held, channels, observing, stores, bounds, stale, integrity } = parts;
+  const { quotas, balances, uses, joint, drift, copies, copy, folds, drills, drillWatches, exhausted, held, channels, observing, stores, bounds, routes, stale, integrity } = parts;
   const steps = config.sources.map((source) => advanceHealth(state.health[source.id] ?? startHealth(source.id, state.start ?? at), at, source, config.health));
   const health = steps.map((step) => step.health);
   const found = incidents(state.merge, at, { link: linkRule(config.link ?? DEFAULT_LINK_POLICY) });
   const checks = carriages(state.merge, found, config.expectations);
   const { lateness: late, folds: next } = latenessStep(checks, config.expectations, at, ruleOf(config.delay), folds);
   const covered = coverage({ sources: config.sources, health, late: lateSources(late), places: config.places, kinds: config.kinds, containing: containingCodes }, config.coverage);
-  const step = systemReports(state.lines, { sources: config.sources, health, coverage: covered, threats: threats(found, config.places), lateness: late, ...(quotas === undefined ? {} : { quotas }), ...(balances === undefined ? {} : { balances }), ...(uses === undefined ? {} : { uses }), ...(joint === undefined ? {} : { joint }), ...(drift === undefined ? {} : { drift }), ...(copies === undefined ? {} : { copies }), ...(copy === undefined ? {} : { copy }), ...(drills === undefined ? {} : { drills }), ...(drillWatches === undefined ? {} : { drillWatches }), ...(exhausted === undefined ? {} : { exhausted }), ...(held === undefined ? {} : { held }), ...(channels === undefined ? {} : { channels }), ...(observing === undefined ? {} : { observing }), ...(stores === undefined ? {} : { stores }), ...(bounds === undefined ? {} : { bounds }), ...(stale === undefined ? {} : { stale }), ...(integrity === undefined ? {} : { integrity }), ...(config.chain === undefined ? {} : { redundancy: chainStates(config.chain, found) }), ...(config.channelDown === undefined ? {} : { channelDown: config.channelDown }), ...(config.sourceClear === undefined ? {} : { sourceClear: config.sourceClear }), steps: state.steps, recoveries: state.recoveries, blocks: state.blocks }, at);
+  const step = systemReports(state.lines, { sources: config.sources, health, coverage: covered, threats: threats(found, config.places), lateness: late, ...(quotas === undefined ? {} : { quotas }), ...(balances === undefined ? {} : { balances }), ...(uses === undefined ? {} : { uses }), ...(joint === undefined ? {} : { joint }), ...(drift === undefined ? {} : { drift }), ...(copies === undefined ? {} : { copies }), ...(copy === undefined ? {} : { copy }), ...(drills === undefined ? {} : { drills }), ...(drillWatches === undefined ? {} : { drillWatches }), ...(exhausted === undefined ? {} : { exhausted }), ...(held === undefined ? {} : { held }), ...(channels === undefined ? {} : { channels }), ...(observing === undefined ? {} : { observing }), ...(stores === undefined ? {} : { stores }), ...(bounds === undefined ? {} : { bounds }), ...(routes === undefined ? {} : { routes }), ...(stale === undefined ? {} : { stale }), ...(integrity === undefined ? {} : { integrity }), ...(config.chain === undefined ? {} : { redundancy: chainStates(config.chain, found) }), ...(config.channelDown === undefined ? {} : { channelDown: config.channelDown }), ...(config.sourceClear === undefined ? {} : { sourceClear: config.sourceClear }), steps: state.steps, recoveries: state.recoveries, blocks: state.blocks }, at);
   // An incident that expires changes the threats, thus its end is a timer too.
   const ends = found.flatMap((incident) => (incident.live && incident.expires !== undefined && incident.expires > at ? [incident.expires] : []));
   // The handover of the facts of a shared account is a timer too, because this copy then reports a low balance.

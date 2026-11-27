@@ -90,6 +90,11 @@ export interface RuntimeOptions {
    */
   readonly reportLimit?: number;
   /**
+   * The count of the routes of a delivery step at which the view opens the line `system.store.routes` (AL-154). The default
+   * is `ROUTE_LIMIT`. The line only tells: each route still sends.
+   */
+  readonly routeLimit?: number;
+  /**
    * The retention of old incidents (AL-47). The fold retires on a cadence of the event time (AL-109), thus the retention goes
    * into the context of the fold, `config`. The defaults come from the core.
    */
@@ -203,6 +208,14 @@ export type ReadingsAction = "add" | "prune" | "read";
  * at the peak of a pass. That is less than half of the heap of a host with 1 GB of memory.
  */
 export const REPORT_LIMIT = 10_000;
+
+/**
+ * The default count of the routes at which the view tells of a risk to the start (AL-154). A route is one live incident for one
+ * person. Capacity CAP-99 measured the start at each rung on a host with 1 GB of memory and a heap of 556 MB. Each start
+ * was ready at 40,000 routes, 19 of 20 starts at 70,000, and no start at 100,000. Thus the start fails above 40,000 routes, and the
+ * limit is that rung. The laws of CAP-67 fit only up to 11,000 routes. A host with a larger heap has a larger limit (CAP-108).
+ */
+export const ROUTE_LIMIT = 40_000;
 
 /** The store and the family of the bound of the reports in the line `system.store.full` (AL-145). */
 export const STATE_STORE = "state";
@@ -498,6 +511,8 @@ export function openRuntime(options: RuntimeOptions): Runtime {
   let exhausted: readonly Exhaustion[] | undefined;
   // The conditions of the observe mode of the last pass, in memory only (AL-73). A restart keeps each open line until its first pass.
   let observing: readonly ObserveCondition[] | undefined;
+  // The count of the routes of the last delivery step, in memory only (AL-154). A restart keeps an open line until its first delivery step.
+  let routed: number | undefined;
   // The runs of failed calls of the channels of this copy, and the probes of its down channels, in memory only (AL-65).
   // A restart empties the runs, and each open line stays until a good call.
   const channels = options.delivery === undefined ? undefined : channelWatch({ copy: self, channels: options.delivery.channels, policy: channelDownPolicy(config.channelDown), clock, callLimit: options.delivery.callLimit });
@@ -531,6 +546,8 @@ export function openRuntime(options: RuntimeOptions): Runtime {
   if (!Number.isInteger(limit) || limit < 1) throw new Error(`The count of snapshot misses is ${limit}, not an integer of 1 or more.`);
   const reportLimit = options.reportLimit ?? REPORT_LIMIT;
   if (!Number.isInteger(reportLimit) || reportLimit < 1) throw new Error(`The bound of the reports is ${reportLimit}, not an integer of 1 or more.`);
+  const routeLimit = options.routeLimit ?? ROUTE_LIMIT;
+  if (!Number.isInteger(routeLimit) || routeLimit < 1) throw new Error(`The limit of the routes is ${routeLimit}, not an integer of 1 or more.`);
   // The count of the new observations of each source that wait outside the log at its last fetch that passed (AL-145).
   const waiting = new Map<SourceId, number>();
   // The admission of one fetch. It counts the reports of the state and the reports that the fetch took before. An
@@ -751,7 +768,7 @@ export function openRuntime(options: RuntimeOptions): Runtime {
       // The persons with a hold of the send limit (AL-81). With no delivery, no person has a hold, and each open line stays.
       const held = dispatcher === undefined ? undefined : heldOf(at);
       const stale = options.stale?.(at);
-      const view = systemView(state, places === config.places ? config : { ...config, places }, at, { ...(stale === undefined ? {} : { stale }), drills: drilled.snapshots, ...(quotas === undefined ? {} : { quotas }), ...(stores === undefined ? {} : { stores }), bounds: readBounds(), balances: watches.flatMap((watch) => watch.balance() ?? []), uses: uses.flatMap((watch) => watch.use() ?? []), ...jointPart(options.joint), ...driftPart(options.drift), ...(options.copies === undefined ? {} : { copies: options.copies.watches(), copy: self, drillWatches: options.drillWatches ?? [] }), ...(folds === undefined ? {} : { folds }), ...(exhausted === undefined ? {} : { exhausted }), ...(held === undefined ? {} : { held }), ...(channels === undefined ? {} : { channels: channels.snapshots() }), ...(observing === undefined ? {} : { observing }), ...(options.integrity === undefined ? {} : { integrity: options.integrity() }) });
+      const view = systemView(state, places === config.places ? config : { ...config, places }, at, { ...(stale === undefined ? {} : { stale }), drills: drilled.snapshots, ...(quotas === undefined ? {} : { quotas }), ...(stores === undefined ? {} : { stores }), bounds: readBounds(), ...(routed === undefined ? {} : { routes: { routes: routed, limit: routeLimit } }), balances: watches.flatMap((watch) => watch.balance() ?? []), uses: uses.flatMap((watch) => watch.use() ?? []), ...jointPart(options.joint), ...driftPart(options.drift), ...(options.copies === undefined ? {} : { copies: options.copies.watches(), copy: self, drillWatches: options.drillWatches ?? [] }), ...(folds === undefined ? {} : { folds }), ...(exhausted === undefined ? {} : { exhausted }), ...(held === undefined ? {} : { held }), ...(channels === undefined ? {} : { channels: channels.snapshots() }), ...(observing === undefined ? {} : { observing }), ...(options.integrity === undefined ? {} : { integrity: options.integrity() }) });
       folds = view.folds;
       const event = systemEvent(view);
       if (event !== undefined) conflicts.push(...append([event]));
@@ -766,6 +783,7 @@ export function openRuntime(options: RuntimeOptions): Runtime {
       // A missing list is an empty list. After a restart, the second pass gives the list, and it can end an open line.
       const changed = delivery !== undefined && JSON.stringify(delivery.exhausted) !== JSON.stringify(exhausted ?? []);
       if (delivery !== undefined) exhausted = delivery.exhausted;
+      if (delivery !== undefined) routed = delivery.routes.length;
       // A new person with a hold goes into the view of the next pass. Thus that pass comes at once, and the person gets the notice.
       const heldChanged = held !== undefined && delivery !== undefined && personsOf(heldOf(clock.now())) !== personsOf(held);
       // A run that starts to open a line, or an accepted send on a down channel, changes a line in the view of the next pass.

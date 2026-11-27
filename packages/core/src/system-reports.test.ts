@@ -53,6 +53,8 @@ import {
   recentStep,
   redundancyStage,
   reportsShared,
+  ROUTE_FAMILY,
+  ROUTE_STORE,
   SHARED_HANDOVER,
   sourceClearAt,
   sourceClearPolicy,
@@ -72,6 +74,7 @@ import {
   type LogRecovery,
   type LogIntegrity,
   type StalePlace,
+  type RouteLoad,
   type StoreBound,
   type StoreFill,
   type SystemLines,
@@ -1485,6 +1488,55 @@ describe("the bound reports (AL-145)", () => {
   it("goes as a notice to the person who watches a source of the waiting entries or the store", () => {
     const step = systemReports(NO_SYSTEM_LINES, snapshot({ bounds: [{ ...state, waiting: 1, sources: [API.id] }] }), AT);
     expect(levels(step.reports, OPERATOR, AT)).toEqual(["notice"]);
+    expect(levels(step.reports, NEIGHBOR, AT)).toEqual(["none"]);
+    expect(levels(step.reports, { ...NEIGHBOR, subjects: [{ system: STORE_SUBJECT }] }, AT)).toEqual(["notice"]);
+  });
+});
+
+describe("the route reports (AL-154)", () => {
+  const AT = Date.UTC(2026, 10, 26, 12);
+  const below: RouteLoad = { routes: 10_999, limit: 11_000 };
+  const at: RouteLoad = { routes: 11_000, limit: 11_000 };
+  const codes = (reports: readonly Report[]) => reports.map((report) => [report.op, report.kind.code, report.about[0]!.id]);
+  const watch = (copy: string, read: number): CopyWatch => ({ copy, skewLimit: 2_000, maxAge: 60_000, since: AT, read: { at: read, skew: 0, sameConfig: true } });
+
+  it("gives an alert at the limit, no update for a new count, and a cancel below the limit", () => {
+    expect(unknownKinds(["system.store.routes"])).toEqual([]);
+    expect(systemReports(NO_SYSTEM_LINES, snapshot({ routes: below }), AT).reports).toEqual([]);
+    const many = systemReports(NO_SYSTEM_LINES, snapshot({ routes: at }), AT);
+    expect(many.reports).toMatchObject([
+      {
+        op: "alert",
+        status: "system",
+        kind: { code: "system.store.routes", label: "Many routes" },
+        severity: "moderate",
+        urgency: "expected",
+        areas: [],
+        about: [{ system: STORE_SUBJECT, id: `${ROUTE_STORE}/${ROUTE_FAMILY}` }],
+        headline: "The delivery has 11,000 routes, at or over its limit of 11,000 routes.",
+        parameters: { routes: ["11000"], limit: ["11000"] },
+      },
+    ]);
+    expect(Object.keys(many.lines.open)).toEqual(["routes/delivery"]);
+    // A new count is not a fact. Thus the line gives no update.
+    expect(systemReports(many.lines, snapshot({ routes: { ...at, routes: 40_000 } }), AT + 60_000).reports).toEqual([]);
+    // With no field, the line stays open: a restart has no count until its first delivery step.
+    expect(systemReports(many.lines, snapshot(), AT + 120_000).reports).toEqual([]);
+    expect(codes(systemReports(many.lines, snapshot({ routes: below }), AT + 180_000).reports)).toEqual([["cancel", "system.store.routes", "delivery/routes"]]);
+  });
+
+  it("is reported and ended only by the copy that reports the shared facts", () => {
+    const first = systemReports(NO_SYSTEM_LINES, snapshot({ routes: at, copy: "copy-a", copies: [watch("copy-b", AT)] }), AT);
+    expect(codes(first.reports)).toEqual([["alert", "system.store.routes", "delivery/routes"]]);
+    expect(systemReports(NO_SYSTEM_LINES, snapshot({ routes: at, copy: "copy-b", copies: [watch("copy-a", AT)] }), AT).reports).toEqual([]);
+    // The second copy keeps the open line of the first copy, also with a count below the limit.
+    expect(systemReports(first.lines, snapshot({ routes: below, copy: "copy-b", copies: [watch("copy-a", AT)] }), AT).reports).toEqual([]);
+  });
+
+  it("goes as a notice to the person who watches the store, and to no other person", () => {
+    const step = systemReports(NO_SYSTEM_LINES, snapshot({ routes: at }), AT);
+    // The report names no source. Thus a person who watches only the sources does not get it.
+    expect(levels(step.reports, OPERATOR, AT)).toEqual(["none"]);
     expect(levels(step.reports, NEIGHBOR, AT)).toEqual(["none"]);
     expect(levels(step.reports, { ...NEIGHBOR, subjects: [{ system: STORE_SUBJECT }] }, AT)).toEqual(["notice"]);
   });
