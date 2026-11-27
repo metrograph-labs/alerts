@@ -1567,10 +1567,10 @@ importers:
         version: link:../fetch
       '@mark1russell7/geo':
         specifier: ^0.5.15
-        version: 0.5.15
+        version: 0.5.19
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
@@ -1583,10 +1583,10 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -1595,7 +1595,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-gcp:
     dependencies:
