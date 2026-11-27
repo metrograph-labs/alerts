@@ -38,6 +38,7 @@ import {
   type ChannelProcedures,
   type ChannelQuota,
   type LoopBlock,
+  type LogIntegrity,
   type ContactServices,
   type CopySettings,
   type Duration,
@@ -972,6 +973,8 @@ export interface InstanceOptions {
   readonly onOutageLog?: (line: string) => void;
   /** This function gives the blocks of the event loop of the runtime (AL-88). Each pass writes the new blocks into the log. */
   readonly loopBlocks?: () => readonly LoopBlock[];
+  /** This function gives the last integrity check of the log when it failed, or `null` (AL-223). Its report is a system report. */
+  readonly logIntegrity?: () => LogIntegrity | null;
 }
 
 /** The parts of the exchange that the entry gives to the instance. */
@@ -1451,6 +1454,8 @@ export function openInstance(options: InstanceOptions): Instance {
     stores: () => shapes.fill(startedAt, STORE_FILL_WINDOW, shapeSources(runtime.config.sources).map((source) => source.id)),
     // Each block of the event loop of 1 s or more is a line of system reports (AL-88).
     ...(options.loopBlocks === undefined ? {} : { blocks: options.loopBlocks }),
+    // A failed integrity check of the log is a line of system reports (AL-223).
+    ...(options.logIntegrity === undefined ? {} : { integrity: options.logIntegrity }),
     // Each pass reads the replies of the texts and the spend of Twilio when each read is due.
     // The billing watch reads the billing of a down copy (AL-70).
     ...(reads.length === 0 && billing === undefined ? {} : { reads: [...reads, ...(billing === undefined ? [] : [billing])] }),

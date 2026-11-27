@@ -444,6 +444,7 @@ export const TAXONOMY: Readonly<Record<string, KindEntry>> = {
   [LOOP_KIND]: entry("Event loop of the runtime", "The event loop of the runtime of a copy of the alert system. A blocked loop sends no alert and answers no probe."),
   [`${LOOP_KIND}.block`]: entry("Block of the event loop", "The event loop of the runtime stopped for 1 s or more. A longer block can stop the runtime."),
   [`${LOG_KIND}.recovered`]: entry("Recovery of the log", "The log file was broken. The runtime moved it into quarantine and started a new file with the events that it read."),
+  [`${LOG_KIND}.check`]: entry("Check of the log", "The integrity check of the log file found problems. The next start checks the file again and recovers it."),
   [DRILL_KIND]: entry("Drill of a path", "A drill of the path of the life-safety warnings: the provider, the phone and the person."),
   [`${DRILL_KIND}.run`]: entry("Drill", "A drill message. It wakes the person, and an acknowledgment in its time passes the drill. It is not a warning."),
   [`${DRILL_KIND}.failed`]: entry("Failed drill", "No acknowledgment of a drill came in its time. A real warning on this path can also go without an answer."),

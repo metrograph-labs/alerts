@@ -42,7 +42,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
-import { mkdir, rm } from "node:fs/promises";
+import { mkdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { fileURLToPath } from "node:url";
@@ -54,6 +54,7 @@ import { openShapeCache, SHAPES_FILE } from "@mark1russell7/alerts-shapes-nws";
 import { realClock, wallClock } from "@mark1russell7/algebra/clock";
 import type { ServiceBuilder } from "@mark1russell7/service";
 import { nodeHostPorts } from "@mark1russell7/service/host";
+import { checkIntegrityInBackground } from "@mark1russell7/sqlite";
 import { countOf, errorMessage } from "@mark1russell7/text";
 import { redactSecrets } from "@mark1russell7/text/redact";
 import { SqliteHostStateStore } from "polite-crawler";
@@ -78,7 +79,8 @@ import { spendNotes } from "./balance.ts";
 import { USE_FILE, useFile } from "./spend-use.ts";
 import { PROFILES, declare } from "./index.ts";
 import { daemonCheck, instanceCheck, instanceContextKey, LOUD_PING_URL_KEY, openInstance, pingKeyOf, pingTargets, strayLeavesText, userAgent } from "./instance.ts";
-import { openCheckedRuntimeLog } from "./log.ts";
+import { openCheckedRuntimeLog, RECOVERY_PROBLEMS } from "./log.ts";
+import { logChecker, logCheckPath } from "./log-check.ts";
 import { blockLine, startLoopWatch, type LoopWatch } from "./loop-watch.ts";
 import { foldText, writeFold } from "./fold-mode.ts";
 import { startBlockWatch, type BlockWatch } from "./block-watch.ts";
@@ -312,6 +314,8 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
   let loopWatch: LoopWatch | undefined;
   const onPass = (pass: Pass): void => {
     for (const beat of beats) beat(pass);
+    // After the good start, each pass starts the check of the log when it is due (AL-223). Most passes start nothing.
+    if (marked) void logCheck.step();
     reload?.onPass();
     // The use reads of the cap of Twilio go into the private folder when they change (AL-91).
     if (instance.useReads !== undefined) uses.update(instance.useReads());
@@ -320,6 +324,8 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
     if (marked || service.lifecycle?.state !== "running") return;
     marked = true;
     blockWatch?.phase("run after the good start");
+    // The integrity check of the log operates in a worker thread, at most one time in a day (AL-223).
+    void logCheck.step();
     // Each block of 1 s or more goes to the output at once, and the next pass writes it into the log. Thus a stop after a
     // block has its cause on file.
     loopWatch = startLoopWatch({
@@ -340,7 +346,26 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
 
   blockWatch?.phase("start: open and fold of the log");
   // A broken log file goes into quarantine. The new file gets each event that the salvage reads, and a system report tells the loss.
-  const { log, recovered } = openCheckedRuntimeLog(join(home, "runtime.sqlite"), { now: () => wall.now() });
+  const logPath = join(home, "runtime.sqlite");
+  const openedAt = wall.now();
+  const { log, recovered, checked } = openCheckedRuntimeLog(logPath, { now: () => wall.now() });
+  // The check of the log after the start (AL-223). The stop of the service aborts it, and the state file keeps `running`.
+  const logStop = new AbortController();
+  const checkPath = logCheckPath(logPath);
+  const logCheck = logChecker(
+    {
+      now: () => wall.now(),
+      read: () => readFile(checkPath, "utf8").catch((error: unknown) => (error instanceof Error && "code" in error && error.code === "ENOENT" ? undefined : Promise.reject(error))),
+      write: (text) => writeFileAtomic(checkPath, text, { mode: 0o600 }),
+      check: (signal) => checkIntegrityInBackground(logPath, { quick: true, limit: RECOVERY_PROBLEMS, signal }),
+      onFailed: (integrity) => {
+        out.error(`The integrity check of the log found ${countOf(integrity.problems.length, "problem")}. The next start checks the file and recovers it.`);
+        instance.loop.wake();
+      },
+      onError: (message) => out.error(message),
+    },
+    { checkedAt: checked ? openedAt : undefined, signal: logStop.signal },
+  );
   if (recovered !== undefined) out.error(`The log file was broken. It is in the quarantine folder ${recovered.quarantine}. The new log kept ${String(recovered.added)} events and lost ${String(recovered.lost)}.`);
   // The snapshots of the start (AL-105), one for each key (AL-169). A salvaged log has a new key, and the clear frees the rows of the old log.
   const snapshot = openStartSnapshots(home, {
@@ -435,6 +460,7 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
     // The worker of the outage call deploys its Functions 10 minutes after the good start, then once in each day. A failed deploy goes again after a backoff.
     onOutageLog: (line) => out.log(line),
     loopBlocks: () => loopWatch?.blocks() ?? [],
+    logIntegrity: () => logCheck.failed(),
     onOutageError: (error, failures) => out.error(`A deploy of the outage call failed (${failures} in sequence): ${redactSecrets(errorMessage(error), values)}`),
   });
   blockWatch?.phase("start: service and first pass");
@@ -486,6 +512,7 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
     profile,
     loop: instance.loop,
     log,
+    logCheck: { close: () => logStop.abort(new Error("The runtime stops.")) },
     shapes: instance.shapes,
     ...(instance.transit === undefined ? {} : { transit: instance.transit }),
     quotas,
