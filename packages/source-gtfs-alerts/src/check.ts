@@ -30,9 +30,9 @@ export function checkCanary(observations: readonly Observation[]): CanaryResult 
     const minutes = ((observation.fetched - at) / 60_000).toFixed(1);
     const text = new Date(at).toISOString().replace(".000Z", "Z");
     if (observation.fetched - at > FEED_MAX_AGE_MS) {
-      return { pass: false, reason: `the time of the feed is ${text}, ${minutes} minutes before the fetch: the limit is ${String(FEED_MAX_AGE_MS / 60_000)} minutes`, late: true };
+      return { pass: false, reason: `the time of the feed is ${text}, ${minutes} minutes before the fetch: the limit is ${String(FEED_MAX_AGE_MS / 60_000)} minutes`, late: true, age: observation.fetched - at, limit: FEED_MAX_AGE_MS };
     }
-    return { pass: true, reason: `the time of the feed is ${text}, ${minutes} minutes before the fetch` };
+    return { pass: true, reason: `the time of the feed is ${text}, ${minutes} minutes before the fetch`, age: observation.fetched - at, limit: FEED_MAX_AGE_MS };
   }
   return { pass: false, reason: "the fetch has no census of the feed" };
 }

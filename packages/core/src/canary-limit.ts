@@ -5,8 +5,10 @@
  *
  * The functions are pure. They read no clock. The same record gives the same limit, so a test can pin each limit.
  */
-import type { Duration, Instant } from "./contracts.ts";
+import { quantileSamples } from "@mark1russell7/rigor-statistics";
+import type { CanaryResult, Duration, Instant } from "./contracts.ts";
 import { delayLimit, type DelayLimitOptions } from "./lateness.ts";
+import { durationText } from "./observe.ts";
 
 /**
  * The default quantile and level of a canary limit: the upper bound of the 99th percentile of the gaps, at the level
@@ -46,4 +48,37 @@ export function publishGaps(times: readonly Instant[]): Duration[] {
 export function canaryLimit(times: readonly Instant[], options: CanaryLimitOptions): Duration | undefined {
   const bound = delayLimit(publishGaps(times), { quantile: options.quantile ?? CANARY_LIMITS.quantile, level: options.level ?? CANARY_LIMITS.level });
   return bound === undefined ? undefined : bound + options.margin;
+}
+
+/**
+ * The most ages of the newest item that the runtime keeps for the live limit of one source. This count is four times the
+ * count that an upper bound needs. With more ages than the bound needs, the rank of the bound is below the largest age. Thus one outage in
+ * the ages does not set the limit.
+ */
+export const CANARY_AGE_WINDOW: number = 4 * quantileSamples(CANARY_LIMITS.quantile, CANARY_LIMITS.level);
+
+/** The largest live limit as a multiple of the hand limit of the check. Thus a series of outages cannot hide the next outage. */
+export const CANARY_LIMIT_CEILING = 2;
+
+/**
+ * This function gives the live age limit of a canary from the measured ages of the newest item at each fetch (AL-207). The
+ * limit is the upper bound of the quantile of the ages. The hand limit of the check is the floor, and
+ * `CANARY_LIMIT_CEILING` times the hand limit is the ceiling. With too few ages for an upper bound, the limit is the hand limit.
+ * The floor makes sure that a live limit does not add a failure at any time.
+ */
+export function liveCanaryLimit(ages: readonly Duration[], hand: Duration, options: DelayLimitOptions = CANARY_LIMITS): Duration {
+  const bound = delayLimit(ages.filter((age) => Number.isFinite(age) && age >= 0), options);
+  return bound === undefined ? hand : Math.min(Math.max(bound, hand), CANARY_LIMIT_CEILING * hand);
+}
+
+/**
+ * This function examines the result of an age check again against a live limit (AL-207). A result with no age, or with no
+ * limit, or with the same limit, stays the same. Else the check passes when the age is not more than the live limit. The
+ * reason keeps the text of the check and adds the live limit.
+ */
+export function judgeCanary(result: CanaryResult, limit: Duration): CanaryResult {
+  if (result.age === undefined || result.limit === undefined || limit === result.limit) return result;
+  const pass = result.age <= limit;
+  const reason = `${result.reason}. The live limit from the measured ages is ${durationText(limit)}: the check ${pass ? "passes" : "fails"}`;
+  return { pass, reason, age: result.age, limit, ...(pass ? {} : { late: true as const }) };
 }

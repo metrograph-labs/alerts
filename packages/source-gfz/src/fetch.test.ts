@@ -84,7 +84,7 @@ describe("createGfzFetch", () => {
       { reports: [], problems: [] },
       { reports: [], problems: [] },
     ]);
-    expect(checkCanary(observations)).toEqual({ pass: true, reason: "the newest interval of the index Kp starts at 2026-11-17T00:00:00Z, 2.6 hours before the fetch" });
+    expect(checkCanary(observations)).toMatchObject({ pass: true, reason: "the newest interval of the index Kp starts at 2026-11-17T00:00:00Z, 2.6 hours before the fetch" });
   });
 
   it("gives the intervals of a storm with the start of their run, from the older intervals of the answer", async () => {

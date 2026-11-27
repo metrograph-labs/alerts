@@ -25,7 +25,7 @@ export function checkCanary(observations: readonly Observation[]): CanaryResult 
   const minutes = ((newest.fetched - newest.published) / MINUTE_MS).toFixed(1);
   const text = new Date(newest.published).toISOString();
   if (newest.fetched - newest.published > PUBLISHED_MAX_AGE_MS) {
-    return { pass: false, reason: `the newest publication of NDW is of ${text}, ${minutes} minutes before the fetch: the limit is ${String(PUBLISHED_MAX_AGE_MS / MINUTE_MS)} minutes`, late: true };
+    return { pass: false, reason: `the newest publication of NDW is of ${text}, ${minutes} minutes before the fetch: the limit is ${String(PUBLISHED_MAX_AGE_MS / MINUTE_MS)} minutes`, late: true, age: newest.fetched - newest.published, limit: PUBLISHED_MAX_AGE_MS };
   }
-  return { pass: true, reason: `the newest publication of NDW is of ${text}, ${minutes} minutes before the fetch` };
+  return { pass: true, reason: `the newest publication of NDW is of ${text}, ${minutes} minutes before the fetch`, age: newest.fetched - newest.published, limit: PUBLISHED_MAX_AGE_MS };
 }

@@ -20,6 +20,8 @@ describe("checkCanary", () => {
     expect(checkCanary([interval(START - 10_800_000, START + 60_000), interval(START, START + 60_000)])).toEqual({
       pass: true,
       reason: "the newest interval of the index Kp starts at 2026-11-17T00:00:00Z, 0.0 hours before the fetch",
+      age: 60_000,
+      limit: NEWEST_MAX_AGE_MS,
     });
     expect(checkCanary([interval(START, START + NEWEST_MAX_AGE_MS)]).pass).toBe(true);
   });
@@ -29,6 +31,8 @@ describe("checkCanary", () => {
       pass: false,
       reason: "the newest interval of the index Kp starts at 2026-11-17T00:00:00Z, 6.0 hours before the fetch: the limit is 6 hours",
       late: true,
+      age: NEWEST_MAX_AGE_MS + 1,
+      limit: NEWEST_MAX_AGE_MS,
     });
     expect(checkCanary([])).toEqual({ pass: false, reason: "the fetch has no interval of the index Kp of the past 6 hours" });
     expect(checkCanary([observationOf("{", START), observationOf("[1]", START), observationOf('{"datetime":"soon"}', START)]).pass).toBe(false);

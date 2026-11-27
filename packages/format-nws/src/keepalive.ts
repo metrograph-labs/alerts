@@ -27,7 +27,7 @@ export function keepaliveCheck(newest: { readonly sent: Instant; readonly fetche
   const age = newest.fetched - newest.sent;
   const minutes = (age / 60_000).toFixed(1);
   if (age > KEEPALIVE_MAX_AGE_MS) {
-    return { pass: false, reason: `the newest keepalive message of the NWS is ${minutes} minutes old: the limit is 15 minutes`, late: true };
+    return { pass: false, reason: `the newest keepalive message of the NWS is ${minutes} minutes old: the limit is 15 minutes`, late: true, age: age, limit: KEEPALIVE_MAX_AGE_MS };
   }
-  return { pass: true, reason: `the newest keepalive message of the NWS is ${minutes} minutes old` };
+  return { pass: true, reason: `the newest keepalive message of the NWS is ${minutes} minutes old`, age: age, limit: KEEPALIVE_MAX_AGE_MS };
 }

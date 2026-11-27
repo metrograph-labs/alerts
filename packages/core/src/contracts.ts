@@ -556,6 +556,13 @@ export interface CanaryResult {
    * Then the health of the source is `silent`, not `failing`. A check that passed, or that failed for another cause, gives no field.
    */
   readonly late?: true;
+  /**
+   * The age of the newest item at the fetch, for an age check (AL-207). The runtime keeps the ages of each source, and the live
+   * limit of the source comes from them. A check of another kind gives no field.
+   */
+  readonly age?: Duration;
+  /** The age limit that the check used, for an age check (AL-207). A check of another kind gives no field. */
+  readonly limit?: Duration;
 }
 
 /**

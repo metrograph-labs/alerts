@@ -14,7 +14,7 @@ const kIndex = (fetched: number, valid_time = "2026-11-17 18:00:00") => observat
 
 describe("checkCanary", () => {
   it("passes when the newest period of the K index started at most 6 hours before the fetch", () => {
-    expect(checkCanary([kIndex(START + 7_200_000)])).toEqual({ pass: true, reason: "the newest period of the K index starts at 2026-11-17 18:00:00 UTC, 2.0 hours before the fetch" });
+    expect(checkCanary([kIndex(START + 7_200_000)])).toEqual({ pass: true, reason: "the newest period of the K index starts at 2026-11-17 18:00:00 UTC, 2.0 hours before the fetch", age: 7_200_000, limit: NEWEST_MAX_AGE_MS });
     expect(checkCanary([kIndex(START + NEWEST_MAX_AGE_MS)]).pass).toBe(true);
   });
 

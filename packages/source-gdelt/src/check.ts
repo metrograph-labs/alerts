@@ -23,6 +23,6 @@ export function checkCanary(observations: readonly Observation[]): CanaryResult 
   if (newest === undefined) return { pass: false, reason: "the fetch has no head with the time of a file" };
   const minutes = Math.round((newest.fetched - newest.file) / 60_000);
   const file = new Date(newest.file).toISOString();
-  if (newest.fetched - newest.file > FILE_MAX_AGE_MS) return { pass: false, reason: `the newest file is of ${file}, ${minutes} minutes before the fetch: the limit is 60 minutes`, late: true };
-  return { pass: true, reason: `the newest file is of ${file}, ${minutes} minutes before the fetch` };
+  if (newest.fetched - newest.file > FILE_MAX_AGE_MS) return { pass: false, reason: `the newest file is of ${file}, ${minutes} minutes before the fetch: the limit is 60 minutes`, late: true, age: newest.fetched - newest.file, limit: FILE_MAX_AGE_MS };
+  return { pass: true, reason: `the newest file is of ${file}, ${minutes} minutes before the fetch`, age: newest.fetched - newest.file, limit: FILE_MAX_AGE_MS };
 }
