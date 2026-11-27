@@ -325,7 +325,12 @@ MapProblem: build/index.d.ts#MapProblem
 MapRegion: build/index.d.ts#MapRegion
 MapResult: build/index.d.ts#MapResult
 MapShape: build/index.d.ts#MapShape
+MapUnpack: build/index.d.ts#MapUnpack
 MapView: build/index.d.ts#MapView
+MapWire: build/index.d.ts#MapWire
+MapWireIncident: build/index.d.ts#MapWireIncident
+MapWirePlace: build/index.d.ts#MapWirePlace
+MapWireRegion: build/index.d.ts#MapWireRegion
 MatchVerdict: build/index.d.ts#MatchVerdict
 MeasureDeclaration: build/index.d.ts#MeasureDeclaration
 MergeParts: build/index.d.ts#MergeParts
@@ -342,6 +347,7 @@ MuteEffect: build/index.d.ts#MuteEffect
 NEEDS: build/index.d.ts#NEEDS
 NEED_ALERT_LEVELS: build/index.d.ts#NEED_ALERT_LEVELS
 NEED_LEVELS: build/index.d.ts#NEED_LEVELS
+NOT_A_MAP: build/index.d.ts#NOT_A_MAP
 NO_HISTORIES: build/index.d.ts#NO_HISTORIES
 NO_HOLDS: build/index.d.ts#NO_HOLDS
 NO_LABELS: build/index.d.ts#NO_LABELS
@@ -490,6 +496,7 @@ Severity: build/index.d.ts#Severity
 ShadowDifference: build/index.d.ts#ShadowDifference
 ShadowScore: build/index.d.ts#ShadowScore
 ShapeLookup: build/index.d.ts#ShapeLookup
+ShapeRefs: build/index.d.ts#ShapeRefs
 SignalHistory: build/index.d.ts#SignalHistory
 SignalRate: build/index.d.ts#SignalRate
 SignalUnit: build/index.d.ts#SignalUnit
@@ -870,6 +877,7 @@ outageAudit: build/index.d.ts#outageAudit
 outageConfigSchema: build/index.d.ts#outageConfigSchema
 outagePersonConfigSchema: build/index.d.ts#outagePersonConfigSchema
 ownBaselineSchema: build/index.d.ts#ownBaselineSchema
+packMap: build/index.d.ts#packMap
 pairHistories: build/index.d.ts#pairHistories
 pairSurprises: build/index.d.ts#pairSurprises
 parentKind: build/index.d.ts#parentKind
@@ -1027,6 +1035,7 @@ transportSchema: build/index.d.ts#transportSchema
 tryChainSchema: build/index.d.ts#tryChainSchema
 underPriorSchema: build/index.d.ts#underPriorSchema
 unknownKinds: build/index.d.ts#unknownKinds
+unpackMap: build/index.d.ts#unpackMap
 urgencySchema: build/index.d.ts#urgencySchema
 useLevelsReached: build/index.d.ts#useLevelsReached
 useStages: build/index.d.ts#useStages
@@ -3097,7 +3106,7 @@ export interface LoopBlock {
 export declare const MAGNITUDE_PARAMETER = "magnitude";
 
 ### build/index.d.ts#MAP_FORMAT
-export declare const MAP_FORMAT = "alerts-map/1";
+export declare const MAP_FORMAT = "alerts-map/2";
 
 ### build/index.d.ts#MAP_VIEW
 export declare const MAP_VIEW: {
@@ -3227,11 +3236,46 @@ export type MapShape = Extract<Area, {
   readonly type: "circle";
 }>;
 
+### build/index.d.ts#MapUnpack
+export type MapUnpack = {
+  readonly ok: true;
+  readonly payload: MapPayload;
+} | {
+  readonly ok: false;
+  readonly problem: string;
+};
+
 ### build/index.d.ts#MapView
 export interface MapView {
   readonly incidents: readonly MapIncident[];
   readonly places: readonly MapPlace[];
   readonly unshaped: readonly RegionCode[];
+}
+
+### build/index.d.ts#MapWire
+export interface MapWire extends Omit<MapPayload, "view" | "basemap"> {
+  readonly shapes: readonly MapShape[];
+  readonly view: {
+    readonly incidents: readonly MapWireIncident[];
+    readonly places: readonly MapWirePlace[];
+    readonly unshaped: readonly RegionCode[];
+  };
+  readonly basemap: readonly MapWireRegion[];
+}
+
+### build/index.d.ts#MapWireIncident
+export interface MapWireIncident extends Omit<MapIncident, "shapes"> {
+  readonly shapes: ShapeRefs;
+}
+
+### build/index.d.ts#MapWirePlace
+export interface MapWirePlace extends Omit<MapPlace, "shapes"> {
+  readonly shapes: ShapeRefs;
+}
+
+### build/index.d.ts#MapWireRegion
+export interface MapWireRegion extends Omit<MapRegion, "shapes"> {
+  readonly shapes: ShapeRefs;
 }
 
 ### build/index.d.ts#MatchVerdict
@@ -3341,6 +3385,9 @@ export declare const NEED_ALERT_LEVELS: Readonly<Record<NeedLevel, Level>>;
 
 ### build/index.d.ts#NEED_LEVELS
 export declare const NEED_LEVELS: readonly ["life", "health", "comfort"];
+
+### build/index.d.ts#NOT_A_MAP
+export declare const NOT_A_MAP = "The answer of the runtime is not a map.";
 
 ### build/index.d.ts#NO_HISTORIES
 export declare const NO_HISTORIES: Histories;
@@ -4281,6 +4328,9 @@ export type ShadowScore = {
 
 ### build/index.d.ts#ShapeLookup
 export type ShapeLookup = (code: RegionCode) => readonly MapShape[] | undefined;
+
+### build/index.d.ts#ShapeRefs
+export type ShapeRefs = readonly number[];
 
 ### build/index.d.ts#SignalHistory
 export interface SignalHistory {
@@ -5702,6 +5752,9 @@ export declare const outagePersonConfigSchema: z.ZodType<OutagePersonConfig, Out
 ### build/index.d.ts#ownBaselineSchema
 export declare const ownBaselineSchema: z.ZodType<OwnBaseline, OwnBaseline>;
 
+### build/index.d.ts#packMap
+export declare function packMap(payload: MapPayload): MapWire;
+
 ### build/index.d.ts#pairHistories
 export declare function pairHistories(buckets: readonly BucketReads[]): PairHistory[];
 
@@ -6172,6 +6225,9 @@ export declare const underPriorSchema: z.ZodType<UnderPrior, UnderPrior>;
 
 ### build/index.d.ts#unknownKinds
 export declare function unknownKinds(codes: Iterable<string>): string[];
+
+### build/index.d.ts#unpackMap
+export declare function unpackMap(value: unknown): MapUnpack;
 
 ### build/index.d.ts#urgencySchema
 export declare const urgencySchema: z.ZodType<Urgency, Urgency>;
