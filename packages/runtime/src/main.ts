@@ -60,8 +60,8 @@ import { redactSecrets } from "@mark1russell7/text/redact";
 import { SqliteHostStateStore } from "polite-crawler";
 import { fetchTransport, quotaGate } from "polite-crawler/api";
 import { writeFileAtomic } from "@procedures/fs/files";
-import { configFilesOf, configSync } from "./config-sync.ts";
-import { alertsHome, ConfigRefused, configPath, envSecrets } from "./config.ts";
+import { configFilesOf, configSync, SYNC_HELD_FOLDER } from "./config-sync.ts";
+import { alertsHome, CONFIG_FILE, ConfigRefused, configPath, envSecrets, PART_FILE_END, PARTS_FOLDER } from "./config.ts";
 import { pageFolder, pageWarning, readPageState } from "./api.ts";
 import { COPY_TOKEN_KEY } from "./copy.ts";
 import { configFilesCall, EXCHANGE_TOKEN_LENGTH, exchangeCall } from "./exchange-http.ts";
@@ -88,7 +88,7 @@ import { fileBundleStore } from "./outage.ts";
 import { takeNoteText, type ExchangeRound } from "./peers.ts";
 import { loadPriors } from "./priors.ts";
 import { openReadingStore, READINGS_FILE } from "./readings.ts";
-import { GOOD_FILE, privateFiles, readStartTexts, reloadHook, startConfig, type CheckOf, type StartUse } from "./reload.ts";
+import { GOOD_FILE, privateFiles, readStartTexts, reloadHook, startConfig, type CheckedStart, type CheckOf, type StartUse } from "./reload.ts";
 import { shapeReport, zoneCodesText } from "./shapes.ts";
 import { openTransitCache, TRANSIT_FILE, transitReport, transitText } from "./transit.ts";
 import { hostFolder, signalWarning } from "./host.ts";
@@ -272,7 +272,16 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
             },
             write: (path, text) => writeFileAtomic(path, text, { mode: 0o600 }),
             remove: (path) => rm(path, { force: true }),
+            // A set that changes the snapshot key waits in the host folder (AL-179). `deploy.ts files --held` folds and starts it.
+            hold: async (served) => {
+              const held = join(hostFolder(home), SYNC_HELD_FOLDER);
+              await rm(held, { recursive: true, force: true });
+              await mkdir(join(held, PARTS_FOLDER), { recursive: true, mode: 0o700 });
+              for (const part of served.parts) await writeFileAtomic(join(held, PARTS_FOLDER, `${part.name}${PART_FILE_END}`), part.text, { mode: 0o600 });
+              await writeFileAtomic(join(held, CONFIG_FILE), served.config, { mode: 0o600 });
+            },
           },
+          keyChanged: (checked) => contextKeyOf(home, checked) !== instance.runtime.contextKey(),
           report: (message) => out.error(`The sync of the configuration: ${message}`),
         });
   // A change of the private files, or a restart request, restarts the runtime. Only the profile daemon has a supervisor that starts it again.
@@ -527,6 +536,18 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
 }
 
 /**
+ * This function gives the context key of the fold of a checked set of the private files (AL-169). It builds the sources as a
+ * start does, with no log and no store. The mode key and the hold of a sync (AL-179) use it.
+ */
+function contextKeyOf(home: string, checked: CheckedStart): string {
+  const config = checked.parsed;
+  const tellConfig = config.config.tell;
+  const tell = tellConfig === undefined ? undefined : createTellIntake({ config: tellConfig, recipients: config.recipients, now: () => wallClock().now() });
+  const options = { config, secret: envSecrets(checked.keys), transport: fetchTransport({ userAgent: userAgent(config.config.contact) }), transit: openTransitCache(join(home, TRANSIT_FILE)), copy: checked.copy, ...(tell === undefined ? {} : { tell }) };
+  return instanceContextKey(options, realClock, wallClock());
+}
+
+/**
  * The mode `key` (AL-169) prints the context key of the fold for each set of a start. The sets are the private files and
  * the last good set. The mode holds no lock of the home folder and writes no file, thus a live runtime can operate next to
  * it. A stage starts it with the code of each slot, and it tells when the next start folds the whole log.
@@ -537,14 +558,7 @@ async function keyMode(): Promise<void> {
   const checkOf: CheckOf = name === "daemon" ? daemonCheck : instanceCheck;
   const files = privateFiles(home, configPath(process.env, process.cwd()));
   const none = { write: () => Promise.resolve(), remove: () => Promise.resolve() };
-  const keyOf = async (pick: StartUse): Promise<string> => {
-    const loaded = await startConfig(files, checkOf, none, pick);
-    const config = loaded.parsed;
-    const tellConfig = config.config.tell;
-    const tell = tellConfig === undefined ? undefined : createTellIntake({ config: tellConfig, recipients: config.recipients, now: () => wallClock().now() });
-    const options = { config, secret: envSecrets(loaded.keys), transport: fetchTransport({ userAgent: userAgent(config.config.contact) }), transit: openTransitCache(join(home, TRANSIT_FILE)), copy: loaded.copy, ...(tell === undefined ? {} : { tell }) };
-    return instanceContextKey(options, realClock, wallClock());
-  };
+  const keyOf = async (pick: StartUse): Promise<string> => contextKeyOf(home, await startConfig(files, checkOf, none, pick));
   const good = existsSync(join(home, GOOD_FILE)) ? await keyOf("good") : null;
   // One line of JSON on the standard output. The stage reads the last line.
   process.stdout.write(`${JSON.stringify({ files: await keyOf("files"), good })}\n`);

@@ -1537,6 +1537,31 @@ describe("the moving places of the instance (AL-40)", () => {
     expect(instance.health().reads).toEqual(expect.arrayContaining([{ what: `fixes of the moving place ${MOVING_PLACE}`, at: T0 - 31 * MINUTE, failed: true, next: T0 - MINUTE }]));
   });
 
+  it("uses a fresh fix, drops the place when the fix passes its age limit, and takes the place back at the next fix", async () => {
+    const position = createPositionIntake({ config: MOVING_CONFIG });
+    position.take(location(T0 - MINUTE));
+    const { instance, clock, server } = open(store(SECRETS), MOVING_CONFIG, 0, TEST_FETCH_LIMIT, { position });
+    const inPass = (pass: Awaited<ReturnType<Instance["runtime"]["pass"]>>): boolean => new Set(pass.view?.coverage.map((entry) => entry.place)).has(MOVING_PLACE);
+    // The first pass: the fix is one minute old, so the warning reaches the person at the fix.
+    const fresh = await finish(clock, instance.runtime.pass());
+    expect(inPass(fresh)).toBe(true);
+    expect(server.calls).toHaveLength(1);
+    expect(staleLines(instance)).toEqual([]);
+    // Thirty minutes later, the fix is 31 minutes old: over the age limit of 30 minutes.
+    await clock.advance(30 * MINUTE);
+    const aged = await finish(clock, instance.runtime.pass());
+    expect(inPass(aged)).toBe(false);
+    expect(staleLines(instance).map((line) => [line.about[0]?.label, line.addresses])).toEqual([["Phone", [person]]]);
+    expect(instance.health().reads).toEqual(expect.arrayContaining([expect.objectContaining({ what: `fixes of the moving place ${MOVING_PLACE}`, failed: true })]));
+    // A new fix of the phone gives the place again, and the stale notice ends.
+    position.take(location(clock.now()));
+    const back = await finish(clock, instance.runtime.pass());
+    expect(inPass(back)).toBe(true);
+    expect(staleLines(instance)).toEqual([]);
+    holdsNoFix(server.calls);
+    holdsNoFix(instance.health());
+  });
+
   it("carries no fix in the exchange page, the config files, the map, the history and the health", async () => {
     const position = createPositionIntake({ config: MOVING_CONFIG });
     position.take(location(T0 - MINUTE));
