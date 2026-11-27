@@ -99,6 +99,7 @@ CopyBillingState: build/index.d.ts#CopyBillingState
 CopyHealth: build/index.d.ts#CopyHealth
 CopyListen: build/index.d.ts#CopyListen
 CopyMeasureOptions: build/index.d.ts#CopyMeasureOptions
+CopyMesh: build/index.d.ts#CopyMesh
 CopyPeer: build/index.d.ts#CopyPeer
 CopyRead: build/index.d.ts#CopyRead
 CopySettings: build/index.d.ts#CopySettings
@@ -676,6 +677,7 @@ copyHealthSchema: build/index.d.ts#copyHealthSchema
 copyIdSchema: build/index.d.ts#copyIdSchema
 copyListenSchema: build/index.d.ts#copyListenSchema
 copyMeasure: build/index.d.ts#copyMeasure
+copyMeshSchema: build/index.d.ts#copyMeshSchema
 copyPeerSchema: build/index.d.ts#copyPeerSchema
 copyProblems: build/index.d.ts#copyProblems
 copyReadSchema: build/index.d.ts#copyReadSchema
@@ -1677,6 +1679,16 @@ export interface CopyMeasureOptions {
   readonly link?: LinkRule;
 }
 
+### build/index.d.ts#CopyMesh
+export interface CopyMesh {
+  readonly node: string;
+  readonly send: readonly string[];
+  readonly listen: readonly string[];
+  readonly ackNodes?: readonly string[];
+  readonly beatMs?: Duration;
+  readonly levels?: readonly Level[];
+}
+
 ### build/index.d.ts#CopyPeer
 export interface CopyPeer {
   readonly id: string;
@@ -1704,6 +1716,7 @@ export interface CopySettings {
   readonly leaveChannels?: readonly ChannelId[];
   readonly leaveSources?: readonly SourceId[];
   readonly sounder?: CopySounder;
+  readonly mesh?: CopyMesh;
   readonly drift?: DriftConfig;
 }
 
@@ -5163,6 +5176,9 @@ export declare const copyListenSchema: z.ZodType<CopyListen, CopyListen>;
 
 ### build/index.d.ts#copyMeasure
 export declare function copyMeasure(reports: readonly Report[], expectation: Expectation, options?: CopyMeasureOptions): SentMeasure;
+
+### build/index.d.ts#copyMeshSchema
+export declare const copyMeshSchema: z.ZodType<CopyMesh, CopyMesh>;
 
 ### build/index.d.ts#copyPeerSchema
 export declare const copyPeerSchema: z.ZodType<CopyPeer, CopyPeer>;

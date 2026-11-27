@@ -33,6 +33,7 @@ import { BED_BEAT_MS } from "./node-config.ts";
 import { encodeFrame, isAlarmId, isNodeName, MESH_NODE, type AlarmFrame } from "./protocol.ts";
 import type { LinkOutcome, MeshLink, MeshReceiver } from "./receiver.ts";
 
+export * from "./link.ts";
 export * from "./node-config.ts";
 export * from "./protocol.ts";
 export * from "./receiver.ts";
