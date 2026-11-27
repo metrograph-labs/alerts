@@ -2292,6 +2292,25 @@ The limits:
 - A stop of the runtime loses the last fix when the home store does not have it. The next fix of the phone gives it again.
 - The phone app decides the time between two fixes. A long time between fixes makes the place stale.
 
+To set up a phone:
+
+1. Add the entry `tell` to `config.json` of the home, if the home does not have it. The runtime then makes `tell.token`.
+2. Add a moving place to `config.json`. Give it the states where the person can be. A sample:
+
+   ```json
+   { "id": "phone", "label": "Phone", "codes": [{ "system": "state", "code": "KS" }, { "system": "iso3166", "code": "US" }], "bufferKm": 5, "moving": { "device": "ph", "maxAgeMinutes": 60 } }
+   ```
+
+3. Add the id of the place to `places` of the person, and to each rule of `mandatory` that must cover the person.
+4. Make a proxy of the private network to the loopback listener of `tell`. Only the machines of the person can reach it.
+5. Install OwnTracks on the phone. Set the mode HTTP, and set the URL `https://<host of the proxy>/tell/alerts/position`.
+6. In OwnTracks, set the tracker ID to the `device` of the place. Set the password to the text of `tell.token`. The user name is free.
+7. Set the monitoring mode `Move` while the person travels. The mode `Significant` sends a fix only after a large movement.
+8. Make `maxAgeMinutes` longer than the longest time between two fixes of the phone. Else the place becomes stale between fixes.
+9. Examine the health route. The read `fixes of the moving place <id>` gives the time of the last fix, and the cause of a refused fix.
+
+Do not put the token, a fix or the address of the proxy in a file of the repository, a log or a message.
+
 ### The fire zones of the NWS (AL-33)
 
 The NWS has three kinds of UGC zones in a state: the counties (`KSC173`), the forecast zones and the fire weather zones. A forecast zone and a fire zone can have one code (`KSZ083`) and different outlines. Thus the two kinds have two region systems: `ugc` for the counties and the forecast zones, and `ugc-fire` for the fire zones.
