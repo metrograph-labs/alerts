@@ -493,6 +493,8 @@ const SCHEMA_NAMES = [
   "kindCodeSchema",
   "kindPriorSchema",
   "kindSchema",
+  "lastBlockSchema",
+  "lastEndReportSchema",
   "latenessLimitSchema",
   "latenessSchema",
   "latenessStateSchema",

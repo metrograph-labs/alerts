@@ -262,6 +262,7 @@ Kind: build/index.d.ts#Kind
 KindClass: build/index.d.ts#KindClass
 KindEntry: build/index.d.ts#KindEntry
 KindPrior: build/index.d.ts#KindPrior
+LAST_LINE_LIMIT: build/index.d.ts#LAST_LINE_LIMIT
 LEVELS: build/index.d.ts#LEVELS
 LIFELINES: build/index.d.ts#LIFELINES
 LIFELINES_SOURCE: build/index.d.ts#LIFELINES_SOURCE
@@ -279,6 +280,9 @@ LOOP_BLOCK_CLASSES: build/index.d.ts#LOOP_BLOCK_CLASSES
 LOOP_BLOCK_LIMIT: build/index.d.ts#LOOP_BLOCK_LIMIT
 LOOP_BLOCK_WINDOW: build/index.d.ts#LOOP_BLOCK_WINDOW
 LOOP_KIND: build/index.d.ts#LOOP_KIND
+LastBlock: build/index.d.ts#LastBlock
+LastEnd: build/index.d.ts#LastEnd
+LastEndReport: build/index.d.ts#LastEndReport
 LateOptions: build/index.d.ts#LateOptions
 Lateness: build/index.d.ts#Lateness
 LatenessFolds: build/index.d.ts#LatenessFolds
@@ -804,6 +808,8 @@ kindPriorSchema: build/index.d.ts#kindPriorSchema
 kindSchema: build/index.d.ts#kindSchema
 knownKind: build/index.d.ts#knownKind
 knowsReport: build/index.d.ts#knowsReport
+lastBlockSchema: build/index.d.ts#lastBlockSchema
+lastEndReportSchema: build/index.d.ts#lastEndReportSchema
 lastRun: build/index.d.ts#lastRun
 lateRetirements: build/index.d.ts#lateRetirements
 lateSources: build/index.d.ts#lateSources
@@ -1666,6 +1672,7 @@ export interface CopyRead {
   readonly at: Instant;
   readonly skew: Duration;
   readonly sameConfig: boolean;
+  readonly lastEnd?: LastEndReport;
 }
 
 ### build/index.d.ts#CopySettings
@@ -2866,6 +2873,9 @@ export interface KindPrior {
   readonly under?: Readonly<Partial<Record<Significance, UnderPrior>>>;
 }
 
+### build/index.d.ts#LAST_LINE_LIMIT
+export declare const LAST_LINE_LIMIT = 200;
+
 ### build/index.d.ts#LEVELS
 export declare const LEVELS: readonly Level[];
 
@@ -2916,6 +2926,25 @@ export declare const LOOP_BLOCK_WINDOW: Duration;
 
 ### build/index.d.ts#LOOP_KIND
 export declare const LOOP_KIND = "system.loop";
+
+### build/index.d.ts#LastBlock
+export interface LastBlock {
+  readonly at: Instant;
+  readonly size: Duration;
+  readonly phase: string;
+}
+
+### build/index.d.ts#LastEnd
+export interface LastEnd {
+  readonly lastLineAt: Instant | null;
+  readonly block: LastBlock | null;
+  readonly lastLine: string | null;
+}
+
+### build/index.d.ts#LastEndReport
+export interface LastEndReport extends LastEnd {
+  readonly startedAt: Instant;
+}
 
 ### build/index.d.ts#LateOptions
 export interface LateOptions {
@@ -5527,6 +5556,12 @@ export declare function knownKind(code: string): boolean;
 
 ### build/index.d.ts#knowsReport
 export declare function knowsReport(state: MergeState, id: ReportId): boolean;
+
+### build/index.d.ts#lastBlockSchema
+export declare const lastBlockSchema: z.ZodType<LastBlock, LastBlock>;
+
+### build/index.d.ts#lastEndReportSchema
+export declare const lastEndReportSchema: z.ZodType<LastEndReport, LastEndReport>;
 
 ### build/index.d.ts#lastRun
 export declare function lastRun(runs: readonly DrillRun[], id: string): DrillRun | undefined;

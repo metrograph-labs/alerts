@@ -18,6 +18,7 @@ import {
   CELL_RESOURCES,
   DIMENSION_IDS,
   INDICATOR_AREA_KINDS,
+  LAST_LINE_LIMIT,
   LEVELS,
   MOVES,
   OWN_BASELINES,
@@ -41,6 +42,8 @@ import {
   type ChannelQuota,
   type CopyRead,
   type CopyStage,
+  type LastBlock,
+  type LastEndReport,
   type CorrelationKey,
   type Coverage,
   type Cursor,
@@ -1966,9 +1969,22 @@ export const sourceHealthViewSchema: z.ZodType<SourceHealthView, SourceHealthVie
 /** This schema checks a stage of another copy. */
 export const copyStageSchema: z.ZodType<CopyStage, CopyStage> = schemaOf<CopyStage>()(z.enum(["skew", "config", "unread", "unsteady"]));
 
-/** This schema checks one read of the log of another copy that passed. */
+/** This schema checks a block of the event loop that did not end in its run (AL-222). */
+export const lastBlockSchema: z.ZodType<LastBlock, LastBlock> = schemaOf<LastBlock>()(
+  z.strictObject({ at: instantSchema, size: durationSchema, phase: z.string().min(1, "The phase of a block is a non-empty string.").max(LAST_LINE_LIMIT) }).readonly(),
+);
+
+/**
+ * This schema checks the report of a start of the runtime: the time of the start, and the facts about the end of the run
+ * before it (AL-222). The last line has at most `LAST_LINE_LIMIT` characters.
+ */
+export const lastEndReportSchema: z.ZodType<LastEndReport, LastEndReport> = schemaOf<LastEndReport>()(
+  z.strictObject({ startedAt: instantSchema, lastLineAt: instantSchema.nullable(), block: lastBlockSchema.nullable(), lastLine: z.string().max(LAST_LINE_LIMIT).nullable() }).readonly(),
+);
+
+/** This schema checks one read of the log of another copy that passed. A read with no end of the last run, from an older copy, is valid. */
 export const copyReadSchema: z.ZodType<CopyRead, CopyRead> = schemaOf<CopyRead>()(
-  z.strictObject({ at: instantSchema, skew: z.number(), sameConfig: z.boolean() }).readonly(),
+  z.strictObject({ at: instantSchema, skew: z.number(), sameConfig: z.boolean(), lastEnd: lastEndReportSchema.exactOptional() }).readonly(),
 );
 
 /** This schema checks the health of another copy: its stages and its last read that passed. */
