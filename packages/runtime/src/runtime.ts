@@ -206,8 +206,8 @@ export const REPORT_LIMIT = 10_000;
 
 /**
  * The default count of the routes at which the view tells of a risk to the start (AL-154). A route is one live incident for one
- * person. On a host with 1 GB of memory and a heap of 556 MB, capacity CAP-99 measured the start at each rung: each start
- * was ready at 40,000 routes, 19 of 20 at 70,000, and no start at 100,000. Thus the start fails above 40,000 routes, and the
+ * person. Capacity CAP-99 measured the start at each rung on a host with 1 GB of memory and a heap of 556 MB. Each start
+ * was ready at 40,000 routes, 19 of 20 starts at 70,000, and no start at 100,000. Thus the start fails above 40,000 routes, and the
  * limit is that rung. The laws of CAP-67 fit only up to 11,000 routes. A host with a larger heap has a larger limit (CAP-108).
  */
 export const ROUTE_LIMIT = 40_000;
