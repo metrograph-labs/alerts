@@ -3,8 +3,7 @@
  * tests give a fake fetch. The path has no host, so the read stays on the origin of the page.
  */
 
-import type { MapPayload } from "@mark1russell7/alerts";
-import { isRecord } from "@mark1russell7/optional/read";
+import { unpackMap, type MapPayload } from "@mark1russell7/alerts";
 
 /** The path of the map route of the runtime. */
 export const MAP_PATH = "/map";
@@ -19,23 +18,6 @@ const SOURCE_TEXT = "This page reads the alert runtime on this computer.";
 
 /** The words of the page when the runtime does not answer. */
 export const NO_ANSWER_TEXT = `${SOURCE_TEXT} The runtime does not answer. Start the runtime. The page reads it again every ${String(READ_EVERY_MS / 1000)} seconds.`;
-
-/** This function examines a region of the basemap: a code with a system and a value, a name and a list of shapes. */
-function isRegion(value: unknown): boolean {
-  if (!isRecord(value) || !isRecord(value["code"])) return false;
-  const code = value["code"];
-  return typeof code["system"] === "string" && typeof code["code"] === "string" && typeof value["name"] === "string" && Array.isArray(value["shapes"]);
-}
-
-/**
- * This function examines the outside of a map payload: the three lists of the view, and each region of the basemap.
- * The runtime of the same version writes the payload on the same computer. Thus the page does not examine each shape.
- */
-function isPayload(value: unknown): value is MapPayload {
-  if (!isRecord(value) || !isRecord(value["view"]) || !Array.isArray(value["basemap"]) || !value["basemap"].every(isRegion)) return false;
-  const view = value["view"];
-  return Array.isArray(view["incidents"]) && Array.isArray(view["places"]) && Array.isArray(view["unshaped"]);
-}
 
 /** This function reads the map from the runtime once. Each failure gives a text for the reader. */
 export async function readMap(get: (path: string) => Promise<Response>): Promise<MapRead> {
@@ -52,7 +34,9 @@ export async function readMap(get: (path: string) => Promise<Response>): Promise
   } catch {
     return { ok: false, text: `${SOURCE_TEXT} The answer of the runtime is not JSON.` };
   }
-  return isPayload(data) ? { ok: true, payload: data } : { ok: false, text: `${SOURCE_TEXT} The answer of the runtime is not a map.` };
+  // The answer has one table of the distinct shapes (AL-214). The unpack gives each shape of the table to each user of it.
+  const read = unpackMap(data);
+  return read.ok ? { ok: true, payload: read.payload } : { ok: false, text: `${SOURCE_TEXT} ${read.problem}` };
 }
 
 /**
