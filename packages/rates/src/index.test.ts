@@ -13,6 +13,8 @@ describe("the entry", () => {
       "ratesSummary",
       "measureYears",
       "priorsOf",
+      "causeShareOf",
+      "causeSharesOf",
       "committedPriors",
       "readWatchwarn",
       "watchwarnQuery",
