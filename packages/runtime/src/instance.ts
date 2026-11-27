@@ -100,6 +100,7 @@ import { createGfzSource, createIndexSource, GFZ_DESCRIPTOR, HP30_DESCRIPTOR, HP
 import { createCatalogFetch, createGtfsSource, type CatalogCopy, type GtfsFeed, type GtfsFetchOptions } from "@mark1russell7/alerts-source-gtfs-alerts";
 import { createEnergyChartsSource, ENERGY_CHARTS_DESCRIPTOR } from "@mark1russell7/alerts-source-energy-charts";
 import { createEia930Source, type Eia930FetchOptions } from "@mark1russell7/alerts-source-eia-930";
+import { createFirmsSource, SOURCE_ID as FIRMS_SOURCE_ID, type FirmsFetchOptions } from "@mark1russell7/alerts-source-firms";
 import { createFaaSource, FAA_DESCRIPTOR } from "@mark1russell7/alerts-source-faa";
 import { createNdwSource, NDW_DESCRIPTOR } from "@mark1russell7/alerts-source-ndw";
 import { createRailSource, RAIL_DESCRIPTOR } from "@mark1russell7/alerts-source-digitraffic-rail";
@@ -460,6 +461,21 @@ const eiaFactory =
   (apiKey: string) =>
   (options: Omit<Eia930FetchOptions, "apiKey">): SourceProcedures =>
     createEia930Source({ ...options, apiKey });
+
+/**
+ * The name of the key of `secrets.env` that holds the map key of NASA FIRMS. With the key, the instance reads the VIIRS
+ * satellite hotspots near each place that shares its position with the source (`readsFirms`).
+ */
+export const FIRMS_KEY = "FIRMS_MAP_KEY";
+
+/**
+ * This function gives the factory of the FIRMS source with the key of the secrets. The API takes the key only in the path
+ * of the URL. The source removes it from each URL and each message that it gives.
+ */
+const firmsFactory =
+  (mapKey: string) =>
+  (options: Omit<FirmsFetchOptions, "mapKey">): SourceProcedures =>
+    createFirmsSource({ ...options, mapKey });
 
 /**
  * The name of the key of `secrets.env` that holds the API token of Cloudflare Radar. With the token, the instance reads
@@ -1048,6 +1064,15 @@ export function readsGdelt(config: AlertConfig): boolean {
   return sourcePlaces(config, GDELT_DESCRIPTOR.id).some((place) => place.at !== undefined);
 }
 
+/**
+ * This function tells if the instance reads the hotspots of FIRMS: when a place shares its position with the source. A
+ * request holds only a box of whole degrees around a place. With no such place, the fetch asks for no hotspot, thus the
+ * instance does not read the source. The source also needs its key (`FIRMS_KEY`).
+ */
+export function readsFirms(config: AlertConfig): boolean {
+  return sourcePlaces(config, FIRMS_SOURCE_ID).some((place) => place.at !== undefined);
+}
+
 /** The options of the build of the sources of an instance (AL-169). The key mode of the start builds the same sources. */
 export type SourceBuildOptions = Pick<InstanceOptions, "config" | "secret" | "transport" | "transit" | "transitLimit" | "copy" | "nwwsOpen" | "tell">;
 
@@ -1080,6 +1105,8 @@ export function instanceSources(options: SourceBuildOptions, clock: Clock, wall:
   const bomKey = options.secret(BOM_SWS_KEY) ?? "";
   // EIA gives its data only with a key. With no key, the instance does not read EIA-930.
   const eiaKey = options.secret(EIA_KEY) ?? "";
+  // FIRMS gives its data only with a map key, and the fetch asks only for the boxes of the places with a position.
+  const firmsKey = readsFirms(options.config.config) ? (options.secret(FIRMS_KEY) ?? "") : "";
   // Radar gives its data only with a token of an account. With no token, the instance does not read Radar.
   const radarToken = options.secret(CLOUDFLARE_RADAR_KEY) ?? "";
   // The transit feeds come from the copy of the catalog. Only this choice reads the positions of the places, and no request holds them.
@@ -1105,6 +1132,7 @@ export function instanceSources(options: SourceBuildOptions, clock: Clock, wall:
     ...CERT_PROVIDERS.map((provider) => (fetchOptions: CertFetchOptions) => createCertSource(provider, fetchOptions)),
     ...OSV_PROVIDERS.map((provider) => (fetchOptions: OsvFetchOptions) => createOsvSource(provider, fetchOptions)),
     ...(readsGdelt(options.config.config) ? [createGdeltSource] : []),
+    ...(firmsKey === "" ? [] : [firmsFactory(firmsKey)]),
     ...(radarToken === "" ? [] : radarFactories(radarToken)),
     ...feeds.map((feed) => feed.create),
     ...pages.map((page) => statusPageFactory(page)),
@@ -1171,13 +1199,13 @@ export function instanceContextKey(options: SourceBuildOptions, clock: Clock, wa
  *
  * - The sources are the NWS API, IPAWS, the USGS, EMSC, the two tsunami warning centers, the SWPC, GFZ (Kp and Hp30),
  *   Energy-Charts and CISA KEV. The stream of NWWS-OI is a source when the secrets have the keys of the account of the
- *   copy (`nwwsSetup`). The events of GDELT are a source when a place shares its position with it (`readsGdelt`). BoM is a source when the secrets have its key (`BOM_SWS_KEY`), and so is EIA-930 (`EIA_KEY`). The outages and the traffic
+ *   copy (`nwwsSetup`). The events of GDELT are a source when a place shares its position with it (`readsGdelt`). FIRMS is a source when a place shares its position with it and the secrets have its key (`readsFirms`, `FIRMS_KEY`). BoM is a source when the secrets have its key (`BOM_SWS_KEY`), and so is EIA-930 (`EIA_KEY`). The outages and the traffic
  *   anomalies of Cloudflare Radar are sources when the secrets have its token (`CLOUDFLARE_RADAR_KEY`). Each status page that one of the
  *   persons can get is a source (`pagesFor`). The feed of Google Cloud, AWS or Azure is a source when one of the persons
  *   can get its reports (`watchReads`). The stack of the alert chain reads the pages and the feeds of its subjects too (`chainWatch`). Each transit feed of the copy of the catalog whose box meets a place is a source.
  * - Each source gets the codes of the places. It gets the position of a place only when the place shares it with that
  *   source. The USGS, EMSC, the centers, the SWPC, GFZ, BoM, Energy-Charts, EIA-930, CISA KEV, GDELT, Radar, Google Cloud, AWS, Azure
- *   and the status pages ask for no place. GDELT keeps only the events near the places on the machine of the instance. The transit feeds also ask for no place.
+ *   and the status pages ask for no place. GDELT keeps only the events near the places on the machine of the instance. FIRMS asks only for a box of whole degrees around each place that shares its position with it. The transit feeds also ask for no place.
  * - The channels are Pushover, and the Twilio call channel when the secrets have its keys. Each time of the delivery comes
  *   from a fact of the channels.
  * - A spend entry of a channel gives its cap and the watch of the balance of its account.

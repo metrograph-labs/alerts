@@ -1596,6 +1596,31 @@ export interface KindPrior {
   readonly injuries?: Estimate;
   /** The harm in one area under one active alert of the kind, for each significance with a measure. */
   readonly under?: Readonly<Partial<Record<Significance, UnderPrior>>>;
+  /**
+   * The share of the deaths of the kind that each cause gives, by the id of the cause, for example `co-poisoning`.
+   * A cause with no cited read is absent. It does not take 0.
+   */
+  readonly causes?: Readonly<Record<string, CauseShare>>;
+}
+
+/** One cited count of the deaths of one cause in the deaths of one or more events. */
+export interface CauseRead {
+  /** The deaths of the cause. */
+  readonly deaths: number;
+  /** All the deaths that the source counted. It is more than 0, and not less than `deaths`. */
+  readonly of: number;
+  /** The citation of the source: the authors or the publisher, the title, the volume and the year. */
+  readonly source: string;
+  /** The URL of the source. */
+  readonly url: string;
+}
+
+/** The share of the deaths of a kind from one cause, with its interval and the cited counts that give it. */
+export interface CauseShare {
+  /** The share from 0 to 1. The value is the pooled share of the reads. The interval holds the share of each read. */
+  readonly share: Estimate;
+  /** The cited counts, one for each source. */
+  readonly reads: readonly CauseRead[];
 }
 
 /** The kinds of area of an alert: a county, or a forecast zone. */

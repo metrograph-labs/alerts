@@ -1025,6 +1025,29 @@
         "value": 0.007518796992481203,
         "low": 0,
         "high": 0.027160479953849473
+      },
+      "causes": {
+        "co-poisoning": {
+          "share": {
+            "value": 0.1016260162601626,
+            "low": 0.06978703852176148,
+            "high": 0.1457154608425854
+          },
+          "reads": [
+            {
+              "deaths": 9,
+              "of": 117,
+              "source": "CDC. Deaths Associated with Hurricane Sandy, October-November 2012. MMWR 62(20), 2013",
+              "url": "https://www.cdc.gov/mmwr/preview/mmwrhtml/mm6220a1.htm"
+            },
+            {
+              "deaths": 16,
+              "of": 129,
+              "source": "CDC. Deaths Related to Hurricane Irma, Florida, Georgia, and North Carolina, 2017. MMWR 67(30), 2018",
+              "url": "https://www.cdc.gov/mmwr/volumes/67/wr/mm6730a5.htm"
+            }
+          ]
+        }
       }
     },
     "met.tropical.hurricane": {

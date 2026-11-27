@@ -34,6 +34,8 @@ import {
   type BalanceStage,
   type CanaryResult,
   type Category,
+  type CauseRead,
+  type CauseShare,
   type CellResource,
   type Certainty,
   type ChannelDescriptor,
@@ -1173,6 +1175,27 @@ export const underPriorSchema: z.ZodType<UnderPrior, UnderPrior> = schemaOf<Unde
   z.strictObject({ deaths: estimateSchema, injuries: estimateSchema, area: alertAreaSchema }).readonly(),
 );
 
+/** This schema checks the id of a cause of deaths: lowercase words with a hyphen between them, for example `co-poisoning`. */
+export const causeIdSchema: z.ZodType<string, string> = z.string().regex(/^[a-z]+(?:-[a-z]+)*$/, "A cause id has lowercase words with a hyphen between them.");
+
+/** This schema checks one cited count of the deaths of one cause. The count is not more than all the deaths of the source. */
+export const causeReadSchema: z.ZodType<CauseRead, CauseRead> = schemaOf<CauseRead>()(
+  z
+    .strictObject({
+      deaths: z.number().int().min(0),
+      of: z.number().int().min(1),
+      source: z.string().min(1),
+      url: z.string().regex(/^https:\/\/[^\s]+$/,"The URL of a source is an https URL."),
+    })
+    .refine((read) => read.deaths <= read.of, "The deaths of a cause are not more than all the deaths of the source.")
+    .readonly(),
+);
+
+/** This schema checks the share of the deaths of a kind from one cause. It has one read or more. */
+export const causeShareSchema: z.ZodType<CauseShare, CauseShare> = schemaOf<CauseShare>()(
+  z.strictObject({ share: probabilitySchema, reads: z.array(causeReadSchema).min(1).readonly() }).readonly(),
+);
+
 /** This schema checks the priors of one kind. */
 export const kindPriorSchema: z.ZodType<KindPrior, KindPrior> = schemaOf<KindPrior>()(
   z
@@ -1181,6 +1204,7 @@ export const kindPriorSchema: z.ZodType<KindPrior, KindPrior> = schemaOf<KindPri
       deaths: estimateSchema.exactOptional(),
       injuries: estimateSchema.exactOptional(),
       under: z.partialRecord(significanceSchema, underPriorSchema).readonly().exactOptional(),
+      causes: z.record(causeIdSchema, causeShareSchema).readonly().exactOptional(),
     })
     .readonly(),
 );
