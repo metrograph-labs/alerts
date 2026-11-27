@@ -1076,6 +1076,13 @@ The mirror does these steps before each read of the reload hook (`config-sync.ts
 3. It writes each changed part, removes each part that the source does not have, and writes `config.json` last. Each write goes to a temporary file first.
 4. Then the reload hook reads the whole set. A set that passes the check starts the runtime again.
 
+A set that changes the snapshot key of the live start does not go to the private files (AL-179):
+
+- A start of that set folds the whole log. On a small host, that fold takes longer than the ready window.
+- The mirror writes the set into the folder `host/sync-held`, in place of the files. It tells the hold one time.
+- `deploy.ts files --held` writes the held set. It folds before the start when the key changes, and then it removes the folder.
+- A fault of the key also holds the set. Thus a fault does not start a fold of the whole log.
+
 - The mirror tells each refusal one time, until a different refusal. A problem holds no text of a file, no address and no URL.
 - A write that fails can leave a mix of two sets. The check refuses a mix with problems. A mix that passes gives another hash, thus the next try corrects it.
 - The texts go only over the exchange: the tailnet, with the token.

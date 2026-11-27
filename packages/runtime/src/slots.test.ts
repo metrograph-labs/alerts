@@ -26,6 +26,7 @@ import {
   memInfoOf,
   parseDeployArgs,
   parseFilesArgs,
+  parseHeldArgs,
   privatePath,
   filesOutcome,
   STAGE_MEMORY_FLOOR,
@@ -500,6 +501,16 @@ describe("the write of a private file (AL-220)", () => {
     expect(parseFilesArgs(["copy.json", "--alone"])).toBeUndefined();
     expect(parseFilesArgs(["copy.json", "x", "--page"])).toBeUndefined();
     expect(parseFilesArgs(["copy.json", "x", "--alone", "--alone"])).toBeUndefined();
+  });
+
+  it("reads the arguments of the held set of a sync (AL-179)", () => {
+    expect(parseHeldArgs(["--held"])).toEqual({ alone: false });
+    expect(parseHeldArgs(["--held", "--alone"])).toEqual({ alone: true });
+    expect(parseHeldArgs(["--held", "--page"])).toBeUndefined();
+    expect(parseHeldArgs(["--held", "--alone", "--alone"])).toBeUndefined();
+    expect(parseHeldArgs(["copy.json", "x"])).toBeUndefined();
+    // The one-file form refuses the flag as a name.
+    expect(parseFilesArgs(["--held"])).toBeUndefined();
   });
 
   it("gives the path of the file in the home folder", () => {

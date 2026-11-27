@@ -746,6 +746,13 @@ export function parseFilesArgs(args: readonly string[]): FilesArgs | undefined {
   return { name, source, alone: flags.includes("--alone") };
 }
 
+/** This function reads the arguments `--held [--alone]` of `deploy.ts files` (AL-179), or gives undefined for other arguments. */
+export function parseHeldArgs(args: readonly string[]): { readonly alone: boolean } | undefined {
+  const [held, ...flags] = args;
+  if (held !== "--held" || flags.length > 1 || flags.some((flag) => flag !== "--alone")) return undefined;
+  return { alone: flags.length === 1 };
+}
+
 /** This function gives the path of a private file from its name in the home folder. The name is a name that `parseFilesArgs` accepts. */
 export function privatePath(home: string, name: string): string {
   return join(home, ...name.split("/"));
