@@ -859,6 +859,32 @@ The sounder channel (`@mark1russell7/alerts-channel-sounder`, AL-41) makes a sou
 - The fact `breaksThrough` is true only for a device that sets its own loudness. A person can set the volume of a computer to zero.
 - The runtime does not load the channel at this time. The next step adds it to the instance, with the command of the copy.
 
+The mesh channel (`@mark1russell7/alerts-channel-mesh`, AL-41) sounds a siren on a node of a LoRa mesh, for example a Meshtastic node near a bed:
+
+- The channel needs no phone, no push service and no internet link. Its descriptor uses only the power of the cell.
+- A home node on the computer of the copy is the link. The bed node has a siren on an output pin and a button.
+- The frames are short texts: `alarm`, `stop`, `ack` and `beat`. Each frame starts with its version, `M1`, and has 200 bytes or fewer.
+- The decode of a frame is total. It refuses an unknown version, an unknown kind, a bad field and a frame that is too long.
+- An alarm frame ends with the bell character. Thus the module External Notification sounds the siren for an alarm, and not for a beat.
+- A frame holds no title and no body, because each radio on the channel hears it. The limits of the title and the body are 0.
+- The alarm id comes from the first 16 characters of the delivery key. A new alarm of the same key gets a new round after a hyphen.
+- A send writes the first alarm frame before its answer. A failure of the link gives `network`.
+- The channel writes the alarm frame again on its backoff until the ack, a cancel or the end time. The waits are 5 seconds to 60 seconds.
+- After 30 minutes with no ack, the channel stops the frames, and `status` gives `failed`.
+- A push of the button stops the siren and sends an ack. The node sends the ack again for each later alarm frame of that id.
+- The receiver keeps the acks by the alarm id. An ack that comes again counts one time.
+- An ack for an id that is not the current alarm acknowledges nothing. Thus a late ack of an old alarm has no effect.
+- `status` gives `acknowledged` with the name of the node, and the time when the home node got the ack. The dispatcher polls it.
+- A cancel and the end time send 3 stop frames on the backoff. A node that ended an alarm does not start it again for a late frame.
+- The bed node sends a beat in each period. The default period is 2 minutes.
+- The probe passes only when the last beat of the bed node is younger than 3 periods. Else it gives `network`.
+- The age of a beat comes from the clock of the home, not from the clock of the node.
+- A siren has no silent mode. The channel refuses a quiet message with the kind `quiet`.
+- The channel sounds only for the levels `urgent` and `life-safety`. It refuses each other level.
+- The settings of the bed node are data (`node-config.ts`). They name the channel and the name of its key in `secrets.env`, and never the key.
+- The entry `/testing` has a simulated node and a simulated mesh. A fault test applies seeded plans of `rigor-chaos` to the two directions of the mesh.
+- The runtime does not load the channel at this time. A later step adds it to the instance, and a bench test uses real radios.
+
 The supervisor sends a notice to a receiver when the runtime stops again and again (`loop-notice.ts`, AL-55). A runtime in a loop sends no alert, because the runtime is the sender:
 
 - The URL is the value of the key `SUPERVISOR_WEBHOOK_URL` of `secrets.env`. Each copy has its own file, thus its own receiver.
