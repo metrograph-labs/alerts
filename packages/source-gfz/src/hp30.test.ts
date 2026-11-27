@@ -130,7 +130,7 @@ describe("the map of Hp30", () => {
     const at = Date.parse("2024-05-10T22:30:00Z");
     const body = entryBodyOf(HP30_INDEX, { datetime: intervalText(at), Hp30: 1 });
     expect(checkIndexCanary(HP30_INDEX, [observationOf(body, at + 7_200_000)]).pass).toBe(true);
-    expect(checkIndexCanary(HP30_INDEX, [observationOf(body, at + 7_260_000)]).pass).toBe(false);
+    expect(checkIndexCanary(HP30_INDEX, [observationOf(body, at + 7_260_000)])).toMatchObject({ pass: false, late: true });
     const kp = entryBody({ datetime: "2024-05-10T21:00:00Z", Kp: 1, status: "def" });
     expect(checkCanary([observationOf(kp, Date.parse("2024-05-11T03:00:00Z"))]).pass).toBe(true);
   });

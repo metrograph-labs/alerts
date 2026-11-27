@@ -192,7 +192,7 @@ describe("checkCanary", () => {
     const outcome = await source.fetch({ watch: WATCH });
     expect(source.check?.({ observations: observationsOf(outcome) })).toMatchObject({ pass: true });
     const old = observationsOf(outcome).map((observation) => ({ ...observation, fetched: UPDATED + STATUS_MAX_AGE_MS + 1 }));
-    expect(checkCanary(old).pass).toBe(false);
+    expect(checkCanary(old)).toMatchObject({ pass: false, late: true });
     expect(checkCanary([]).pass).toBe(false);
   });
 });

@@ -408,7 +408,7 @@ describe("the canary", () => {
 
   it("passes for a newest change of the last 2 days, and fails for an older one or no head", () => {
     expect(checkCanary(EXPORTS, [head(new Date(NOW - DAY_MS).toISOString())]).pass).toBe(true);
-    expect(checkCanary(EXPORTS, [head(new Date(NOW - 3 * DAY_MS).toISOString())]).pass).toBe(false);
+    expect(checkCanary(EXPORTS, [head(new Date(NOW - 3 * DAY_MS).toISOString())])).toMatchObject({ pass: false, late: true });
     expect(checkCanary(EXPORTS, [head(null)]).pass).toBe(false);
     expect(checkCanary(EXPORTS, []).pass).toBe(false);
   });

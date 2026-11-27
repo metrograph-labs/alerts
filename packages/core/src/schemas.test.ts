@@ -681,6 +681,9 @@ describe("the round trip of real values", () => {
     const record: FetchRecord = { source: API, at: T0, took: 500, failure: { kind: "timeout", message: "No answer in 10 s." }, fresh: 0, fatal: 0 };
     holds(fetchRecordSchema, record);
     holds(fetchRecordSchema, { source: API, at: T0, took: 200, fresh: 3, fatal: 0, canary: { pass: true, reason: "The feed has 12 alerts." } });
+    // A canary that found old data has the field late (AL-207). The field is only true.
+    holds(fetchRecordSchema, { source: API, at: T0, took: 200, fresh: 0, fatal: 0, canary: { pass: false, reason: "The newest file is 64 minutes old.", late: true } });
+    fails(fetchRecordSchema, { source: API, at: T0, took: 200, fresh: 0, fatal: 0, canary: { pass: false, reason: "The newest file is 64 minutes old.", late: false } });
     // A record can count the messages that the map skipped by design (AL-94). The count is a whole number of 0 or more.
     holds(fetchRecordSchema, { source: API, at: T0, took: 200, fresh: 1, fatal: 0, skipped: 2 });
     fails(fetchRecordSchema, { source: API, at: T0, took: 200, fresh: 1, fatal: 0, skipped: -1 });

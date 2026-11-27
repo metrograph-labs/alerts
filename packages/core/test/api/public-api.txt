@@ -1396,6 +1396,7 @@ export interface CanaryLimitOptions {
 export interface CanaryResult {
   readonly pass: boolean;
   readonly reason: string;
+  readonly late?: true;
 }
 
 ### build/index.d.ts#CancelTarget

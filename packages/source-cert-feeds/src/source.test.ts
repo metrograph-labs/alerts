@@ -235,7 +235,7 @@ describe("the canary and the descriptor", () => {
 
   it("passes when the newest entry is at most the age limit of the provider", () => {
     expect(checkCanary(TEST, [head(NOW - DAY_MS)])).toMatchObject({ pass: true });
-    expect(checkCanary(TEST, [head(NOW - TEST.maxAge - DAY_MS)])).toMatchObject({ pass: false, reason: expect.stringContaining("the limit is 10 days") });
+    expect(checkCanary(TEST, [head(NOW - TEST.maxAge - DAY_MS)])).toMatchObject({ pass: false, reason: expect.stringContaining("the limit is 10 days"), late: true });
     expect(checkCanary(TEST, [head(null)])).toMatchObject({ pass: false });
     expect(newestOf("not json")).toBeUndefined();
   });

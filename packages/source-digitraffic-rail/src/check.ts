@@ -26,7 +26,7 @@ export function checkCanary(observations: readonly Observation[]): CanaryResult 
   const minutes = ((newest.fetched - newest.time) / MINUTE_MS).toFixed(1);
   const text = new Date(newest.time).toISOString();
   if (newest.fetched - newest.time > NEWEST_MAX_AGE_MS) {
-    return { pass: false, reason: `the newest actual time of a train is ${text}, ${minutes} minutes before the fetch: the limit is ${String(NEWEST_MAX_AGE_MS / MINUTE_MS)} minutes` };
+    return { pass: false, reason: `the newest actual time of a train is ${text}, ${minutes} minutes before the fetch: the limit is ${String(NEWEST_MAX_AGE_MS / MINUTE_MS)} minutes`, late: true };
   }
   return { pass: true, reason: `the newest actual time of a train is ${text}, ${minutes} minutes before the fetch` };
 }

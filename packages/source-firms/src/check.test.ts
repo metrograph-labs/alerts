@@ -20,6 +20,7 @@ describe("checkCanary", () => {
     expect(checkCanary([observationOf(dates({ VIIRS_NOAA20_NRT: "2026-11-24" }), AT)])).toEqual({
       pass: false,
       reason: "the newest data of the VIIRS products is of 2026-11-24, 2 days before the day of the fetch: the limit is 1 day",
+      late: true,
     });
     expect(checkCanary([observationOf(dates({}), AT)]).pass).toBe(false);
     expect(checkCanary([observationOf("{", AT), observationOf(JSON.stringify({ type: "hotspot" }), AT)])).toEqual({ pass: false, reason: "the fetch has no dates of the data" });

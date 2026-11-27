@@ -6,6 +6,7 @@ import { messageOf } from "./delivery.ts";
 import type { ChannelId, ChannelQuota, CopyRead, CopyWatch, Coverage, DriftCheck, HealthState, Incident, JointDown, Observation, PersonId, PersonWatch, PlaceId, LimitUse, ProviderBalance, RedundancyState, Report, ReportId, SourceDescriptor, SourceHealth, SourceId, WatchedPlace } from "./contracts.ts";
 import { SYSTEM_SOURCE } from "./contracts.ts";
 import { DRILL_WATCH_GRACE, type DrillConfig, type DrillRun, type DrillWatch } from "./drill.ts";
+import { health } from "./health.ts";
 import type { Lateness } from "./lateness.ts";
 import type { ObserveCondition } from "./observe.ts";
 import { incidents, normalize } from "./merge.ts";
@@ -172,6 +173,24 @@ describe("the health reports", () => {
     const downAgain = systemReports(up.lines, snapshot({ health: [healthOf("changed", 500)] }), 500);
     expect(downAgain.reports).toMatchObject([{ op: "alert", references: [] }]);
     expect(new Set([alert, ...silent.reports, ...up.reports, ...downAgain.reports].map((report) => report!.key)).size).toBe(4);
+  });
+
+  it("tells old data of a source as silent, not as failed fetches (AL-207)", () => {
+    // A keepalive at 15.1 minutes against a limit of 15 minutes: each fetch passed.
+    const reason = "the newest keepalive message is 15.1 minutes old: the limit is 15 minutes";
+    const fetches = [
+      { source: API.id, at: 0, took: 1_000, fresh: 1, fatal: 0 },
+      { source: API.id, at: 60_000, took: 1_000, fresh: 0, fatal: 0, canary: { pass: false, reason, late: true } },
+    ] as const;
+    const late = health(API, 0, fetches, 62_000).health;
+    expect(late).toMatchObject({ state: "silent", reason: `The canary failed: ${reason}` });
+    const down = systemReports(NO_SYSTEM_LINES, snapshot({ health: [late] }), 62_000);
+    expect(down.reports).toMatchObject([{ op: "alert", kind: { code: "system.health.silent" }, headline: "The API: the source gives no new data." }]);
+
+    // A canary that fails for another cause still gives the headline of failed fetches.
+    const other = health(API, 0, [fetches[0], { ...fetches[1], canary: { pass: false, reason: "the feed has no head" } }], 62_000).health;
+    expect(other.state).toBe("failing");
+    expect(systemReports(NO_SYSTEM_LINES, snapshot({ health: [other] }), 62_000).reports).toMatchObject([{ headline: "The API: the fetches fail." }]);
   });
 
   it("starts no line for a source that is up or unknown", () => {
