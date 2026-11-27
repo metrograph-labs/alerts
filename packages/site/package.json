@@ -21,7 +21,7 @@
     "@mark1russell7/otel-ts": "^0.10.2",
     "@mark1russell7/site-pages": "^0.8.0",
     "@mark1russell7/text": "^0.0.18",
-    "@mark1russell7/visuals": "^0.4.0",
+    "@mark1russell7/visuals": "^0.5.1",
     "@types/d3-geo": "^3.1.1",
     "@types/node": "^26.6.5",
     "@types/three": "^0.187.0",
