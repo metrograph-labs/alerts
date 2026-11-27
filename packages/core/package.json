@@ -22,7 +22,7 @@
     "directory": "packages/core"
   },
   "license": "MIT",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "type": "module",
   "sideEffects": false,
   "main": "./src/index.ts",

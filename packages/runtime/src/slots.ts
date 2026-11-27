@@ -725,3 +725,51 @@ export async function runStep(name: string, program: string, args: readonly stri
   }
   return result;
 }
+
+/** The arguments of `deploy.ts files` (AL-220): the name of the private file, the file of its new text and the flag `--alone`. */
+export interface FilesArgs {
+  readonly name: string;
+  readonly source: string;
+  readonly alone: boolean;
+}
+
+// The private files that `deploy.ts files` writes: the configuration, the keys, the settings of the copy and each part.
+const PRIVATE_NAMES = new Set(["config.json", "secrets.env", "copy.json"]);
+const PART_NAME_FORM = /^parts\/[a-z0-9][a-z0-9-]*\.json$/u;
+
+/** This function reads the arguments `<name> <source> [--alone]` of `deploy.ts files`, or gives undefined for bad arguments. */
+export function parseFilesArgs(args: readonly string[]): FilesArgs | undefined {
+  const [name, source, ...flags] = args;
+  if (name === undefined || source === undefined || source === "" || source.startsWith("--")) return undefined;
+  if (!PRIVATE_NAMES.has(name) && !PART_NAME_FORM.test(name)) return undefined;
+  if (flags.some((flag) => flag !== "--alone") || flags.length > 1) return undefined;
+  return { name, source, alone: flags.includes("--alone") };
+}
+
+/** This function reads the arguments `--held [--alone]` of `deploy.ts files` (AL-179), or gives undefined for other arguments. */
+export function parseHeldArgs(args: readonly string[]): { readonly alone: boolean } | undefined {
+  const [held, ...flags] = args;
+  if (held !== "--held" || flags.length > 1 || flags.some((flag) => flag !== "--alone")) return undefined;
+  return { alone: flags.length === 1 };
+}
+
+/** This function gives the path of a private file from its name in the home folder. The name is a name that `parseFilesArgs` accepts. */
+export function privatePath(home: string, name: string): string {
+  return join(home, ...name.split("/"));
+}
+
+/**
+ * The outcome of the keys of the fold before and after the write of a private file (AL-220). `same` needs no fold. `fold`
+ * needs a fold before the start, because the start reads no snapshot of the new key. `bad` puts the old text back.
+ */
+export type FilesOutcome = "same" | "fold" | "bad";
+
+/**
+ * This function compares the keys of the fold before and after the write of a private file (AL-220). New files that give no key
+ * are bad. With no key before the write, the write cannot tell, thus a fold comes before the start.
+ */
+export function filesOutcome(before: StartKeys | undefined, after: StartKeys | undefined): FilesOutcome {
+  if (after === undefined) return "bad";
+  if (before === undefined) return "fold";
+  return before.files === after.files && before.good === after.good ? "same" : "fold";
+}

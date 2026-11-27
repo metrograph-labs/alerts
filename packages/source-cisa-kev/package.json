@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/package",
   "name": "@mark1russell7/alerts-source-cisa-kev",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "The source adapter of the alert system for the catalog of known exploited vulnerabilities of CISA: one event for each flaw whose due date has not ended.",
   "type": "module",
