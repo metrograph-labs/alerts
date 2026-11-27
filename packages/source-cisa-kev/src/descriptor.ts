@@ -20,5 +20,5 @@ export const KEV_DESCRIPTOR: SourceDescriptor = {
   slowAfter: 10_000,
   auth: "none",
   listing: "snapshot",
-  canary: "CISA releases the catalog on most work days. The check passes when the release is at most 21 days before the fetch.",
+  canary: "CISA releases the catalog on most work days. The check passes when the release is at most 27 days before the fetch. The limit comes from the measured gaps between the releases.",
 };

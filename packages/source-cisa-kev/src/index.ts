@@ -10,7 +10,8 @@ import { KEV_DESCRIPTOR } from "./descriptor.ts";
 import { createKevFetch, type KevFetchOptions } from "./fetch.ts";
 import { mapObservation } from "./map.ts";
 
-export { checkCanary, RELEASE_MAX_AGE_MS } from "./check.ts";
+export { ADDED_DATES } from "./added.ts";
+export { ADDED_TIMES, checkCanary, RELEASE_MAX_AGE_MS } from "./check.ts";
 export { KEV_DESCRIPTOR } from "./descriptor.ts";
 export { CATALOG_PATH, createKevFetch, entryBody, KEV_BASE_URL, KEV_TIMEOUT_MS, listedAt, readCatalog, releasedOf } from "./fetch.ts";
 export type { Catalog, KevFetchInput, KevFetchOptions, Listed } from "./fetch.ts";

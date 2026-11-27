@@ -8,6 +8,8 @@
  * - The mirror reads the texts only when its read of the source tells another hash of the configuration.
  * - The mirror checks the texts with its own `secrets.env` and `copy.json`, as a start does. Texts with problems change no file.
  * - The mirror writes each part, then `config.json`. Then the reload hook reads the files and starts the runtime again.
+ * - A set that changes the snapshot key goes to the held folder, not to the private files (AL-179). A start of that set
+ *   folds the whole log, and on a small host it is not ready in its window. `deploy.ts files --held` folds first, then starts.
  */
 import { join } from "node:path";
 import type { WallClock } from "@mark1russell7/algebra/clock";
@@ -17,10 +19,13 @@ import * as z from "zod";
 import { codeOf, PART_FILE_END, type PartsTexts } from "./config.ts";
 import { EXCHANGE_LIMIT } from "./copy.ts";
 import { limited } from "./limit.ts";
-import { checkStart, type CheckOf, type PrivateFiles, type StartTexts, type StartUse } from "./reload.ts";
+import { checkStart, type CheckedStart, type CheckOf, type PrivateFiles, type StartTexts, type StartUse } from "./reload.ts";
 
 /** The format of the answer of the procedure `alerts.config.files`. */
 export const CONFIG_FILES_FORMAT = "alerts-config-files/1";
+
+/** The folder of a held set in the host folder (AL-179): `config.json` and the folder `parts`, as the source served them. */
+export const SYNC_HELD_FOLDER = "sync-held";
 
 /** The shortest time between two reads of the files of the source, after a read that did not change the files. */
 export const SYNC_RETRY: Duration = 10 * 60_000;
@@ -140,6 +145,25 @@ export function syncPlan(files: PrivateFiles, local: StartTexts, served: SyncTex
   return ok(write.length === 0 && remove.length === 0 ? "same" : { write, remove });
 }
 
+// This value tells if a set changes the key. An error counts as a change, thus a fault of the key holds the set.
+const changesKey = (keyChanged: (checked: CheckedStart) => boolean, checked: CheckedStart): boolean => {
+  try {
+    return keyChanged(checked);
+  } catch {
+    return true;
+  }
+};
+
+/**
+ * This function gives the texts of a held set from its files (AL-179). The parts are the files that end in `.json`, in the order
+ * of the names. No `config.json` gives undefined: the folder holds no set.
+ */
+export function heldTexts(config: string | undefined, parts: readonly { readonly file: string; readonly text: string }[]): SyncTexts | undefined {
+  if (config === undefined) return undefined;
+  const named = parts.filter((part) => part.file.endsWith(PART_FILE_END)).map((part) => ({ name: part.file.slice(0, -PART_FILE_END.length), text: part.text }));
+  return { config, parts: named.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0)) };
+}
+
 /**
  * This function tells if a sync is due. A sync is due when the last read of the source tells another hash of the
  * configuration, and `retry` passed after the last try. With no read of the source, no sync is due.
@@ -162,6 +186,8 @@ export interface SyncPorts {
   readonly write: (path: string, text: string) => Promise<void>;
   /** This function removes a file. A missing file is not an error. Each other error throws. */
   readonly remove: (path: string) => Promise<void>;
+  /** This function writes the whole set into the held folder, in place of an earlier held set (AL-179). */
+  readonly hold?: (served: SyncTexts) => Promise<void>;
 }
 
 /** The options of `configSync`. */
@@ -182,6 +208,11 @@ export interface ConfigSyncOptions {
   readonly retry?: Duration;
   /** The time limit of the read of the files. The default is `EXCHANGE_LIMIT`. */
   readonly limit?: Duration;
+  /**
+   * This function tells if the checked set changes the snapshot key of the live start (AL-179). With it and the port `hold`, such
+   * a set goes to the held folder. An error of the function counts as a change.
+   */
+  readonly keyChanged?: (checked: CheckedStart) => boolean;
 }
 
 /** The outcome of one step of the sync. */
@@ -189,6 +220,7 @@ export type SyncOutcome =
   | { readonly kind: "idle" }
   | { readonly kind: "same" }
   | { readonly kind: "written"; readonly written: number; readonly removed: number }
+  | { readonly kind: "held" }
   | { readonly kind: "refused"; readonly problems: readonly string[] }
   | { readonly kind: "failed"; readonly message: string };
 
@@ -249,6 +281,15 @@ export function configSync(options: ConfigSyncOptions): ConfigSync {
     if (plan.value === "same") {
       tell(`This copy has the files of the copy ${source.id}, but it operates another configuration. A restart request starts it with the files.`);
       return { kind: "same" };
+    }
+    if (ports.hold !== undefined && options.keyChanged !== undefined && changesKey(options.keyChanged, checked.value)) {
+      try {
+        await ports.hold(served);
+      } catch (error) {
+        return failed(`The held set cannot be written (${codeOf(error)}). The next try of the sync is after ${String(retry)} ms.`);
+      }
+      tell(`The configuration of the copy ${source.id} changes the snapshot key of this copy. A start of it folds the whole log, thus the set waits in the folder ${SYNC_HELD_FOLDER} of the host. Start \`deploy.ts files --held\`: it folds, and then it starts the runtime.`);
+      return { kind: "held" };
     }
     const { write, remove } = plan.value;
     try {
