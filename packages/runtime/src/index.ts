@@ -81,6 +81,8 @@ export interface Options {
    * the worker. Thus no pass writes to a closed log. The process exits after the shutdown, so no other code closes it.
    */
   readonly log: { close(): void };
+  /** The integrity check of the log after the start (AL-223). The service aborts it in the phase `tear down dependencies`. */
+  readonly logCheck?: { close(): void };
   /** The outlines of the instance. The service stops their refresh and closes their cache in the phase `tear down dependencies`. */
   readonly shapes?: { close(): Promise<void> };
   /** The keeper of the transit catalog. The service stops its read in the phase `tear down dependencies`. */
@@ -181,6 +183,8 @@ const parts = (options: Options): ServiceBuilder =>
       // The dependencies close in the reverse sequence of their connect. Thus the lock of the home folder goes after the log.
       .dependency("home", { system: null, knobs: {}, operations: {} }, { connect: () => undefined, close: () => options.home?.release() })
       .dependency("log", { system: null, knobs: {}, operations: {} }, { connect: () => undefined, close: () => options.log.close() })
+      // The check of the log closes before the log: its abort stops the wait for the worker thread (AL-223).
+      .dependency("log-check", { system: null, knobs: {}, operations: {} }, { connect: () => undefined, close: () => options.logCheck?.close() })
       .dependency("shapes", { system: null, knobs: {}, operations: {} }, { connect: () => undefined, close: () => options.shapes?.close() })
       .dependency("transit", { system: null, knobs: {}, operations: {} }, { connect: () => undefined, close: () => options.transit?.close() })
       .dependency("quotas", { system: null, knobs: {}, operations: {} }, { connect: () => undefined, close: () => options.quotas?.close() })

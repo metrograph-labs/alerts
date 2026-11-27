@@ -309,6 +309,7 @@ LinkPolicy: build/index.d.ts#LinkPolicy
 LinkRule: build/index.d.ts#LinkRule
 LoadedConfig: build/index.d.ts#LoadedConfig
 LocateOutcome: build/index.d.ts#LocateOutcome
+LogIntegrity: build/index.d.ts#LogIntegrity
 LogRecovery: build/index.d.ts#LogRecovery
 LoopBlock: build/index.d.ts#LoopBlock
 MAGNITUDE_PARAMETER: build/index.d.ts#MAGNITUDE_PARAMETER
@@ -3136,6 +3137,12 @@ export type LocateOutcome = {
   readonly failure: FetchFailure;
 };
 
+### build/index.d.ts#LogIntegrity
+export interface LogIntegrity {
+  readonly at: Instant;
+  readonly problems: readonly string[];
+}
+
 ### build/index.d.ts#LogRecovery
 export interface LogRecovery {
   readonly at: Instant;
@@ -4662,6 +4669,7 @@ export interface SystemSnapshot {
   readonly copies?: readonly CopyWatch[];
   readonly steps?: readonly ClockStep[];
   readonly recoveries?: readonly LogRecovery[];
+  readonly integrity?: LogIntegrity | null;
   readonly blocks?: readonly LoopBlock[];
   readonly stores?: readonly StoreFill[];
   readonly bounds?: readonly StoreBound[];

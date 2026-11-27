@@ -5,7 +5,7 @@
  * that it gets.
  */
 import { isFrameClock, type WallClock } from "@mark1russell7/algebra/clock";
-import { bucketOf, channelDownPolicy, DEFAULT_SEND_LIMITS, downChannels, heldPersons, indicatorBreadth, indicatorSurprise, indicatorUnits, knowsReport, MIN_READS, limitShare, matchPlaces, observeConditions, ONLY_COPY, type PlaceId, type StalePlace, type StoreBound, type WatchedPlace, type ChannelQuota, type ChannelSnapshot, type CopyWatch, type DrillWatch, type Duration, type EntryTimes, type Exhaustion, type FetchOutcome, type HeldPerson, type Incident, type IndicatorBreadth, type IndicatorSurprise, type Instant, type LatenessFolds, type LoopBlock, type MergeState, type ObserveCondition, type Report, type ReportId, type SourceDescriptor, type SourceId, type StoreFill, type SourceProcedures, type Watch, type ZoneRegions, type JointDown, type DriftCheck } from "@mark1russell7/alerts";
+import { bucketOf, channelDownPolicy, DEFAULT_SEND_LIMITS, downChannels, heldPersons, indicatorBreadth, indicatorSurprise, indicatorUnits, knowsReport, MIN_READS, limitShare, matchPlaces, observeConditions, ONLY_COPY, type PlaceId, type StalePlace, type StoreBound, type WatchedPlace, type ChannelQuota, type ChannelSnapshot, type CopyWatch, type DrillWatch, type Duration, type EntryTimes, type Exhaustion, type FetchOutcome, type HeldPerson, type Incident, type IndicatorBreadth, type IndicatorSurprise, type Instant, type LatenessFolds, type LoopBlock, type LogIntegrity, type MergeState, type ObserveCondition, type Report, type ReportId, type SourceDescriptor, type SourceId, type StoreFill, type SourceProcedures, type Watch, type ZoneRegions, type JointDown, type DriftCheck } from "@mark1russell7/alerts";
 import type { ChunkOptions, FoldMark, FoldSnapshot } from "@mark1russell7/sqlite";
 import { errorMessage } from "@mark1russell7/text";
 import { compareCodeUnits } from "@mark1russell7/text/order";
@@ -121,6 +121,11 @@ export interface RuntimeOptions {
    * before its view. The system report of the blocks reads the log. A throw writes no block.
    */
   readonly blocks?: () => readonly LoopBlock[];
+  /**
+   * This function gives the last integrity check of the log when it failed, or `null` (AL-223). A failed check is a line
+   * of system reports. With no function, the open line stays open.
+   */
+  readonly integrity?: () => LogIntegrity | null;
   /**
    * The watches of the balances of the paid provider accounts. Each pass starts `check` of each watch, next to
    * its fetches. Each stage of a balance is a line of system reports.
@@ -763,7 +768,7 @@ export function openRuntime(options: RuntimeOptions): Runtime {
       // The persons with a hold of the send limit (AL-81). With no delivery, no person has a hold, and each open line stays.
       const held = dispatcher === undefined ? undefined : heldOf(at);
       const stale = options.stale?.(at);
-      const view = systemView(state, places === config.places ? config : { ...config, places }, at, { ...(stale === undefined ? {} : { stale }), drills: drilled.snapshots, ...(quotas === undefined ? {} : { quotas }), ...(stores === undefined ? {} : { stores }), bounds: readBounds(), ...(routed === undefined ? {} : { routes: { routes: routed, limit: routeLimit } }), balances: watches.flatMap((watch) => watch.balance() ?? []), uses: uses.flatMap((watch) => watch.use() ?? []), ...jointPart(options.joint), ...driftPart(options.drift), ...(options.copies === undefined ? {} : { copies: options.copies.watches(), copy: self, drillWatches: options.drillWatches ?? [] }), ...(folds === undefined ? {} : { folds }), ...(exhausted === undefined ? {} : { exhausted }), ...(held === undefined ? {} : { held }), ...(channels === undefined ? {} : { channels: channels.snapshots() }), ...(observing === undefined ? {} : { observing }) });
+      const view = systemView(state, places === config.places ? config : { ...config, places }, at, { ...(stale === undefined ? {} : { stale }), drills: drilled.snapshots, ...(quotas === undefined ? {} : { quotas }), ...(stores === undefined ? {} : { stores }), bounds: readBounds(), ...(routed === undefined ? {} : { routes: { routes: routed, limit: routeLimit } }), balances: watches.flatMap((watch) => watch.balance() ?? []), uses: uses.flatMap((watch) => watch.use() ?? []), ...jointPart(options.joint), ...driftPart(options.drift), ...(options.copies === undefined ? {} : { copies: options.copies.watches(), copy: self, drillWatches: options.drillWatches ?? [] }), ...(folds === undefined ? {} : { folds }), ...(exhausted === undefined ? {} : { exhausted }), ...(held === undefined ? {} : { held }), ...(channels === undefined ? {} : { channels: channels.snapshots() }), ...(observing === undefined ? {} : { observing }), ...(options.integrity === undefined ? {} : { integrity: options.integrity() }) });
       folds = view.folds;
       const event = systemEvent(view);
       if (event !== undefined) conflicts.push(...append([event]));
