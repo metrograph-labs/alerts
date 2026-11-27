@@ -1,8 +1,9 @@
 # The start gate (AL-102): the start of the runtime fits in a small host. The shared workflow of the capacity repository
 # measures the start case of its limits file at the head of each pull request, in 5 runs on 5 runners. Each job also
 # measures the merge base of the pull request, thus each head has a base arm on the same runner (CAP-105, AL-228).
-# It fails when the head is slower than its base past the limit, when a child does not fit the target, and when the
-# records cannot decide: a no read is not a pass. A pull request that changes the start on purpose gets the label
+# It fails when the start.live of the head passes its base by more than the paired limit, or when the head passes a
+# ceiling that its base holds. A head past a ceiling that its base also passes is a drift: the limits need new runs.
+# It also fails when a child does not fit the target, and when the records cannot decide: a no read is not a pass. A pull request that changes the start on purpose gets the label
 # start-change. Then the gate accepts the new values.
 # The limits are the worst value of 5 or more CI runs plus their spread. They live in the capacity repository.
 #
