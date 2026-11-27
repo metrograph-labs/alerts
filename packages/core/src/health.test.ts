@@ -160,6 +160,33 @@ describe("the health of a source", () => {
     expect(back.transitions.at(-1)).toMatchObject({ from: "failing", on: "app.canary-passed", to: "slow" });
   });
 
+  it("old data of a source is silent, not failing (AL-207)", () => {
+    // A file feed at 64 minutes against a limit of 60 minutes: the fetches pass, but the source gives no new data.
+    const late: CanaryResult = { pass: false, reason: "the newest file is 64 minutes old: the limit is 60 minutes", late: true };
+    const good: CanaryResult = { pass: true, reason: "the newest file is 5 minutes old" };
+    const silent = run(BASE, [fetchAt(0), fetchAt(1, { canary: late }), fetchAt(2)], START + 3 * MINUTE);
+    expect(silent.health).toMatchObject({ state: "silent", reason: `The canary failed: ${late.reason}` });
+    expect(silent.transitions.at(-1)).toMatchObject({ from: "healthy", on: "app.canary-failed", to: "silent" });
+
+    // The same failure with no field late is a fault of the source, so the state is failing.
+    const other: CanaryResult = { pass: false, reason: late.reason };
+    expect(run(BASE, [fetchAt(0), fetchAt(1, { canary: other })], START + 2 * MINUTE).health.state).toBe("failing");
+    // A late canary after a canary that failed for another cause moves the state from failing to silent.
+    expect(run(BASE, [fetchAt(0), fetchAt(1, { canary: other }), fetchAt(2, { canary: late })], START + 3 * MINUTE).transitions.at(-1)).toMatchObject({
+      from: "failing",
+      on: "app.canary-failed",
+      to: "silent",
+    });
+
+    // A canary that passes later moves the state back.
+    const back = run(BASE, [fetchAt(0), fetchAt(1, { canary: late }), fetchAt(2, { canary: good })], START + 3 * MINUTE);
+    expect(back.health.state).toBe("healthy");
+    expect(back.transitions.at(-1)).toMatchObject({ from: "silent", on: "app.canary-passed", to: "healthy" });
+
+    // A map with fatal problems gives the state changed, also with old data.
+    expect(run(BASE, [fetchAt(0), fetchAt(1, { canary: late, fatal: 1 })], START + 2 * MINUTE).health.state).toBe("changed");
+  });
+
   it("is silent after maxQuiet with no fresh observation, and healthy after a fresh one", () => {
     const quiet = Array.from({ length: 70 }, (_, minute) => fetchAt(minute, { fresh: minute === 0 ? 1 : 0 }));
     const silent = run(QUIET, quiet, START + 70 * MINUTE);
@@ -182,13 +209,20 @@ function oracle(descriptor: SourceDescriptor, records: readonly FetchRecord[], n
   const canary = passed.filter((record) => record.canary !== undefined).at(-1)?.canary;
   if (failures >= (options.failAfter ?? DEFAULT_FAIL_AFTER)) return "failing";
   if (now - staleFrom >= (options.staleAfter ?? DEFAULT_STALE_INTERVALS * descriptor.interval)) return "failing";
-  if (canary !== undefined && !canary.pass) return "failing";
+  if (canary !== undefined && !canary.pass && canary.late !== true) return "failing";
   if (last === undefined) return "unknown";
   if (last.fatal + (last.lossy ?? 0) > 0) return "changed";
+  if (canary !== undefined && !canary.pass) return "silent";
   const fresh = passed.filter((record) => record.fresh > 0).at(-1) ?? passed[0]!;
   if (descriptor.maxQuiet !== undefined && now - end(fresh) >= descriptor.maxQuiet) return "silent";
   if (last.took >= descriptor.slowAfter) return "slow";
   return "healthy";
+}
+
+// A canary passes, fails for old data (AL-207) or fails for another cause.
+function canaryOf(r: Random): CanaryResult {
+  if (r.chance(0.6)) return { pass: true, reason: "test" };
+  return r.chance(0.5) ? { pass: false, reason: "test", late: true } : { pass: false, reason: "test" };
 }
 
 function randomRecords(r: Random): FetchRecord[] {
@@ -204,7 +238,7 @@ function randomRecords(r: Random): FetchRecord[] {
       fatal: r.chance(0.1) ? r.int(1, 3) : 0,
       ...(r.chance(0.1) ? { lossy: r.int(1, 3) } : {}),
       ...(r.chance(0.25) ? { failure: r.pick([failed, { kind: "timeout", message: "30 s" } as const]) } : {}),
-      ...(r.chance(0.2) ? { canary: { pass: r.chance(0.6), reason: "test" } } : {}),
+      ...(r.chance(0.2) ? { canary: canaryOf(r) } : {}),
     };
     records.push(record);
     time += took + r.int(0, r.chance(0.1) ? 30 * MINUTE : 2 * MINUTE);

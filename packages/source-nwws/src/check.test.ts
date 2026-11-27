@@ -38,6 +38,7 @@ describe("checkCanary", () => {
     expect(checkCanary([{ ...keepalive, fetched: SENT + 15 * MINUTE + 1 }])).toEqual({
       pass: false,
       reason: "the newest keepalive message of the NWS is 15.0 minutes old: the limit is 15 minutes",
+      late: true,
     });
   });
 
@@ -49,7 +50,7 @@ describe("checkCanary", () => {
     const older = { ...keepalive, body: keepalive.body.replace("<sent>2026-11-16T20:04:55-00:00</sent>", () => "<sent>2026-11-16T19:54:55-00:00</sent>"), fetched: SENT + 20 * MINUTE };
     expect(keepaliveSent(older)).toBe(SENT - 10 * MINUTE);
     expect(checkCanary([older, { ...keepalive, fetched: SENT + 10 * MINUTE }])?.pass).toBe(true);
-    expect(checkCanary([{ ...keepalive, fetched: SENT + 20 * MINUTE }, older])?.pass).toBe(false);
+    expect(checkCanary([{ ...keepalive, fetched: SENT + 20 * MINUTE }, older])).toMatchObject({ pass: false, late: true });
   });
 
   it("gives no read with no fresh keepalive in the first 15 minutes of a session, and fails after them", () => {
@@ -61,7 +62,7 @@ describe("checkCanary", () => {
     // A keepalive of an earlier session that is too old gives no read in a new session. A fresh keepalive passes at once.
     const stale = { ...all[0]!, fetched: SENT + 30 * MINUTE };
     expect(checkCanary([stale], { joined: SENT + 25 * MINUTE, now: SENT + 30 * MINUTE })).toBeUndefined();
-    expect(checkCanary([stale], { joined: SENT, now: SENT + 30 * MINUTE })).toMatchObject({ pass: false });
+    expect(checkCanary([stale], { joined: SENT, now: SENT + 30 * MINUTE })).toMatchObject({ pass: false, late: true });
     expect(checkCanary(all, { joined: SENT, now: SENT })).toMatchObject({ pass: true });
   });
 });

@@ -671,9 +671,9 @@ export const mapResultSchema: z.ZodType<MapResult, MapResult> = schemaOf<MapResu
     .readonly(),
 );
 
-/** This schema checks the result of the canary check of a source. */
+/** This schema checks the result of the canary check of a source. A record with no field `late` is valid (AL-207). */
 export const canaryResultSchema: z.ZodType<CanaryResult, CanaryResult> = schemaOf<CanaryResult>()(
-  z.strictObject({ pass: z.boolean(), reason: z.string() }).readonly(),
+  z.strictObject({ pass: z.boolean(), reason: z.string(), late: z.literal(true).exactOptional() }).readonly(),
 );
 
 /** This schema checks the record of one fetch. The three counts are integers, 0 or more (`contracts.ts`, lines 356, 358 and 360). */

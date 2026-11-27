@@ -39,7 +39,7 @@ export function checkCanary(observations: readonly Observation[]): CanaryResult 
   const minutes = ((newest.fetched - newest.start) / MINUTE_MS).toFixed(1);
   const text = new Date(newest.start).toISOString().replace(".000Z", "Z");
   if (newest.fetched - newest.start > NEWEST_MAX_AGE_MS) {
-    return { pass: false, reason: `the newest minute of the grid frequency starts at ${text}, ${minutes} minutes before the fetch: the limit is ${String(NEWEST_MAX_AGE_MS / MINUTE_MS)} minutes` };
+    return { pass: false, reason: `the newest minute of the grid frequency starts at ${text}, ${minutes} minutes before the fetch: the limit is ${String(NEWEST_MAX_AGE_MS / MINUTE_MS)} minutes`, late: true };
   }
   return { pass: true, reason: `the newest minute of the grid frequency starts at ${text}, ${minutes} minutes before the fetch` };
 }

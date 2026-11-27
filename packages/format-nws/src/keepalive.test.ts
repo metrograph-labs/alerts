@@ -20,6 +20,7 @@ describe("keepaliveCheck", () => {
     expect(keepaliveCheck({ sent: 0, fetched: KEEPALIVE_MAX_AGE_MS + 60_000 })).toEqual({
       pass: false,
       reason: "the newest keepalive message of the NWS is 16.0 minutes old: the limit is 15 minutes",
+      late: true,
     });
     expect(keepaliveCheck(undefined)).toEqual({ pass: false, reason: "the fetch has no keepalive message of the NWS" });
   });

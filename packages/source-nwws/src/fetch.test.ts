@@ -74,7 +74,7 @@ describe("the fetch of the source", () => {
     await clock.advance(13 * MINUTE);
     fake.last().send(FREEZE);
     const late = ok(await source.fetch({ watch, cursor: third.cursor }));
-    expect(source.check?.({ observations: late.observations })).toMatchObject({ pass: false });
+    expect(source.check?.({ observations: late.observations })).toMatchObject({ pass: false, late: true });
   });
 
   it("gives no read of the canary in the first 15 minutes of each session with no keepalive, and fails after them", async () => {

@@ -19,6 +19,7 @@ describe("checkCanary", () => {
     expect(checkCanary([observationOf(hourBody("2026-11-18T18", "PJM", 91951, 88126), fetched)])).toEqual({
       pass: false,
       reason: `the newest hour with a real demand ended at 2026-11-18T18:00:00Z, 3.0 hours before the fetch: the limit is ${String(NEWEST_MAX_AGE_MS / HOUR_MS)} hours`,
+      late: true,
     });
     const recent = END + 30 * 60_000;
     const others = [hourBody("2026-11-18T18", "LGEE", 0, 3702), hourBody("2026-11-18T18", "CISO", 23760, 23760), "{", "null", JSON.stringify({ hour: "2026-11-18T18", demand: "1" })];

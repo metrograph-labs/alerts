@@ -39,7 +39,7 @@ export function checkCanary(observations: readonly Observation[]): CanaryResult 
   const days = ((newest.fetched - newest.released) / DAY_MS).toFixed(1);
   const released = new Date(newest.released).toISOString();
   if (newest.fetched - newest.released > RELEASE_MAX_AGE_MS) {
-    return { pass: false, reason: `the catalog was released at ${released}, ${days} days before the fetch: the limit is ${String(RELEASE_MAX_AGE_MS / DAY_MS)} days` };
+    return { pass: false, reason: `the catalog was released at ${released}, ${days} days before the fetch: the limit is ${String(RELEASE_MAX_AGE_MS / DAY_MS)} days`, late: true };
   }
   return { pass: true, reason: `the catalog was released at ${released}, ${days} days before the fetch` };
 }
