@@ -1544,6 +1544,9 @@ The shadow score (`shadowScore`) is the first step. It operates next to the tabl
 
 - The priors (`ScorePriors`, format `alerts-priors/2`) are data. For each prefix of a kind, they give the verified share of its warnings and the deaths and injuries of one event. For each CAP certainty value, they give a probability.
 - Format 2 adds the harm in one area under one active alert of a kind, for each significance (`KindPrior.under`). The measure counts each event under an alert, so it holds the probability of the event.
+- The optional field `KindPrior.causes` gives the share of the deaths of a kind from one cause, for example `co-poisoning`. The shadow score does not read it.
+- Each cause share keeps its cited counts (`CauseRead`): the deaths of the cause and all the deaths that the source counted. `causeShareOf` of the rates gives the pooled share. Its interval holds the Wilson interval and the share of each source.
+- A planner multiplies the deaths of a kind, the share of a cause and the share of that cause that a step averts. A cause with no cited count is absent.
 - An incident with a significance and a measure of its alerts gets the basis `alert`. Its expected harm is that measure. The longest prefix of the kind with a measure of that significance decides.
 - An observed event gets the basis `event`. The measure under an alert also counts the alerts with no event, thus it is too low for an event that occurs.
 - On the basis `event`, the probability of an observed event is that of the certainty `observed`. The probability of a warning is the verified share of its kind. The measure of the warnings decides over the certainty word of the sender. Each other incident gets the probability of its certainty.

@@ -63,6 +63,8 @@ CancelTarget: build/index.d.ts#CancelTarget
 CapMessageKeyInput: build/index.d.ts#CapMessageKeyInput
 Carriage: build/index.d.ts#Carriage
 Category: build/index.d.ts#Category
+CauseRead: build/index.d.ts#CauseRead
+CauseShare: build/index.d.ts#CauseShare
 CellResource: build/index.d.ts#CellResource
 Certainty: build/index.d.ts#Certainty
 ChainConfig: build/index.d.ts#ChainConfig
@@ -635,6 +637,9 @@ capMessageKey: build/index.d.ts#capMessageKey
 carriages: build/index.d.ts#carriages
 categoryOf: build/index.d.ts#categoryOf
 categorySchema: build/index.d.ts#categorySchema
+causeIdSchema: build/index.d.ts#causeIdSchema
+causeReadSchema: build/index.d.ts#causeReadSchema
+causeShareSchema: build/index.d.ts#causeShareSchema
 cellResourceSchema: build/index.d.ts#cellResourceSchema
 certaintySchema: build/index.d.ts#certaintySchema
 chainConfigSchema: build/index.d.ts#chainConfigSchema
@@ -1413,6 +1418,20 @@ export interface Carriage {
 
 ### build/index.d.ts#Category
 export type Category = "geo" | "met" | "safety" | "security" | "rescue" | "fire" | "health" | "env" | "transport" | "infra" | "cbrne" | "other" | "cyber" | "market" | "civic" | "personal" | "system";
+
+### build/index.d.ts#CauseRead
+export interface CauseRead {
+  readonly deaths: number;
+  readonly of: number;
+  readonly source: string;
+  readonly url: string;
+}
+
+### build/index.d.ts#CauseShare
+export interface CauseShare {
+  readonly share: Estimate;
+  readonly reads: readonly CauseRead[];
+}
 
 ### build/index.d.ts#CellResource
 export type CellResource = "internet" | "dns" | "power" | "receiver";
@@ -2865,6 +2884,7 @@ export interface KindPrior {
   readonly deaths?: Estimate;
   readonly injuries?: Estimate;
   readonly under?: Readonly<Partial<Record<Significance, UnderPrior>>>;
+  readonly causes?: Readonly<Record<string, CauseShare>>;
 }
 
 ### build/index.d.ts#LEVELS
@@ -5015,6 +5035,15 @@ export declare function categoryOf(kindCode: string): Category;
 
 ### build/index.d.ts#categorySchema
 export declare const categorySchema: z.ZodType<Category, Category>;
+
+### build/index.d.ts#causeIdSchema
+export declare const causeIdSchema: z.ZodType<string, string>;
+
+### build/index.d.ts#causeReadSchema
+export declare const causeReadSchema: z.ZodType<CauseRead, CauseRead>;
+
+### build/index.d.ts#causeShareSchema
+export declare const causeShareSchema: z.ZodType<CauseShare, CauseShare>;
 
 ### build/index.d.ts#cellResourceSchema
 export declare const cellResourceSchema: z.ZodType<CellResource, CellResource>;

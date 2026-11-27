@@ -10,6 +10,7 @@
  *   the types of the kind. The interval is the hull of the exact Poisson interval and the percentile bootstrap over the
  *   years. A kind with no event gives no prior.
  * - The probability of each CAP certainty word is the middle of its band, and the interval is the band.
+ * - The share of the deaths of a kind from one cause comes from the cited counts of `causes.ts` (`causeShareOf`).
  * - The harm under one active alert of a kind and a significance comes from the section `under`. It is the harm in one
  *   kind of area over the areas of that kind (`underOf`). The interval is that of the deaths of one event.
  *
@@ -20,6 +21,7 @@ import { PRIORS_FORMAT, type AlertArea, type Certainty, type Estimate, type Kind
 import { SIGNIFICANCE } from "@mark1russell7/alerts-format-nws";
 import { bootstrap, poissonInterval } from "@mark1russell7/rigor-statistics";
 
+import { CAUSE_READS, causeSharesOf } from "./causes.ts";
 import { BOOTSTRAP_RUNS, LEVEL, type RatesFile, type Share } from "./rates.ts";
 import type { AreaType, UnderKind, UnderRate } from "./under.ts";
 import { ALERT_SIGNIFICANCES } from "./watchwarn.ts";
@@ -168,6 +170,8 @@ export function priorsOf(rates: RatesFile): ScorePriors {
     const priors = underOf(kind, under, underYears);
     if (priors !== undefined) entry(kind).under = priors;
   }
+
+  for (const [kind, causes] of causeSharesOf(CAUSE_READS)) entry(kind).causes = causes;
 
   const certainty: Partial<Record<Certainty, Estimate>> = {};
   for (const word of CERTAINTIES) {
