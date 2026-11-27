@@ -10,6 +10,7 @@ import {
   CONFIG_FILES_FORMAT,
   configFilesOf,
   configSync,
+  heldTexts,
   parseConfigFiles,
   SYNC_RETRY,
   syncDue,
@@ -289,6 +290,41 @@ describe("configSync", () => {
     expect(r.reports[0]).toContain("wrote 2 files and removed 1 parts");
   });
 
+  it("holds a set that changes the snapshot key, writes no private file and starts no restart (AL-179)", async () => {
+    const served: SyncTexts = { config: OTHER, parts: [{ name: "extra", text: partWith("Place D") }] };
+    const held: SyncTexts[] = [];
+    const checked: string[] = [];
+    const r = rig(() => Promise.resolve(answerOf(served)), { ...PORTS, hold: (texts) => Promise.resolve(void held.push(texts)) });
+    const sync = configSync({ ...r.options, keyChanged: (start) => (checked.push(start.copy.id), true) });
+    const started = await readStartTexts(files);
+    const restarts: RestartCause[] = [];
+    const hook = reloadHook({ files, checkOf: CHECK_OF, started, request: { code: "ENOENT" }, restart: (cause) => restarts.push(cause), onRefused: () => undefined, beforeRead: async () => void (await sync.step()) });
+    hook.onPass();
+    await hook.idle();
+    expect(held).toEqual([served]);
+    expect(checked).toEqual([MIRROR.id]);
+    // The private files stay as they were, thus the reload hook sees no change.
+    expect(await readFile(files.config, "utf8")).toBe(GOOD);
+    expect(restarts).toEqual([]);
+    expect(r.reports).toHaveLength(1);
+    expect(r.reports[0]).toContain("changes the snapshot key");
+    expect(r.reports[0]).toContain("deploy.ts files --held");
+  });
+
+  it("writes a set with the same key, and holds a set when the key cannot be made (AL-179)", async () => {
+    const served: SyncTexts = { config: OTHER, parts: [] };
+    const held: SyncTexts[] = [];
+    const ports: SyncPorts = { ...PORTS, hold: (texts) => Promise.resolve(void held.push(texts)) };
+    const same = configSync({ ...rig(() => Promise.resolve(answerOf(served)), ports).options, keyChanged: () => false });
+    expect(await same.step()).toEqual({ kind: "written", written: 1, removed: 0 });
+    expect(held).toEqual([]);
+    await writeFile(files.config, GOOD, "utf8");
+    const fault = configSync({ ...rig(() => Promise.resolve(answerOf(served)), ports).options, keyChanged: () => { throw new Error("no key"); } });
+    expect(await fault.step()).toEqual({ kind: "held" });
+    expect(held).toEqual([served]);
+    expect(await readFile(files.config, "utf8")).toBe(GOOD);
+  });
+
   it("refuses texts with problems, changes no file, and tells each refusal one time", async () => {
     // The source has its own secrets. Thus a hash of a refused text does not come from the check here.
     const r = rig(() => Promise.resolve({ format: CONFIG_FILES_FORMAT, copy: "home", configHash: "hash-of-the-source", files: { config: BAD, parts: [] } }));
@@ -356,5 +392,13 @@ describe("configSync", () => {
 
     const same = rig(() => Promise.resolve(answerOf({ config: GOOD, parts: [] })));
     expect(await configSync(same.options).step()).toEqual({ kind: "same" });
+  });
+});
+
+describe("heldTexts (AL-179)", () => {
+  it("reads the parts that end in .json in the order of the names, and gives undefined with no config.json", () => {
+    const parts = [{ file: "b.json", text: "B" }, { file: "notes.txt", text: "N" }, { file: "a.json", text: "A" }];
+    expect(heldTexts("C", parts)).toEqual({ config: "C", parts: [{ name: "a", text: "A" }, { name: "b", text: "B" }] });
+    expect(heldTexts(undefined, parts)).toBeUndefined();
   });
 });

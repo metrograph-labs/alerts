@@ -1076,6 +1076,13 @@ The mirror does these steps before each read of the reload hook (`config-sync.ts
 3. It writes each changed part, removes each part that the source does not have, and writes `config.json` last. Each write goes to a temporary file first.
 4. Then the reload hook reads the whole set. A set that passes the check starts the runtime again.
 
+A set that changes the snapshot key of the live start does not go to the private files (AL-179):
+
+- A start of that set folds the whole log. On a small host, that fold takes longer than the ready window.
+- The mirror writes the set into the folder `host/sync-held`, in place of the files. It tells the hold one time.
+- `deploy.ts files --held` writes the held set. It folds before the start when the key changes, and then it removes the folder.
+- A fault of the key also holds the set. Thus a fault does not start a fold of the whole log.
+
 - The mirror tells each refusal one time, until a different refusal. A problem holds no text of a file, no address and no URL.
 - A write that fails can leave a mix of two sets. The check refuses a mix with problems. A mix that passes gives another hash, thus the next try corrects it.
 - The texts go only over the exchange: the tailnet, with the token.
@@ -1818,6 +1825,9 @@ A new fold version gets its snapshot before the next start (AL-153):
 - The mode has no service, no listener and no window. It does not change the start marker or the last good set.
 - The lock of the home folder refuses the fold while a runtime runs. Thus stop the runtime, swap, fold, and then start the runtime.
 - A fold version change with an upgrade of the old snapshot needs no fold step. A fold step then only writes a new snapshot.
+- A change of a private file can change the snapshot key too: a source that the copy leaves, for example (AL-220).
+- `deploy.ts files <name> <source>` writes the file. It reads the key before and after the write, and folds before the start when the key changes.
+- New files that give no key get the old text back. Thus do not write `config.json`, `secrets.env`, `copy.json` or a part by hand.
 
 The two slots keep each start on the code of one commit:
 
@@ -2284,6 +2294,25 @@ The limits:
 - Only the copy that takes the fixes watches a moving place. When that copy is down, no copy watches it.
 - A stop of the runtime loses the last fix when the home store does not have it. The next fix of the phone gives it again.
 - The phone app decides the time between two fixes. A long time between fixes makes the place stale.
+
+To set up a phone:
+
+1. Add the entry `tell` to `config.json` of the home, if the home does not have it. The runtime then makes `tell.token`.
+2. Add a moving place to `config.json`. Give it the states where the person can be. A sample:
+
+   ```json
+   { "id": "phone", "label": "Phone", "codes": [{ "system": "state", "code": "KS" }, { "system": "iso3166", "code": "US" }], "bufferKm": 5, "moving": { "device": "ph", "maxAgeMinutes": 60 } }
+   ```
+
+3. Add the id of the place to `places` of the person, and to each rule of `mandatory` that must cover the person.
+4. Make a proxy of the private network to the loopback listener of `tell`. Only the machines of the person can reach it.
+5. Install OwnTracks on the phone. Set the mode HTTP, and set the URL `https://<host of the proxy>/tell/alerts/position`.
+6. In OwnTracks, set the tracker ID to the `device` of the place. Set the password to the text of `tell.token`. The user name is free.
+7. Set the monitoring mode `Move` while the person travels. The mode `Significant` sends a fix only after a large movement.
+8. Make `maxAgeMinutes` longer than the longest time between two fixes of the phone. Else the place becomes stale between fixes.
+9. Examine the health route. The read `fixes of the moving place <id>` gives the time of the last fix, and the cause of a refused fix.
+
+Do not put the token, a fix or the address of the proxy in a file of the repository, a log or a message.
 
 ### The fire zones of the NWS (AL-33)
 
