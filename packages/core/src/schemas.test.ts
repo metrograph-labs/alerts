@@ -442,6 +442,7 @@ const SCHEMA_NAMES = [
   "copyHealthSchema",
   "copyIdSchema",
   "copyListenSchema",
+  "copyMeshSchema",
   "copyPeerSchema",
   "copyReadSchema",
   "copySettingsSchema",

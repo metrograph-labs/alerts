@@ -519,6 +519,28 @@ export interface CopySounder {
 }
 
 /**
+ * The mesh channel of a copy (AL-41-wire): the bed node and the two programs of the link to the home node. The values are
+ * private. Only `copy.json` holds them.
+ *
+ * - The runtime starts each program with no shell. The program `send` gets the text of one frame as its last argument.
+ * - The program `listen` operates until the runtime stops it. It writes each frame of the home node on one line.
+ */
+export interface CopyMesh {
+  /** The name of the bed node, for example `bed-node`. */
+  readonly node: string;
+  /** The program that writes one frame to the home node, and its arguments. */
+  readonly send: readonly string[];
+  /** The program that writes each frame of the home node on one line, and its arguments. */
+  readonly listen: readonly string[];
+  /** The nodes whose ack acknowledges an alarm. The default of the channel is the bed node only. */
+  readonly ackNodes?: readonly string[];
+  /** The heartbeat period of the bed node. The default of the channel is 2 minutes. */
+  readonly beatMs?: Duration;
+  /** The levels that sound the siren. The default of the channel is `urgent` and `life-safety`. */
+  readonly levels?: readonly Level[];
+}
+
+/**
  * The settings of one copy of the system: the file `copy.json`. Each copy has its own file. The configuration and the
  * secrets are the same in each copy. A runtime with no file is the only copy, `ONLY_COPY`.
  */
@@ -561,6 +583,11 @@ export interface CopySettings {
    * that channel needs the channel in `leaveChannels`, or the start stops.
    */
   readonly sounder?: CopySounder;
+  /**
+   * The mesh channel of this copy (AL-41-wire). A copy with no field sends nothing on the channel mesh. Thus a step on
+   * that channel needs the channel in `leaveChannels`, or the start stops.
+   */
+  readonly mesh?: CopyMesh;
   /**
    * The drift checks of the host of this copy (AL-139). Without them, the copy starts no drift check. A command has the
    * paths and the programs of one host. Thus the checks are a setting of the copy, and a mirror does not take them.

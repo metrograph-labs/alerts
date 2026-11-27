@@ -908,7 +908,8 @@ The mesh channel (`@mark1russell7/alerts-channel-mesh`, AL-41) sounds a siren on
 - The channel sounds only for the levels `urgent` and `life-safety`. It refuses each other level.
 - The settings of the bed node are data (`node-config.ts`). They name the channel and the name of its key in `secrets.env`, and never the key.
 - The entry `/testing` has a simulated node and a simulated mesh. A fault test applies seeded plans of `rigor-chaos` to the two directions of the mesh.
-- The runtime does not load the channel at this time. A later step adds it to the instance, and a bench test uses real radios.
+- The command link (`commandLink`, AL-41-wire) connects the channel to the home node through two programs. The section "The mesh link of a copy" tells the rules.
+- The runtime loads the channel from the field `mesh` of `copy.json`. A bench test with real radios comes next (AL-41-bench).
 
 The supervisor sends a notice to a receiver when the runtime stops again and again (`loop-notice.ts`, AL-55). A runtime in a loop sends no alert, because the runtime is the sender:
 
@@ -951,6 +952,7 @@ Each copy loads the same configuration: `config.json` and the parts. The sync of
 - `configFrom`: the id of the copy that gives the configuration of this copy. It is the id of a copy of `peers`. The section "The sync of the configuration" tells the steps.
 - `leaveChannels`: the ids of the channels that this copy leaves to the other copies (AL-55). The section "The channels that a copy leaves" tells the rules.
 - `sounder`: the sounder channel of this copy (AL-41). The section "The sounder of a copy" tells the rules.
+- `mesh`: the mesh channel of this copy (AL-41-wire). The section "The mesh link of a copy" tells the rules.
 - `drift`: the drift checks of the host of this copy (AL-139). The section "System reports" tells their lines.
 
 Without `copy.json`, the runtime is the only copy. It has rank 0 and no exchange. The key `COPY_TOKEN` of `secrets.env` gives the token of the exchange, the same for each copy. The check of the profile `daemon` needs it when the copy has other copies.
@@ -979,6 +981,21 @@ A sounder is a device in the home of one copy, for example the speaker of its co
 - The runtime starts each program with no shell. A problem names the field and no argument, because an argument can be a private path.
 - A copy with no field `sounder` names the channel `sounder` in `leaveChannels`. Without it, a step on the channel stops the start of that copy.
 - A copy with the field `sounder` does not leave the channel.
+
+### The mesh link of a copy
+
+The home node of the mesh channel is on the computer of one copy. Only that copy can write the frames. Thus the field `mesh` of `copy.json` holds the link, and the configuration holds the contacts and the steps:
+
+- `node`: the name of the bed node, for example `bed-node`.
+- `send`: the program that writes one frame to the home node, and its arguments. The runtime adds the frame as the last argument.
+- `listen`: the program that writes each frame of the home node on one line. It operates until the runtime stops.
+- `ackNodes`, `beatMs` and `levels`: the nodes whose ack counts, the beat period and the levels that sound. The channel gives the defaults.
+- A send passes only when the program `send` exits with the code 0 in 10 seconds.
+- The worker `mesh` of the service reads the program `listen`. When the program stops, the worker starts it again after its backoff.
+- The two programs are the adapter of the radio. Thus the runtime knows no radio, and it uses no library of the radio.
+- The runtime starts each program with no shell. A problem names the field and no argument, because an argument can be a private path.
+- A copy with no field `mesh` names the channel `mesh` in `leaveChannels`. Without it, a step on the channel stops the start of that copy.
+- A copy with the field `mesh` does not leave the channel.
 
 ### The rank wait
 
