@@ -103,6 +103,7 @@ export {
   type RatesInput,
   type Share,
 } from "./rates.ts";
+export { CAUSE_READS, causeShareOf, causeSharesOf } from "./causes.ts";
 export { committedPriors, PRIORS_URL } from "./committed.ts";
 export { areaTypeOf, priorsOf } from "./priors.ts";
 export { ratesSummary, TOP_TYPES, TOP_UNDER, type GateResult } from "./summary.ts";
