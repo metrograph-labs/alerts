@@ -369,6 +369,8 @@ The core calculates the health of each source from the records of its fetches, n
 
 The default of `failAfter` is 2 fetches, and the default of `staleAfter` is 3 intervals. When two conditions are true, the first state of this order applies: `failing`, `unknown`, `changed`, `silent`, `slow`, `healthy`. A stuck loop of the runtime writes no record, so the stale timer makes the source `failing`. A failed canary holds until a canary check passes. A canary check that finds old data sets `late`. Old data of a source is `silent`, not `failing`: the fetches pass, but the source gives no new data.
 
+An age check gives `age`, the age of the newest item, and `limit`, its hand limit (AL-207). The runtime keeps the last `CANARY_AGE_WINDOW` ages of each source. `liveCanaryLimit` gives the upper bound of the 0.99 quantile of the ages. The hand limit is its floor, and two times the hand limit is its ceiling. With fewer than 368 ages, the limit is the hand limit. The runtime judges each age check with this live limit before it writes the record.
+
 The health is a pure fold. `observeFetch` adds one record, and `advanceHealth` moves the time. Each step gives the changes of state as transitions, and the time of its next timer in `wakeAt`. A replay of the transitions against the document finds each change that the document does not permit. Tests replay random records, and compare each state with a direct calculation from the records.
 
 A source that is down is a system report. The section [System reports](#system-reports) tells the rules.
@@ -1721,7 +1723,7 @@ The instance does not start when it finds one of these problems:
 - a watch of a limit of a provider with no reader, or a limit of GitHub with no value for the key of its token
 - a place that no regional source covers. Usually the place does not have a code of each level: the zone, the county, SAME, the state and the country. A source with the coverage `global`, for example the SWPC, covers each place with no code. Thus the check does not count it.
 
-The environment gives `PORT` (8080), `PROBE_PORT` (9090) and `SERVICE_PROFILE` (`local`, `daemon` or `pod`). The folder `ALERTS_HOME` (`.alerts` in the home folder) holds the private files: `config.json`, `secrets.env`, the log `runtime.sqlite` and the outlines of the zones `shapes.sqlite`. It also holds the counts of the quotas, `quotas.sqlite`, the use reads of the caps, `use.json`, and the copy of the transit catalog, `transit-catalog.json`. No repository holds them. A problem of `secrets.env` names its line and its key, and no value. The output of a failed pass shows no value of `secrets.env`.
+The environment gives `PORT` (8080), `PROBE_PORT` (9090) and `SERVICE_PROFILE` (`local`, `daemon` or `pod`). The folder `ALERTS_HOME` (`.alerts` in the home folder) holds the private files: `config.json`, `secrets.env`, the log `runtime.sqlite` and the outlines of the zones `shapes.sqlite`. It also holds the counts of the quotas, `quotas.sqlite`, the use reads of the caps, `use.json`, and the copy of the transit catalog, `transit-catalog.json`. The file `canary-ages.json` holds the measured ages of the canary checks. No repository holds them. A problem of `secrets.env` names its line and its key, and no value. The output of a failed pass shows no value of `secrets.env`.
 
 Each runtime takes the lock `home.lock` of the folder at its start, before it reads or writes a file of the folder (AL-58). The lock is the instance lock of `@mark1russell7/service/host`:
 

@@ -88,6 +88,7 @@ import { fileBundleStore } from "./outage.ts";
 import { takeNoteText, type ExchangeRound } from "./peers.ts";
 import { loadPriors } from "./priors.ts";
 import { openReadingStore, READINGS_FILE } from "./readings.ts";
+import { CANARY_AGES_FILE, openCanaryAges } from "./canary-ages.ts";
 import { GOOD_FILE, privateFiles, readStartTexts, reloadHook, startConfig, type CheckedStart, type CheckOf, type StartUse } from "./reload.ts";
 import { shapeReport, zoneCodesText } from "./shapes.ts";
 import { openTransitCache, TRANSIT_FILE, transitReport, transitText } from "./transit.ts";
@@ -395,6 +396,8 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
   // A broken file of readings goes into quarantine, and the store starts empty. Each series has no read until its history fills again.
   const readings = openReadingStore(join(home, READINGS_FILE));
   if (readings.quarantined !== undefined) out.error(`The file ${READINGS_FILE} was broken. It is in quarantine, and the store of readings starts empty.`);
+  // A broken file of the canary ages gives no ages: each age check keeps its hand limit until the ages fill again (AL-207).
+  const canaryAges = openCanaryAges(join(home, CANARY_AGES_FILE), { onBad: (problem) => out.error(`The canary ages are not used: ${problem}.`) });
   // A bad copy of the transit catalog gives no feed. The next good read of the catalog replaces the file.
   const transit = openTransitCache(join(home, TRANSIT_FILE), (problem) => out.error(`The copy of the transit catalog is not used: ${problem}.`));
   // Only the profile daemon has a supervisor that starts the runtime again. Each other profile tells the person to start it again.
@@ -450,6 +453,7 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
     onError: (error, failures) => out.error(`A pass failed (${failures} in sequence): ${redactSecrets(errorMessage(error), values)}`),
     shapes,
     readings,
+    canaryAges,
     // The kind of the error only: its message can quote a value of a reading.
     onReadingsFault: (error, action) => out.error(`The store of readings failed (${action}): ${error instanceof Error ? error.name : typeof error}.`),
     ...(startStore === undefined ? {} : { startSnapshot: startStore }),
@@ -495,7 +499,7 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
     const transitKeeper = instance.transit;
     const rows = await writeFold({
       runtime: instance.runtime,
-      closes: [() => store.close(), () => readings.close(), () => quotas.close(), () => transitKeeper?.close(), () => instance.shapes.close(), () => log.close(), () => held.lock.release()],
+      closes: [() => store.close(), () => readings.close(), () => canaryAges.close(), () => quotas.close(), () => transitKeeper?.close(), () => instance.shapes.close(), () => log.close(), () => held.lock.release()],
     });
     out.log(foldText(rows, instance.runtime.start.events));
     return undefined;

@@ -10,6 +10,7 @@ import type { ChunkOptions, FoldMark, FoldSnapshot } from "@mark1russell7/sqlite
 import { errorMessage } from "@mark1russell7/text";
 import { compareCodeUnits } from "@mark1russell7/text/order";
 import type { BalanceWatch } from "./balance.ts";
+import type { CanaryAges } from "./canary-ages.ts";
 import type { JointWatch } from "./joint.ts";
 import type { DriftWatch } from "./drift.ts";
 import type { LimitWatch } from "./use.ts";
@@ -173,6 +174,11 @@ export interface RuntimeOptions {
    * the runtime keeps no reading.
    */
   readonly readings?: ReadingStore;
+  /**
+   * The measured ages of the canary checks of each source (AL-207). Each age check gets its live limit from them, and each
+   * fetch adds its age. Without the store, each check keeps its hand limit.
+   */
+  readonly canaryAges?: CanaryAges;
   /** The age of the oldest reading that the store keeps. The default is `READING_RETENTION`. */
   readonly readingsKeep?: Duration;
   /**
@@ -568,6 +574,7 @@ export function openRuntime(options: RuntimeOptions): Runtime {
     return [{ store: STATE_STORE, family: REPORT_FAMILY, entries: state.merge.reports.length, limit: reportLimit, waiting: count, sources: sources.sort(compareCodeUnits) }];
   };
 
+  const ages = options.canaryAges;
   const fetchOne = async (source: SourceProcedures, descriptor: SourceDescriptor, stop: AbortSignal | undefined): Promise<readonly string[]> => {
     const started = clock.now();
     const cursor = state.cursors[descriptor.id];
@@ -589,8 +596,10 @@ export function openRuntime(options: RuntimeOptions): Runtime {
     // A failure after the stop is the stop, not a fault of the source. The log keeps no fetch, and the cursor stays.
     if (stopped && !outcome.ok) return [];
     const ended = clock.now();
-    const fetched = fetchStep({ source: descriptor.id, descriptor, procedures: source, started, ended, outcome, known: (id) => log.has(id), frame: state.steps.length, admit: admission() });
+    const fetched = fetchStep({ source: descriptor.id, descriptor, procedures: source, started, ended, outcome, known: (id) => log.has(id), frame: state.steps.length, admit: admission(), ...(ages === undefined ? {} : { canaryAges: ages.ages(descriptor.id) }) });
     if (outcome.ok) waiting.set(descriptor.id, fetched.waiting);
+    // The age goes in after the judge, thus a check does not judge itself with its own age.
+    if (fetched.age !== undefined) ages?.note(descriptor.id, fetched.age, ended);
     // The readings go first. A failed write of the log leaves the observations new, thus the next fetch gives their readings
     // again, and the store keeps each key once.
     if (fetched.readings.length > 0) {

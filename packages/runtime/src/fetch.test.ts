@@ -177,3 +177,46 @@ describe("the report check of a fetch (AL-157)", () => {
     expect(fetchOf(step).problems).toEqual([{ path: "reports", message: "The reports of the map are not a list.", fatal: false, lossy: true }]);
   });
 });
+
+describe("the live limit of an age check (AL-207)", () => {
+  const MINUTE = 60_000;
+  const late: CanaryResult = { pass: false, reason: "the newest item is 65 minutes old", late: true, age: 65 * MINUTE, limit: 60 * MINUTE };
+  const stepOf = (check: NonNullable<SourceProcedures["check"]>, canaryAges?: readonly number[]) =>
+    fetchStep({
+      source: SOURCE,
+      procedures: { map: () => ({ reports: [], problems: [] }), check },
+      started: T0,
+      ended: T0 + 100,
+      outcome: { ok: true, observations: [observation], complete: true },
+      known: () => false,
+      ...(canaryAges === undefined ? {} : { canaryAges }),
+    });
+  const canaryOf = (step: ReturnType<typeof fetchStep>): CanaryResult | undefined => {
+    const fetch = step.events.at(-1);
+    if (fetch?.type !== "fetch") throw new Error("The last event is not the fetch event.");
+    return fetch.record.canary;
+  };
+
+  it("judges an age check with the live limit of the measured ages, and gives the age", () => {
+    // 368 ages: the bound is the largest age, 65 minutes.
+    const step = stepOf(() => late, [...Array.from({ length: 367 }, () => 20 * MINUTE), 65 * MINUTE]);
+    expect(canaryOf(step)).toMatchObject({ pass: true, age: 65 * MINUTE, limit: 65 * MINUTE });
+    expect(canaryOf(step)).not.toHaveProperty("late");
+    expect(step.age).toBe(65 * MINUTE);
+  });
+
+  it("keeps the hand limit without ages and with too few ages", () => {
+    expect(canaryOf(stepOf(() => late))).toEqual(late);
+    expect(canaryOf(stepOf(() => late, [70 * MINUTE]))).toEqual(late);
+    expect(stepOf(() => late).age).toBe(65 * MINUTE);
+  });
+
+  it("gives no age for a check with no age, and for a failed fetch", () => {
+    const plain: CanaryResult = { pass: false, reason: "the feed has no items" };
+    const step = stepOf(() => plain, Array.from({ length: 400 }, () => 20 * MINUTE));
+    expect(canaryOf(step)).toEqual(plain);
+    expect(step).not.toHaveProperty("age");
+    const failed = fetchStep({ source: SOURCE, procedures: { map: () => ({ reports: [], problems: [] }), check: () => late }, started: T0, ended: T0 + 100, outcome: { ok: false, failure: { kind: "timeout", message: "The fetch timed out." } }, known: () => false, canaryAges: [] });
+    expect(failed).not.toHaveProperty("age");
+  });
+});

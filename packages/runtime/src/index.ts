@@ -21,6 +21,7 @@ export * from "./exchange.ts";
 export * from "./exchange-http.ts";
 export * from "./heartbeat.ts";
 export { DELIVERY_TIMES, RANK_DELAY, RANK_FLOOR, SOURCE_POLICY, sourcePace } from "./instance.ts";
+export * from "./canary-ages.ts";
 export * from "./fetch.ts";
 export * from "./limit.ts";
 export * from "./log.ts";
