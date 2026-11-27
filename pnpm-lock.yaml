@@ -177,13 +177,13 @@ importers:
     devDependencies:
       '@mark1russell7/api-report':
         specifier: ^0.5.6
-        version: 0.5.20
+        version: 0.5.23
       '@mark1russell7/boundaries':
         specifier: ^0.3.2
-        version: 0.3.2(@swc/core@1.16.22)(dependency-cruiser@18.8.0)
+        version: 0.3.2(@swc/core@1.16.22)(dependency-cruiser@18.9.0)
       '@mark1russell7/conventions':
         specifier: ^0.52.0
-        version: 0.52.0
+        version: 0.52.8
       '@mark1russell7/cue':
         specifier: ^2.0.0
         version: 2.1.4
@@ -192,16 +192,16 @@ importers:
         version: 0.6.0
       '@mark1russell7/template-cli':
         specifier: ^0.1.7
-        version: 0.1.9
+        version: 0.1.10
       '@swc/core':
         specifier: ^1.15.0
         version: 1.16.22
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       dependency-cruiser:
         specifier: ^18.7.0
-        version: 18.8.0
+        version: 18.9.0
       publint:
         specifier: ^0.3.25
         version: 0.3.25
@@ -301,16 +301,59 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+
+  packages/channel-mesh:
+    dependencies:
+      '@mark1russell7/alerts':
+        specifier: workspace:*
+        version: link:../core
+      '@mark1russell7/algebra':
+        specifier: ^0.9.9
+        version: 0.9.12(zod@4.6.7)
+      '@mark1russell7/optional':
+        specifier: ^1.5.0
+        version: 1.5.1
+      '@mark1russell7/service':
+        specifier: ^0.12.4
+        version: 0.12.5(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
+      '@mark1russell7/text':
+        specifier: ^0.0.19
+        version: 0.0.19
+    devDependencies:
+      '@mark1russell7/cue':
+        specifier: ^2.0.0
+        version: 2.1.4
+      '@mark1russell7/rigor-chaos':
+        specifier: ^0.3.3
+        version: 0.3.5
+      '@mark1russell7/rigor-generators':
+        specifier: ^0.2.4
+        version: 0.2.7
+      '@types/node':
+        specifier: ^26.6.5
+        version: 26.6.10
+      '@vitest/coverage-v8':
+        specifier: ^5.0.3
+        version: 5.1.2(vitest@5.1.2)
+      fast-check:
+        specifier: ^4.10.2
+        version: 4.11.0
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.0.3
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/channel-pushover:
     dependencies:
@@ -322,7 +365,7 @@ importers:
         version: 0.0.18
       '@procedures/notify':
         specifier: ^0.68.0
-        version: 0.68.0(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@mark1russell7/rigor-testkit@0.1.20(@mark1russell7/rigor-chaos@0.3.3)(@mark1russell7/rigor-generators@0.2.4)(@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7))(@opentelemetry/api-logs@0.223.2)(@opentelemetry/api@1.10.0)(@opentelemetry/sdk-logs@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@3.1.1(@opentelemetry/api@1.10.0))(fast-check@4.11.0)(ltx@3.1.2))
+        version: 0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@mark1russell7/rigor-testkit@0.1.22(@mark1russell7/rigor-chaos@0.3.5)(@mark1russell7/rigor-generators@0.2.7)(@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7))(@opentelemetry/api-logs@0.223.2)(@opentelemetry/api@1.10.0)(@opentelemetry/sdk-logs@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@3.1.1(@opentelemetry/api@1.10.0))(fast-check@4.11.0)(ltx@3.1.2))
       polite-crawler:
         specifier: ^0.7.12
         version: 0.7.12(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
@@ -332,16 +375,16 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/channel-sounder:
     dependencies:
@@ -354,16 +397,16 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/channel-twilio:
     dependencies:
@@ -372,16 +415,16 @@ importers:
         version: link:../core
       '@mark1russell7/algebra':
         specifier: ^0.9.9
-        version: 0.9.9(zod@4.6.7)
+        version: 0.9.12(zod@4.6.7)
       '@mark1russell7/rigor-generators':
         specifier: ^0.2.4
-        version: 0.2.4
+        version: 0.2.7
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
       '@procedures/notify':
         specifier: ^0.68.0
-        version: 0.68.0(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@mark1russell7/rigor-testkit@0.1.20(@mark1russell7/rigor-chaos@0.3.3)(@mark1russell7/rigor-generators@0.2.4)(@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7))(@opentelemetry/api-logs@0.223.2)(@opentelemetry/api@1.10.0)(@opentelemetry/sdk-logs@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@3.1.1(@opentelemetry/api@1.10.0))(fast-check@4.11.0)(ltx@3.1.2))
+        version: 0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@mark1russell7/rigor-testkit@0.1.22(@mark1russell7/rigor-chaos@0.3.5)(@mark1russell7/rigor-generators@0.2.7)(@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7))(@opentelemetry/api-logs@0.223.2)(@opentelemetry/api@1.10.0)(@opentelemetry/sdk-logs@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@3.1.1(@opentelemetry/api@1.10.0))(fast-check@4.11.0)(ltx@3.1.2))
       esbuild:
         specifier: ^0.28.2
         version: 0.28.2
@@ -400,16 +443,16 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/channel-webhook:
     dependencies:
@@ -418,53 +461,53 @@ importers:
         version: link:../core
       '@procedures/notify':
         specifier: ^0.68.0
-        version: 0.68.0(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@mark1russell7/rigor-testkit@0.1.20(@mark1russell7/rigor-chaos@0.3.3)(@mark1russell7/rigor-generators@0.2.4)(@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7))(@opentelemetry/api-logs@0.223.2)(@opentelemetry/api@1.10.0)(@opentelemetry/sdk-logs@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@3.1.1(@opentelemetry/api@1.10.0))(fast-check@4.11.0)(ltx@3.1.2))
+        version: 0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@mark1russell7/rigor-testkit@0.1.22(@mark1russell7/rigor-chaos@0.3.5)(@mark1russell7/rigor-generators@0.2.7)(@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7))(@opentelemetry/api-logs@0.223.2)(@opentelemetry/api@1.10.0)(@opentelemetry/sdk-logs@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@3.1.1(@opentelemetry/api@1.10.0))(fast-check@4.11.0)(ltx@3.1.2))
     devDependencies:
       '@mark1russell7/cue':
         specifier: ^2.0.0
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/core:
     dependencies:
       '@mark1russell7/algebra':
         specifier: ^0.9.9
-        version: 0.9.9(zod@4.6.7)
+        version: 0.9.12(zod@4.6.7)
       '@mark1russell7/collections':
         specifier: ^0.11.2
-        version: 0.11.2(zod@4.6.7)
+        version: 0.11.6(zod@4.6.7)
       '@mark1russell7/geo':
-        specifier: ^0.5.3
-        version: 0.5.13
+        specifier: ^0.5.18
+        version: 0.5.19
       '@mark1russell7/interval':
         specifier: ^0.1.0
         version: 0.1.0
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@mark1russell7/package-id':
         specifier: ^0.1.3
         version: 0.1.3
       '@mark1russell7/quantity':
         specifier: ^0.4.3
-        version: 0.4.3(zod@4.6.7)
+        version: 0.4.8(zod@4.6.7)
       '@mark1russell7/rigor-generators':
         specifier: ^0.2.4
-        version: 0.2.4
+        version: 0.2.7
       '@mark1russell7/rigor-statistics':
         specifier: ^0.2.21
-        version: 0.2.21
+        version: 0.2.32
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
@@ -480,10 +523,10 @@ importers:
         version: 0.1.3
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       tsdown:
         specifier: ^0.23.1
         version: 0.23.7(publint@0.3.25)(tsx@4.23.15)(typescript@7.0.2)
@@ -492,7 +535,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/fetch:
     dependencies:
@@ -511,16 +554,16 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/format-cap:
     dependencies:
@@ -532,7 +575,7 @@ importers:
         version: link:../format-nws
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@nodable/entities':
         specifier: ^3.1.0
         version: 3.1.0
@@ -545,10 +588,10 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -557,7 +600,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/format-datex:
     dependencies:
@@ -566,7 +609,7 @@ importers:
         version: link:../format-cap
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@nodable/entities':
         specifier: ^3.1.0
         version: 3.1.0
@@ -579,10 +622,10 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -591,7 +634,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/format-nws:
     dependencies:
@@ -604,13 +647,13 @@ importers:
         version: 2.1.4
       '@mark1russell7/rigor-generators':
         specifier: ^0.2.4
-        version: 0.2.4
+        version: 0.2.7
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -619,7 +662,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/quake:
     dependencies:
@@ -632,10 +675,10 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -644,7 +687,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/rates:
     dependencies:
@@ -659,16 +702,16 @@ importers:
         version: link:../format-nws
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@mark1russell7/rigor-statistics':
         specifier: ^0.2.8
-        version: 0.2.8
+        version: 0.2.32
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
       '@procedures/json':
         specifier: ^0.68.0
-        version: 0.68.0(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
+        version: 0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
     devDependencies:
       '@mark1russell7/alerts-fetch':
         specifier: workspace:*
@@ -678,10 +721,10 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       polite-crawler:
         specifier: ^0.7.12
         version: 0.7.12(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
@@ -690,7 +733,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/runtime:
     dependencies:
@@ -798,52 +841,52 @@ importers:
         version: link:../source-usgs
       '@mark1russell7/algebra':
         specifier: ^0.9.9
-        version: 0.9.9(zod@4.6.7)
+        version: 0.9.12(zod@4.6.7)
       '@mark1russell7/files':
         specifier: ^0.0.6
         version: 0.0.6
       '@mark1russell7/lag':
         specifier: ^0.5.4
-        version: 0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)))
+        version: 0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)))
       '@mark1russell7/market':
         specifier: ^0.11.1
-        version: 0.11.1
+        version: 0.11.8
       '@mark1russell7/market-sources':
         specifier: ^0.5.8
-        version: 0.5.8(@opentelemetry/api@1.10.0)(ws@8.23.0)
+        version: 0.5.11(@opentelemetry/api@1.10.0)(ws@8.23.0)
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@mark1russell7/otel-ts':
         specifier: ^0.8.5
-        version: 0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3)
+        version: 0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3)
       '@mark1russell7/quantity':
         specifier: ^0.4.3
-        version: 0.4.3(zod@4.6.7)
+        version: 0.4.8(zod@4.6.7)
       '@mark1russell7/rigor-generators':
         specifier: ^0.2.4
-        version: 0.2.4
+        version: 0.2.7
       '@mark1russell7/rigor-statistics':
         specifier: ^0.2.30
-        version: 0.2.30
+        version: 0.2.32
       '@mark1russell7/service':
-        specifier: ^0.12.4
-        version: 0.12.4(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
+        specifier: ^0.12.5
+        version: 0.12.5(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
       '@mark1russell7/sqlite':
         specifier: ^0.7.0
-        version: 0.7.0
+        version: 0.7.1
       '@mark1russell7/stack-placement':
         specifier: ^0.1.3
-        version: 0.1.3
+        version: 0.1.10
       '@mark1russell7/stack-risk':
         specifier: ^0.2.5
-        version: 0.2.6
+        version: 0.2.11
       '@mark1russell7/stack-spend':
         specifier: ^0.1.12
-        version: 0.1.12
+        version: 0.1.22
       '@mark1russell7/system-stack':
         specifier: ^0.1.8
-        version: 0.1.8
+        version: 0.1.15
       '@mark1russell7/text':
         specifier: ^0.0.19
         version: 0.0.19
@@ -852,19 +895,19 @@ importers:
         version: 1.10.0
       '@procedures/client':
         specifier: ^0.68.12
-        version: 0.68.12(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
+        version: 0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
       '@procedures/fs':
         specifier: ^0.68.0
-        version: 0.68.0(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
+        version: 0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
       '@procedures/gh':
         specifier: ^0.68.1
-        version: 0.68.1(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)
+        version: 0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)
       '@procedures/peer':
         specifier: ^0.68.12
-        version: 0.68.12(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@mark1russell7/service@0.12.4(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7))
+        version: 0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@mark1russell7/service@0.12.5(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7))
       '@procedures/shell':
         specifier: ^0.68.0
-        version: 0.68.0(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
+        version: 0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
       polite-crawler:
         specifier: ^0.7.12
         version: 0.7.12(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
@@ -877,7 +920,7 @@ importers:
         version: 2.1.4
       '@mark1russell7/rigor-testkit':
         specifier: ^0.2.0
-        version: 0.2.0(@mark1russell7/rigor-chaos@0.3.3)(@mark1russell7/rigor-generators@0.2.4)(@opentelemetry/api-logs@0.223.0)(@opentelemetry/api@1.10.0)(@opentelemetry/sdk-logs@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-trace@3.1.1(@opentelemetry/api@1.10.0))(fast-check@4.11.0)(ltx@3.1.2)
+        version: 0.2.1(@mark1russell7/rigor-chaos@0.3.5)(@mark1russell7/rigor-generators@0.2.7)(@opentelemetry/api-logs@0.223.0)(@opentelemetry/api@1.10.0)(@opentelemetry/sdk-logs@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-trace@3.1.1(@opentelemetry/api@1.10.0))(fast-check@4.11.0)(ltx@3.1.2)
       '@opentelemetry/api-logs':
         specifier: ^0.223.0
         version: 0.223.0
@@ -892,10 +935,10 @@ importers:
         version: 3.1.1(@opentelemetry/api@1.10.0)
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -904,7 +947,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/shapes-nws:
     dependencies:
@@ -922,13 +965,13 @@ importers:
         version: link:../source-nws-api
       '@mark1russell7/geo':
         specifier: ^0.5.3
-        version: 0.5.13
+        version: 0.5.19
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@mark1russell7/sqlite':
         specifier: ^0.7.0
-        version: 0.7.0
+        version: 0.7.1
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
@@ -941,10 +984,10 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -953,7 +996,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/site:
     devDependencies:
@@ -968,34 +1011,34 @@ importers:
         version: 2.1.4
       '@mark1russell7/geo':
         specifier: ^0.5.2
-        version: 0.5.13
+        version: 0.5.19
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@mark1russell7/otel-ts':
-        specifier: ^0.9.1
-        version: 0.9.1(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3)
+        specifier: ^0.10.2
+        version: 0.10.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3)
       '@mark1russell7/site-pages':
         specifier: ^0.8.0
-        version: 0.8.4
+        version: 0.8.7
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
       '@mark1russell7/visuals':
         specifier: ^0.4.0
-        version: 0.4.0(three@0.187.0)
+        version: 0.4.1(three@0.187.0)
       '@types/d3-geo':
         specifier: ^3.1.1
         version: 3.1.1
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@types/three':
         specifier: ^0.187.0
         version: 0.187.0
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       d3-geo:
         specifier: ^3.1.1
         version: 3.1.2
@@ -1007,10 +1050,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: ^8.3.8
-        version: 8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)
+        version: 8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-aws:
     dependencies:
@@ -1025,7 +1068,7 @@ importers:
         version: link:../format-cap
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
@@ -1038,10 +1081,10 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -1050,7 +1093,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-azure:
     dependencies:
@@ -1065,7 +1108,7 @@ importers:
         version: link:../format-cap
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@mark1russell7/text':
         specifier: ^0.0.20
         version: 0.0.20
@@ -1078,16 +1121,16 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-bom-sws:
     dependencies:
@@ -1102,7 +1145,7 @@ importers:
         version: link:../space-weather
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
@@ -1115,10 +1158,10 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -1127,7 +1170,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-cap-feed:
     dependencies:
@@ -1152,10 +1195,10 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -1164,7 +1207,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-cert-feeds:
     dependencies:
@@ -1179,7 +1222,7 @@ importers:
         version: link:../format-cap
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@mark1russell7/text':
         specifier: ^0.0.20
         version: 0.0.20
@@ -1192,16 +1235,16 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-cisa-kev:
     dependencies:
@@ -1213,7 +1256,7 @@ importers:
         version: link:../fetch
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
@@ -1226,10 +1269,10 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -1238,7 +1281,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-cloudflare-radar:
     dependencies:
@@ -1259,7 +1302,7 @@ importers:
         version: link:../source-gcp
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
@@ -1272,16 +1315,16 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-csaf:
     dependencies:
@@ -1293,7 +1336,7 @@ importers:
         version: link:../fetch
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@mark1russell7/package-id':
         specifier: ^0.1.3
         version: 0.1.3
@@ -1309,16 +1352,16 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-digitraffic-rail:
     dependencies:
@@ -1330,10 +1373,10 @@ importers:
         version: link:../fetch
       '@mark1russell7/algebra':
         specifier: ^0.9.9
-        version: 0.9.9(zod@4.6.7)
+        version: 0.9.12(zod@4.6.7)
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
@@ -1346,16 +1389,16 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-eia-930:
     dependencies:
@@ -1380,13 +1423,13 @@ importers:
         version: 2.1.4
       '@mark1russell7/quantity':
         specifier: ^0.4.3
-        version: 0.4.3(zod@4.6.7)
+        version: 0.4.8(zod@4.6.7)
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -1395,7 +1438,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-emsc:
     dependencies:
@@ -1410,7 +1453,7 @@ importers:
         version: link:../quake
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
@@ -1426,10 +1469,10 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -1438,7 +1481,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-energy-charts:
     dependencies:
@@ -1450,7 +1493,7 @@ importers:
         version: link:../fetch
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
@@ -1463,13 +1506,13 @@ importers:
         version: 2.1.4
       '@mark1russell7/quantity':
         specifier: ^0.4.3
-        version: 0.4.3(zod@4.6.7)
+        version: 0.4.8(zod@4.6.7)
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -1478,7 +1521,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-faa:
     dependencies:
@@ -1490,7 +1533,7 @@ importers:
         version: link:../fetch
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
@@ -1503,16 +1546,16 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-firms:
     dependencies:
@@ -1564,7 +1607,7 @@ importers:
         version: link:../fetch
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
@@ -1577,10 +1620,10 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -1589,7 +1632,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-gdelt:
     dependencies:
@@ -1604,7 +1647,7 @@ importers:
         version: 0.0.6
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
@@ -1617,10 +1660,10 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -1629,7 +1672,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-gfz:
     dependencies:
@@ -1644,7 +1687,7 @@ importers:
         version: link:../space-weather
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
@@ -1660,10 +1703,10 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -1672,7 +1715,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-gtfs-alerts:
     dependencies:
@@ -1684,13 +1727,13 @@ importers:
         version: link:../fetch
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
       '@procedures/json':
         specifier: ^0.68.0
-        version: 0.68.0(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
+        version: 0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
       polite-crawler:
         specifier: ^0.7.12
         version: 0.7.12(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
@@ -1703,10 +1746,10 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -1715,7 +1758,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-iem:
     dependencies:
@@ -1746,19 +1789,19 @@ importers:
         version: link:../source-nws-api
       '@mark1russell7/algebra':
         specifier: ^0.9.9
-        version: 0.9.9(zod@4.6.7)
+        version: 0.9.12(zod@4.6.7)
       '@mark1russell7/cue':
         specifier: ^2.0.0
         version: 2.1.4
       '@mark1russell7/rigor-statistics':
         specifier: ^0.2.1
-        version: 0.2.1
+        version: 0.2.32
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -1767,7 +1810,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-ipaws:
     dependencies:
@@ -1798,10 +1841,10 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -1810,7 +1853,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-ndw:
     dependencies:
@@ -1825,10 +1868,10 @@ importers:
         version: link:../format-datex
       '@mark1russell7/geo':
         specifier: ^0.5.15
-        version: 0.5.15
+        version: 0.5.19
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@mark1russell7/text':
         specifier: ^0.0.17
         version: 0.0.17
@@ -1841,10 +1884,10 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -1853,7 +1896,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-nwr:
     dependencies:
@@ -1865,29 +1908,29 @@ importers:
         version: link:../format-nws
       '@mark1russell7/algebra':
         specifier: ^0.9.9
-        version: 0.9.11(zod@4.6.7)
+        version: 0.9.12(zod@4.6.7)
       '@mark1russell7/service':
         specifier: ^0.12.4
-        version: 0.12.4(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
+        version: 0.12.5(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
       '@procedures/shell':
         specifier: ^0.68.12
-        version: 0.68.12(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
+        version: 0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
     devDependencies:
       '@mark1russell7/cue':
         specifier: ^2.0.0
         version: 2.1.4
       '@mark1russell7/rigor-generators':
         specifier: ^0.2.4
-        version: 0.2.4
+        version: 0.2.7
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -1896,7 +1939,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-nws-api:
     dependencies:
@@ -1914,7 +1957,7 @@ importers:
         version: link:../format-nws
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
@@ -1927,10 +1970,10 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -1939,7 +1982,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-nwws:
     dependencies:
@@ -1954,10 +1997,10 @@ importers:
         version: link:../format-nws
       '@mark1russell7/algebra':
         specifier: ^0.9.9
-        version: 0.9.9(zod@4.6.7)
+        version: 0.9.12(zod@4.6.7)
       '@mark1russell7/service':
         specifier: ^0.12.4
-        version: 0.12.4(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
+        version: 0.12.5(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
@@ -1973,13 +2016,13 @@ importers:
         version: 2.1.4
       '@mark1russell7/rigor-testkit':
         specifier: ^0.1.20
-        version: 0.1.20(@mark1russell7/rigor-chaos@0.3.3)(@mark1russell7/rigor-generators@0.1.19)(@opentelemetry/api-logs@0.223.2)(@opentelemetry/api@1.10.0)(@opentelemetry/sdk-logs@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@3.1.1(@opentelemetry/api@1.10.0))(fast-check@4.11.0)(ltx@3.1.2)
+        version: 0.1.22(@mark1russell7/rigor-chaos@0.3.5)(@mark1russell7/rigor-generators@0.2.7)(@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7))(@opentelemetry/api-logs@0.223.2)(@opentelemetry/api@1.10.0)(@opentelemetry/sdk-logs@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@3.1.1(@opentelemetry/api@1.10.0))(fast-check@4.11.0)(ltx@3.1.2)
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -1991,7 +2034,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-osv:
     dependencies:
@@ -2003,7 +2046,7 @@ importers:
         version: link:../fetch
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@mark1russell7/package-id':
         specifier: ^0.1.3
         version: 0.1.3
@@ -2019,16 +2062,16 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-statuspage:
     dependencies:
@@ -2043,7 +2086,7 @@ importers:
         version: link:../format-cap
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@mark1russell7/text':
         specifier: ^0.0.20
         version: 0.0.20
@@ -2056,10 +2099,10 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -2068,7 +2111,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-swpc:
     dependencies:
@@ -2086,7 +2129,7 @@ importers:
         version: link:../space-weather
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
@@ -2099,10 +2142,10 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -2111,7 +2154,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-tsunami:
     dependencies:
@@ -2139,10 +2182,10 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -2151,7 +2194,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/source-usgs:
     dependencies:
@@ -2166,10 +2209,10 @@ importers:
         version: link:../quake
       '@mark1russell7/geo':
         specifier: ^0.5.15
-        version: 0.5.15
+        version: 0.5.19
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
@@ -2182,10 +2225,10 @@ importers:
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -2194,7 +2237,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/space-weather:
     dependencies:
@@ -2203,17 +2246,17 @@ importers:
         version: link:../core
       '@mark1russell7/geo':
         specifier: ^0.5.3
-        version: 0.5.13
+        version: 0.5.19
     devDependencies:
       '@mark1russell7/cue':
         specifier: ^2.0.0
         version: 2.1.4
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       fast-check:
         specifier: ^4.10.2
         version: 4.11.0
@@ -2222,7 +2265,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/testkit:
     dependencies:
@@ -2264,40 +2307,40 @@ importers:
         version: link:../source-nwws
       '@mark1russell7/algebra':
         specifier: ^0.9.9
-        version: 0.9.9(zod@4.6.7)
+        version: 0.9.12(zod@4.6.7)
       '@mark1russell7/files':
         specifier: ^0.0.6
         version: 0.0.6
       '@mark1russell7/lag':
         specifier: ^0.5.4
-        version: 0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)))
+        version: 0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)))
       '@mark1russell7/optional':
         specifier: ^1.5.0
-        version: 1.5.0
+        version: 1.5.1
       '@mark1russell7/otel-ts':
         specifier: ^0.8.5
-        version: 0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3)
+        version: 0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3)
       '@mark1russell7/quantity':
         specifier: ^0.4.3
-        version: 0.4.3(zod@4.6.7)
+        version: 0.4.8(zod@4.6.7)
       '@mark1russell7/rigor-chaos':
         specifier: ^0.3.3
-        version: 0.3.3
+        version: 0.3.5
       '@mark1russell7/rigor-generators':
         specifier: ^0.2.4
-        version: 0.2.4
+        version: 0.2.7
       '@mark1russell7/rigor-proxy':
         specifier: ^0.3.2
         version: 0.3.2(zod@4.6.7)
       '@mark1russell7/rigor-testkit':
         specifier: ^0.1.20
-        version: 0.1.20(@mark1russell7/rigor-chaos@0.3.3)(@mark1russell7/rigor-generators@0.2.4)(@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7))(@opentelemetry/api-logs@0.223.2)(@opentelemetry/api@1.10.0)(@opentelemetry/sdk-logs@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@3.1.1(@opentelemetry/api@1.10.0))(fast-check@4.11.0)(ltx@3.1.2)
+        version: 0.1.22(@mark1russell7/rigor-chaos@0.3.5)(@mark1russell7/rigor-generators@0.2.7)(@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7))(@opentelemetry/api-logs@0.223.2)(@opentelemetry/api@1.10.0)(@opentelemetry/sdk-logs@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@3.1.1(@opentelemetry/api@1.10.0))(fast-check@4.11.0)(ltx@3.1.2)
       '@mark1russell7/service':
         specifier: ^0.12.4
-        version: 0.12.4(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
+        version: 0.12.5(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
       '@mark1russell7/sqlite':
         specifier: ^0.7.0
-        version: 0.7.0
+        version: 0.7.1
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
@@ -2306,10 +2349,10 @@ importers:
         version: 3.1.1(@opentelemetry/api@1.10.0)
       '@procedures/json':
         specifier: ^0.68.0
-        version: 0.68.0(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
+        version: 0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
       '@procedures/notify':
         specifier: ^0.68.0
-        version: 0.68.0(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@mark1russell7/rigor-testkit@0.1.20(@mark1russell7/rigor-chaos@0.3.3)(@mark1russell7/rigor-generators@0.2.4)(@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7))(@opentelemetry/api-logs@0.223.2)(@opentelemetry/api@1.10.0)(@opentelemetry/sdk-logs@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@3.1.1(@opentelemetry/api@1.10.0))(fast-check@4.11.0)(ltx@3.1.2))
+        version: 0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@mark1russell7/rigor-testkit@0.1.22(@mark1russell7/rigor-chaos@0.3.5)(@mark1russell7/rigor-generators@0.2.7)(@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7))(@opentelemetry/api-logs@0.223.2)(@opentelemetry/api@1.10.0)(@opentelemetry/sdk-logs@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@3.1.1(@opentelemetry/api@1.10.0))(fast-check@4.11.0)(ltx@3.1.2))
       ltx:
         specifier: ^3.1.2
         version: 3.1.2
@@ -2322,19 +2365,22 @@ importers:
         version: 2.1.4
       '@mark1russell7/rigor-bench':
         specifier: ^0.3.2
-        version: 0.3.2(esbuild@0.28.2)
+        version: 0.3.12(esbuild@0.28.2)
+      '@mark1russell7/rigor-statistics':
+        specifier: ^0.2.30
+        version: 0.2.32
       '@types/node':
         specifier: ^26.6.5
-        version: 26.6.6
+        version: 26.6.10
       '@vitest/coverage-v8':
         specifier: ^5.0.3
-        version: 5.1.1(vitest@5.1.1)
+        version: 5.1.2(vitest@5.1.2)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+        version: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
 packages:
 
@@ -2382,8 +2428,8 @@ packages:
     peerDependencies:
       '@babel/core': ^8.0.0
 
-  '@babel/helper-string-parser@7.29.14':
-    resolution: {integrity: sha512-CXvKMFvM80ihI7Vox9jb+kQjnyjESQNPM+vB7U0Zz6TWuZA+Z/FL0QPMH300h33qJtIx+REeBhXqWOPW48TcAQ==}
+  '@babel/helper-string-parser@7.29.15':
+    resolution: {integrity: sha512-C2FuapQ2Kh1OnVHAoLi5rD3GBJ8COb9Q609T6HEpLqaBAo560PDP5OxBE5dCI/h951MBO/+bCUYU5SZ+8ZlV+w==}
     engines: {node: '>=6.9.0'}
 
   '@babel/helper-string-parser@8.1.3':
@@ -2410,8 +2456,8 @@ packages:
     resolution: {integrity: sha512-s5s0hMqsgSVikMuK7XHFDlIJvZp5CdAFpJcgNF5b/6oRvVCS8n779zsJVQuwtUUu75/nCYceKvi+K2FDKcogXg==}
     engines: {node: ^22.18.0 || >=24.11.0}
 
-  '@babel/parser@7.29.14':
-    resolution: {integrity: sha512-VL220vXuyO2z3rNIQwY7ftj9UwpqOt+33sH+sBWkOekbsSR2g7EEMnOx24ZlCH0xOA3DM/33SifVFGbnJD8r/w==}
+  '@babel/parser@7.29.15':
+    resolution: {integrity: sha512-RpKWyisHoP81twtSCgmE02iU0RnPcq1DN5bBEbpUePrjA9Q3wXhufnCJrrayPpoZieqFh3zyZQqwtSK0gGccRA==}
     engines: {node: '>=6.0.0'}
     hasBin: true
 
@@ -2452,8 +2498,8 @@ packages:
     resolution: {integrity: sha512-Mil7E37zLel1sjGwcgAF0wn8tbTJp3LLVMb0fqgDxWJJm52NXBv3MJaqmNOp76qzInY/0uDH3rSZfl3BqCjHiw==}
     engines: {node: ^22.18.0 || >=24.11.0}
 
-  '@babel/types@7.29.14':
-    resolution: {integrity: sha512-UjI/dKmwJwT9pOszJitq2G6EObZPnsZUfdCr92z2TlF3EZK9J3EdfOKUrCzHl6wFthbzwhzl1Soc/UIwxRiq6w==}
+  '@babel/types@7.29.15':
+    resolution: {integrity: sha512-/XKpKDakL//LZ66bq1XsZOswuqeI5MZqPLDu18o3XdkU1fNJ7bdPtzgnc4ZNS+bBGHV0FJG8jjb8SwcC3nNVQQ==}
     engines: {node: '>=6.9.0'}
 
   '@babel/types@8.1.3':
@@ -2643,11 +2689,11 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@grafana/faro-core@2.14.0':
-    resolution: {integrity: sha512-U1dydD2pQa3sgnaoGQsmsDoecef2S90Y6kVYyhdXjaSg8+bzJWwW5mGtO+7V15PjZSKA4tdXGKRHa1RGGJPY8Q==}
+  '@grafana/faro-core@2.15.0':
+    resolution: {integrity: sha512-kya8i2FHCKT7oVoh42KY5zUYZmeyPpmAJ5dfAwbv0YYzgakTytPkXD+zYCx17A8LHysQZzl5mz81zsgtDjufUw==}
 
-  '@grafana/faro-web-sdk@2.14.0':
-    resolution: {integrity: sha512-ZZu5GmNvx+2pA+ma8dMER7GiJ/UVbI5qXWV5rK5ms6uK6hrh2xXKNETp9s1R+U/yVfHlo7n/ArtjQB/8/8noTw==}
+  '@grafana/faro-web-sdk@2.15.0':
+    resolution: {integrity: sha512-d9xMaHUCoqZ2rwFd6emFxmz7Vdw1fJPhdbEoz4pke2m2eGG8dd6acqQBCA+rPAtVfOI39/GlwGXNR1fhgE1+6w==}
 
   '@jridgewell/gen-mapping@0.4.0-beta.0':
     resolution: {integrity: sha512-JdGNkbE4GlNPYQhM0L95fBQr7ctLZJ276QXQLTad4t1oSdnnCI3fDq9DW3BqYAWv8Wc3+HS+4Gsii1oPMCfz1w==}
@@ -2671,15 +2717,6 @@ packages:
       zod:
         optional: true
 
-  '@mark1russell7/algebra@0.9.11':
-    resolution: {integrity: sha512-zaaSfjiUu+5fnwfQeJg3LusRc/1oumZ7ofQhH+3v+rjHKP5xxYb6xGAA76P8gRVEbFTyzQOzpIOCvOJe74NyxQ==}
-    engines: {node: '>=22.19'}
-    peerDependencies:
-      zod: ^4.1.0
-    peerDependenciesMeta:
-      zod:
-        optional: true
-
   '@mark1russell7/algebra@0.9.12':
     resolution: {integrity: sha512-UDsDKAfvyRj/0IwI1N2dOzH5E6SgjXWbRiomuH3bWMDbENlgFOROvu+78RVQJgv2y5VZPNjS2ccfiCGjMyVpSQ==}
     engines: {node: '>=22.19'}
@@ -2689,17 +2726,8 @@ packages:
       zod:
         optional: true
 
-  '@mark1russell7/algebra@0.9.9':
-    resolution: {integrity: sha512-OV6ntCDh5eW9jbuwVixMjBv2OL8bTiVGm4f3TxqN4FlepfEd7hAoNLE03mvYYV7sdChL/pYz4HOOfEejgFwU3Q==}
-    engines: {node: '>=22.19'}
-    peerDependencies:
-      zod: ^4.1.0
-    peerDependenciesMeta:
-      zod:
-        optional: true
-
-  '@mark1russell7/api-report@0.5.20':
-    resolution: {integrity: sha512-4F8BCWeZ8NQMAdh36MAIvn58wzSlsUdhAY4j2KuyejMtl2x1xkH9FWPKIa5d6krkMnvZyZIktgHuSuV27uUixQ==}
+  '@mark1russell7/api-report@0.5.23':
+    resolution: {integrity: sha512-1iBcuSmTtbQteJVLZ6nZ7/2cJWsbzEpnwUZ0Pk4H3TtoX9DV5bJYNPVy9BXxyKFBVUMzqNQoohoaCaA8n5D+Ug==}
     engines: {node: '>=22'}
     hasBin: true
 
@@ -2715,25 +2743,31 @@ packages:
       dependency-cruiser:
         optional: true
 
+  '@mark1russell7/code-shape@0.0.1':
+    resolution: {integrity: sha512-qunnV1QThYsI0rXeOFRgaXpZFFw+ZLLnIG0jYioql5WiYrqCPe+eROgLn4l/cRegXU3Y1t4OEnUfW6izovteFA==}
+    engines: {node: '>=22.13'}
+
   '@mark1russell7/coeval@0.34.0':
     resolution: {integrity: sha512-RBffEYCcXuHYuEWUzQw6ebrT86aCsfp3SGvUiKlZ/cfZE7RVNbWLITtUtnPDorD+radOYxDZNSo3kS1LsqBfkg==}
 
-  '@mark1russell7/coeval@0.38.1':
-    resolution: {integrity: sha512-e8hythmLZevMmTj7WNDBjK5shuGfgFFZcVMto89hEsTgS3vCrkC8GNOGS1zzFqcpBulkYJQ6eu+xpyxaiwjryA==}
-
-  '@mark1russell7/coeval@0.38.2':
-    resolution: {integrity: sha512-UAfZPmB0c+RrwKZVuuXtwsL+cdl2T6VFS4U0WRw8chsOwZYswljwbOM4jJzQ0FOVdfFsF8VFEq7kmD7LV0uqBA==}
+  '@mark1russell7/coeval@0.38.3':
+    resolution: {integrity: sha512-m81ApYCVR2FPxQ1rdfHYOvLyL+rfgE3HpIVVUfj3pqJKGRTr52MaUQV0jEzLRecNSsM3CRz3v4xI775g0fV6+Q==}
 
   '@mark1russell7/collections@0.10.2':
     resolution: {integrity: sha512-uOqrK6ZYqgbG8DLchTU2FO8DcNeeeLbNAqR8E3YTe/HKK3rk4ZpR0M0GlYG/7ApiWfrFkVhW1rCF6opaeiL16g==}
     engines: {node: '>=22.12'}
 
-  '@mark1russell7/collections@0.11.2':
-    resolution: {integrity: sha512-6JXrfvg2vMGITbc11C3POvDwbbCU7PMkFWSYdYjshJj5o0LSAMnpPsVSQySfA5G4mdYeAdJ/VfN5Yc3foJkdCQ==}
+  '@mark1russell7/collections@0.11.6':
+    resolution: {integrity: sha512-7vYnlTkNTuPia5GXimxVildlFreRrbpZBqNEq92sNzd9e4pNRQ1r+BbAAH8x/uLzBLA3nr5oNJNp64tDs5zA8A==}
     engines: {node: '>=22.12'}
 
-  '@mark1russell7/conventions@0.52.0':
-    resolution: {integrity: sha512-jxqFxbMf8dtahUyqYLSjxcHJ4wxMjmAPlODfnzxA3884PqG+WjpuLXjh1nZaRKdmVMIqRBhvNX+m7tL1hwSEvw==}
+  '@mark1russell7/conventions@0.52.8':
+    resolution: {integrity: sha512-5LO7USK9u46LM/EE4pppMCSMepB8aszEyNNPUavXb4RIcE7nDgJTpZ4i9hzLhlXIh3iZykMUDisu6xJUp70vow==}
+    engines: {node: '>=22'}
+    hasBin: true
+
+  '@mark1russell7/conventions@0.55.0':
+    resolution: {integrity: sha512-uyZtnGFWm2f61k9y7nTmT6oKzlE6YsbY2WTTMySiTAmnN159zJ+j9pOWAumvc2Mwv/yPrLt9KN+DXfwhS66zHw==}
     engines: {node: '>=22'}
     hasBin: true
 
@@ -2754,12 +2788,8 @@ packages:
     resolution: {integrity: sha512-VLsy9pwIP1LuDEOkzVpUKU/SOTw+/d3F/IYjSp0Fj+Cqfl440Qs/ad5islvClQEKPNmiDp5Zs+VraNO2QQ/MkQ==}
     engines: {node: '>=22'}
 
-  '@mark1russell7/geo@0.5.13':
-    resolution: {integrity: sha512-Z5FIUCzFSGS6GB6iSvZmfzJshpKPpOoteXxPQSDpcfVDa+XYJ2dJwaz+Zq1SrCO8VyBJX4oa4dNVSr5nO2EC2Q==}
-    engines: {node: '>=22.12'}
-
-  '@mark1russell7/geo@0.5.15':
-    resolution: {integrity: sha512-Lc2gRjjsgGoj9Wp+o3lvBBU2bDI8b5+nCMSFwWziNU4+RKahkWNtLybhQ+oE6cUm4t61dUOq9BJNeGOkE6wOaQ==}
+  '@mark1russell7/geo@0.5.19':
+    resolution: {integrity: sha512-FYY9jzeuvMjBjDrLIkzhmIXlWnj/1KpGIdzEedEYJlI4G1T+rDct1BNA680egTJFtcF7olTCXwP0Th0QaiHGhw==}
     engines: {node: '>=22.12'}
 
   '@mark1russell7/guidebook@0.5.2':
@@ -2781,24 +2811,28 @@ packages:
       async-browser-context:
         optional: true
 
-  '@mark1russell7/layout-contract@0.11.1':
-    resolution: {integrity: sha512-1ERbIJoHmYNBWg4Wdv1Nxseec/FuKO+YU8yHJ87U4NpbVNBK6ffngMufjTVTZ0NmpwgcSJkv3TdpPHawVWHiiQ==}
+  '@mark1russell7/layout-contract@0.11.5':
+    resolution: {integrity: sha512-wxn1W6ibbSaIFyGnRXTfNi/X8lci8fCUj245Dk2F0JXUfO58OCSbwa0So7yZNEb2AX4UyLionmqDh3eZHhvlcA==}
     engines: {node: '>=22.12'}
 
-  '@mark1russell7/market-sources@0.5.8':
-    resolution: {integrity: sha512-ezhT7XqtL36xh8yBPIYkL0tZO66jrwf5p6CcYRQZ4Rd9G2tvUU4NVGrbVUX4jITlK5qmikAx0pYUF5eXhrStUQ==}
+  '@mark1russell7/market-sources@0.5.11':
+    resolution: {integrity: sha512-KVcivokzBvnGpxpx2HX1OX3vFD7sxuQncDQ+VKEXRqPb1tMnIDsDsBmBKXhLFF7jcGpe39zlEjAuOYYMg9BfnQ==}
     engines: {node: '>=22'}
 
-  '@mark1russell7/market@0.11.1':
-    resolution: {integrity: sha512-BEXQZAtcAwe92xcj1lW/YxfAxFbGN0nxhI21OOlR7ya7BqpvId02+jGS19a8gwm5oWDBAKprpcJgv7GCnjLqgA==}
+  '@mark1russell7/market@0.11.2':
+    resolution: {integrity: sha512-jlEr5lJ3k9Pua4EWQFnWVYruEHpNoiaK7PNNyuUG6sk4VP2XXv/SPYAq5bPYrLtwAPQin6fpyZFB0LeAB075Nw==}
     engines: {node: '>=22'}
 
-  '@mark1russell7/optional@1.5.0':
-    resolution: {integrity: sha512-QpVjyHD/1JYriLVVJr4P6QpDJJN9q2BiM6CFu0q1hnyEEaH5RlrIMQSsrsKKzyED29VnT08xmliR65WbTkNTFw==}
+  '@mark1russell7/market@0.11.8':
+    resolution: {integrity: sha512-tFgAzAXi4jfs6yZ5Gc+x0dI3t/IlWR7EtYDvqJD/xGIUnA0xDJLzvEf2Q/P6PMxRIESDuFsko6kPhK9VFUw25A==}
+    engines: {node: '>=22'}
+
+  '@mark1russell7/optional@1.5.1':
+    resolution: {integrity: sha512-UoxSaeYsIr1sf6KHFwdNZiweD9scysg0Gip5UD01qwcPjtQz+9q6sUahY0UESVJCljrhTQJTOQFT449VWVrXDQ==}
     engines: {node: '>=22.12'}
 
-  '@mark1russell7/otel-ts@0.8.5':
-    resolution: {integrity: sha512-tlhtI5HhsYahFbb54Zqr2aCsVEdiOR05el7lfXRVqs6Q71KAZigwdIaNU5Dyzvzr5/Qz33UQSWdFkFQMp8bujQ==}
+  '@mark1russell7/otel-ts@0.10.5':
+    resolution: {integrity: sha512-LKIohX2wVQa41mP6t/Q5ZbdV4PI0QwsCwuBfp6Dd1i01IAoEybHYOk1/6wdgFp93NuzFlcXn319hAEbhnCoQSQ==}
     engines: {node: '>=22.15.0'}
     peerDependencies:
       '@mark1russell7/lag': '>=0.4.2 <0.6.0'
@@ -2809,8 +2843,8 @@ packages:
       '@opentelemetry/sdk-node':
         optional: true
 
-  '@mark1russell7/otel-ts@0.9.1':
-    resolution: {integrity: sha512-C8/8asnPb99GI4lM5MBNvgwDkohYsXpNXu4nHZexvJpwgjRIZi1wSgYZP0W3quALUUdEqtP7gorUwL4fJQf/Cg==}
+  '@mark1russell7/otel-ts@0.8.7':
+    resolution: {integrity: sha512-Gcke4oqQt2VHXlZCqyupw+KlhRUaUkbBrQWS7C9ArxZXrPfb2bjhF3iIIevc4frReTYFae/EyGET0B/CwvVpvg==}
     engines: {node: '>=22.15.0'}
     peerDependencies:
       '@mark1russell7/lag': '>=0.4.2 <0.6.0'
@@ -2828,24 +2862,6 @@ packages:
   '@mark1russell7/predicates@0.1.5':
     resolution: {integrity: sha512-WXgTOliDm5650i3adkTjAj85Uzp22LD7KQFqwhETlQWG4CK3pDnd4I4ef9YrOAfzik1uTdChVk8RZaqdeP+YxA==}
     engines: {node: '>=22'}
-
-  '@mark1russell7/quantity@0.4.3':
-    resolution: {integrity: sha512-XtD9tiGDit51uR5ATtCHarXCfAS6004slKst+AGcAPVxd1wcIpi+OVlsxb/PIkkr2NOFL/oG3QCF0kdEWHhu/w==}
-    engines: {node: '>=22.19'}
-    peerDependencies:
-      zod: ^4.1.0
-    peerDependenciesMeta:
-      zod:
-        optional: true
-
-  '@mark1russell7/quantity@0.4.4':
-    resolution: {integrity: sha512-gDAAYNqx/HeeOUF5AE0JHUoxZiMctwZZTcdE/q080lZMfCGRjTdy21bY29ZZjeTg7mK5IjVK/ls3bVdMbL408w==}
-    engines: {node: '>=22.19'}
-    peerDependencies:
-      zod: ^4.1.0
-    peerDependenciesMeta:
-      zod:
-        optional: true
 
   '@mark1russell7/quantity@0.4.8':
     resolution: {integrity: sha512-E0R4RoDMdNN+oqSCGsWXVIUo/RCGJozvumrBSoBlWcooJ7ALgW3+OxJ3B2PyrMkvBDNSBBEL7jTZ5I53xkaOrQ==}
@@ -2869,8 +2885,8 @@ packages:
     resolution: {integrity: sha512-S28nfQFfRax40wbV9UTw711ZwnVB3rCW/SPpAuJtyKBh/zFbQx69+qnAeLF7u2B9GccaY75nIMZtN8mvgSRA1Q==}
     engines: {node: '>=22'}
 
-  '@mark1russell7/rigor-bench@0.3.2':
-    resolution: {integrity: sha512-wZ6YWq5974qhud6W+PNpBnO6xrZpGJCAbKcIw3ICfrEnTDWZRWHgn0vBKBlRJIPcJBn9o5SYNN5NKz+prp9/HA==}
+  '@mark1russell7/rigor-bench@0.3.12':
+    resolution: {integrity: sha512-yptlEIy1I+wgDqpA+rkc3oJOIwIt75GJrhUHAYUI5K/GT2mKVf93+yTj5LDR3K6EtilEYSnD6IsgAd81y5+/+w==}
     engines: {node: '>=22'}
     hasBin: true
     peerDependencies:
@@ -2879,20 +2895,16 @@ packages:
       esbuild:
         optional: true
 
-  '@mark1russell7/rigor-chaos@0.3.3':
-    resolution: {integrity: sha512-WTorL63sH1NK2chbDCHmYOEGSoeZBCxWBeDrqA531iFcf8gua/C4ZwFAhY57Y0J/OKFOhrRTGgECGA5Zj3kkIQ==}
+  '@mark1russell7/rigor-chaos@0.3.5':
+    resolution: {integrity: sha512-NlAvWJ3m/3Fl+62jXTCQaMdR0eem/0mSIvNnRrzgn6NoKHQnmhndmvGuNhhx1baX/fxaXp4xsqjZFIBH4Vm5vA==}
     engines: {node: '>=22'}
 
   '@mark1russell7/rigor-generators@0.1.19':
     resolution: {integrity: sha512-WIo/zJhj8RRRdNCz8JKEXOMZ4iPSh1h3igFGiWgRoAZGgETPuW7bP2oBgKVbMKEHn66c+hoXuCnwrIjguBaByA==}
     engines: {node: '>=22'}
 
-  '@mark1russell7/rigor-generators@0.2.4':
-    resolution: {integrity: sha512-9eem6sh2XT0dEqhtDhJTeJWlY9vWsmiEG9hwTcQwdt+MF1jTALHjEzJqvkRP9DwdvGRAoMYBnXfo1kavTkqzMg==}
-    engines: {node: '>=22'}
-
-  '@mark1russell7/rigor-generators@0.2.6':
-    resolution: {integrity: sha512-twMYvM//nGt/oumhZ2uFiXpC+ve59B1Zl8hinUnAaru4Vy5MiybhKggrESyDhvc519dWIGTbwWd000hsLkhVsA==}
+  '@mark1russell7/rigor-generators@0.2.7':
+    resolution: {integrity: sha512-7UwfykXyUqZBHZPNf/tHI2ExwsCTZLPmTqdl1FdmilkmWptdNy30PU8QEeF0u/LQ0W4OUv78r2rAS+PtQJOBug==}
     engines: {node: '>=22'}
 
   '@mark1russell7/rigor-proxy@0.3.2':
@@ -2903,24 +2915,12 @@ packages:
     resolution: {integrity: sha512-Wh91NJIwxIRN3+a5V2bqUkMhdPcjHI+gVZBCnohf12ZegdSTNqGlpqS2WXYmrRVjasF9EBgm1lC8GQNYpBSg7Q==}
     engines: {node: '>=22'}
 
-  '@mark1russell7/rigor-statistics@0.2.1':
-    resolution: {integrity: sha512-4m8yw4giLH/y1HcsroBQSHAWByC5fK/iJb4dNGCPT6Eelr26bxvBz7kMC7UMFSzGcR+W8GTrAwlAQmmFnQDMuA==}
+  '@mark1russell7/rigor-statistics@0.2.32':
+    resolution: {integrity: sha512-CERYoh7Azv+1EMgx5EriH6c17DDj6EVJljxNVaWPC0HnkmmkzUCCGtUTY+1UNO8a1/kreuUytoH/AnvleeyrDQ==}
     engines: {node: '>=22'}
 
-  '@mark1russell7/rigor-statistics@0.2.21':
-    resolution: {integrity: sha512-ve292V+0VeNwATgElVnkugUn31cJbFOFlqoB38nYHcLawzDldZwGA5w0tr2RrpTkKWudxOGR9+lGWYm+jplhFQ==}
-    engines: {node: '>=22'}
-
-  '@mark1russell7/rigor-statistics@0.2.30':
-    resolution: {integrity: sha512-D4XptMmKLiPZpsxwgW51Mpp21WEcZIRnifqKUEv5zK5uLm7dLPfxzItxpdgBIASDu0QJJ6vKRE3E7Q02pX20Vw==}
-    engines: {node: '>=22'}
-
-  '@mark1russell7/rigor-statistics@0.2.8':
-    resolution: {integrity: sha512-wPRQe/5351Xr16MIzgHTJyUYeaMh4ScadJ2AHCHZDf5NQdEDD6pG8zhWc0UPKbApTPWU/f7tDqnotSoyWmCqMQ==}
-    engines: {node: '>=22'}
-
-  '@mark1russell7/rigor-testkit@0.1.20':
-    resolution: {integrity: sha512-1gnSTqu73O+hV6IZ0pZMBMCwFdILTebBAJu1Y78q+BndXOZzWSRDhsHr83dk3qoLIGubnQuTB++19kmH+/PZ5g==}
+  '@mark1russell7/rigor-testkit@0.1.22':
+    resolution: {integrity: sha512-OCCwws49rpUf1NMmtdku+BWSKrmsjkA78tN6prtM/9mp/ga9/lZTWN55O00bG1XA7ZWCUTH7S/X4wFNik8tg+w==}
     engines: {node: '>=22'}
     peerDependencies:
       '@mark1russell7/rigor-chaos': ^0.3.2
@@ -2955,8 +2955,8 @@ packages:
       ltx:
         optional: true
 
-  '@mark1russell7/rigor-testkit@0.2.0':
-    resolution: {integrity: sha512-b3T7GhkQ8v8LWiTGdZhimbifOjOGBRMYg1Jwh123f9Yje0Ydgue3iSauZq8Rb/lvyR4QuSDZQywEPCL8hAYpyA==}
+  '@mark1russell7/rigor-testkit@0.2.1':
+    resolution: {integrity: sha512-i4STsrk+wAn1RZdzOiGsGwerOdXQWO0p0uAVljd1h1iKYkbM6xvb74HmsnK5L3t3RIXUT8hxr7LkB+Q3KhHbiQ==}
     engines: {node: '>=22'}
     peerDependencies:
       '@mark1russell7/rigor-chaos': ^0.3.2
@@ -3024,8 +3024,8 @@ packages:
       zod:
         optional: true
 
-  '@mark1russell7/service@0.12.4':
-    resolution: {integrity: sha512-KKIP9WzsHjM9Xvc5bB7/STzWPrWpbgDwwZ8kpptevRwGlP7YUd7hv8t3XyvL/l9gLwDu1UmoqcusQUDTLh8LqA==}
+  '@mark1russell7/service@0.12.5':
+    resolution: {integrity: sha512-w8gwYYgUaOcNvAP0TJAXyUwutLdgQrmTXc/krBpF72pchfk05CZt2VtAnGpKnL1tmPfCGUFOy4lFEXQ0QRpA+A==}
     engines: {node: '>=22.19'}
     peerDependencies:
       '@grpc/grpc-js': ^1.14.6
@@ -3087,8 +3087,8 @@ packages:
       zod:
         optional: true
 
-  '@mark1russell7/site-pages@0.8.4':
-    resolution: {integrity: sha512-pC0qcQqIsfQg5jTg+peUP/DGBXb4d1PQYiu6TCeCE1ALc5X8nyGhj9vMYKBCdhK7uHm8Chtx7INLKPWPmxpK3w==}
+  '@mark1russell7/site-pages@0.8.7':
+    resolution: {integrity: sha512-0U814F6nv69ueZ82B+PKkHH/Y8qapXNTFo2KMchvfqBcEkYh+2eQYAGdPzJANR+xni9HJZVpeC2nu+/lCeaEDQ==}
     engines: {node: '>=22'}
     hasBin: true
 
@@ -3096,20 +3096,20 @@ packages:
     resolution: {integrity: sha512-LANgtuaGCvL1VGbU61F51sgd3ytmqrgMN3pSihPs5EdD1xq93te7rPllmyPV9mH7QetUabHlcVVUZsf+Ju98cA==}
     engines: {node: '>=22.13'}
 
-  '@mark1russell7/sqlite@0.7.0':
-    resolution: {integrity: sha512-9uYBKNfHpDWrPX0C88vcP3CDS3FmEH9ntfLRvIGayTLMYV99LHGw254iO3gRQxd83jq1ml7ER+l0tKW/CGKKTA==}
+  '@mark1russell7/sqlite@0.7.1':
+    resolution: {integrity: sha512-A2x/fWB8G4KPCK5pNUUaNc7s61xFA/WvZkkJJK8uggmW5wqD6uxnLujt97Y7gBjM4JXkxoHb3AR4eJAJOkIdZg==}
     engines: {node: '>=22.13'}
 
-  '@mark1russell7/stack-placement@0.1.3':
-    resolution: {integrity: sha512-a+yKc2M80kaiowFC26gUCYYPuNlkbuhb/nUFCI1zuWLDIwfMG/RgK9qbrytEaiL/F6NIY3CzM2uiapAj84ILgg==}
+  '@mark1russell7/stack-placement@0.1.10':
+    resolution: {integrity: sha512-74tv90X0ECqFuskOnfdzUh2eTRTvbIXFYNLGoYgY1P/D/Fh60hmmFYtjlfI6F7e1B/gt9UGh65WzMYrmDg+jnw==}
     engines: {node: '>=22'}
 
-  '@mark1russell7/stack-risk@0.2.6':
-    resolution: {integrity: sha512-MgSyeoz2OewM3OKk2OSW3O0FGy7joX2jnmHmyfUFErxyfB/84yp+5OPUlxk0XehvvNlWqbc4K/ho7fCRjgx56A==}
+  '@mark1russell7/stack-risk@0.2.11':
+    resolution: {integrity: sha512-G/1VPGcyRKNckTfgld8mZ1+TR7rriUAu5Rz+/CsPAPuY0jf8gkg5sLOWSHnD+yxD/F3kPfAqzFgRUDkSCkyKiA==}
     engines: {node: '>=22'}
 
-  '@mark1russell7/stack-spend@0.1.12':
-    resolution: {integrity: sha512-a2Ai2FbFLzc8DnNsenOcBEMFCB2HOvVDmZBVYeByqA/p6SlSV1rsqfFR5TZapz5tQMZdsFG+8KlarZViW0/bFQ==}
+  '@mark1russell7/stack-spend@0.1.22':
+    resolution: {integrity: sha512-ZjMFixHRudu3BQxdfF4lCFYsAM1Tsaj/fMDloUDhS7vCzWDogGDFvNyO6PwW/lWVCT/QhZMrg5iqdDAyKuH8Pw==}
     engines: {node: '>=22'}
 
   '@mark1russell7/ste-lint@0.6.0':
@@ -3125,20 +3125,12 @@ packages:
     resolution: {integrity: sha512-6AP7wcNFOepPp+/w0Z/b8+a5CKjCP9nmUeGflgWtNvGlzBogVhPQMLM417gqzARTCMH4gc6WtNaIYEhkjkefYA==}
     engines: {node: '>=22'}
 
-  '@mark1russell7/system-stack@0.1.10':
-    resolution: {integrity: sha512-x4cvwnKFBR+1uxrO1ilqe3xbcEbrOpz8az0tu4QAdOhSK7oMLhJu7lvgzeoLKKXkgBCJ4SteaQH/gKLpAuLFoQ==}
+  '@mark1russell7/system-stack@0.1.15':
+    resolution: {integrity: sha512-cVXMyUh6829YGLSqiqOD4TXYk2goK+b9ofUju09jILp+8re26yyat5pvxH/ZdzXJmCCgJvBUJkRJGeBf8PDvLw==}
     engines: {node: '>=22'}
 
-  '@mark1russell7/system-stack@0.1.6':
-    resolution: {integrity: sha512-CcxdEO+Zxfpo5w3PRgl8+MkZUVTb2RWNImoQJrg0tdPCOZvjFlF+L/UTLtNmMfnkvy0ol1KYcCHo5PS/pgRxWA==}
-    engines: {node: '>=22'}
-
-  '@mark1russell7/system-stack@0.1.8':
-    resolution: {integrity: sha512-SiCMcXJMaYEP+xb3sijfLN6Kv73rQ7HTRNoN39UCHPIhkf1NdMDr6htaYOKYZtiVqNf10wdaXeJzRK0Gh4s1Cw==}
-    engines: {node: '>=22'}
-
-  '@mark1russell7/template-cli@0.1.9':
-    resolution: {integrity: sha512-7ebtLlCmT6KYhbpoI2SZHXCQC6/7Rc660SvKwQvfslseSQrXMRlmBj+1/F5KOCep6aB+LtvGWg+HmTKi6uZjyQ==}
+  '@mark1russell7/template-cli@0.1.10':
+    resolution: {integrity: sha512-KOSH9YXVOtIbpDAJtGIaycUsQ6lEM4XE5bVnBW4vPdaY8u0g7Edx032srzRrp9j+u9UYyDkDQTyniFhdUJoE7A==}
     engines: {node: '>=22.12'}
     hasBin: true
 
@@ -3166,8 +3158,8 @@ packages:
     resolution: {integrity: sha512-IwKQHx9U+k5AbEzZ8q4CxImQCuYXSFhvzMOSgy5UGYrZRIBO9RES7SYrXDrKqQFtMl5qD2QbibffevUPsrUW+A==}
     engines: {node: '>=22.12'}
 
-  '@mark1russell7/typeset@0.7.1':
-    resolution: {integrity: sha512-yVVyNP/lpSWmcqZUe88bteErwXBkhnlUhqL4DksXrKyQhAOE/+TOyoRbVLRjGIPxaYYfHLJkKzQkRtdJzx1sjw==}
+  '@mark1russell7/typeset@0.7.2':
+    resolution: {integrity: sha512-5N3VMx+02Ge6cw+9PQztyQxTeybilaxpPyl3VHAW7akoZZBCC6912VEZK2MB+u0cRfUbRojBS8bGaBYb+is9hA==}
     engines: {node: '>=22.12'}
 
   '@mark1russell7/vex-domains@0.19.1':
@@ -3176,8 +3168,8 @@ packages:
   '@mark1russell7/vex@0.19.1':
     resolution: {integrity: sha512-Hl8IVbyNmhJ7xV2nyTyOgiqANGWSWhmZSdnuucSRnmBj/KSnp0kvSz7MNzcWcI+tV34wfXmTNp6Y3ewDATbXjg==}
 
-  '@mark1russell7/visuals@0.4.0':
-    resolution: {integrity: sha512-aRFb3Shm57uW3vBEC7DSaJ/6GuRZSEC654QKkLZj8jvvJZaoFFvENPkvTTTbtfDL/HjJvSRBODeDoFk4+r64OA==}
+  '@mark1russell7/visuals@0.4.1':
+    resolution: {integrity: sha512-cwhajjjDDiL3nL03p0xyP4Wb3Rz41CFrIhw4wwfTC8NBUDwEy3o+EBkE2exmVUyPmsl/+g4ko1P9ecM6PImpCA==}
     engines: {node: '>=22'}
     peerDependencies:
       three: '>=0.187.0'
@@ -3398,8 +3390,8 @@ packages:
   '@oxc-project/types@0.159.0':
     resolution: {integrity: sha512-QWjWhxheluOJ82kDHNyps00UvRpQCtI34B5A/SzpgQycUD/79FuvT4I0aQIfE/bdPwKmX4QPftnywFBH6FxJhQ==}
 
-  '@procedures/client@0.68.0':
-    resolution: {integrity: sha512-jwvkoGaTBH00TR2wPSJSbb8sQeGfYantb9jrnbsFmDrn6xo9Zrjz3RNQ+KgcGyBZgi0xlaBwHw7+Rbr/aY77yw==}
+  '@procedures/client@0.68.14':
+    resolution: {integrity: sha512-KptE1VNRFF68GIPZxGK9rFBeGvAJC3MZlaNKV80J6ye2C0EwLmKeNCNJBxdToTDtpqp4dPW6bJqkupso/bjLQw==}
     engines: {node: '>=22'}
     peerDependencies:
       express: ^4.0.0 || ^5.0.0
@@ -3407,26 +3399,8 @@ packages:
       express:
         optional: true
 
-  '@procedures/client@0.68.1':
-    resolution: {integrity: sha512-G0CyQVb324XV1nyKxNO/0Usu55tc5EgXY9c4pYFl4vSbGxfnGmF4QrjnRyVlJJp6nOrVI1xR8Bxr6tA5MIM2gA==}
-    engines: {node: '>=22'}
-    peerDependencies:
-      express: ^4.0.0 || ^5.0.0
-    peerDependenciesMeta:
-      express:
-        optional: true
-
-  '@procedures/client@0.68.12':
-    resolution: {integrity: sha512-yexVMUGa7YYj/64Hma43/lxFpwdUDw0MwVWRGL1Lpt7NWdVkCU29g4415cOiZ+DG7kaIE/hguT0Ojnhc6qYkSA==}
-    engines: {node: '>=22'}
-    peerDependencies:
-      express: ^4.0.0 || ^5.0.0
-    peerDependenciesMeta:
-      express:
-        optional: true
-
-  '@procedures/compiler@0.68.0':
-    resolution: {integrity: sha512-1pSYF/HTJDdwqujATQuXYwDvGtIcaBh8ZtXnMzQ+vjTmCl04V+/zlEIpZyNyHV5ajVMMktNgp84dYOEui+WRKQ==}
+  '@procedures/compiler@0.68.14':
+    resolution: {integrity: sha512-uaZaDEbUIOBnsDAfhplIttubHbnFVmGu4EDHUhc1Opkho2EIOVsf5R2t8FdULVihp3+luerz7o/M5BNqLXUTUw==}
     engines: {node: '>=22'}
     peerDependencies:
       typescript-api: npm:typescript@^5.9.3
@@ -3434,24 +3408,24 @@ packages:
       typescript-api:
         optional: true
 
-  '@procedures/fs@0.68.0':
-    resolution: {integrity: sha512-WlJrXQrFGwHMJEReOK5I2CSGdyH7QILOTqHBnRIf1gXK2uwjLVNa90axwiXe6zk7pWG9BzhFdHgK49oYh57DxA==}
+  '@procedures/fs@0.68.14':
+    resolution: {integrity: sha512-2sJaFsGhhJl5sBcNUMk9oJgF6HCfcmOAvmZGVvuDucVf6/Xw8bissLXuA++rfaWWUgbG8+zh4piIiAab/z+3nQ==}
     engines: {node: '>=22'}
 
-  '@procedures/gh@0.68.1':
-    resolution: {integrity: sha512-Vk/uwOYialdWwA6cPPvbGBgghP2ZLLDvCDFhAjEEkKDz9HJoojOARUrkc0zg20gINPu2pS+JUT9DFBfqVT7mYg==}
+  '@procedures/gh@0.68.14':
+    resolution: {integrity: sha512-uCifeuFmUlPG+z/doLdwNzA7c9ojL7vKYSdutSo6mF0GgIytLzCRMh3dkDkPWDE/379KnVvPOrFMz1UpjdGODQ==}
     engines: {node: '>=22'}
 
-  '@procedures/http@0.68.1':
-    resolution: {integrity: sha512-zokfnguETunkLhlosQvhTq0EXYQ7x70Cr36v9U+b76t4BfeOTVQkAkWWS2p3TcuGrG19lNeDen9yps/793KWJQ==}
+  '@procedures/http@0.68.14':
+    resolution: {integrity: sha512-/bleWV5oGWyyNFSWzTVwlviJVQzwqDS4ZuMOwpXOCUff2sxCtQOpwSrhWUbko8ZYOJxDSPh8kz8gJFN1sYUluQ==}
     engines: {node: '>=22'}
 
-  '@procedures/json@0.68.0':
-    resolution: {integrity: sha512-fwZwgmKC+uL2mLpQNBnn6fuUKUfqEnCgjmpuKjudebpZbwwIAJ2JZ0W++fzlwO27rU+615/mgH8JperrGlRrLQ==}
+  '@procedures/json@0.68.14':
+    resolution: {integrity: sha512-2UztzbvIOOwyunYol9O3NnJST6eJxN6lI2bD6XNOa7BXhJFE3/ktkcHjl35rrsOUW1UogiEwKaAX/ebHR83MCQ==}
     engines: {node: '>=22'}
 
-  '@procedures/notify@0.68.0':
-    resolution: {integrity: sha512-01+Igd7SID6KuiCU36VkNJSHgC7f7Q/RyAs6aZMz0uBoDKJbNxxYNmL6LsZByktQnyB22nJ2pmei5SDwW8xlpw==}
+  '@procedures/notify@0.68.14':
+    resolution: {integrity: sha512-cQjU0iGAiTCT6RQT0roG7uBjj10HJ4XOKKADx6QZSqzRsDk8q+xqHnmp7VYwYSl1K1cLJepnYmnHkPSbINg2Tg==}
     engines: {node: '>=22'}
     peerDependencies:
       '@mark1russell7/rigor-testkit': ^0.1.7
@@ -3459,22 +3433,14 @@ packages:
       '@mark1russell7/rigor-testkit':
         optional: true
 
-  '@procedures/peer@0.68.12':
-    resolution: {integrity: sha512-aaqSR93uTUWVHbEbgGMSxtqJddthpNKkZsAVAS34DpBjityQkKIUBrQkVa/moUjFglajyiIVIo5sCJduH2hVbw==}
+  '@procedures/peer@0.68.14':
+    resolution: {integrity: sha512-iVU2mUQ4fhwJC6p1p3NzTSiwNHs1b9heJEXTKyTV65N2ZH0OkSg4VA7TmMJlPhW61xo7cFGz6YRfS+AeDzbbKg==}
     engines: {node: '>=22'}
     peerDependencies:
       '@mark1russell7/service': ^0.11.0
 
-  '@procedures/shell@0.68.0':
-    resolution: {integrity: sha512-ujSkoi+v6XLBD2/Im3+UMjHnVeNCPTVOIAzx53eY2Ym3ziNcwhSOpGX43C6F/VM4LYoo4L2yMNxEo3NpFAdE3A==}
-    engines: {node: '>=22'}
-
-  '@procedures/shell@0.68.1':
-    resolution: {integrity: sha512-ZwA764KyBENK1mHja8lrvxDgZ0eqE9t1IlPWKqwS1d82ia4vIaOvtjPmcrEAE1CaAxKoJszM0vEGhlegu5K1dg==}
-    engines: {node: '>=22'}
-
-  '@procedures/shell@0.68.12':
-    resolution: {integrity: sha512-bfxTjcguwjDNO4PQHHA93KgswXFVJ2Dcjq9d+nqYv2B0JNr6EKs9YdojqEJWPYd2Nm0Om4FgL3NbOFMF/N+WcA==}
+  '@procedures/shell@0.68.14':
+    resolution: {integrity: sha512-ScZ9z0TRZsQD3ZZXGRaUNOTgMzVt6DRuECLqHn/DceHIf4P2PkNjMFEibmwzDxWJO8dSttU2NQlsXl5A8O1FRQ==}
     engines: {node: '>=22'}
 
   '@publint/pack@0.1.7':
@@ -3785,8 +3751,8 @@ packages:
   '@tweenjs/tween.js@23.1.3':
     resolution: {integrity: sha512-vJmvvwFxYuGnF2axRtPYocag6Clbb5YS7kLL+SO/TeVFzHqDIWrNKYtcsPMibjDx9O+bu+psAy9NKfWklassUA==}
 
-  '@tybys/wasm-util@0.10.4':
-    resolution: {integrity: sha512-W3c4gRigFS0T/Ma4qIYF3GDAc5AQdHb1yL5znJT1Zv1YaD9Kitx656wBjvr19qbiosmZT8lWDM5BEMynUqX65A==}
+  '@tybys/wasm-util@0.10.5':
+    resolution: {integrity: sha512-dOGOPxlaNV+G046mZzN+9C0dAcQZeSKcXiVaM0TYy/LM4ttTmgSBDxYfovcYI8Em3+eAbiAYpvWLOv8+ZVRJKA==}
 
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
@@ -3800,8 +3766,8 @@ packages:
   '@types/deep-eql@4.0.2':
     resolution: {integrity: sha512-c9h9dVVMigMPc4bwTvC5dxqtqJZwQPePsWjPlpSOnojbor6pGqdk541lfA7AqFQr5pB1BRdq0juY9db81BwyFw==}
 
-  '@types/estree@1.0.10':
-    resolution: {integrity: sha512-lTyOMnOcmRBzdCv6/4zUZCrEhV0xrqQiUZBZtVcbmLHBXKLnN8q89v/wKRF/Q0HbwVsqbIG3o5HDoFl9sduM+g==}
+  '@types/estree@1.0.11':
+    resolution: {integrity: sha512-YBdNe5JcjYR0sPhJW1QIeRCmI11YhYvaRuGCs9+WCeTTb+Yhb2BE2XMe5/wAqF10FK5g3+q1PDhQABfT7aX0gg==}
 
   '@types/gensync@1.0.5':
     resolution: {integrity: sha512-MbsRCT7mTikHwKZ0X+LVUTLRrZZRLipTuXEO9qOYO+zmjMVk81axyClMROf6uoPD9MRVu46bx8zoR0Ad9q3NAg==}
@@ -3812,8 +3778,8 @@ packages:
   '@types/jsesc@2.5.1':
     resolution: {integrity: sha512-9VN+6yxLOPLOav+7PwjZbxiID2bVaeq0ED4qSQmdQTdjnXJSaCVKTR58t15oqH1H5t8Ng2ZX1SabJVoN9Q34bw==}
 
-  '@types/node@26.6.6':
-    resolution: {integrity: sha512-MzQj+8Kx3XI40OmUAE6Qoh58ZMNstNNMwn2nfd3qWsfe7nDNSqJNzes4njhz6AHwrSHOffSLwXU6yb474Q4aog==}
+  '@types/node@26.6.10':
+    resolution: {integrity: sha512-WJuPHoGB8WNQuTksNF7SOQpnH02PXeDYz4iueWbBT6/hTWnShY5F3T/hoJA3fY9+uYReDZ7pyTKKx83jQa7aGg==}
 
   '@types/stats.js@0.17.4':
     resolution: {integrity: sha512-jIBvWWShCvlBqBNIZt0KAshWpvSjhkwkEu4ZUcASoAvhmrgAUI2t1dXrjSL4xXVLB4FznPrIsX3nKXFl/Dt4vA==}
@@ -3947,25 +3913,25 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@vitest/coverage-v8@5.1.1':
-    resolution: {integrity: sha512-xL4NkbVx/UqqDHaXSOyvB8qsSoLQ+dVNGR9H2Bh/4ggQtmaPFNPUC9gZQwKZePLOQ6WDcgwXVnPulFW9eCHt0w==}
+  '@vitest/coverage-v8@5.1.2':
+    resolution: {integrity: sha512-VG0JLv0T4kr1fR6QAfe8PTou+Frc4t0u4j+oKgDH3djJpFawzBfGyX14/z56NXoCTNem3OEphzCJhc4DkE62xQ==}
     peerDependencies:
-      '@vitest/browser': 5.1.1
-      vitest: 5.1.1
+      '@vitest/browser': 5.1.2
+      vitest: 5.1.2
     peerDependenciesMeta:
       '@vitest/browser':
         optional: true
 
-  '@vitest/istanbul-lib-coverage@2.1.0':
-    resolution: {integrity: sha512-WOjuS+xcjSIy7ruYBQ+9BUcV7XZQ0FyVcbWbWxW9TRx/kLGx5SQaeFRIFDJxjNplb6YsT7SpKo2zuXXUo91OIQ==}
+  '@vitest/istanbul-lib-coverage@2.1.1':
+    resolution: {integrity: sha512-pF9nMHHuyQzyEXdkWX3d4wElEKjymfL5TEoofegJn/jK2WjmTLOcJKfJ7/YwYGYdbZf8Ebrt4VDUoBPiTuO9zg==}
     engines: {node: '>=22'}
 
-  '@vitest/istanbul-lib-report@2.1.0':
-    resolution: {integrity: sha512-+ZFta25nWtGCOBG9/IET8w1RO5Oawsd6H8Uf6AJ9EA/StFuKVtKAEJEJ6uRt84OH+T4YkI0ASmIHAhRA+0KVxw==}
+  '@vitest/istanbul-lib-report@2.1.1':
+    resolution: {integrity: sha512-Qba+8OpQQAbWrmq3u1olh6jqE/vyW4OYJe6TLrrTBpXhjJhbY7Os69wyVvMQmNA64KJhGd5nQ/c7l4io8tPCHQ==}
     engines: {node: '>=22'}
 
-  '@vitest/mocker@5.1.1':
-    resolution: {integrity: sha512-b2OgTB4+3ImWIVafXKazJXwLKwQxUNnix6b3xUvUTMh7RyXlrtzoxfZr8aEz9zkHOMAS4K5lu3TvFWoiVeVTQg==}
+  '@vitest/mocker@5.1.2':
+    resolution: {integrity: sha512-UGc97wUIy0Ji2+9GxzHEJiOhiwkaukgE7VYcUNnjpX3sWnwQ8XogmNXX4WyOukxYgKb8Nh2XFa7KId0ZjpmVhQ==}
     peerDependencies:
       msw: ^2.4.9 || ^3.0.0
       vite: ^6.0.0 || ^7.0.0 || ^8.0.0
@@ -3975,8 +3941,8 @@ packages:
       vite:
         optional: true
 
-  '@vitest/spy@5.1.1':
-    resolution: {integrity: sha512-6K8C6alQG1/Yc8/ZI22iJS7JEsxPdVzqtqDq+/xM4Z0mGVykemMVjLhqMy/q6/IHYG3kKD8hKSwRen/ZdyI9vQ==}
+  '@vitest/spy@5.1.2':
+    resolution: {integrity: sha512-PQl0/3+p9GaY71+MHywN6oyHfLhVDD5kcbm7oNRldA2F0ExMU3S8RQdnpteJ9gFAdK5P6KCgE6LqCpUgy57KzA==}
 
   '@xmpp/base64@0.14.0':
     resolution: {integrity: sha512-tz2LuzLMtjGSVVeuXDnDw19H+uOrqhrRFcQKJ3THV0HVjerDewT8WKXdrtBVSQ7n4Ue0k+awYcIE7qDD9rwMMQ==}
@@ -4185,8 +4151,8 @@ packages:
     resolution: {integrity: sha512-8zc+h51HxpodKsA7L4PpBNd+9qlrfuUcyUDE5a793BJfN4NZgwk7v9NmrY3ptZ+Sk0+ToigxSzkb47AsEgyizw==}
     engines: {node: '>=20.19.0'}
 
-  caniuse-lite@1.0.30001826:
-    resolution: {integrity: sha512-wTB+9tIbLro/BCXwLuNV1meHE4L9dS6dArMDwgYfNBPMYScqClHyGunhkCSDtHhe/69Xl0sHlKgBVZ+fNsYtWA==}
+  caniuse-lite@1.0.30001828:
+    resolution: {integrity: sha512-7MWeT+3DlrpuDybTWHl4Zb1Z80Z1fLLnOXuBjDXebzDVcqnEWUlV8JcbASg8B8BhcW8QT2UiR1KAtzYFIZHZYA==}
 
   chai@6.3.0:
     resolution: {integrity: sha512-XWAtwJ6OHO+tj0EKCs0Y2UamnyOxseZWltU4x2U2wh8g4AigdjwvtUjvLP2tqkA/avxHEtzxNaqGq/YGNwckKg==}
@@ -4221,8 +4187,8 @@ packages:
     resolution: {integrity: sha512-DH0Bqq3DNp5tdOReuNyAA+Ev4Y2GS5FMbZpeTLP6C4CDi0h5nL0BmUPChXw3o/qbHLDWHl49sbNqQVY7bMSDdw==}
     engines: {node: '>=20.19.0'}
 
-  cssomnom@0.1.11:
-    resolution: {integrity: sha512-P4RkO1Sq2Ual77xypEmAc4MkM5k2Ha4UwtBPCOpJmXculGCYPgzsU/xnOCy084esZaPePgGkkJg4Il/HE7GS5A==}
+  cssomnom@0.1.12:
+    resolution: {integrity: sha512-nlsLjRxRN2RPomw3r+e+oD3KQBbEbKK0+oBUATbodf5N38FlOMg/5nqV0CdClNvpVsjFLikD63H6dgKTgeuuUg==}
     engines: {node: '>=20.0.0'}
 
   d3-array@3.2.5:
@@ -4245,8 +4211,8 @@ packages:
   defu@6.1.7:
     resolution: {integrity: sha512-7z22QmUWiQ/2d0KkdYmANbRUVABpZ9SNYyH5vx6PZ+nE5bcC0l7uFvEfHlyld/HcGBFTL536ClDt3DEcSlEJAQ==}
 
-  dependency-cruiser@18.8.0:
-    resolution: {integrity: sha512-GNrm+vy8qSM0X3l3n6616iDdWDIvhnQzimd4q/csyusz8ZYrniFzIIOP1uixXXVkt9mVMcRE6vM5f6juKV5etQ==}
+  dependency-cruiser@18.9.0:
+    resolution: {integrity: sha512-b6fjm/8OI0HYRW3Mo/y6GlUMPk//3LPBxd0CsEaPNDJXospJDYG8rpyoz/Izk5xTkfYWEMYl8cTQWupgpmkBOg==}
     engines: {node: ^22||^24||>=26}
     hasBin: true
 
@@ -4292,8 +4258,8 @@ packages:
       oxc-resolver:
         optional: true
 
-  electron-to-chromium@1.5.492:
-    resolution: {integrity: sha512-4uMs7omhajKiud0GqALLTazS/zyvHLTLmDWVTR+e6BnyJo5bSNrph/JoRWEFJJmY75ct9hCiSGsbFF9fLe5gDw==}
+  electron-to-chromium@1.5.494:
+    resolution: {integrity: sha512-Tph7ohL4Xc0ft3DXElYEIVTmPI3H0MtPCTdgtz5AwWGZG6q+vMiT3IzJ3RJX/HJQ8pYzeimQyvi6SsBTOS0nyQ==}
 
   empathic@2.1.0:
     resolution: {integrity: sha512-AnfC1ATldl49/cvZdLPDjBfrRNwbDO05aibiOtzQu3qtlbJtomNLhF30HEtn/7iBz50dlMECqATo3fG0LrdEgw==}
@@ -4421,12 +4387,12 @@ packages:
   htmlparser2@10.1.0:
     resolution: {integrity: sha512-VTZkM9GWRAtEpveh7MSF6SjjrpNVNNVJfFup7xTY3UpFtm67foy9HDVXneLtFVt4pMz5kZtgNcvCniNFb1hlEQ==}
 
-  ignore@7.0.14:
-    resolution: {integrity: sha512-wCBiZ77u1tuWde6G/nfOtLaCTYcFDU5yCzARzK10y+rLhzYoL7a7yEemcopcc2Mzow7gZOIjnV2ym1NYmdiJOQ==}
+  ignore@7.0.16:
+    resolution: {integrity: sha512-52N+Y4HRMOJmbLmr+DqO4iSRyyB7N52gm7PWCT6h0p978+oKbqHCB7gIJIwZvBUsjlSdWbrBFqUSmIFNZMpn0A==}
     engines: {node: '>= 4'}
 
-  import-in-the-middle@3.6.0:
-    resolution: {integrity: sha512-xRU7hI24S2FhucXtuZXn8EpcOjfVP6iiEQyR0USayPeaOroEmSsNlqnl95866iRdRtkHrd6Q/Z4D14R60au0+A==}
+  import-in-the-middle@3.7.0:
+    resolution: {integrity: sha512-E+eunmEgK2Bd9nHQCR0IsG52TEaVzSZqRH4RLcEmcUazGAnjoyXDYsoGnf4OnggekXiG7Zz11XFh3gH+Br04Yw==}
     engines: {node: '>=18'}
 
   import-meta-resolve@4.2.0:
@@ -4463,8 +4429,8 @@ packages:
   is-unsafe@2.0.3:
     resolution: {integrity: sha512-ZBllczCCO267vgdFb6Tq3pv+LhHaCiGMdr+ZsuL+OopruAg7S+3ZDs1vD0RPC0uSrkjzbraxaGjtX1YBxjPeFQ==}
 
-  js-tokens@10.0.0:
-    resolution: {integrity: sha512-lM/UBzQmfJRo9ABXbPWemivdCW8V2G8FHaHdypQaIy523snUjog0W71ayWXTjiR+ixeMyVHN2XcpnTd/liPg/Q==}
+  js-tokens@10.0.1:
+    resolution: {integrity: sha512-XMt+uh+yEs6srFvEb/pEe4IMvbtoXVdNxF7lZFU+I9sdWI641L97L+gXQMTGm1x3RjPUVizNVjHueclXr0U7sw==}
 
   jsesc@3.1.0:
     resolution: {integrity: sha512-/sM3dO2FOzXjKQhJuo0Q173wf2KOo8t4I8vHy6lF9poUp7bKT0/NHE8fPX23PwfhnykfqnC2xRxOnVw5XuGIaA==}
@@ -4648,8 +4614,8 @@ packages:
       playwright-core:
         optional: true
 
-  postcss@8.5.32:
-    resolution: {integrity: sha512-LJlKCCAUFKOuZxipUdYw1NzIITEsPcgyOG9LkvRJvuKj/bRzbuRY0ARXvL0pWGpsZvn8jku+LMep2eU0seHp8g==}
+  postcss@8.5.33:
+    resolution: {integrity: sha512-RVHEU9/Pp1Fnjr/MpAJsZoADukCKhfIi15OunEYiGktIkYLkPVvC1sioWolGDS7XByMTx9m/IGbro0Js13zhnQ==}
     engines: {node: ^10 || ^12 || >=14}
 
   prompts@2.4.2:
@@ -4757,9 +4723,9 @@ packages:
     resolution: {integrity: sha512-2WCqLdt12eN6ehLI50S2/ZxoowXU3DD1KVPRyVP0WEsFahrGZZmCdq1K59qjJljMRIDTwx1D9YaRK+hDneBUMg==}
     engines: {node: '>=20'}
 
-  source-map-js@1.2.2:
-    resolution: {integrity: sha512-KGj/8Y43x35aZVDtt+J4mK1hoLGHULMYfSkODJNQjNDC3oW1PqPoxMwo0pLUsWM/UEGzON/NxeHywEfNXNP3Vw==}
-    engines: {node: '>=0.10.0'}
+  source-map-js@1.2.4:
+    resolution: {integrity: sha512-J7ZjMvHd9O1fcT/5V09QWaaSl2BbWx3F6O08spde82Namf9UB0GxRVIPiNbVsdKkoizHiSpTodo3vp2bAy91MA==}
+    engines: {node: '>=6.0.0'}
 
   std-env@4.3.0:
     resolution: {integrity: sha512-OtU/EgQ1kIm5KwqQpBC6ZEMXrZRui11w8zgfTWp8cdO9B8OaPsbA8bTHO2P+HNo1VlUTGMVBwPhydu6poeXiag==}
@@ -4786,12 +4752,12 @@ packages:
   three@0.187.0:
     resolution: {integrity: sha512-Qiu7R+Cmh8CstZsY1uJOSWnVlfo7ZtNLV7mF8Jltk3LB3AtDu9cRZlcnRKkAk8Y4z6KKw35z7Y7Urd7jWY8etA==}
 
-  tinybench@6.2.3:
-    resolution: {integrity: sha512-Al01C2JIBnO2CXCAPbpAl6sUiOZHeThGtHYNTa51JRw9PyWOCdr+9Ong05R4qg/Sk3+H645E8ov1h2c58ityNw==}
+  tinybench@6.2.5:
+    resolution: {integrity: sha512-b/8GRMdnY4cqkfCLyaFpTGIv1qwfi3oT0mWaepwT++6Z/ZrYehNfZZ2JDKVLKGhNoEkS3IIB1ELtCT0XS5DtOA==}
     engines: {node: '>=20.0.0'}
 
-  tinyexec@1.3.1:
-    resolution: {integrity: sha512-GCvB3aoys96IuDFBMcTB46JOR6mdMtAToqwiW8JlWhsoh1mhHi/xn9ss/Dg7N555GiJyEt2qzoG/NHCwM6h1EA==}
+  tinyexec@1.4.0:
+    resolution: {integrity: sha512-PV6lIcJQh57aFeJDwx16JNHmgFRh5xguzallrDW1qe8nAghYgr5MKz2K5k7wEyV/ygZhdnIAP8+HZSarHPBCsg==}
     engines: {node: '>=18'}
 
   tinyglobby@0.2.17:
@@ -4878,8 +4844,8 @@ packages:
   undici-types@8.9.0:
     resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
 
-  undici@8.12.4:
-    resolution: {integrity: sha512-8Mx+uNKKER2bA4AdtedkqRbwUCIJFr2nJckXRe5yrDqzePqwLP7VNcctN8/XdmDSbF7mS+jJKIszlL+vbam1VA==}
+  undici@8.13.1:
+    resolution: {integrity: sha512-Kt7EaPjh0s93lJH/PmW3d5rhkcpUa6fS3jqZ7+YGxNd9L7Xy/i827xe4C2uhhq+pJebM4tQOl5AgHmW11G5Skg==}
     engines: {node: '>=22.19.0'}
 
   unpdf@1.9.1:
@@ -4944,20 +4910,20 @@ packages:
       yaml:
         optional: true
 
-  vitest@5.1.1:
-    resolution: {integrity: sha512-trVmzUFOSraCZcI3uZIMD5FqBh4atFkC/XuJP/IU7qtyQay0FCs3Ia+0QiQ2JJwGyWG/xrcBoJNel2+O7kEZ0g==}
+  vitest@5.1.2:
+    resolution: {integrity: sha512-VIa2wXV208WraXUbzH+dQUrGcFpPuaiRA8HlhXS8R6/sy9cynw6OMqGj8fmAlH1hot7huTCtWUE14+FdXU3eLw==}
     engines: {node: ^22.12.0 || ^24.0.0 || >=26.0.0}
     hasBin: true
     peerDependencies:
       '@edge-runtime/vm': '*'
       '@opentelemetry/api': ^1.9.0
       '@types/node': ^22.0.0 || >=24.0.0
-      '@vitest/browser-playwright': 5.1.1
-      '@vitest/browser-preview': 5.1.1
+      '@vitest/browser-playwright': 5.1.2
+      '@vitest/browser-preview': 5.1.2
       '@vitest/browser-webdriverio': ^5.0.0-beta.5 || >=5.0.0
-      '@vitest/coverage-istanbul': 5.1.1
-      '@vitest/coverage-v8': 5.1.1
-      '@vitest/ui': 5.1.1
+      '@vitest/coverage-istanbul': 5.1.2
+      '@vitest/coverage-v8': 5.1.2
+      '@vitest/ui': 5.1.2
       happy-dom: '*'
       jsdom: '*'
       vite: ^6.4.0 || ^7.0.0 || ^8.0.0
@@ -5039,7 +5005,7 @@ snapshots:
   '@babel/code-frame@8.0.6':
     dependencies:
       '@babel/helper-validator-identifier': 8.0.6
-      js-tokens: 10.0.0
+      js-tokens: 10.0.1
 
   '@babel/compat-data@8.1.2': {}
 
@@ -5102,7 +5068,7 @@ snapshots:
       '@babel/helper-wrap-function': 8.1.3
       '@babel/traverse': 8.1.3
 
-  '@babel/helper-string-parser@7.29.14': {}
+  '@babel/helper-string-parser@7.29.15': {}
 
   '@babel/helper-string-parser@8.1.3': {}
 
@@ -5123,9 +5089,9 @@ snapshots:
       '@babel/template': 8.1.2
       '@babel/types': 8.1.3
 
-  '@babel/parser@7.29.14':
+  '@babel/parser@7.29.15':
     dependencies:
-      '@babel/types': 7.29.14
+      '@babel/types': 7.29.15
 
   '@babel/parser@8.1.3':
     dependencies:
@@ -5172,9 +5138,9 @@ snapshots:
       '@babel/types': 8.1.3
       obug: 3.0.0
 
-  '@babel/types@7.29.14':
+  '@babel/types@7.29.15':
     dependencies:
-      '@babel/helper-string-parser': 7.29.14
+      '@babel/helper-string-parser': 7.29.15
       '@babel/helper-validator-identifier': 7.29.7
 
   '@babel/types@8.1.3':
@@ -5295,14 +5261,14 @@ snapshots:
   '@esbuild/win32-x64@0.28.2':
     optional: true
 
-  '@grafana/faro-core@2.14.0':
+  '@grafana/faro-core@2.15.0':
     dependencies:
       '@opentelemetry/api': 1.10.0
       '@opentelemetry/otlp-transformer': 0.223.2(@opentelemetry/api@1.10.0)
 
-  '@grafana/faro-web-sdk@2.14.0':
+  '@grafana/faro-web-sdk@2.15.0':
     dependencies:
-      '@grafana/faro-core': 2.14.0
+      '@grafana/faro-core': 2.15.0
       ua-parser-js: 1.0.41
       web-vitals: 6.2.3
 
@@ -5322,39 +5288,27 @@ snapshots:
 
   '@mark1russell7/algebra@0.8.10(zod@4.6.7)':
     dependencies:
-      '@mark1russell7/quantity': 0.4.3(zod@4.6.7)
-    optionalDependencies:
-      zod: 4.6.7
-
-  '@mark1russell7/algebra@0.9.11(zod@4.6.7)':
-    dependencies:
       '@mark1russell7/quantity': 0.4.8(zod@4.6.7)
-      '@mark1russell7/rigor-statistics': 0.2.30
     optionalDependencies:
       zod: 4.6.7
 
   '@mark1russell7/algebra@0.9.12(zod@4.6.7)':
     dependencies:
       '@mark1russell7/quantity': 0.5.1(zod@4.6.7)
-      '@mark1russell7/rigor-statistics': 0.2.21
+      '@mark1russell7/rigor-statistics': 0.2.32
     optionalDependencies:
       zod: 4.6.7
 
-  '@mark1russell7/algebra@0.9.9(zod@4.6.7)':
+  '@mark1russell7/api-report@0.5.23':
     dependencies:
-      '@mark1russell7/quantity': 0.4.3(zod@4.6.7)
-      '@mark1russell7/rigor-statistics': 0.2.30
-    optionalDependencies:
-      zod: 4.6.7
+      '@mark1russell7/conventions': 0.55.0
 
-  '@mark1russell7/api-report@0.5.20':
-    dependencies:
-      '@mark1russell7/conventions': 0.52.0
-
-  '@mark1russell7/boundaries@0.3.2(@swc/core@1.16.22)(dependency-cruiser@18.8.0)':
+  '@mark1russell7/boundaries@0.3.2(@swc/core@1.16.22)(dependency-cruiser@18.9.0)':
     optionalDependencies:
       '@swc/core': 1.16.22
-      dependency-cruiser: 18.8.0
+      dependency-cruiser: 18.9.0
+
+  '@mark1russell7/code-shape@0.0.1': {}
 
   '@mark1russell7/coeval@0.34.0(zod@4.6.7)':
     dependencies:
@@ -5363,39 +5317,38 @@ snapshots:
     transitivePeerDependencies:
       - zod
 
-  '@mark1russell7/coeval@0.38.1(zod@4.6.7)':
+  '@mark1russell7/coeval@0.38.3(zod@4.6.7)':
     dependencies:
-      '@mark1russell7/collections': 0.11.2(zod@4.6.7)
-      '@mark1russell7/rigor-generators': 0.2.4
-    transitivePeerDependencies:
-      - zod
-
-  '@mark1russell7/coeval@0.38.2(zod@4.6.7)':
-    dependencies:
-      '@mark1russell7/collections': 0.11.2(zod@4.6.7)
-      '@mark1russell7/rigor-generators': 0.2.4
+      '@mark1russell7/collections': 0.11.6(zod@4.6.7)
+      '@mark1russell7/rigor-generators': 0.2.7
     transitivePeerDependencies:
       - zod
 
   '@mark1russell7/collections@0.10.2(zod@4.6.7)':
     dependencies:
       '@mark1russell7/algebra': 0.8.10(zod@4.6.7)
-      '@mark1russell7/optional': 1.5.0
+      '@mark1russell7/optional': 1.5.1
       '@mark1russell7/rigor-statistics': 0.1.29
     transitivePeerDependencies:
       - zod
 
-  '@mark1russell7/collections@0.11.2(zod@4.6.7)':
+  '@mark1russell7/collections@0.11.6(zod@4.6.7)':
     dependencies:
       '@mark1russell7/algebra': 0.8.10(zod@4.6.7)
-      '@mark1russell7/optional': 1.5.0
-      '@mark1russell7/rigor-statistics': 0.2.30
+      '@mark1russell7/optional': 1.5.1
+      '@mark1russell7/rigor-statistics': 0.2.32
     transitivePeerDependencies:
       - zod
 
-  '@mark1russell7/conventions@0.52.0':
+  '@mark1russell7/conventions@0.52.8':
     dependencies:
       '@mark1russell7/text': 0.0.18
+      yaml: 2.9.1
+
+  '@mark1russell7/conventions@0.55.0':
+    dependencies:
+      '@mark1russell7/code-shape': 0.0.1
+      '@mark1russell7/text': 0.0.20
       yaml: 2.9.1
 
   '@mark1russell7/cue@2.1.4': {}
@@ -5406,14 +5359,9 @@ snapshots:
 
   '@mark1russell7/files@0.0.6': {}
 
-  '@mark1russell7/geo@0.5.13':
+  '@mark1russell7/geo@0.5.19':
     dependencies:
-      '@mark1russell7/optional': 1.5.0
-      '@mark1russell7/predicates': 0.1.5
-
-  '@mark1russell7/geo@0.5.15':
-    dependencies:
-      '@mark1russell7/optional': 1.5.0
+      '@mark1russell7/optional': 1.5.1
       '@mark1russell7/predicates': 0.1.5
 
   '@mark1russell7/guidebook@0.5.2':
@@ -5422,26 +5370,27 @@ snapshots:
 
   '@mark1russell7/interval@0.1.0': {}
 
-  '@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)))':
+  '@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)))':
     dependencies:
       page-lifecycle-tracker: 0.1.1
     optionalDependencies:
       '@opentelemetry/api': 1.10.0
-      async-browser-context: 0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+      async-browser-context: 0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
-  '@mark1russell7/layout-contract@0.11.1':
+  '@mark1russell7/layout-contract@0.11.5':
     dependencies:
+      '@mark1russell7/collections': 0.11.6(zod@4.6.7)
       '@mark1russell7/predicates': 0.1.5
-      '@mark1russell7/rigor-generators': 0.2.4
-      '@mark1russell7/rigor-statistics': 0.2.30
+      '@mark1russell7/rigor-generators': 0.2.7
+      '@mark1russell7/rigor-statistics': 0.2.32
       '@mark1russell7/strategy-space': 0.1.1
-      '@mark1russell7/typeset': 0.7.1
+      '@mark1russell7/typeset': 0.7.2
     transitivePeerDependencies:
       - zod
 
-  '@mark1russell7/market-sources@0.5.8(@opentelemetry/api@1.10.0)(ws@8.23.0)':
+  '@mark1russell7/market-sources@0.5.11(@opentelemetry/api@1.10.0)(ws@8.23.0)':
     dependencies:
-      '@mark1russell7/market': 0.11.1
+      '@mark1russell7/market': 0.11.2
       '@mark1russell7/quantity': 0.4.8(zod@4.6.7)
       '@mark1russell7/text': 0.0.16
       polite-crawler: 0.7.12(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
@@ -5459,10 +5408,10 @@ snapshots:
       - playwright-core
       - ws
 
-  '@mark1russell7/market@0.11.1':
+  '@mark1russell7/market@0.11.2':
     dependencies:
       '@mark1russell7/guidebook': 0.5.2
-      '@mark1russell7/optional': 1.5.0
+      '@mark1russell7/optional': 1.5.1
       '@mark1russell7/quantity': 0.4.8(zod@4.6.7)
       '@mark1russell7/strategy-search': 0.1.2
       '@mark1russell7/strategy-space': 0.1.1
@@ -5470,11 +5419,23 @@ snapshots:
       '@mark1russell7/vex-domains': 0.19.1(zod@4.6.7)
       zod: 4.6.7
 
-  '@mark1russell7/optional@1.5.0': {}
-
-  '@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3)':
+  '@mark1russell7/market@0.11.8':
     dependencies:
-      '@grafana/faro-web-sdk': 2.14.0
+      '@mark1russell7/guidebook': 0.5.2
+      '@mark1russell7/optional': 1.5.1
+      '@mark1russell7/quantity': 0.5.1(zod@4.6.7)
+      '@mark1russell7/strategy-search': 0.1.2
+      '@mark1russell7/strategy-space': 0.1.1
+      '@mark1russell7/vex': 0.19.1(zod@4.6.7)
+      '@mark1russell7/vex-domains': 0.19.1(zod@4.6.7)
+      zod: 4.6.7
+
+  '@mark1russell7/optional@1.5.1': {}
+
+  '@mark1russell7/otel-ts@0.10.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3)':
+    dependencies:
+      '@grafana/faro-web-sdk': 2.15.0
+      '@mark1russell7/text': 0.0.20
       '@opentelemetry/api': 1.10.0
       '@opentelemetry/auto-instrumentations-web': 0.70.1(@opentelemetry/api@1.10.0)(supports-color@7.2.0)(zone.js@0.16.3)
       '@opentelemetry/context-async-hooks': 3.1.1(@opentelemetry/api@1.10.0)
@@ -5492,19 +5453,19 @@ snapshots:
       '@opentelemetry/sdk-metrics': 3.1.1(@opentelemetry/api@1.10.0)
       '@opentelemetry/sdk-trace': 3.1.1(@opentelemetry/api@1.10.0)
       '@opentelemetry/semantic-conventions': 1.45.0
-      async-browser-context: 0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+      async-browser-context: 0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
       page-lifecycle-tracker: 0.1.1
     optionalDependencies:
-      '@mark1russell7/lag': 0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)))
+      '@mark1russell7/lag': 0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)))
     transitivePeerDependencies:
       - supports-color
       - vite
       - zone.js
 
-  '@mark1russell7/otel-ts@0.9.1(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3)':
+  '@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3)':
     dependencies:
-      '@grafana/faro-web-sdk': 2.14.0
-      '@mark1russell7/text': 0.0.19
+      '@grafana/faro-web-sdk': 2.15.0
+      '@mark1russell7/text': 0.0.18
       '@opentelemetry/api': 1.10.0
       '@opentelemetry/auto-instrumentations-web': 0.70.1(@opentelemetry/api@1.10.0)(supports-color@7.2.0)(zone.js@0.16.3)
       '@opentelemetry/context-async-hooks': 3.1.1(@opentelemetry/api@1.10.0)
@@ -5522,10 +5483,10 @@ snapshots:
       '@opentelemetry/sdk-metrics': 3.1.1(@opentelemetry/api@1.10.0)
       '@opentelemetry/sdk-trace': 3.1.1(@opentelemetry/api@1.10.0)
       '@opentelemetry/semantic-conventions': 1.45.0
-      async-browser-context: 0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+      async-browser-context: 0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
       page-lifecycle-tracker: 0.1.1
     optionalDependencies:
-      '@mark1russell7/lag': 0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)))
+      '@mark1russell7/lag': 0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)))
     transitivePeerDependencies:
       - supports-color
       - vite
@@ -5534,18 +5495,6 @@ snapshots:
   '@mark1russell7/package-id@0.1.3': {}
 
   '@mark1russell7/predicates@0.1.5': {}
-
-  '@mark1russell7/quantity@0.4.3(zod@4.6.7)':
-    dependencies:
-      '@mark1russell7/rational': 0.1.3
-    optionalDependencies:
-      zod: 4.6.7
-
-  '@mark1russell7/quantity@0.4.4(zod@4.6.7)':
-    dependencies:
-      '@mark1russell7/rational': 0.1.3
-    optionalDependencies:
-      zod: 4.6.7
 
   '@mark1russell7/quantity@0.4.8(zod@4.6.7)':
     dependencies:
@@ -5561,29 +5510,27 @@ snapshots:
 
   '@mark1russell7/rational@0.1.3': {}
 
-  '@mark1russell7/rigor-bench@0.3.2(esbuild@0.28.2)':
+  '@mark1russell7/rigor-bench@0.3.12(esbuild@0.28.2)':
     dependencies:
-      '@mark1russell7/rigor-generators': 0.2.4
-      '@mark1russell7/rigor-statistics': 0.2.30
-      '@mark1russell7/text': 0.0.17
+      '@mark1russell7/rigor-generators': 0.2.7
+      '@mark1russell7/rigor-statistics': 0.2.32
+      '@mark1russell7/text': 0.0.20
     optionalDependencies:
       esbuild: 0.28.2
 
-  '@mark1russell7/rigor-chaos@0.3.3':
+  '@mark1russell7/rigor-chaos@0.3.5':
     dependencies:
-      '@mark1russell7/rigor-generators': 0.1.19
-      '@mark1russell7/rigor-statistics': 0.2.30
+      '@mark1russell7/rigor-generators': 0.2.7
+      '@mark1russell7/rigor-statistics': 0.2.32
 
   '@mark1russell7/rigor-generators@0.1.19': {}
 
-  '@mark1russell7/rigor-generators@0.2.4': {}
-
-  '@mark1russell7/rigor-generators@0.2.6': {}
+  '@mark1russell7/rigor-generators@0.2.7': {}
 
   '@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7)':
     dependencies:
       '@mark1russell7/algebra': 0.8.10(zod@4.6.7)
-      '@mark1russell7/rigor-chaos': 0.3.3
+      '@mark1russell7/rigor-chaos': 0.3.5
     transitivePeerDependencies:
       - zod
 
@@ -5591,37 +5538,14 @@ snapshots:
     dependencies:
       '@mark1russell7/rigor-generators': 0.1.19
 
-  '@mark1russell7/rigor-statistics@0.2.1':
+  '@mark1russell7/rigor-statistics@0.2.32':
     dependencies:
-      '@mark1russell7/rigor-generators': 0.1.19
+      '@mark1russell7/rigor-generators': 0.2.7
 
-  '@mark1russell7/rigor-statistics@0.2.21':
-    dependencies:
-      '@mark1russell7/rigor-generators': 0.2.4
-
-  '@mark1russell7/rigor-statistics@0.2.30':
-    dependencies:
-      '@mark1russell7/rigor-generators': 0.2.6
-
-  '@mark1russell7/rigor-statistics@0.2.8':
-    dependencies:
-      '@mark1russell7/rigor-generators': 0.1.19
-
-  '@mark1russell7/rigor-testkit@0.1.20(@mark1russell7/rigor-chaos@0.3.3)(@mark1russell7/rigor-generators@0.1.19)(@opentelemetry/api-logs@0.223.2)(@opentelemetry/api@1.10.0)(@opentelemetry/sdk-logs@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@3.1.1(@opentelemetry/api@1.10.0))(fast-check@4.11.0)(ltx@3.1.2)':
+  '@mark1russell7/rigor-testkit@0.1.22(@mark1russell7/rigor-chaos@0.3.5)(@mark1russell7/rigor-generators@0.2.7)(@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7))(@opentelemetry/api-logs@0.223.2)(@opentelemetry/api@1.10.0)(@opentelemetry/sdk-logs@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@3.1.1(@opentelemetry/api@1.10.0))(fast-check@4.11.0)(ltx@3.1.2)':
     optionalDependencies:
-      '@mark1russell7/rigor-chaos': 0.3.3
-      '@mark1russell7/rigor-generators': 0.1.19
-      '@opentelemetry/api': 1.10.0
-      '@opentelemetry/api-logs': 0.223.2
-      '@opentelemetry/sdk-logs': 3.1.1(@opentelemetry/api@1.10.0)
-      '@opentelemetry/sdk-metrics': 3.1.1(@opentelemetry/api@1.10.0)
-      fast-check: 4.11.0
-      ltx: 3.1.2
-
-  '@mark1russell7/rigor-testkit@0.1.20(@mark1russell7/rigor-chaos@0.3.3)(@mark1russell7/rigor-generators@0.2.4)(@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7))(@opentelemetry/api-logs@0.223.2)(@opentelemetry/api@1.10.0)(@opentelemetry/sdk-logs@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@3.1.1(@opentelemetry/api@1.10.0))(fast-check@4.11.0)(ltx@3.1.2)':
-    optionalDependencies:
-      '@mark1russell7/rigor-chaos': 0.3.3
-      '@mark1russell7/rigor-generators': 0.2.4
+      '@mark1russell7/rigor-chaos': 0.3.5
+      '@mark1russell7/rigor-generators': 0.2.7
       '@mark1russell7/rigor-proxy': 0.3.2(zod@4.6.7)
       '@opentelemetry/api': 1.10.0
       '@opentelemetry/api-logs': 0.223.2
@@ -5630,10 +5554,10 @@ snapshots:
       fast-check: 4.11.0
       ltx: 3.1.2
 
-  '@mark1russell7/rigor-testkit@0.2.0(@mark1russell7/rigor-chaos@0.3.3)(@mark1russell7/rigor-generators@0.2.4)(@opentelemetry/api-logs@0.223.0)(@opentelemetry/api@1.10.0)(@opentelemetry/sdk-logs@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-trace@3.1.1(@opentelemetry/api@1.10.0))(fast-check@4.11.0)(ltx@3.1.2)':
+  '@mark1russell7/rigor-testkit@0.2.1(@mark1russell7/rigor-chaos@0.3.5)(@mark1russell7/rigor-generators@0.2.7)(@opentelemetry/api-logs@0.223.0)(@opentelemetry/api@1.10.0)(@opentelemetry/sdk-logs@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-trace@3.1.1(@opentelemetry/api@1.10.0))(fast-check@4.11.0)(ltx@3.1.2)':
     optionalDependencies:
-      '@mark1russell7/rigor-chaos': 0.3.3
-      '@mark1russell7/rigor-generators': 0.2.4
+      '@mark1russell7/rigor-chaos': 0.3.5
+      '@mark1russell7/rigor-generators': 0.2.7
       '@opentelemetry/api': 1.10.0
       '@opentelemetry/api-logs': 0.223.0
       '@opentelemetry/sdk-logs': 3.1.1(@opentelemetry/api@1.10.0)
@@ -5642,32 +5566,32 @@ snapshots:
       fast-check: 4.11.0
       ltx: 3.1.2
 
-  '@mark1russell7/service@0.11.9(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)':
+  '@mark1russell7/service@0.11.9(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)':
     dependencies:
-      '@mark1russell7/algebra': 0.9.11(zod@4.6.7)
-      '@mark1russell7/collections': 0.11.2(zod@4.6.7)
+      '@mark1russell7/algebra': 0.9.12(zod@4.6.7)
+      '@mark1russell7/collections': 0.11.6(zod@4.6.7)
       '@mark1russell7/files': 0.0.3
-      '@mark1russell7/quantity': 0.4.3(zod@4.6.7)
+      '@mark1russell7/quantity': 0.4.8(zod@4.6.7)
       '@mark1russell7/rational': 0.1.3
       '@mark1russell7/rigor-generators': 0.1.19
       '@mark1russell7/text': 0.0.6
     optionalDependencies:
-      '@mark1russell7/otel-ts': 0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3)
+      '@mark1russell7/otel-ts': 0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3)
       '@opentelemetry/api': 1.10.0
       ws: 8.23.0
       zod: 4.6.7
 
-  '@mark1russell7/service@0.12.4(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)':
+  '@mark1russell7/service@0.12.5(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)':
     dependencies:
       '@mark1russell7/algebra': 0.9.12(zod@4.6.7)
-      '@mark1russell7/collections': 0.11.2(zod@4.6.7)
+      '@mark1russell7/collections': 0.11.6(zod@4.6.7)
       '@mark1russell7/files': 0.0.3
       '@mark1russell7/quantity': 0.5.1(zod@4.6.7)
       '@mark1russell7/rational': 0.1.3
       '@mark1russell7/rigor-generators': 0.1.19
       '@mark1russell7/text': 0.0.6
     optionalDependencies:
-      '@mark1russell7/otel-ts': 0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3)
+      '@mark1russell7/otel-ts': 0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3)
       '@opentelemetry/api': 1.10.0
       ws: 8.23.0
       zod: 4.6.7
@@ -5675,8 +5599,8 @@ snapshots:
   '@mark1russell7/service@0.8.20(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)':
     dependencies:
       '@mark1russell7/algebra': 0.8.10(zod@4.6.7)
-      '@mark1russell7/collections': 0.11.2(zod@4.6.7)
-      '@mark1russell7/quantity': 0.4.4(zod@4.6.7)
+      '@mark1russell7/collections': 0.11.6(zod@4.6.7)
+      '@mark1russell7/quantity': 0.4.8(zod@4.6.7)
       '@mark1russell7/rational': 0.1.3
       '@mark1russell7/rigor-generators': 0.1.19
       '@mark1russell7/text': 0.0.6
@@ -5685,30 +5609,30 @@ snapshots:
       ws: 8.23.0
       zod: 4.6.7
 
-  '@mark1russell7/site-pages@0.8.4':
+  '@mark1russell7/site-pages@0.8.7':
     dependencies:
-      '@mark1russell7/rigor-statistics': 0.2.30
+      '@mark1russell7/rigor-statistics': 0.2.32
 
   '@mark1russell7/sqlite@0.3.12': {}
 
-  '@mark1russell7/sqlite@0.7.0': {}
+  '@mark1russell7/sqlite@0.7.1': {}
 
-  '@mark1russell7/stack-placement@0.1.3':
+  '@mark1russell7/stack-placement@0.1.10':
     dependencies:
       '@mark1russell7/strategy-search': 0.1.2
       '@mark1russell7/strategy-space': 0.1.1
-      '@mark1russell7/system-stack': 0.1.8
+      '@mark1russell7/system-stack': 0.1.15
       zod: 4.6.7
 
-  '@mark1russell7/stack-risk@0.2.6':
+  '@mark1russell7/stack-risk@0.2.11':
     dependencies:
-      '@mark1russell7/collections': 0.11.2(zod@4.6.7)
-      '@mark1russell7/system-stack': 0.1.10
+      '@mark1russell7/collections': 0.11.6(zod@4.6.7)
+      '@mark1russell7/system-stack': 0.1.15
       zod: 4.6.7
 
-  '@mark1russell7/stack-spend@0.1.12':
+  '@mark1russell7/stack-spend@0.1.22':
     dependencies:
-      '@mark1russell7/system-stack': 0.1.6
+      '@mark1russell7/system-stack': 0.1.15
       '@mark1russell7/vex': 0.19.1(zod@4.6.7)
       '@mark1russell7/vex-domains': 0.19.1(zod@4.6.7)
       zod: 4.6.7
@@ -5720,33 +5644,21 @@ snapshots:
 
   '@mark1russell7/strategy-search@0.1.2':
     dependencies:
-      '@mark1russell7/rigor-generators': 0.2.4
+      '@mark1russell7/rigor-generators': 0.2.7
       '@mark1russell7/strategy-space': 0.1.1
 
   '@mark1russell7/strategy-space@0.1.1':
     dependencies:
-      '@mark1russell7/rigor-generators': 0.2.4
-      '@mark1russell7/rigor-statistics': 0.2.30
+      '@mark1russell7/rigor-generators': 0.2.7
+      '@mark1russell7/rigor-statistics': 0.2.32
 
-  '@mark1russell7/system-stack@0.1.10':
+  '@mark1russell7/system-stack@0.1.15':
     dependencies:
-      '@mark1russell7/coeval': 0.38.2(zod@4.6.7)
-      '@mark1russell7/collections': 0.11.2(zod@4.6.7)
+      '@mark1russell7/coeval': 0.38.3(zod@4.6.7)
+      '@mark1russell7/collections': 0.11.6(zod@4.6.7)
       zod: 4.6.7
 
-  '@mark1russell7/system-stack@0.1.6':
-    dependencies:
-      '@mark1russell7/coeval': 0.38.1(zod@4.6.7)
-      '@mark1russell7/collections': 0.11.2(zod@4.6.7)
-      zod: 4.6.7
-
-  '@mark1russell7/system-stack@0.1.8':
-    dependencies:
-      '@mark1russell7/coeval': 0.38.1(zod@4.6.7)
-      '@mark1russell7/collections': 0.11.2(zod@4.6.7)
-      zod: 4.6.7
-
-  '@mark1russell7/template-cli@0.1.9':
+  '@mark1russell7/template-cli@0.1.10':
     dependencies:
       '@clack/prompts': 1.9.0
 
@@ -5762,16 +5674,16 @@ snapshots:
 
   '@mark1russell7/text@0.0.6': {}
 
-  '@mark1russell7/typeset@0.7.1':
+  '@mark1russell7/typeset@0.7.2':
     dependencies:
-      '@mark1russell7/collections': 0.11.2(zod@4.6.7)
-      '@mark1russell7/rigor-generators': 0.2.4
+      '@mark1russell7/collections': 0.11.6(zod@4.6.7)
+      '@mark1russell7/rigor-generators': 0.2.7
     transitivePeerDependencies:
       - zod
 
   '@mark1russell7/vex-domains@0.19.1(zod@4.6.7)':
     dependencies:
-      '@mark1russell7/quantity': 0.4.3(zod@4.6.7)
+      '@mark1russell7/quantity': 0.4.8(zod@4.6.7)
       '@mark1russell7/vex': 0.19.1(zod@4.6.7)
     transitivePeerDependencies:
       - zod
@@ -5782,10 +5694,10 @@ snapshots:
     transitivePeerDependencies:
       - zod
 
-  '@mark1russell7/visuals@0.4.0(three@0.187.0)':
+  '@mark1russell7/visuals@0.4.1(three@0.187.0)':
     dependencies:
-      '@mark1russell7/geo': 0.5.13
-      '@mark1russell7/layout-contract': 0.11.1
+      '@mark1russell7/geo': 0.5.19
+      '@mark1russell7/layout-contract': 0.11.5
     optionalDependencies:
       three: 0.187.0
     transitivePeerDependencies:
@@ -5797,7 +5709,7 @@ snapshots:
     dependencies:
       '@emnapi/core': 2.0.0-beta.2
       '@emnapi/runtime': 2.0.0-beta.2
-      '@tybys/wasm-util': 0.10.4
+      '@tybys/wasm-util': 0.10.5
     optional: true
 
   '@nodable/entities@3.1.0': {}
@@ -5936,7 +5848,7 @@ snapshots:
   '@opentelemetry/instrumentation@0.301.2(@opentelemetry/api@1.10.0)(supports-color@7.2.0)':
     dependencies:
       '@opentelemetry/api': 1.10.0
-      import-in-the-middle: 3.6.0
+      import-in-the-middle: 3.7.0
       require-in-the-middle: 8.0.1(supports-color@7.2.0)
     transitivePeerDependencies:
       - supports-color
@@ -6032,14 +5944,14 @@ snapshots:
 
   '@oxc-project/types@0.159.0': {}
 
-  '@procedures/client@0.68.0(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))':
+  '@procedures/client@0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))':
     dependencies:
-      '@mark1russell7/algebra': 0.9.11(zod@4.6.7)
-      '@mark1russell7/coeval': 0.38.1(zod@4.6.7)
+      '@mark1russell7/algebra': 0.9.12(zod@4.6.7)
+      '@mark1russell7/coeval': 0.38.3(zod@4.6.7)
       '@mark1russell7/collections': 0.10.2(zod@4.6.7)
-      '@mark1russell7/quantity': 0.4.3(zod@4.6.7)
-      '@mark1russell7/rigor-generators': 0.2.4
-      '@mark1russell7/service': 0.11.9(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
+      '@mark1russell7/quantity': 0.4.8(zod@4.6.7)
+      '@mark1russell7/rigor-generators': 0.2.7
+      '@mark1russell7/service': 0.11.9(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
       '@opentelemetry/api': 1.10.0
       '@types/ws': 8.18.2
       ws: 8.23.0
@@ -6054,55 +5966,11 @@ snapshots:
       - pg
       - utf-8-validate
 
-  '@procedures/client@0.68.1(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))':
-    dependencies:
-      '@mark1russell7/algebra': 0.9.9(zod@4.6.7)
-      '@mark1russell7/coeval': 0.38.1(zod@4.6.7)
-      '@mark1russell7/collections': 0.10.2(zod@4.6.7)
-      '@mark1russell7/quantity': 0.4.3(zod@4.6.7)
-      '@mark1russell7/rigor-generators': 0.2.4
-      '@mark1russell7/service': 0.11.9(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
-      '@opentelemetry/api': 1.10.0
-      '@types/ws': 8.18.2
-      ws: 8.23.0
-      zod: 4.6.7
-    transitivePeerDependencies:
-      - '@grpc/grpc-js'
-      - '@mark1russell7/otel-ts'
-      - amqplib
-      - bufferutil
-      - ioredis
-      - mongodb
-      - pg
-      - utf-8-validate
-
-  '@procedures/client@0.68.12(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))':
-    dependencies:
-      '@mark1russell7/algebra': 0.9.9(zod@4.6.7)
-      '@mark1russell7/coeval': 0.38.2(zod@4.6.7)
-      '@mark1russell7/collections': 0.10.2(zod@4.6.7)
-      '@mark1russell7/quantity': 0.4.3(zod@4.6.7)
-      '@mark1russell7/rigor-generators': 0.2.4
-      '@mark1russell7/service': 0.11.9(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
-      '@opentelemetry/api': 1.10.0
-      '@types/ws': 8.18.2
-      ws: 8.23.0
-      zod: 4.6.7
-    transitivePeerDependencies:
-      - '@grpc/grpc-js'
-      - '@mark1russell7/otel-ts'
-      - amqplib
-      - bufferutil
-      - ioredis
-      - mongodb
-      - pg
-      - utf-8-validate
-
-  '@procedures/compiler@0.68.0(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))':
+  '@procedures/compiler@0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))':
     dependencies:
       '@cfworker/json-schema': 4.1.6
-      '@mark1russell7/coeval': 0.38.1(zod@4.6.7)
-      '@procedures/client': 0.68.0(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
+      '@mark1russell7/coeval': 0.38.3(zod@4.6.7)
+      '@procedures/client': 0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
       zod: 4.6.7
     transitivePeerDependencies:
       - '@grpc/grpc-js'
@@ -6115,11 +5983,11 @@ snapshots:
       - pg
       - utf-8-validate
 
-  '@procedures/fs@0.68.0(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))':
+  '@procedures/fs@0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))':
     dependencies:
-      '@mark1russell7/collections': 0.11.2(zod@4.6.7)
+      '@mark1russell7/collections': 0.11.6(zod@4.6.7)
       '@mark1russell7/files': 0.0.4
-      '@procedures/client': 0.68.0(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
+      '@procedures/client': 0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
       zod: 4.6.7
     transitivePeerDependencies:
       - '@grpc/grpc-js'
@@ -6132,12 +6000,12 @@ snapshots:
       - pg
       - utf-8-validate
 
-  '@procedures/gh@0.68.1(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)':
+  '@procedures/gh@0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)':
     dependencies:
-      '@mark1russell7/service': 0.11.9(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
-      '@procedures/client': 0.68.1(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
-      '@procedures/http': 0.68.1(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
-      '@procedures/shell': 0.68.1(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
+      '@mark1russell7/service': 0.11.9(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
+      '@procedures/client': 0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
+      '@procedures/http': 0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
+      '@procedures/shell': 0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
       zod: 4.6.7
     transitivePeerDependencies:
       - '@grpc/grpc-js'
@@ -6152,9 +6020,9 @@ snapshots:
       - utf-8-validate
       - ws
 
-  '@procedures/http@0.68.1(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))':
+  '@procedures/http@0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))':
     dependencies:
-      '@procedures/client': 0.68.1(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
+      '@procedures/client': 0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
       zod: 4.6.7
     transitivePeerDependencies:
       - '@grpc/grpc-js'
@@ -6167,10 +6035,10 @@ snapshots:
       - pg
       - utf-8-validate
 
-  '@procedures/json@0.68.0(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))':
+  '@procedures/json@0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))':
     dependencies:
-      '@procedures/client': 0.68.0(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
-      '@procedures/compiler': 0.68.0(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
+      '@procedures/client': 0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
+      '@procedures/compiler': 0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
       yaml: 2.9.1
       zod: 4.6.7
     transitivePeerDependencies:
@@ -6185,13 +6053,13 @@ snapshots:
       - typescript-api
       - utf-8-validate
 
-  '@procedures/notify@0.68.0(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@mark1russell7/rigor-testkit@0.1.20(@mark1russell7/rigor-chaos@0.3.3)(@mark1russell7/rigor-generators@0.2.4)(@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7))(@opentelemetry/api-logs@0.223.2)(@opentelemetry/api@1.10.0)(@opentelemetry/sdk-logs@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@3.1.1(@opentelemetry/api@1.10.0))(fast-check@4.11.0)(ltx@3.1.2))':
+  '@procedures/notify@0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@mark1russell7/rigor-testkit@0.1.22(@mark1russell7/rigor-chaos@0.3.5)(@mark1russell7/rigor-generators@0.2.7)(@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7))(@opentelemetry/api-logs@0.223.2)(@opentelemetry/api@1.10.0)(@opentelemetry/sdk-logs@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@3.1.1(@opentelemetry/api@1.10.0))(fast-check@4.11.0)(ltx@3.1.2))':
     dependencies:
       '@mark1russell7/text': 0.0.6
-      '@procedures/client': 0.68.0(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
+      '@procedures/client': 0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
       zod: 4.6.7
     optionalDependencies:
-      '@mark1russell7/rigor-testkit': 0.1.20(@mark1russell7/rigor-chaos@0.3.3)(@mark1russell7/rigor-generators@0.2.4)(@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7))(@opentelemetry/api-logs@0.223.2)(@opentelemetry/api@1.10.0)(@opentelemetry/sdk-logs@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@3.1.1(@opentelemetry/api@1.10.0))(fast-check@4.11.0)(ltx@3.1.2)
+      '@mark1russell7/rigor-testkit': 0.1.22(@mark1russell7/rigor-chaos@0.3.5)(@mark1russell7/rigor-generators@0.2.7)(@mark1russell7/rigor-proxy@0.3.2(zod@4.6.7))(@opentelemetry/api-logs@0.223.2)(@opentelemetry/api@1.10.0)(@opentelemetry/sdk-logs@3.1.1(@opentelemetry/api@1.10.0))(@opentelemetry/sdk-metrics@3.1.1(@opentelemetry/api@1.10.0))(fast-check@4.11.0)(ltx@3.1.2)
     transitivePeerDependencies:
       - '@grpc/grpc-js'
       - '@mark1russell7/otel-ts'
@@ -6203,11 +6071,11 @@ snapshots:
       - pg
       - utf-8-validate
 
-  '@procedures/peer@0.68.12(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@mark1russell7/service@0.12.4(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7))':
+  '@procedures/peer@0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@mark1russell7/service@0.12.5(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7))':
     dependencies:
       '@mark1russell7/files': 0.0.4
-      '@mark1russell7/service': 0.12.4(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
-      '@procedures/client': 0.68.12(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
+      '@mark1russell7/service': 0.12.5(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
+      '@procedures/client': 0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
       zod: 4.6.7
     transitivePeerDependencies:
       - '@grpc/grpc-js'
@@ -6220,39 +6088,9 @@ snapshots:
       - pg
       - utf-8-validate
 
-  '@procedures/shell@0.68.0(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))':
+  '@procedures/shell@0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))':
     dependencies:
-      '@procedures/client': 0.68.0(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
-      zod: 4.6.7
-    transitivePeerDependencies:
-      - '@grpc/grpc-js'
-      - '@mark1russell7/otel-ts'
-      - amqplib
-      - bufferutil
-      - express
-      - ioredis
-      - mongodb
-      - pg
-      - utf-8-validate
-
-  '@procedures/shell@0.68.1(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))':
-    dependencies:
-      '@procedures/client': 0.68.1(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
-      zod: 4.6.7
-    transitivePeerDependencies:
-      - '@grpc/grpc-js'
-      - '@mark1russell7/otel-ts'
-      - amqplib
-      - bufferutil
-      - express
-      - ioredis
-      - mongodb
-      - pg
-      - utf-8-validate
-
-  '@procedures/shell@0.68.12(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))':
-    dependencies:
-      '@procedures/client': 0.68.12(@mark1russell7/otel-ts@0.8.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
+      '@procedures/client': 0.68.14(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))
       zod: 4.6.7
     transitivePeerDependencies:
       - '@grpc/grpc-js'
@@ -6267,7 +6105,7 @@ snapshots:
 
   '@publint/pack@0.1.7':
     dependencies:
-      tinyexec: 1.3.1
+      tinyexec: 1.4.0
 
   '@quansync/fs@1.1.0':
     dependencies:
@@ -6441,7 +6279,7 @@ snapshots:
 
   '@tweenjs/tween.js@23.1.3': {}
 
-  '@tybys/wasm-util@0.10.4':
+  '@tybys/wasm-util@0.10.5':
     dependencies:
       tslib: 2.9.1
     optional: true
@@ -6459,7 +6297,7 @@ snapshots:
 
   '@types/deep-eql@4.0.2': {}
 
-  '@types/estree@1.0.10': {}
+  '@types/estree@1.0.11': {}
 
   '@types/gensync@1.0.5': {}
 
@@ -6467,7 +6305,7 @@ snapshots:
 
   '@types/jsesc@2.5.1': {}
 
-  '@types/node@26.6.6':
+  '@types/node@26.6.10':
     dependencies:
       undici-types: 8.9.0
 
@@ -6486,7 +6324,7 @@ snapshots:
 
   '@types/ws@8.18.2':
     dependencies:
-      '@types/node': 26.6.6
+      '@types/node': 26.6.10
 
   '@typescript/typescript-aix-ppc64@7.0.2':
     optional: true
@@ -6548,34 +6386,34 @@ snapshots:
   '@typescript/typescript-win32-x64@7.0.2':
     optional: true
 
-  '@vitest/coverage-v8@5.1.1(vitest@5.1.1)':
+  '@vitest/coverage-v8@5.1.2(vitest@5.1.2)':
     dependencies:
       '@bcoe/v8-coverage': 1.0.2
-      '@vitest/istanbul-lib-coverage': 2.1.0
-      '@vitest/istanbul-lib-report': 2.1.0
+      '@vitest/istanbul-lib-coverage': 2.1.1
+      '@vitest/istanbul-lib-report': 2.1.1
       ast-v8-to-istanbul: 1.0.8
       magicast: 0.5.5
       obug: 3.0.0
       std-env: 4.3.0
       tinyrainbow: 3.2.0
-      vitest: 5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+      vitest: 5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
-  '@vitest/istanbul-lib-coverage@2.1.0': {}
+  '@vitest/istanbul-lib-coverage@2.1.1': {}
 
-  '@vitest/istanbul-lib-report@2.1.0':
+  '@vitest/istanbul-lib-report@2.1.1':
     dependencies:
-      '@vitest/istanbul-lib-coverage': 2.1.0
+      '@vitest/istanbul-lib-coverage': 2.1.1
 
-  '@vitest/mocker@5.1.1(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))':
+  '@vitest/mocker@5.1.2(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))':
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
-      '@vitest/spy': 5.1.1
+      '@vitest/spy': 5.1.2
       estree-walker: 3.0.3
       magic-string: 1.4.5
     optionalDependencies:
-      vite: 8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)
+      vite: 8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)
 
-  '@vitest/spy@5.1.1': {}
+  '@vitest/spy@5.1.2': {}
 
   '@xmpp/base64@0.14.0': {}
 
@@ -6773,9 +6611,9 @@ snapshots:
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
       estree-walker: 3.0.3
-      js-tokens: 10.0.0
+      js-tokens: 10.0.1
 
-  async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)):
+  async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)):
     dependencies:
       '@babel/core': 8.1.3
       '@babel/helper-module-imports': 8.0.0
@@ -6784,7 +6622,7 @@ snapshots:
       '@babel/plugin-transform-explicit-resource-management': 8.1.3(@babel/core@8.1.3)
     optionalDependencies:
       '@opentelemetry/api': 1.10.0
-      vite: 8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)
+      vite: 8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)
 
   baseline-browser-mapping@2.11.39: {}
 
@@ -6793,14 +6631,14 @@ snapshots:
   browserslist@4.29.6:
     dependencies:
       baseline-browser-mapping: 2.11.39
-      caniuse-lite: 1.0.30001826
-      electron-to-chromium: 1.5.492
+      caniuse-lite: 1.0.30001828
+      electron-to-chromium: 1.5.494
       node-releases: 2.0.65
       update-browserslist-db: 1.4.0(browserslist@4.29.6)
 
   cac@7.1.1: {}
 
-  caniuse-lite@1.0.30001826: {}
+  caniuse-lite@1.0.30001828: {}
 
   chai@6.3.0: {}
 
@@ -6831,7 +6669,7 @@ snapshots:
 
   css-what@8.0.0: {}
 
-  cssomnom@0.1.11: {}
+  cssomnom@0.1.12: {}
 
   d3-array@3.2.5:
     dependencies:
@@ -6849,7 +6687,7 @@ snapshots:
 
   defu@6.1.7: {}
 
-  dependency-cruiser@18.8.0:
+  dependency-cruiser@18.9.0:
     dependencies:
       acorn: 8.19.0
       acorn-jsx: 5.3.2(acorn@8.19.0)
@@ -6858,7 +6696,7 @@ snapshots:
       acorn-walk: 8.3.5
       commander: 15.1.0
       enhanced-resolve: 5.27.0
-      ignore: 7.0.14
+      ignore: 7.0.16
       interpret: 3.1.1
       is-installed-globally: 1.0.1
       json5: 2.2.3
@@ -6910,7 +6748,7 @@ snapshots:
 
   dts-resolver@3.0.0: {}
 
-  electron-to-chromium@1.5.492: {}
+  electron-to-chromium@1.5.494: {}
 
   empathic@2.1.0: {}
 
@@ -6964,7 +6802,7 @@ snapshots:
 
   estree-walker@3.0.3:
     dependencies:
-      '@types/estree': 1.0.10
+      '@types/estree': 1.0.11
 
   events@3.3.0: {}
 
@@ -7040,9 +6878,9 @@ snapshots:
       domutils: 3.2.2
       entities: 7.0.1
 
-  ignore@7.0.14: {}
+  ignore@7.0.16: {}
 
-  import-in-the-middle@3.6.0:
+  import-in-the-middle@3.7.0:
     dependencies:
       cjs-module-lexer: 2.3.0
       es-module-lexer: 3.0.5
@@ -7071,7 +6909,7 @@ snapshots:
 
   is-unsafe@2.0.3: {}
 
-  js-tokens@10.0.0: {}
+  js-tokens@10.0.1: {}
 
   jsesc@3.1.0: {}
 
@@ -7135,7 +6973,7 @@ snapshots:
   linkedom@0.18.15:
     dependencies:
       css-select: 7.0.0
-      cssomnom: 0.1.11
+      cssomnom: 0.1.12
       html-escaper: 3.0.3
       htmlparser2: 10.1.0
       uhyphen: 0.2.0
@@ -7150,9 +6988,9 @@ snapshots:
 
   magicast@0.5.5:
     dependencies:
-      '@babel/parser': 7.29.14
-      '@babel/types': 7.29.14
-      source-map-js: 1.2.2
+      '@babel/parser': 7.29.15
+      '@babel/types': 7.29.15
+      source-map-js: 1.2.4
 
   meshoptimizer@1.1.1: {}
 
@@ -7192,7 +7030,7 @@ snapshots:
       '@mark1russell7/sqlite': 0.3.12
       '@mozilla/readability': 0.6.0
       linkedom: 0.18.15
-      undici: 8.12.4
+      undici: 8.13.1
       unpdf: 1.9.1
     transitivePeerDependencies:
       - '@grpc/grpc-js'
@@ -7206,11 +7044,11 @@ snapshots:
       - ws
       - zod
 
-  postcss@8.5.32:
+  postcss@8.5.33:
     dependencies:
       nanoid: 3.3.20
       picocolors: 1.1.1
-      source-map-js: 1.2.2
+      source-map-js: 1.2.4
 
   prompts@2.4.2:
     dependencies:
@@ -7333,7 +7171,7 @@ snapshots:
 
   sisteransi@2.0.0: {}
 
-  source-map-js@1.2.2: {}
+  source-map-js@1.2.4: {}
 
   std-env@4.3.0: {}
 
@@ -7353,9 +7191,9 @@ snapshots:
 
   three@0.187.0: {}
 
-  tinybench@6.2.3: {}
+  tinybench@6.2.5: {}
 
-  tinyexec@1.3.1: {}
+  tinyexec@1.4.0: {}
 
   tinyglobby@0.2.17:
     dependencies:
@@ -7390,7 +7228,7 @@ snapshots:
       picomatch: 4.0.7
       rolldown: 1.3.3
       rolldown-plugin-dts: 0.30.2(rolldown@1.3.3)(typescript@7.0.2)
-      tinyexec: 1.3.1
+      tinyexec: 1.4.0
       tinyglobby: 0.2.17
       tinyps: 0.5.2
       unconfig-core: 7.5.0
@@ -7452,7 +7290,7 @@ snapshots:
 
   undici-types@8.9.0: {}
 
-  undici@8.12.4: {}
+  undici@8.13.1: {}
 
   unpdf@1.9.1: {}
 
@@ -7464,24 +7302,24 @@ snapshots:
 
   verkit@0.5.0: {}
 
-  vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1):
+  vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1):
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.7
-      postcss: 8.5.32
+      postcss: 8.5.33
       rolldown: 1.2.19
       tinyglobby: 0.2.17
     optionalDependencies:
-      '@types/node': 26.6.6
+      '@types/node': 26.6.10
       esbuild: 0.28.2
       fsevents: 2.3.3
       tsx: 4.23.15
       yaml: 2.9.1
 
-  vitest@5.1.1(@opentelemetry/api@1.10.0)(@types/node@26.6.6)(@vitest/coverage-v8@5.1.1)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)):
+  vitest@5.1.2(@opentelemetry/api@1.10.0)(@types/node@26.6.10)(@vitest/coverage-v8@5.1.2)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)):
     dependencies:
       '@types/chai': 5.2.3
-      '@vitest/mocker': 5.1.1(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
+      '@vitest/mocker': 5.1.2(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
       chai: 6.3.0
       es-module-lexer: 2.3.2
       expect-type: 1.4.0
@@ -7489,15 +7327,15 @@ snapshots:
       obug: 3.0.0
       picomatch: 4.0.7
       std-env: 4.3.0
-      tinybench: 6.2.3
-      tinyexec: 1.3.1
+      tinybench: 6.2.5
+      tinyexec: 1.4.0
       tinyglobby: 0.2.17
-      vite: 8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)
+      vite: 8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)
       why-is-node-running: 3.2.1
     optionalDependencies:
       '@opentelemetry/api': 1.10.0
-      '@types/node': 26.6.6
-      '@vitest/coverage-v8': 5.1.1(vitest@5.1.1)
+      '@types/node': 26.6.10
+      '@vitest/coverage-v8': 5.1.2(vitest@5.1.2)
     transitivePeerDependencies:
       - msw
 

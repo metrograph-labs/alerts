@@ -1,7 +1,7 @@
 import { stat } from "node:fs/promises";
 import { createServer } from "node:http";
 import { join } from "node:path";
-import type { CopyWatch, HealthPayload, HistoryPayload, Instant, InterestsPayload, MapPayload, SourceId } from "@mark1russell7/alerts";
+import { packMap, type CopyWatch, type HealthPayload, type HistoryPayload, type Instant, type InterestsPayload, type MapPayload, type SourceId } from "@mark1russell7/alerts";
 import { findFilesAsync } from "@mark1russell7/files";
 import type { ServiceBuilder } from "@mark1russell7/service";
 import { handle, httpTransport } from "@mark1russell7/service/http";
@@ -227,7 +227,8 @@ export const attachApi = (svc: ServiceBuilder, options: ApiOptions): ServiceBuil
   const api = svc.controller("api").route("GET /status", { idempotent: true });
   const map = options.map;
   if (map !== undefined) {
-    http.mount(handle("api", "GET /map", () => map()));
+    // The answer has one table of the distinct shapes (AL-214). The page unpacks it.
+    http.mount(handle("api", "GET /map", () => packMap(map())));
     api.route("GET /map", { idempotent: true });
   }
   const health = options.health;

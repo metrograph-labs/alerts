@@ -859,6 +859,32 @@ The sounder channel (`@mark1russell7/alerts-channel-sounder`, AL-41) makes a sou
 - The fact `breaksThrough` is true only for a device that sets its own loudness. A person can set the volume of a computer to zero.
 - The runtime does not load the channel at this time. The next step adds it to the instance, with the command of the copy.
 
+The mesh channel (`@mark1russell7/alerts-channel-mesh`, AL-41) sounds a siren on a node of a LoRa mesh, for example a Meshtastic node near a bed:
+
+- The channel needs no phone, no push service and no internet link. Its descriptor uses only the power of the cell.
+- A home node on the computer of the copy is the link. The bed node has a siren on an output pin and a button.
+- The frames are short texts: `alarm`, `stop`, `ack` and `beat`. Each frame starts with its version, `M1`, and has 200 bytes or fewer.
+- The decode of a frame is total. It refuses an unknown version, an unknown kind, a bad field and a frame that is too long.
+- An alarm frame ends with the bell character. Thus the module External Notification sounds the siren for an alarm, and not for a beat.
+- A frame holds no title and no body, because each radio on the channel hears it. The limits of the title and the body are 0.
+- The alarm id comes from the first 16 characters of the delivery key. A new alarm of the same key gets a new round after a hyphen.
+- A send writes the first alarm frame before its answer. A failure of the link gives `network`.
+- The channel writes the alarm frame again on its backoff until the ack, a cancel or the end time. The waits are 5 seconds to 60 seconds.
+- After 30 minutes with no ack, the channel stops the frames, and `status` gives `failed`.
+- A push of the button stops the siren and sends an ack. The node sends the ack again for each later alarm frame of that id.
+- The receiver keeps the acks by the alarm id. An ack that comes again counts one time.
+- An ack for an id that is not the current alarm acknowledges nothing. Thus a late ack of an old alarm has no effect.
+- `status` gives `acknowledged` with the name of the node, and the time when the home node got the ack. The dispatcher polls it.
+- A cancel and the end time send 3 stop frames on the backoff. A node that ended an alarm does not start it again for a late frame.
+- The bed node sends a beat in each period. The default period is 2 minutes.
+- The probe passes only when the last beat of the bed node is younger than 3 periods. Else it gives `network`.
+- The age of a beat comes from the clock of the home, not from the clock of the node.
+- A siren has no silent mode. The channel refuses a quiet message with the kind `quiet`.
+- The channel sounds only for the levels `urgent` and `life-safety`. It refuses each other level.
+- The settings of the bed node are data (`node-config.ts`). They name the channel and the name of its key in `secrets.env`, and never the key.
+- The entry `/testing` has a simulated node and a simulated mesh. A fault test applies seeded plans of `rigor-chaos` to the two directions of the mesh.
+- The runtime does not load the channel at this time. A later step adds it to the instance, and a bench test uses real radios.
+
 The supervisor sends a notice to a receiver when the runtime stops again and again (`loop-notice.ts`, AL-55). A runtime in a loop sends no alert, because the runtime is the sender:
 
 - The URL is the value of the key `SUPERVISOR_WEBHOOK_URL` of `secrets.env`. Each copy has its own file, thus its own receiver.
@@ -1049,6 +1075,13 @@ The mirror does these steps before each read of the reload hook (`config-sync.ts
 2. It checks the texts with its own `secrets.env` and `copy.json`, as a start does. The texts also give the hash of the source. Texts with problems change no file.
 3. It writes each changed part, removes each part that the source does not have, and writes `config.json` last. Each write goes to a temporary file first.
 4. Then the reload hook reads the whole set. A set that passes the check starts the runtime again.
+
+A set that changes the snapshot key of the live start does not go to the private files (AL-179):
+
+- A start of that set folds the whole log. On a small host, that fold takes longer than the ready window.
+- The mirror writes the set into the folder `host/sync-held`, in place of the files. It tells the hold one time.
+- `deploy.ts files --held` writes the held set. It folds before the start when the key changes, and then it removes the folder.
+- A fault of the key also holds the set. Thus a fault does not start a fold of the whole log.
 
 - The mirror tells each refusal one time, until a different refusal. A problem holds no text of a file, no address and no URL.
 - A write that fails can leave a mix of two sets. The check refuses a mix with problems. A mix that passes gives another hash, thus the next try corrects it.
@@ -1521,7 +1554,7 @@ The shadow score (`shadowScore`) is the first step. It operates next to the tabl
 - A factor that the priors do not give makes a score with no read. The score names each missing factor. It does not take 0 or a default value.
 - `assessWithShadow` adds the score as the last reason of an assessment with a reason of the table. The level and the other reasons stay those of `assess`. A seeded gate test holds this. An assessment whose reason `score` holds the score gets no second score.
 
-The priors come from the base rates of the package `rates` (`priorsOf`). The file `packages/rates/data/priors.json` holds them. A test holds it equal to the priors of `data/rates.json`:
+The priors come from the base rates of the package `rates` (`priorsOf`). The file `packages/core/src/data/priors.json` holds them, and the entry `@mark1russell7/alerts/priors` gives them. A test of `rates` holds the file equal to the priors of `data/rates.json`:
 
 - The verified share of a kind is the own share of IEM Cow. It is the share of the warnings that a storm report of the same hazard verified. Its interval is the gate interval of the share.
 - A share with a reason of no read gives no prior. A phenomenon that Cow does not verify gives no prior.
@@ -1789,6 +1822,9 @@ A new fold version gets its snapshot before the next start (AL-153):
 - The mode has no service, no listener and no window. It does not change the start marker or the last good set.
 - The lock of the home folder refuses the fold while a runtime runs. Thus stop the runtime, swap, fold, and then start the runtime.
 - A fold version change with an upgrade of the old snapshot needs no fold step. A fold step then only writes a new snapshot.
+- A change of a private file can change the snapshot key too: a source that the copy leaves, for example (AL-220).
+- `deploy.ts files <name> <source>` writes the file. It reads the key before and after the write, and folds before the start when the key changes.
+- New files that give no key get the old text back. Thus do not write `config.json`, `secrets.env`, `copy.json` or a part by hand.
 
 The two slots keep each start on the code of one commit:
 
@@ -2256,6 +2292,25 @@ The limits:
 - A stop of the runtime loses the last fix when the home store does not have it. The next fix of the phone gives it again.
 - The phone app decides the time between two fixes. A long time between fixes makes the place stale.
 
+To set up a phone:
+
+1. Add the entry `tell` to `config.json` of the home, if the home does not have it. The runtime then makes `tell.token`.
+2. Add a moving place to `config.json`. Give it the states where the person can be. A sample:
+
+   ```json
+   { "id": "phone", "label": "Phone", "codes": [{ "system": "state", "code": "KS" }, { "system": "iso3166", "code": "US" }], "bufferKm": 5, "moving": { "device": "ph", "maxAgeMinutes": 60 } }
+   ```
+
+3. Add the id of the place to `places` of the person, and to each rule of `mandatory` that must cover the person.
+4. Make a proxy of the private network to the loopback listener of `tell`. Only the machines of the person can reach it.
+5. Install OwnTracks on the phone. Set the mode HTTP, and set the URL `https://<host of the proxy>/tell/alerts/position`.
+6. In OwnTracks, set the tracker ID to the `device` of the place. Set the password to the text of `tell.token`. The user name is free.
+7. Set the monitoring mode `Move` while the person travels. The mode `Significant` sends a fix only after a large movement.
+8. Make `maxAgeMinutes` longer than the longest time between two fixes of the phone. Else the place becomes stale between fixes.
+9. Examine the health route. The read `fixes of the moving place <id>` gives the time of the last fix, and the cause of a refused fix.
+
+Do not put the token, a fix or the address of the proxy in a file of the repository, a log or a message.
+
 ### The fire zones of the NWS (AL-33)
 
 The NWS has three kinds of UGC zones in a state: the counties (`KSC173`), the forecast zones and the fire weather zones. A forecast zone and a fire zone can have one code (`KSZ083`) and different outlines. Thus the two kinds have two region systems: `ugc` for the counties and the forecast zones, and `ugc-fire` for the fire zones.
@@ -2377,6 +2432,7 @@ The change has the parts of the incident that the copy knew at that time:
 - The change has the live parts, as the map has only live incidents. With no live part, it has each part, and `live` is false.
 - The level is the highest level over each person at that time, with the policy of the delivery and the mutes.
 - Two parts of an incident before their merge give one change. The change has the higher level and severity, and the areas of the two parts.
+- `certainty` is the highest CAP certainty of the parts of the change, from `observed` to `unknown`. A reader tells an observed event from a forecast with it. A payload of an older copy has no `certainty`, and a reader then uses `unknown`.
 - `places` has each watched place in the areas, in the order of the input places. The level of a place is the highest level of the assessments with the place. A matched place with no assessment has the level `none`. The map uses the same rule.
 - The time of entry comes from the clock of this copy. Thus a late import of a report of another copy comes after the `since` of a reader.
 

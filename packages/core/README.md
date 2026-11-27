@@ -25,6 +25,7 @@ The package needs Node.js 22 or later. It is an ES module.
 | Lifelines and needs | The 8 FEMA Community Lifelines, and the needs of a person each day with an official source for each amount. |
 | Indicators | The checks of the indicator readings and the read of each indicator series. |
 | Map | The view of the map, the shapes and the base map. |
+| Priors | The entry `@mark1russell7/alerts/priors` gives the committed priors of the shadow score: the deaths and the injuries of one NCEI event of each kind, with intervals. |
 
 ## Example
 

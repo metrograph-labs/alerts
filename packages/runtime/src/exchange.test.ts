@@ -6,7 +6,7 @@ import { CLOCK_SKEW_LIMIT, COPY_MAX_AGE, EXCHANGE_LIMIT } from "./copy.ts";
 import { EXCHANGE_CHECKPOINT, EXCHANGE_FORMAT, EXCHANGE_PAGE, importOf, importPage, itemProblem, parsePage, sharedItem, sharePage, type ExchangePage, type ImportInput, type ReceivedPage, type SharedItem } from "./exchange.ts";
 import { LOUD_STEADY, steadyPasses } from "./instance.ts";
 import { openRuntimeLog, type RuntimeLog } from "./log.ts";
-import { exchangeWorker, serveEntries, type ExchangeCall, type ExchangeRound, type ExchangeWorker, type ExchangeWorkerOptions } from "./peers.ts";
+import { exchangeWorker, serveEntries, TAKE_NOTE_ITEMS, takeNoteText, type ExchangeCall, type ExchangeRound, type ExchangeWorker, type ExchangeWorkerOptions, type TakeNote } from "./peers.ts";
 import { openRuntime, type CopyChecks, type Pass, type Runtime, type RuntimeOptions } from "./runtime.ts";
 import { EMPTY_RUNTIME, fold, rebuild, type FoldContext, type RuntimeState } from "./state.ts";
 
@@ -569,6 +569,31 @@ describe("two runtimes", () => {
       expect(readsB.watches()).toEqual([{ copy: "b", skewLimit: CLOCK_SKEW_LIMIT, maxAge: COPY_MAX_AGE, since: T0, read: { at: T0, skew: 0, sameConfig: true } }]);
       expect(stagesOf(readsB, clock.now())).toEqual([]);
       expect(readsB.failure("b")).toBeUndefined();
+    });
+
+    it("gives a note at the end of a slow import of a page, and no note for a small fast page (AL-222)", async () => {
+      const clock = fakeWallClock(T0);
+      const a = open("a", [], clock);
+      const b = open("b", ["w1"], clock);
+      await b.runtime.pass();
+      const notes: TakeNote[] = [];
+      // Each read of the clock of the imports is 2 s after the read before it. Thus each import takes 2 s.
+      let mono = 0;
+      const slow = exchangeWorker({ runtime: a.runtime, peers: [B], call: serve(b.runtime, clock), clock, configHash: HASH, onTake: (note) => notes.push(note), mono: () => (mono += 2_000) });
+      await slow.round();
+      expect(notes).toEqual([{ phase: "end", copy: "b", after: 0, items: expect.any(Number), imports: expect.any(Number), next: a.runtime.position("b"), ms: 2_000 }]);
+      expect(notes[0]!.items).toBeLessThan(TAKE_NOTE_ITEMS);
+      const fast: TakeNote[] = [];
+      const c = open("c", [], clock);
+      await exchangeWorker({ runtime: c.runtime, peers: [B], call: serve(b.runtime, clock), clock, configHash: HASH, onTake: (note) => fast.push(note), mono: () => 0 }).round();
+      expect(fast).toEqual([]);
+    });
+
+    it("gives the lines of the notes with ids, positions and counts only (AL-222)", () => {
+      expect(takeNoteText({ phase: "start", copy: "b", after: 10, items: 500, head: 9_000 })).toBe("The exchange imports a page of the copy b: 500 items after the position 10, of the head 9000.");
+      expect(takeNoteText({ phase: "end", copy: "b", after: 10, items: 500, imports: 480, next: 510, ms: 1_234.6 })).toBe(
+        "The import of the page of the copy b after the position 10 took 1235 ms: 480 imports of 500 items, the next position is 510.",
+      );
     });
 
     it("reads a copy that is far behind over many pages, and tells that the next round goes on at once", async () => {

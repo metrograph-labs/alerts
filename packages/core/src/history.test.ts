@@ -133,6 +133,21 @@ describe("historyPayload", () => {
     ]);
   });
 
+  it("gives the highest certainty of the parts in each change, thus a watch does not read as a start (AL-221)", () => {
+    const watch = report({ key: "a", certainty: "possible", onset: T0, correlation: [{ system: "x", id: "1" }] });
+    const warning = report({ key: "b", sent: T0 + 5 * MINUTE, certainty: "observed", correlation: [{ system: "x", id: "2" }] });
+    const link = report({ key: "c", sent: T0 + 15 * MINUTE, certainty: "likely", correlation: [{ system: "x", id: "1" }, { system: "x", id: "2" }] });
+    const payload = historyPayload(input(merge([watch, warning, link])));
+    expect(payload.incidents).toHaveLength(1);
+    expect(payload.incidents[0]?.changes.map((change) => [change.at, change.certainty])).toEqual([
+      [T0, "possible"],
+      [T0 + 5 * MINUTE, "observed"],
+      // The link replaces the watch and the warning, thus its certainty is the only one that is live.
+      [T0 + 15 * MINUTE, "likely"],
+    ]);
+    expect(historyPayloadSchema.safeParse(payload).success).toBe(true);
+  });
+
   it("gives only the incidents with a change at since or later, each with each of its changes", () => {
     const other = report({ key: "o1", sent: T0 + 40 * MINUTE, kind: { code: "hydro.flood", significance: "warning", label: "Flood Warning" }, areas: [{ type: "code", ...county }] });
     const state = merge([first, update, other]);
