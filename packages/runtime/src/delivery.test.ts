@@ -201,6 +201,42 @@ function open(scripts: { readonly pushover?: Script; readonly sms?: Script } = {
 // The events of the delivery. The first pass also seeds the mode of the source (AL-73), and `observe.test.ts` tests it.
 const types = (log: RuntimeLog) => [...log.read()].map((event) => event.type).filter((type) => type !== "observation" && type !== "fetch" && type !== "system" && type !== "mode" && type !== "calls");
 
+describe("the routes of the delivery in the view (AL-154)", () => {
+  const routeLines = (runtime: ReturnType<typeof openRuntime>) => Object.keys(runtime.state().lines.open).filter((name) => name.startsWith("routes/"));
+
+  it("opens the line of the routes in the pass after a delivery step at the limit, and keeps each send", async () => {
+    const clock = fakeWallClock(T0);
+    const log = openRuntimeLog(":memory:");
+    const pushover = channel(PUSHOVER, "poll", () => clock.now());
+    const sms = channel(SMS, "none", () => clock.now());
+    const runtime = openRuntime({ log, clock, sources: [SOURCE], watch: () => ({ places: [KANSAS], kinds: ["met"] }), view: VIEW, run: "run-0", delivery: { ...DELIVERY, channels: [pushover.procedures, sms.procedures] }, routeLimit: 1 });
+    const first = await runtime.pass();
+    const routes = first.delivery?.routes.length ?? 0;
+    expect(routes).toBeGreaterThanOrEqual(1);
+    // The view of the first pass comes before its delivery step. Thus the first pass has no count, and no line.
+    expect(routeLines(runtime)).toEqual([]);
+    expect(pushover.calls.send).toHaveLength(1);
+    await clock.advance(SECOND);
+    const second = await runtime.pass();
+    const reports = second.view.step.reports.filter((report) => report.kind.code === "system.store.routes");
+    expect(reports.map((report) => [report.op, report.parameters["routes"]?.[0], report.parameters["limit"]?.[0]])).toEqual([["alert", String(routes), "1"]]);
+    expect(routeLines(runtime)).toEqual(["routes/delivery"]);
+    // The line only tells: the escalation of the incident goes on.
+    expect(pushover.calls.send).toHaveLength(1);
+    log.close();
+  });
+
+  it("opens no line under the default limit, and refuses a limit that is not a positive integer", async () => {
+    const { clock, runtime, log } = open();
+    await runtime.pass();
+    await clock.advance(SECOND);
+    await runtime.pass();
+    expect(routeLines(runtime)).toEqual([]);
+    log.close();
+    expect(() => openRuntime({ log: openRuntimeLog(":memory:"), clock, sources: [], watch: () => ({ places: [KANSAS], kinds: ["met"] }), view: VIEW, run: "run-0", routeLimit: 0 })).toThrow("The limit of the routes is 0, not an integer of 1 or more.");
+  });
+});
+
 describe("the delivery step of a pass", () => {
   it("keeps the shadow score of the incident at the start of each escalation, and the score changes no send", async () => {
     // Made-up values. They are not the public measures.

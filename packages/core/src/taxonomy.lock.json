@@ -335,6 +335,7 @@
   "system.store",
   "system.store.empty",
   "system.store.full",
+  "system.store.routes",
   "system.tell",
   "system.tell.done-you-asked",
   "system.tell.live",
