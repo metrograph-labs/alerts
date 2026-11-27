@@ -1,3 +1,4 @@
+import { MAP_FORMAT, packMap } from "@mark1russell7/alerts";
 import { describe, expect, it } from "vitest";
 import { MAP_PATH, NO_ANSWER_TEXT, readLine, readMap } from "./map-read.ts";
 import { MAP_FIXTURE } from "./map-view.fixture.ts";
@@ -9,7 +10,7 @@ describe("the read of the map", () => {
     const asked: string[] = [];
     const result = await readMap(async (path) => {
       asked.push(path);
-      return answer(JSON.stringify(MAP_FIXTURE))();
+      return answer(JSON.stringify(packMap(MAP_FIXTURE)))();
     });
     expect(MAP_PATH).toBe("/map");
     expect(asked).toEqual(["/map"]);
@@ -29,18 +30,27 @@ describe("the read of the map", () => {
   it("tells the status, a text that is not JSON and JSON that is not a map or has a bad region", async () => {
     expect(await readMap(answer("", 503))).toEqual({ ok: false, text: "This page reads the alert runtime on this computer. The runtime answers with the status 503." });
     expect(await readMap(answer("<html>"))).toEqual({ ok: false, text: "This page reads the alert runtime on this computer. The answer of the runtime is not JSON." });
-    const view = '"view":{"incidents":[],"places":[],"unshaped":[]}';
+    const view = `"format":"${MAP_FORMAT}","shapes":[],"view":{"incidents":[],"places":[],"unshaped":[]}`;
     const regions = [
       '{"code":"KSZ083","name":"A","shapes":[]}',
       '{"code":{"code":"KSZ083"},"name":"A","shapes":[]}',
       '{"code":{"system":"ugc","code":83},"name":"A","shapes":[]}',
       '{"code":{"system":"ugc","code":"KSZ083"},"shapes":[]}',
       '{"code":{"system":"ugc","code":"KSZ083"},"name":"A","shapes":{}}',
+      '{"code":{"system":"ugc","code":"KSZ083"},"name":"A","shapes":[0]}',
     ];
-    const bodies = ["null", "[]", '{"view":{}}', `{${view}}`, ...regions.map((region) => `{${view},"basemap":[${region}]}`)];
+    const bodies = ["null", "[]", `{"format":"${MAP_FORMAT}","view":{}}`, `{${view}}`, ...regions.map((region) => `{${view},"basemap":[${region}]}`)];
     for (const body of bodies) {
       expect(await readMap(answer(body))).toEqual({ ok: false, text: "This page reads the alert runtime on this computer. The answer of the runtime is not a map." });
     }
+  });
+
+  it("tells a runtime of another format, with the step", async () => {
+    const old = JSON.stringify({ ...packMap(MAP_FIXTURE), format: "alerts-map/1" });
+    expect(await readMap(answer(old))).toEqual({
+      ok: false,
+      text: `This page reads the alert runtime on this computer. The answer of the runtime has the format alerts-map/1, and this page reads ${MAP_FORMAT}. Start the runtime of the version of this page.`,
+    });
   });
 
   it("tells the time of the last good read, and keeps it after a failure", () => {
