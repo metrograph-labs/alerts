@@ -31,6 +31,8 @@ describe("checkCanary", () => {
     expect(checkCanary([observe(KEEPALIVE, SENT + 5 * MINUTE)])).toEqual({
       pass: true,
       reason: "the newest keepalive message of the NWS is 5.0 minutes old",
+      age: 5 * MINUTE,
+      limit: 15 * MINUTE,
     });
   });
 
