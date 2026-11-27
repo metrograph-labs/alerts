@@ -167,8 +167,8 @@ export const BALANCE_KIND = "system.balance";
 export const CLOCK_KIND = "system.clock";
 
 /**
- * The prefix of the kinds of the log reports of the core: `system.log.recovered`, a broken log file that went into
- * quarantine. An adapter does not map a message to this prefix.
+ * The prefix of the kinds of the log reports of the core. `system.log.recovered` is a broken log file that went into
+ * quarantine. `system.log.check` is a failed integrity check. An adapter does not map a message to this prefix.
  */
 export const LOG_KIND = "system.log";
 

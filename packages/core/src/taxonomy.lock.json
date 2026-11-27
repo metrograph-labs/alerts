@@ -320,6 +320,7 @@
   "system.limit",
   "system.limit.held",
   "system.log",
+  "system.log.check",
   "system.log.recovered",
   "system.loop",
   "system.loop.block",
