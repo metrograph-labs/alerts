@@ -442,8 +442,8 @@ importers:
         specifier: ^0.11.2
         version: 0.11.2(zod@4.6.7)
       '@mark1russell7/geo':
-        specifier: ^0.5.18
-        version: 0.5.18
+        specifier: ^0.5.19
+        version: 0.5.19
       '@mark1russell7/interval':
         specifier: ^0.1.0
         version: 0.1.0
@@ -2719,8 +2719,8 @@ packages:
     resolution: {integrity: sha512-Lc2gRjjsgGoj9Wp+o3lvBBU2bDI8b5+nCMSFwWziNU4+RKahkWNtLybhQ+oE6cUm4t61dUOq9BJNeGOkE6wOaQ==}
     engines: {node: '>=22.12'}
 
-  '@mark1russell7/geo@0.5.18':
-    resolution: {integrity: sha512-ckFBGhF23vxxc0L+BPsA+vhcoe0kKfn0RyFb42ioxBSisQTXXcTUaOoO+h+rQjlQ67a3XMBjHIoRM13JpHuZWQ==}
+  '@mark1russell7/geo@0.5.19':
+    resolution: {integrity: sha512-FYY9jzeuvMjBjDrLIkzhmIXlWnj/1KpGIdzEedEYJlI4G1T+rDct1BNA680egTJFtcF7olTCXwP0Th0QaiHGhw==}
     engines: {node: '>=22.12'}
 
   '@mark1russell7/guidebook@0.5.2':
@@ -5410,7 +5410,7 @@ snapshots:
       '@mark1russell7/optional': 1.5.0
       '@mark1russell7/predicates': 0.1.5
 
-  '@mark1russell7/geo@0.5.18':
+  '@mark1russell7/geo@0.5.19':
     dependencies:
       '@mark1russell7/optional': 1.5.0
       '@mark1russell7/predicates': 0.1.5
