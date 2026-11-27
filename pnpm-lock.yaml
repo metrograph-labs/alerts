@@ -488,7 +488,7 @@ importers:
         specifier: ^0.11.2
         version: 0.11.6(zod@4.6.7)
       '@mark1russell7/geo':
-        specifier: ^0.5.18
+        specifier: ^0.5.19
         version: 0.5.19
       '@mark1russell7/interval':
         specifier: ^0.1.0
