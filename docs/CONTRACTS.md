@@ -577,6 +577,23 @@ A bound report has no area. Its kind is `system.store.full`, with the severity `
 - The facts of the line are the store and the family. A change of the counts alone gives no update.
 - A count below the bound with no waiting observation ends the line with a cancel. A snapshot with no list of bounds keeps each open line of a bound.
 
+The heap of a start grows with the count of the routes (AL-154). A route is one live incident for one person. The runtime tells when the count reaches a limit:
+
+- Each start keeps about 183 B of heap for each route, and its peak memory grows by 2.6 to 3.1 kB for each route.
+- The laws of capacity (CAP-67) fit the start up to 11,000 routes on a host with 1 GB. Each start at 100,000 routes filled the heap of 556 MB.
+- The default limit is `ROUTE_LIMIT` (40,000 routes), and the runtime option `routeLimit` replaces it.
+- Capacity CAP-99 measured the start on a host with 1 GB and a heap of 556 MB. Each start was ready at 40,000 routes, 19 of 20 at 70,000, and no start at 100,000.
+- CAP-108 measures the limit of a host with a larger heap.
+- The runtime counts the routes of each delivery step. The view of the next pass gives a `RouteLoad` with the count and the limit.
+
+A route report has no area. Its kind is `system.store.routes`, with the severity `moderate` and the urgency `expected`. Thus it gets `notice` at most:
+
+- The condition is a count at the limit or more. The line is `routes/delivery`, and its subject is the store `delivery/routes` (`STORE_SUBJECT`).
+- The facts of the line are the store and the family. A change of the count alone gives no update.
+- The line only tells. Each route still sends.
+- The copies count the routes from the same log. Thus only the copy that reports the shared facts (`reportsShared`) opens and ends the line.
+- A count below the limit ends the line with a cancel. A snapshot with no count keeps the open line, as after a restart before its first delivery step.
+
 A copy report has no area. Its subject is `{ system: "alerts.copy", id: <copy id> }` (`COPY_SUBJECT`). Its kind is `system.copy.<stage>`, with the severity `moderate` and the urgency `expected`. Thus it gets `notice` at most. `copyStages` gives the stages of a `CopyWatch` at a time, and each stage is one line:
 
 | Stage | Condition |
