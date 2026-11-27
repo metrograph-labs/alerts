@@ -56,7 +56,7 @@ describe("the end of the last run in the log of the program (AL-222)", () => {
     expect(lastEndOf(cutBlock, { cut: true })).toEqual({ lastLineAt: null, block: null, lastLine: null });
     // The part of the line of the watch after the cut has a time of the block, but it is not a line.
     const fromCut = BLOCK_20.slice(BLOCK_20.indexOf("from ") + 5);
-    expect(lastEndOf(fromCut + BEFORE, { cut: true })).toEqual({ lastLineAt: T0 - SECOND, block: null, lastLine: "A pass ended." });
+    expect(lastEndOf(fromCut + BEFORE, { cut: true })).toEqual({ lastLineAt: T0 - SECOND, block: null, lastLine: BEFORE.trim() });
     // With no cut, the same text has its first line.
     expect(lastEndOf(BEFORE, { cut: false }).lastLineAt).toBe(T0 - SECOND);
   });
@@ -77,7 +77,7 @@ describe("the end of the last run in the log of the program (AL-222)", () => {
     const end = lastEndOf(line(T0, `A long line \u0007 ${"x".repeat(400)}`));
     expect(end.lastLine).toHaveLength(LAST_LINE_LIMIT);
     expect(end.lastLine?.endsWith("…")).toBe(true);
-    expect(end.lastLine).toMatch(/^A long line {3}x+/u);
+    expect(end.lastLine).toMatch(/^S+Z A long line {3}x+/u);
     expect(lastEndOf("A line with a CR\r\n").lastLine).toBe("A line with a CR");
   });
 
@@ -85,7 +85,7 @@ describe("the end of the last run in the log of the program (AL-222)", () => {
     expect(lastEndText(lastEndOf(BEFORE + BLOCK_20))).toBe(
       `The last run: its last line with a time came at ${new Date(T0 + 20 * SECOND).toISOString()}. A block of the event loop of 20 s or more from ${new Date(T0).toISOString()} continued at its end, in the phase "run after the good start". Its last line: ${BLOCK_20.trim()}`,
     );
-    expect(lastEndText(lastEndOf(BEFORE))).toBe(`The last run: its last line with a time came at ${new Date(T0 - SECOND).toISOString()}. No block of the event loop continued at its end. Its last line: A pass ended.`);
+    expect(lastEndText(lastEndOf(BEFORE))).toBe(`The last run: its last line with a time came at ${new Date(T0 - SECOND).toISOString()}. No block of the event loop continued at its end. Its last line: ${BEFORE.trim()}`);
     expect(lastEndText(lastEndOf(""))).toBe("The last run: its log has no line.");
     expect(lastEndReport(T0, lastEndOf(""))).toEqual({ startedAt: T0, lastLineAt: null, block: null, lastLine: null });
   });

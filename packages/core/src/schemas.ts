@@ -1975,8 +1975,8 @@ export const lastBlockSchema: z.ZodType<LastBlock, LastBlock> = schemaOf<LastBlo
 );
 
 /**
- * This schema checks the report of a start of the runtime: the time of the start, and the facts about the end of the run
- * before it (AL-222). The last line has at most `LAST_LINE_LIMIT` characters.
+ * This schema checks the report of a start of the runtime (AL-222). The report holds the time of the start and the facts
+ * about the end of the run before it. The last line has at most `LAST_LINE_LIMIT` characters.
  */
 export const lastEndReportSchema: z.ZodType<LastEndReport, LastEndReport> = schemaOf<LastEndReport>()(
   z.strictObject({ startedAt: instantSchema, lastLineAt: instantSchema.nullable(), block: lastBlockSchema.nullable(), lastLine: z.string().max(LAST_LINE_LIMIT).nullable() }).readonly(),

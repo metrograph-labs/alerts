@@ -1,7 +1,7 @@
 /**
  * This module holds the report of the end of the last run of the runtime (AL-222). A child that stops in a block, for example
  * at a liveness stop, writes no cause. The host of a copy can be too small for a read over ssh. Thus each start reads the
- * end of the log of the program, and it tells the facts in one line and in the answer of the exchange.
+ * end of the log of the program. It tells the facts in one line and in the answer of the exchange.
  *
  * - The supervisor writes the output of each run to the log of the program (`programLogPath()`). A start reads the end of that
  *   file before it writes its first line. Thus the end of the file is the end of the run before it.
@@ -16,7 +16,7 @@ import { truncate } from "@mark1russell7/text/length";
 import { hostFolder, RUNTIME_PROGRAM } from "./host.ts";
 
 /** The most bytes of the end of the log that a start reads. */
-export const LAST_END_BYTES = 64 * 1024;
+export const LAST_END_BYTES: number = 64 * 1024;
 
 /** This function gives the path of the log of the program of the runtime: the default log of a program of `@mark1russell7/service`. */
 export const programLogPath = (home: string): string => join(hostFolder(home), "logs", `${RUNTIME_PROGRAM}.log`);
@@ -62,8 +62,8 @@ export interface LastEndOptions {
   /** This value is `true` when the text can start with a part of a line. Then the function ignores the text up to the first line break. */
   readonly cut?: boolean;
   /**
-   * The start of the current run. A line with this time or a later time is a line of the current run, thus the function ignores
-   * it and each line without a time after it.
+   * The start of the current run. A line with this time or a later time is a line of the current run.
+   * The function ignores that line and each line without a time after it.
    */
   readonly before?: Instant;
 }
@@ -142,5 +142,5 @@ export function lastEndText(end: LastEnd): string {
   return parts.join(" ");
 }
 
-/** This function gives the report of a start for the answer of the exchange: the time of the start and the facts about the last run. */
+/** This function gives the report of a start for the answer of the exchange. The report holds the time of the start and the facts about the last run. */
 export const lastEndReport = (startedAt: Instant, end: LastEnd): LastEndReport => ({ startedAt, ...end });
