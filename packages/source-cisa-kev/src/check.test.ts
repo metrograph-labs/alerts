@@ -34,7 +34,12 @@ describe("RELEASE_MAX_AGE_MS", () => {
 
 describe("checkCanary", () => {
   it("passes when the catalog was released at most 27 days before the fetch", () => {
-    expect(checkCanary(observationsAt(FETCHED))).toEqual({ pass: true, reason: "the catalog was released at 2026-11-17T17:53:15.566Z, 0.4 days before the fetch" });
+    expect(checkCanary(observationsAt(FETCHED))).toEqual({
+      pass: true,
+      reason: "the catalog was released at 2026-11-17T17:53:15.566Z, 0.4 days before the fetch",
+      age: FETCHED - Date.parse("2026-11-17T17:53:15.566Z"),
+      limit: RELEASE_MAX_AGE_MS,
+    });
     expect(checkCanary(observationsAt(Date.parse("2026-12-14T17:53:15.566Z"))).pass).toBe(true);
   });
 

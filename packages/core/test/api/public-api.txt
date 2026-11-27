@@ -30,7 +30,9 @@ BalanceStage: build/index.d.ts#BalanceStage
 BaselinePolicy: build/index.d.ts#BaselinePolicy
 Breadth: build/index.d.ts#Breadth
 BucketReads: build/index.d.ts#BucketReads
+CANARY_AGE_WINDOW: build/index.d.ts#CANARY_AGE_WINDOW
 CANARY_LIMITS: build/index.d.ts#CANARY_LIMITS
+CANARY_LIMIT_CEILING: build/index.d.ts#CANARY_LIMIT_CEILING
 CAP_MESSAGE_SYSTEM: build/index.d.ts#CAP_MESSAGE_SYSTEM
 CATEGORIES: build/index.d.ts#CATEGORIES
 CATEGORY_LABELS: build/index.d.ts#CATEGORY_LABELS
@@ -811,6 +813,7 @@ join: build/index.d.ts#join
 joinRuns: build/index.d.ts#joinRuns
 jointStages: build/index.d.ts#jointStages
 jointUnreadAt: build/index.d.ts#jointUnreadAt
+judgeCanary: build/index.d.ts#judgeCanary
 kindClassSchema: build/index.d.ts#kindClassSchema
 kindCodeSchema: build/index.d.ts#kindCodeSchema
 kindLabel: build/index.d.ts#kindLabel
@@ -842,6 +845,7 @@ linesAt: build/index.d.ts#linesAt
 linkFamilySchema: build/index.d.ts#linkFamilySchema
 linkPolicySchema: build/index.d.ts#linkPolicySchema
 linkRule: build/index.d.ts#linkRule
+liveCanaryLimit: build/index.d.ts#liveCanaryLimit
 loadConfig: build/index.d.ts#loadConfig
 localPlaces: build/index.d.ts#localPlaces
 locateOutcomeSchema: build/index.d.ts#locateOutcomeSchema
@@ -1310,8 +1314,14 @@ export interface BucketReads {
   readonly units: readonly SignalUnit[];
 }
 
+### build/index.d.ts#CANARY_AGE_WINDOW
+export declare const CANARY_AGE_WINDOW: number;
+
 ### build/index.d.ts#CANARY_LIMITS
 export declare const CANARY_LIMITS: DelayLimitOptions;
+
+### build/index.d.ts#CANARY_LIMIT_CEILING
+export declare const CANARY_LIMIT_CEILING = 2;
 
 ### build/index.d.ts#CAP_MESSAGE_SYSTEM
 export declare const CAP_MESSAGE_SYSTEM = "cap";
@@ -1403,6 +1413,8 @@ export interface CanaryResult {
   readonly pass: boolean;
   readonly reason: string;
   readonly late?: true;
+  readonly age?: Duration;
+  readonly limit?: Duration;
 }
 
 ### build/index.d.ts#CancelTarget
@@ -5603,6 +5615,9 @@ export declare function jointStages(joint: JointDown, at: Instant): JointStage[]
 ### build/index.d.ts#jointUnreadAt
 export declare function jointUnreadAt(joint: JointDown): Instant;
 
+### build/index.d.ts#judgeCanary
+export declare function judgeCanary(result: CanaryResult, limit: Duration): CanaryResult;
+
 ### build/index.d.ts#kindClassSchema
 export declare const kindClassSchema: z.ZodType<KindClass, KindClass>;
 
@@ -5697,6 +5712,9 @@ export declare const linkPolicySchema: z.ZodType<LinkPolicy, LinkPolicy>;
 
 ### build/index.d.ts#linkRule
 export declare function linkRule(policy: LinkPolicy): LinkRule;
+
+### build/index.d.ts#liveCanaryLimit
+export declare function liveCanaryLimit(ages: readonly Duration[], hand: Duration, options?: DelayLimitOptions): Duration;
 
 ### build/index.d.ts#loadConfig
 export declare function loadConfig(config: AlertConfig, channels: readonly ChannelDescriptor[], secret: SecretLookup, services?: ContactServices): LoadedConfig;

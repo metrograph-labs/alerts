@@ -33,5 +33,5 @@ export function checkCanary(observations: readonly Observation[]): CanaryResult 
   if (newest === undefined) return { pass: false, reason: "the fetch has no K index of the Australian region" };
   const hours = ((newest.fetched - newest.start) / 3_600_000).toFixed(1);
   const text = `the newest period of the K index starts at ${bomTimeText(newest.start)} UTC, ${hours} hours before the fetch`;
-  return newest.fetched - newest.start > NEWEST_MAX_AGE_MS ? { pass: false, reason: `${text}: the limit is 6 hours`, late: true } : { pass: true, reason: text };
+  return newest.fetched - newest.start > NEWEST_MAX_AGE_MS ? { pass: false, reason: `${text}: the limit is 6 hours`, late: true, age: newest.fetched - newest.start, limit: NEWEST_MAX_AGE_MS } : { pass: true, reason: text, age: newest.fetched - newest.start, limit: NEWEST_MAX_AGE_MS };
 }

@@ -45,7 +45,7 @@ export function checkCanary(observations: readonly Observation[], decoder?: Cana
   if (newest !== undefined) {
     const age = newest.fetched - newest.issued;
     const hours = (age / 3_600_000).toFixed(1);
-    return age <= TEST_MAX_AGE_MS ? { pass: true, reason: `The newest weekly test is ${hours} hours old.` } : { pass: false, reason: `The newest weekly test is ${hours} hours old. The limit is 8 days.`, late: true };
+    return age <= TEST_MAX_AGE_MS ? { pass: true, reason: `The newest weekly test is ${hours} hours old.`, age: age, limit: TEST_MAX_AGE_MS } : { pass: false, reason: `The newest weekly test is ${hours} hours old. The limit is 8 days.`, late: true, age: age, limit: TEST_MAX_AGE_MS };
   }
   if (decoder !== undefined && decoder.now - decoder.started < TEST_MAX_AGE_MS) return undefined;
   return { pass: false, reason: "The receiver heard no weekly test in 8 days." };

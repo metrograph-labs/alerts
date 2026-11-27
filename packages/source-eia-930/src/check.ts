@@ -41,7 +41,7 @@ export function checkCanary(observations: readonly Observation[]): CanaryResult 
   const hours = ((newest.fetched - newest.end) / HOUR_MS).toFixed(1);
   const text = new Date(newest.end).toISOString().replace(".000Z", "Z");
   if (newest.fetched - newest.end > NEWEST_MAX_AGE_MS) {
-    return { pass: false, reason: `the newest hour with a real demand ended at ${text}, ${hours} hours before the fetch: the limit is ${String(NEWEST_MAX_AGE_MS / HOUR_MS)} hours`, late: true };
+    return { pass: false, reason: `the newest hour with a real demand ended at ${text}, ${hours} hours before the fetch: the limit is ${String(NEWEST_MAX_AGE_MS / HOUR_MS)} hours`, late: true, age: newest.fetched - newest.end, limit: NEWEST_MAX_AGE_MS };
   }
-  return { pass: true, reason: `the newest hour with a real demand ended at ${text}, ${hours} hours before the fetch` };
+  return { pass: true, reason: `the newest hour with a real demand ended at ${text}, ${hours} hours before the fetch`, age: newest.fetched - newest.end, limit: NEWEST_MAX_AGE_MS };
 }

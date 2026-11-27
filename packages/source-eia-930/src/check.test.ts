@@ -10,7 +10,7 @@ describe("checkCanary", () => {
   it("passes when the newest hour with a real demand ended at most NEWEST_MAX_AGE_MS before its fetch", () => {
     const fetched = END + 54 * 60_000;
     const result = checkCanary([observationOf(hourBody("2026-11-18T17", "PJM", 93360, 88483), fetched), observationOf(hourBody("2026-11-18T18", "PJM", 91951, 88126), fetched)]);
-    expect(result).toEqual({ pass: true, reason: "the newest hour with a real demand ended at 2026-11-18T18:00:00Z, 0.9 hours before the fetch" });
+    expect(result).toEqual({ pass: true, reason: "the newest hour with a real demand ended at 2026-11-18T18:00:00Z, 0.9 hours before the fetch", age: 54 * 60_000, limit: NEWEST_MAX_AGE_MS });
     expect(checkCanary([observationOf(hourBody("2026-11-18T18", "PJM", 91951, 88126), END + NEWEST_MAX_AGE_MS)]).pass).toBe(true);
   });
 
@@ -20,6 +20,8 @@ describe("checkCanary", () => {
       pass: false,
       reason: `the newest hour with a real demand ended at 2026-11-18T18:00:00Z, 3.0 hours before the fetch: the limit is ${String(NEWEST_MAX_AGE_MS / HOUR_MS)} hours`,
       late: true,
+      age: NEWEST_MAX_AGE_MS + 1,
+      limit: NEWEST_MAX_AGE_MS,
     });
     const recent = END + 30 * 60_000;
     const others = [hourBody("2026-11-18T18", "LGEE", 0, 3702), hourBody("2026-11-18T18", "CISO", 23760, 23760), "{", "null", JSON.stringify({ hour: "2026-11-18T18", demand: "1" })];
