@@ -581,7 +581,9 @@ The heap of a start grows with the count of the routes (AL-154). A route is one 
 
 - Each start keeps about 183 B of heap for each route, and its peak memory grows by 2.6 to 3.1 kB for each route.
 - The laws of capacity (CAP-67) fit the start up to 11,000 routes on a host with 1 GB. Each start at 100,000 routes filled the heap of 556 MB.
-- The default limit is `ROUTE_LIMIT` (11,000 routes), and the runtime option `routeLimit` replaces it. CAP-99 measures the routes where the start fails.
+- The default limit is `ROUTE_LIMIT` (40,000 routes), and the runtime option `routeLimit` replaces it.
+- Capacity CAP-99 measured the start on a host with 1 GB and a heap of 556 MB. Each start was ready at 40,000 routes, 19 of 20 at 70,000, and no start at 100,000.
+- CAP-108 measures the limit of a host with a larger heap.
 - The runtime counts the routes of each delivery step. The view of the next pass gives a `RouteLoad` with the count and the limit.
 
 A route report has no area. Its kind is `system.store.routes`, with the severity `moderate` and the urgency `expected`. Thus it gets `notice` at most:
