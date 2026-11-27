@@ -18,6 +18,7 @@ import {
   CELL_RESOURCES,
   DIMENSION_IDS,
   INDICATOR_AREA_KINDS,
+  LAST_LINE_LIMIT,
   LEVELS,
   MOVES,
   OWN_BASELINES,
@@ -43,6 +44,8 @@ import {
   type ChannelQuota,
   type CopyRead,
   type CopyStage,
+  type LastBlock,
+  type LastEndReport,
   type CorrelationKey,
   type Coverage,
   type Cursor,
@@ -155,6 +158,7 @@ import {
   type CopyBillingConfig,
   type CopyListen,
   type CopyPeer,
+  type CopyMesh,
   type CopySounder,
   type CopySounderDevice,
   type CopySettings,
@@ -673,9 +677,9 @@ export const mapResultSchema: z.ZodType<MapResult, MapResult> = schemaOf<MapResu
     .readonly(),
 );
 
-/** This schema checks the result of the canary check of a source. */
+/** This schema checks the result of the canary check of a source. A record with no field `late` is valid (AL-207). */
 export const canaryResultSchema: z.ZodType<CanaryResult, CanaryResult> = schemaOf<CanaryResult>()(
-  z.strictObject({ pass: z.boolean(), reason: z.string() }).readonly(),
+  z.strictObject({ pass: z.boolean(), reason: z.string(), late: z.literal(true).exactOptional() }).readonly(),
 );
 
 /** This schema checks the record of one fetch. The three counts are integers, 0 or more (`contracts.ts`, lines 356, 358 and 360). */
@@ -1936,6 +1940,23 @@ export const copySounderSchema: z.ZodType<CopySounder, CopySounder> = schemaOf<C
     .readonly(),
 );
 
+/** This schema checks the program of the mesh link: a program and its arguments, with no empty text. */
+const meshArgvSchema = z.array(z.string().min(1, "An argument of a mesh program is a non-empty text.")).min(1, "A mesh program names its program.").readonly();
+
+/** This schema checks the mesh channel of a copy (AL-41-wire). The channel checks the names of the nodes and the times again at the start. */
+export const copyMeshSchema: z.ZodType<CopyMesh, CopyMesh> = schemaOf<CopyMesh>()(
+  z
+    .strictObject({
+      node: z.string().min(1, "The name of the bed node is a non-empty text."),
+      send: meshArgvSchema,
+      listen: meshArgvSchema,
+      ackNodes: z.array(z.string().min(1, "The name of a node is a non-empty text.")).readonly().exactOptional(),
+      beatMs: durationSchema.exactOptional(),
+      levels: z.array(levelSchema).min(1, "The mesh channel sounds one level or more.").readonly().exactOptional(),
+    })
+    .readonly(),
+);
+
 /** This schema checks the JSON of the settings of one copy, the file `copy.json`. Then `copyProblems` checks the ranks and the ids. */
 export const copySettingsSchema: z.ZodType<CopySettings, CopySettings> = schemaOf<CopySettings>()(
   z
@@ -1957,6 +1978,7 @@ export const copySettingsSchema: z.ZodType<CopySettings, CopySettings> = schemaO
       leaveChannels: z.array(channelIdSchema).readonly().exactOptional(),
       leaveSources: z.array(sourceIdSchema).readonly().exactOptional(),
       sounder: copySounderSchema.exactOptional(),
+      mesh: copyMeshSchema.exactOptional(),
       drift: driftConfigSchema.exactOptional(),
     })
     .readonly(),
@@ -1990,9 +2012,22 @@ export const sourceHealthViewSchema: z.ZodType<SourceHealthView, SourceHealthVie
 /** This schema checks a stage of another copy. */
 export const copyStageSchema: z.ZodType<CopyStage, CopyStage> = schemaOf<CopyStage>()(z.enum(["skew", "config", "unread", "unsteady"]));
 
-/** This schema checks one read of the log of another copy that passed. */
+/** This schema checks a block of the event loop that did not end in its run (AL-222). */
+export const lastBlockSchema: z.ZodType<LastBlock, LastBlock> = schemaOf<LastBlock>()(
+  z.strictObject({ at: instantSchema, size: durationSchema, phase: z.string().min(1, "The phase of a block is a non-empty string.").max(LAST_LINE_LIMIT) }).readonly(),
+);
+
+/**
+ * This schema checks the report of a start of the runtime (AL-222). The report holds the time of the start and the facts
+ * about the end of the run before it. The last line has at most `LAST_LINE_LIMIT` characters.
+ */
+export const lastEndReportSchema: z.ZodType<LastEndReport, LastEndReport> = schemaOf<LastEndReport>()(
+  z.strictObject({ startedAt: instantSchema, lastLineAt: instantSchema.nullable(), block: lastBlockSchema.nullable(), lastLine: z.string().max(LAST_LINE_LIMIT).nullable() }).readonly(),
+);
+
+/** This schema checks one read of the log of another copy that passed. A read with no end of the last run, from an older copy, is valid. */
 export const copyReadSchema: z.ZodType<CopyRead, CopyRead> = schemaOf<CopyRead>()(
-  z.strictObject({ at: instantSchema, skew: z.number(), sameConfig: z.boolean() }).readonly(),
+  z.strictObject({ at: instantSchema, skew: z.number(), sameConfig: z.boolean(), lastEnd: lastEndReportSchema.exactOptional() }).readonly(),
 );
 
 /** This schema checks the health of another copy: its stages and its last read that passed. */

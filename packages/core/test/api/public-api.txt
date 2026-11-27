@@ -99,6 +99,7 @@ CopyBillingState: build/index.d.ts#CopyBillingState
 CopyHealth: build/index.d.ts#CopyHealth
 CopyListen: build/index.d.ts#CopyListen
 CopyMeasureOptions: build/index.d.ts#CopyMeasureOptions
+CopyMesh: build/index.d.ts#CopyMesh
 CopyPeer: build/index.d.ts#CopyPeer
 CopyRead: build/index.d.ts#CopyRead
 CopySettings: build/index.d.ts#CopySettings
@@ -264,6 +265,7 @@ Kind: build/index.d.ts#Kind
 KindClass: build/index.d.ts#KindClass
 KindEntry: build/index.d.ts#KindEntry
 KindPrior: build/index.d.ts#KindPrior
+LAST_LINE_LIMIT: build/index.d.ts#LAST_LINE_LIMIT
 LEVELS: build/index.d.ts#LEVELS
 LIFELINES: build/index.d.ts#LIFELINES
 LIFELINES_SOURCE: build/index.d.ts#LIFELINES_SOURCE
@@ -281,6 +283,9 @@ LOOP_BLOCK_CLASSES: build/index.d.ts#LOOP_BLOCK_CLASSES
 LOOP_BLOCK_LIMIT: build/index.d.ts#LOOP_BLOCK_LIMIT
 LOOP_BLOCK_WINDOW: build/index.d.ts#LOOP_BLOCK_WINDOW
 LOOP_KIND: build/index.d.ts#LOOP_KIND
+LastBlock: build/index.d.ts#LastBlock
+LastEnd: build/index.d.ts#LastEnd
+LastEndReport: build/index.d.ts#LastEndReport
 LateOptions: build/index.d.ts#LateOptions
 Lateness: build/index.d.ts#Lateness
 LatenessFolds: build/index.d.ts#LatenessFolds
@@ -676,6 +681,7 @@ copyHealthSchema: build/index.d.ts#copyHealthSchema
 copyIdSchema: build/index.d.ts#copyIdSchema
 copyListenSchema: build/index.d.ts#copyListenSchema
 copyMeasure: build/index.d.ts#copyMeasure
+copyMeshSchema: build/index.d.ts#copyMeshSchema
 copyPeerSchema: build/index.d.ts#copyPeerSchema
 copyProblems: build/index.d.ts#copyProblems
 copyReadSchema: build/index.d.ts#copyReadSchema
@@ -813,6 +819,8 @@ kindPriorSchema: build/index.d.ts#kindPriorSchema
 kindSchema: build/index.d.ts#kindSchema
 knownKind: build/index.d.ts#knownKind
 knowsReport: build/index.d.ts#knowsReport
+lastBlockSchema: build/index.d.ts#lastBlockSchema
+lastEndReportSchema: build/index.d.ts#lastEndReportSchema
 lastRun: build/index.d.ts#lastRun
 lateRetirements: build/index.d.ts#lateRetirements
 lateSources: build/index.d.ts#lateSources
@@ -1394,6 +1402,7 @@ export interface CanaryLimitOptions {
 export interface CanaryResult {
   readonly pass: boolean;
   readonly reason: string;
+  readonly late?: true;
 }
 
 ### build/index.d.ts#CancelTarget
@@ -1677,6 +1686,16 @@ export interface CopyMeasureOptions {
   readonly link?: LinkRule;
 }
 
+### build/index.d.ts#CopyMesh
+export interface CopyMesh {
+  readonly node: string;
+  readonly send: readonly string[];
+  readonly listen: readonly string[];
+  readonly ackNodes?: readonly string[];
+  readonly beatMs?: Duration;
+  readonly levels?: readonly Level[];
+}
+
 ### build/index.d.ts#CopyPeer
 export interface CopyPeer {
   readonly id: string;
@@ -1689,6 +1708,7 @@ export interface CopyRead {
   readonly at: Instant;
   readonly skew: Duration;
   readonly sameConfig: boolean;
+  readonly lastEnd?: LastEndReport;
 }
 
 ### build/index.d.ts#CopySettings
@@ -1704,6 +1724,7 @@ export interface CopySettings {
   readonly leaveChannels?: readonly ChannelId[];
   readonly leaveSources?: readonly SourceId[];
   readonly sounder?: CopySounder;
+  readonly mesh?: CopyMesh;
   readonly drift?: DriftConfig;
 }
 
@@ -2890,6 +2911,9 @@ export interface KindPrior {
   readonly causes?: Readonly<Record<string, CauseShare>>;
 }
 
+### build/index.d.ts#LAST_LINE_LIMIT
+export declare const LAST_LINE_LIMIT = 200;
+
 ### build/index.d.ts#LEVELS
 export declare const LEVELS: readonly Level[];
 
@@ -2940,6 +2964,25 @@ export declare const LOOP_BLOCK_WINDOW: Duration;
 
 ### build/index.d.ts#LOOP_KIND
 export declare const LOOP_KIND = "system.loop";
+
+### build/index.d.ts#LastBlock
+export interface LastBlock {
+  readonly at: Instant;
+  readonly size: Duration;
+  readonly phase: string;
+}
+
+### build/index.d.ts#LastEnd
+export interface LastEnd {
+  readonly lastLineAt: Instant | null;
+  readonly block: LastBlock | null;
+  readonly lastLine: string | null;
+}
+
+### build/index.d.ts#LastEndReport
+export interface LastEndReport extends LastEnd {
+  readonly startedAt: Instant;
+}
 
 ### build/index.d.ts#LateOptions
 export interface LateOptions {
@@ -5164,6 +5207,9 @@ export declare const copyListenSchema: z.ZodType<CopyListen, CopyListen>;
 ### build/index.d.ts#copyMeasure
 export declare function copyMeasure(reports: readonly Report[], expectation: Expectation, options?: CopyMeasureOptions): SentMeasure;
 
+### build/index.d.ts#copyMeshSchema
+export declare const copyMeshSchema: z.ZodType<CopyMesh, CopyMesh>;
+
 ### build/index.d.ts#copyPeerSchema
 export declare const copyPeerSchema: z.ZodType<CopyPeer, CopyPeer>;
 
@@ -5580,6 +5626,12 @@ export declare function knownKind(code: string): boolean;
 
 ### build/index.d.ts#knowsReport
 export declare function knowsReport(state: MergeState, id: ReportId): boolean;
+
+### build/index.d.ts#lastBlockSchema
+export declare const lastBlockSchema: z.ZodType<LastBlock, LastBlock>;
+
+### build/index.d.ts#lastEndReportSchema
+export declare const lastEndReportSchema: z.ZodType<LastEndReport, LastEndReport>;
 
 ### build/index.d.ts#lastRun
 export declare function lastRun(runs: readonly DrillRun[], id: string): DrillRun | undefined;

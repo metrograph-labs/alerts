@@ -71,7 +71,7 @@ describe("checkCanary", () => {
 
   it("passes for a feed at most one hour old, and fails for an older feed", () => {
     expect(checkCanary([census(at, Date.parse(at) + FEED_MAX_AGE_MS)]).pass).toBe(true);
-    expect(checkCanary([census(at, Date.parse(at) + FEED_MAX_AGE_MS + 1)])).toMatchObject({ pass: false, reason: expect.stringContaining("60 minutes") });
+    expect(checkCanary([census(at, Date.parse(at) + FEED_MAX_AGE_MS + 1)])).toMatchObject({ pass: false, reason: expect.stringContaining("60 minutes"), late: true });
   });
 
   it("fails for a fetch with no census", () => {

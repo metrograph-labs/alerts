@@ -35,7 +35,7 @@ describe("checkCanary", () => {
   });
 
   it("fails when the newest keepalive is too old", () => {
-    expect(checkCanary([observe(KEEPALIVE, SENT + 20 * MINUTE)]).pass).toBe(false);
+    expect(checkCanary([observe(KEEPALIVE, SENT + 20 * MINUTE)])).toMatchObject({ pass: false, late: true });
   });
 
   it("fails when the fetch has no keepalive", () => {

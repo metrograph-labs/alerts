@@ -46,7 +46,7 @@ import { mkdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { fileURLToPath } from "node:url";
-import { configHash, LOOP_BLOCK_LIMIT } from "@mark1russell7/alerts";
+import { configHash, LOOP_BLOCK_LIMIT, type LastEndReport } from "@mark1russell7/alerts";
 import { watchEventLoop } from "@mark1russell7/lag/node";
 import { PUSHOVER_QUOTA, PUSHOVER_RESERVE_NOTICES } from "@mark1russell7/alerts-channel-pushover";
 import { OUTAGE_BUNDLE_FILE } from "@mark1russell7/alerts-channel-twilio";
@@ -92,6 +92,7 @@ import { GOOD_FILE, privateFiles, readStartTexts, reloadHook, startConfig, type 
 import { shapeReport, zoneCodesText } from "./shapes.ts";
 import { openTransitCache, TRANSIT_FILE, transitReport, transitText } from "./transit.ts";
 import { hostFolder, signalWarning } from "./host.ts";
+import { lastEndOfTail, lastEndReport, lastEndText, programLogPath, readLogTail } from "./last-end.ts";
 import { recordRunningCode } from "./running.ts";
 import { checkoutOf, DEPLOY_MARK_FILE, deployMarkEnd, liveRoot, slotsOfCheckout } from "./slots.ts";
 import { openStartSnapshots, START_SNAPSHOTS_FOLDER, startReadText } from "./start-snapshot.ts";
@@ -140,6 +141,18 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
   }
 
   const home = alertsHome(process.env, process.cwd());
+  // The report of the end of the last run (AL-222). The start reads the end of the log of the program before its first line.
+  // Thus the end of that log is the end of the last run. The answer of the exchange gives the report to the other copies.
+  let lastEnd: LastEndReport | undefined;
+  if (!fold && name === "daemon") {
+    const startedAt = Math.round(performance.timeOrigin);
+    try {
+      lastEnd = lastEndReport(startedAt, lastEndOfTail(await readLogTail(programLogPath(home)), startedAt));
+      out.log(lastEndText(lastEnd));
+    } catch (error) {
+      out.error(`The end of the log of the last run was not read: ${errorMessage(error)}`);
+    }
+  }
   // The lock of the home folder comes before each read and each write of its files (AL-58). A second runtime on the folder
   // stops here. A start that stops after this line leaves a stale lock, and the next start removes it.
   const held = await holdHome(home, nodeHostPorts());
@@ -431,7 +444,7 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
     copy,
     ...(tellIntake === undefined ? {} : { tell: tellIntake }),
     ...(positionIntake === undefined ? {} : { position: positionIntake }),
-    ...(token === undefined ? {} : { exchange: { call: exchangeCall({ token }), configHash: configHash(config.config), deployUntil: () => deployMarkEnd(markText(join(hostFolder(home), DEPLOY_MARK_FILE)), Date.now()), onTake: (note) => out.log(takeNoteText(note)) }, onExchange }),
+    ...(token === undefined ? {} : { exchange: { call: exchangeCall({ token }), configHash: configHash(config.config), deployUntil: () => deployMarkEnd(markText(join(hostFolder(home), DEPLOY_MARK_FILE)), Date.now()), onTake: (note) => out.log(takeNoteText(note)), ...(lastEnd === undefined ? {} : { lastEnd }) }, onExchange }),
     onPass,
     // The output gets no secret, also when an error quotes a request.
     onError: (error, failures) => out.error(`A pass failed (${failures} in sequence): ${redactSecrets(errorMessage(error), values)}`),
@@ -525,6 +538,7 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
     interests: instance.interests,
     page,
     ...(instance.outage === undefined ? {} : { outage: instance.outage }),
+    ...(instance.mesh === undefined ? {} : { mesh: instance.mesh }),
     start: { use: loaded.use, reasons: loaded.fallback.length },
     ...(instance.copies?.worker === undefined ? {} : { copies: instance.copies.worker }),
     exchange,

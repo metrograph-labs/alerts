@@ -49,6 +49,7 @@ describe("checkCanary", () => {
     expect(checkCanary([observe(PUBLISHED + PUBLISHED_MAX_AGE_MS)]).pass).toBe(true);
     const old = checkCanary([observe(PUBLISHED + PUBLISHED_MAX_AGE_MS + 1)]);
     expect(old.pass).toBe(false);
+    expect(old.late).toBe(true);
     expect(old.reason).toContain("2026-11-25T01:12:00.002Z");
   });
 

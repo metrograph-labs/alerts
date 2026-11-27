@@ -355,7 +355,7 @@ describe("the canary", () => {
 
   it("passes when the newest advisory is in the limit of the provider", () => {
     expect(checkCanary(PROVIDER, [head(NOW - 13 * DAY_MS)]).pass).toBe(true);
-    expect(checkCanary(PROVIDER, [head(NOW - 15 * DAY_MS)])).toEqual({ pass: false, reason: `the newest advisory has the time ${iso(NOW - 15 * DAY_MS)}, 15.0 days before the fetch: the limit is 14 days` });
+    expect(checkCanary(PROVIDER, [head(NOW - 15 * DAY_MS)])).toEqual({ pass: false, reason: `the newest advisory has the time ${iso(NOW - 15 * DAY_MS)}, 15.0 days before the fetch: the limit is 14 days`, late: true });
   });
 
   it("fails with no head, or a feed with no entry", () => {

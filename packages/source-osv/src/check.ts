@@ -35,7 +35,7 @@ export function checkCanary(provider: OsvProvider, observations: readonly Observ
   const limit = String(Math.round(provider.maxAge / DAY_MS));
   const newest = new Date(found.newest).toISOString();
   if (found.fetched - found.newest > provider.maxAge) {
-    return { pass: false, reason: `the newest change has the time ${newest}, ${days} days before the fetch: the limit is ${limit} days` };
+    return { pass: false, reason: `the newest change has the time ${newest}, ${days} days before the fetch: the limit is ${limit} days`, late: true };
   }
   return { pass: true, reason: `the newest change has the time ${newest}, ${days} days before the fetch` };
 }
