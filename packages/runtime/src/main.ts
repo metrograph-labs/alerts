@@ -525,6 +525,7 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
     interests: instance.interests,
     page,
     ...(instance.outage === undefined ? {} : { outage: instance.outage }),
+    ...(instance.mesh === undefined ? {} : { mesh: instance.mesh }),
     start: { use: loaded.use, reasons: loaded.fallback.length },
     ...(instance.copies?.worker === undefined ? {} : { copies: instance.copies.worker }),
     exchange,

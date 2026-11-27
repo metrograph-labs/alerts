@@ -740,6 +740,9 @@ importers:
       '@mark1russell7/alerts':
         specifier: workspace:*
         version: link:../core
+      '@mark1russell7/alerts-channel-mesh':
+        specifier: workspace:*
+        version: link:../channel-mesh
       '@mark1russell7/alerts-channel-pushover':
         specifier: workspace:*
         version: link:../channel-pushover

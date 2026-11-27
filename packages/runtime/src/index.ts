@@ -115,6 +115,8 @@ export interface Options {
   readonly page?: string | undefined;
   /** The worker of the deploy of the outage call. The service runs it as the worker `outage`, beside the passes. */
   readonly outage?: OutageDeployWorker;
+  /** The worker of the receiver of the mesh channel (AL-41-wire). The service operates it as the worker `MESH_WORKER`, beside the passes. */
+  readonly mesh?: WorkerLoop;
   /** The files of the start. The route `GET /status` gives them. */
   readonly start?: StartStatus;
   /** The watches of the other copies. The route `GET /status` gives the time of the last read of each copy (AL-186). */
@@ -159,6 +161,12 @@ export const holdingPasses = (profile: Profile, passLimit: Duration): Profile =>
 const withOutage = (svc: ServiceBuilder, outage: OutageDeployWorker | undefined): ServiceBuilder =>
   outage === undefined ? svc : svc.worker("outage", outage.worker.knobs, outage.worker);
 
+/** The name of the worker of the receiver of the mesh channel (AL-41-wire). */
+export const MESH_WORKER = "mesh";
+
+/** This function adds the worker of the receiver of the mesh channel, when the copy has one. */
+const withMesh = (svc: ServiceBuilder, mesh: WorkerLoop | undefined): ServiceBuilder => (mesh === undefined ? svc : svc.worker(MESH_WORKER, mesh.knobs, mesh));
+
 // The context of the traces stops in the last stage, after the log and the servers close.
 const withTelemetry = (svc: ServiceBuilder, telemetry: Options["telemetry"]): ServiceBuilder =>
   telemetry === undefined ? svc : svc.onPhase("flush the output", () => telemetry.shutdown());
@@ -168,7 +176,8 @@ const withTelemetry = (svc: ServiceBuilder, telemetry: Options["telemetry"]): Se
  * declaration as data, and `lint()` examines it. Only the entry (`main.ts`) uses `run()`.
  */
 export const declare = (options: Options): ServiceBuilder => {
-  const svc = parts(options);
+  // The worker of the mesh receiver stops before the log closes, as the worker of the exchange does.
+  const svc = withMesh(parts(options), options.mesh);
   const exchange = options.exchange;
   // The worker of the exchange stops before the log closes, because the service closes each worker before its dependencies.
   const withWorker = exchange?.loop === undefined ? svc : svc.worker(EXCHANGE_WORKER, exchange.loop.knobs, exchange.loop);

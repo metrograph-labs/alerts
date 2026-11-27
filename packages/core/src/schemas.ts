@@ -155,6 +155,7 @@ import {
   type CopyBillingConfig,
   type CopyListen,
   type CopyPeer,
+  type CopyMesh,
   type CopySounder,
   type CopySounderDevice,
   type CopySettings,
@@ -1936,6 +1937,23 @@ export const copySounderSchema: z.ZodType<CopySounder, CopySounder> = schemaOf<C
     .readonly(),
 );
 
+/** This schema checks the program of the mesh link: a program and its arguments, with no empty text. */
+const meshArgvSchema = z.array(z.string().min(1, "An argument of a mesh program is a non-empty text.")).min(1, "A mesh program names its program.").readonly();
+
+/** This schema checks the mesh channel of a copy (AL-41-wire). The channel checks the names of the nodes and the times again at the start. */
+export const copyMeshSchema: z.ZodType<CopyMesh, CopyMesh> = schemaOf<CopyMesh>()(
+  z
+    .strictObject({
+      node: z.string().min(1, "The name of the bed node is a non-empty text."),
+      send: meshArgvSchema,
+      listen: meshArgvSchema,
+      ackNodes: z.array(z.string().min(1, "The name of a node is a non-empty text.")).readonly().exactOptional(),
+      beatMs: durationSchema.exactOptional(),
+      levels: z.array(levelSchema).min(1, "The mesh channel sounds one level or more.").readonly().exactOptional(),
+    })
+    .readonly(),
+);
+
 /** This schema checks the JSON of the settings of one copy, the file `copy.json`. Then `copyProblems` checks the ranks and the ids. */
 export const copySettingsSchema: z.ZodType<CopySettings, CopySettings> = schemaOf<CopySettings>()(
   z
@@ -1957,6 +1975,7 @@ export const copySettingsSchema: z.ZodType<CopySettings, CopySettings> = schemaO
       leaveChannels: z.array(channelIdSchema).readonly().exactOptional(),
       leaveSources: z.array(sourceIdSchema).readonly().exactOptional(),
       sounder: copySounderSchema.exactOptional(),
+      mesh: copyMeshSchema.exactOptional(),
       drift: driftConfigSchema.exactOptional(),
     })
     .readonly(),
