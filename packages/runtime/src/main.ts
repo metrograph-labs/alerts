@@ -42,11 +42,11 @@
  */
 import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
-import { mkdir, rm } from "node:fs/promises";
+import { mkdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { fileURLToPath } from "node:url";
-import { configHash, LOOP_BLOCK_LIMIT } from "@mark1russell7/alerts";
+import { configHash, LOOP_BLOCK_LIMIT, type LastEndReport } from "@mark1russell7/alerts";
 import { watchEventLoop } from "@mark1russell7/lag/node";
 import { PUSHOVER_QUOTA, PUSHOVER_RESERVE_NOTICES } from "@mark1russell7/alerts-channel-pushover";
 import { OUTAGE_BUNDLE_FILE } from "@mark1russell7/alerts-channel-twilio";
@@ -54,6 +54,7 @@ import { openShapeCache, SHAPES_FILE } from "@mark1russell7/alerts-shapes-nws";
 import { realClock, wallClock } from "@mark1russell7/algebra/clock";
 import type { ServiceBuilder } from "@mark1russell7/service";
 import { nodeHostPorts } from "@mark1russell7/service/host";
+import { checkIntegrityInBackground } from "@mark1russell7/sqlite";
 import { countOf, errorMessage } from "@mark1russell7/text";
 import { redactSecrets } from "@mark1russell7/text/redact";
 import { SqliteHostStateStore } from "polite-crawler";
@@ -78,7 +79,8 @@ import { spendNotes } from "./balance.ts";
 import { USE_FILE, useFile } from "./spend-use.ts";
 import { PROFILES, declare } from "./index.ts";
 import { daemonCheck, instanceCheck, instanceContextKey, LOUD_PING_URL_KEY, openInstance, pingKeyOf, pingTargets, strayLeavesText, userAgent } from "./instance.ts";
-import { openCheckedRuntimeLog } from "./log.ts";
+import { openCheckedRuntimeLog, RECOVERY_PROBLEMS } from "./log.ts";
+import { logChecker, logCheckPath } from "./log-check.ts";
 import { blockLine, startLoopWatch, type LoopWatch } from "./loop-watch.ts";
 import { foldText, writeFold } from "./fold-mode.ts";
 import { startBlockWatch, type BlockWatch } from "./block-watch.ts";
@@ -86,10 +88,12 @@ import { fileBundleStore } from "./outage.ts";
 import { takeNoteText, type ExchangeRound } from "./peers.ts";
 import { loadPriors } from "./priors.ts";
 import { openReadingStore, READINGS_FILE } from "./readings.ts";
+import { CANARY_AGES_FILE, openCanaryAges } from "./canary-ages.ts";
 import { GOOD_FILE, privateFiles, readStartTexts, reloadHook, startConfig, type CheckedStart, type CheckOf, type StartUse } from "./reload.ts";
 import { shapeReport, zoneCodesText } from "./shapes.ts";
 import { openTransitCache, TRANSIT_FILE, transitReport, transitText } from "./transit.ts";
 import { hostFolder, signalWarning } from "./host.ts";
+import { lastEndOfTail, lastEndReport, lastEndText, programLogPath, readLogTail } from "./last-end.ts";
 import { recordRunningCode } from "./running.ts";
 import { checkoutOf, DEPLOY_MARK_FILE, deployMarkEnd, liveRoot, slotsOfCheckout } from "./slots.ts";
 import { openStartSnapshots, START_SNAPSHOTS_FOLDER, startReadText } from "./start-snapshot.ts";
@@ -138,6 +142,18 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
   }
 
   const home = alertsHome(process.env, process.cwd());
+  // The report of the end of the last run (AL-222). The start reads the end of the log of the program before its first line.
+  // Thus the end of that log is the end of the last run. The answer of the exchange gives the report to the other copies.
+  let lastEnd: LastEndReport | undefined;
+  if (!fold && name === "daemon") {
+    const startedAt = Math.round(performance.timeOrigin);
+    try {
+      lastEnd = lastEndReport(startedAt, lastEndOfTail(await readLogTail(programLogPath(home)), startedAt));
+      out.log(lastEndText(lastEnd));
+    } catch (error) {
+      out.error(`The end of the log of the last run was not read: ${errorMessage(error)}`);
+    }
+  }
   // The lock of the home folder comes before each read and each write of its files (AL-58). A second runtime on the folder
   // stops here. A start that stops after this line leaves a stale lock, and the next start removes it.
   const held = await holdHome(home, nodeHostPorts());
@@ -312,6 +328,8 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
   let loopWatch: LoopWatch | undefined;
   const onPass = (pass: Pass): void => {
     for (const beat of beats) beat(pass);
+    // After the good start, each pass starts the check of the log when it is due (AL-223). Most passes start nothing.
+    if (marked) void logCheck.step();
     reload?.onPass();
     // The use reads of the cap of Twilio go into the private folder when they change (AL-91).
     if (instance.useReads !== undefined) uses.update(instance.useReads());
@@ -320,6 +338,8 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
     if (marked || service.lifecycle?.state !== "running") return;
     marked = true;
     blockWatch?.phase("run after the good start");
+    // The integrity check of the log operates in a worker thread, at most one time in a day (AL-223).
+    void logCheck.step();
     // Each block of 1 s or more goes to the output at once, and the next pass writes it into the log. Thus a stop after a
     // block has its cause on file.
     loopWatch = startLoopWatch({
@@ -340,7 +360,26 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
 
   blockWatch?.phase("start: open and fold of the log");
   // A broken log file goes into quarantine. The new file gets each event that the salvage reads, and a system report tells the loss.
-  const { log, recovered } = openCheckedRuntimeLog(join(home, "runtime.sqlite"), { now: () => wall.now() });
+  const logPath = join(home, "runtime.sqlite");
+  const openedAt = wall.now();
+  const { log, recovered, checked } = openCheckedRuntimeLog(logPath, { now: () => wall.now() });
+  // The check of the log after the start (AL-223). The stop of the service aborts it, and the state file keeps `running`.
+  const logStop = new AbortController();
+  const checkPath = logCheckPath(logPath);
+  const logCheck = logChecker(
+    {
+      now: () => wall.now(),
+      read: () => readFile(checkPath, "utf8").catch((error: unknown) => (error instanceof Error && "code" in error && error.code === "ENOENT" ? undefined : Promise.reject(error))),
+      write: (text) => writeFileAtomic(checkPath, text, { mode: 0o600 }),
+      check: (signal) => checkIntegrityInBackground(logPath, { quick: true, limit: RECOVERY_PROBLEMS, signal }),
+      onFailed: (integrity) => {
+        out.error(`The integrity check of the log found ${countOf(integrity.problems.length, "problem")}. The next start checks the file and recovers it.`);
+        instance.loop.wake();
+      },
+      onError: (message) => out.error(message),
+    },
+    { checkedAt: checked ? openedAt : undefined, signal: logStop.signal },
+  );
   if (recovered !== undefined) out.error(`The log file was broken. It is in the quarantine folder ${recovered.quarantine}. The new log kept ${String(recovered.added)} events and lost ${String(recovered.lost)}.`);
   // The snapshots of the start (AL-105), one for each key (AL-169). A salvaged log has a new key, and the clear frees the rows of the old log.
   const snapshot = openStartSnapshots(home, {
@@ -357,6 +396,8 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
   // A broken file of readings goes into quarantine, and the store starts empty. Each series has no read until its history fills again.
   const readings = openReadingStore(join(home, READINGS_FILE));
   if (readings.quarantined !== undefined) out.error(`The file ${READINGS_FILE} was broken. It is in quarantine, and the store of readings starts empty.`);
+  // A broken file of the canary ages gives no ages: each age check keeps its hand limit until the ages fill again (AL-207).
+  const canaryAges = openCanaryAges(join(home, CANARY_AGES_FILE), { onBad: (problem) => out.error(`The canary ages are not used: ${problem}.`) });
   // A bad copy of the transit catalog gives no feed. The next good read of the catalog replaces the file.
   const transit = openTransitCache(join(home, TRANSIT_FILE), (problem) => out.error(`The copy of the transit catalog is not used: ${problem}.`));
   // Only the profile daemon has a supervisor that starts the runtime again. Each other profile tells the person to start it again.
@@ -406,12 +447,13 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
     copy,
     ...(tellIntake === undefined ? {} : { tell: tellIntake }),
     ...(positionIntake === undefined ? {} : { position: positionIntake }),
-    ...(token === undefined ? {} : { exchange: { call: exchangeCall({ token }), configHash: configHash(config.config), deployUntil: () => deployMarkEnd(markText(join(hostFolder(home), DEPLOY_MARK_FILE)), Date.now()), onTake: (note) => out.log(takeNoteText(note)) }, onExchange }),
+    ...(token === undefined ? {} : { exchange: { call: exchangeCall({ token }), configHash: configHash(config.config), deployUntil: () => deployMarkEnd(markText(join(hostFolder(home), DEPLOY_MARK_FILE)), Date.now()), onTake: (note) => out.log(takeNoteText(note)), ...(lastEnd === undefined ? {} : { lastEnd }) }, onExchange }),
     onPass,
     // The output gets no secret, also when an error quotes a request.
     onError: (error, failures) => out.error(`A pass failed (${failures} in sequence): ${redactSecrets(errorMessage(error), values)}`),
     shapes,
     readings,
+    canaryAges,
     // The kind of the error only: its message can quote a value of a reading.
     onReadingsFault: (error, action) => out.error(`The store of readings failed (${action}): ${error instanceof Error ? error.name : typeof error}.`),
     ...(startStore === undefined ? {} : { startSnapshot: startStore }),
@@ -435,6 +477,7 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
     // The worker of the outage call deploys its Functions 10 minutes after the good start, then once in each day. A failed deploy goes again after a backoff.
     onOutageLog: (line) => out.log(line),
     loopBlocks: () => loopWatch?.blocks() ?? [],
+    logIntegrity: () => logCheck.failed(),
     onOutageError: (error, failures) => out.error(`A deploy of the outage call failed (${failures} in sequence): ${redactSecrets(errorMessage(error), values)}`),
   });
   blockWatch?.phase("start: service and first pass");
@@ -456,7 +499,7 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
     const transitKeeper = instance.transit;
     const rows = await writeFold({
       runtime: instance.runtime,
-      closes: [() => store.close(), () => readings.close(), () => quotas.close(), () => transitKeeper?.close(), () => instance.shapes.close(), () => log.close(), () => held.lock.release()],
+      closes: [() => store.close(), () => readings.close(), () => canaryAges.close(), () => quotas.close(), () => transitKeeper?.close(), () => instance.shapes.close(), () => log.close(), () => held.lock.release()],
     });
     out.log(foldText(rows, instance.runtime.start.events));
     return undefined;
@@ -486,6 +529,7 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
     profile,
     loop: instance.loop,
     log,
+    logCheck: { close: () => logStop.abort(new Error("The runtime stops.")) },
     shapes: instance.shapes,
     ...(instance.transit === undefined ? {} : { transit: instance.transit }),
     quotas,
@@ -498,6 +542,7 @@ async function runtime(fold: boolean, pick?: StartUse): Promise<ServiceBuilder |
     interests: instance.interests,
     page,
     ...(instance.outage === undefined ? {} : { outage: instance.outage }),
+    ...(instance.mesh === undefined ? {} : { mesh: instance.mesh }),
     start: { use: loaded.use, reasons: loaded.fallback.length },
     ...(instance.copies?.worker === undefined ? {} : { copies: instance.copies.worker }),
     exchange,

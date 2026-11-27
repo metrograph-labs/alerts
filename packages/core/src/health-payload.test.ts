@@ -1,10 +1,10 @@
 import { random, seedsFrom } from "@mark1russell7/rigor-generators";
 import { describe, expect, it } from "vitest";
-import type { ChannelId, ChannelQuota, CopyWatch, Coverage, PlaceId, ProviderBalance, ReportId, SourceHealth, SourceId } from "./contracts.ts";
+import { LAST_LINE_LIMIT, type ChannelId, type ChannelQuota, type CopyWatch, type Coverage, type LastEndReport, type PlaceId, type ProviderBalance, type ReportId, type SourceHealth, type SourceId } from "./contracts.ts";
 import { DEFAULT_CHANNEL_DOWN, type ChannelSnapshot } from "./channel-down.ts";
 import { FAILURE_MESSAGE_LIMIT, failureMessage, HEALTH_FORMAT, healthPayload, sourceHealthView, type HealthPayloadInput } from "./health-payload.ts";
 import type { Lateness } from "./lateness.ts";
-import { healthPayloadSchema, sourceHealthViewSchema } from "./schemas.ts";
+import { copyReadSchema, healthPayloadSchema, sourceHealthViewSchema } from "./schemas.ts";
 import { balanceStages, copyStages, quotaStages } from "./system-reports.ts";
 
 const SEEDS = seedsFrom(process.env["SEED"], [1, 2, 3, 4]);
@@ -184,6 +184,31 @@ describe("healthPayload", () => {
     const text = JSON.stringify(payload);
     expect(text).not.toContain(KEY);
     expect(healthPayloadSchema.safeParse(JSON.parse(text))).toMatchObject({ success: true });
+  });
+
+  it("shows the end of the last run of a copy under its read, and passes its schema with and without it (AL-222)", () => {
+    const lastEnd: LastEndReport = { startedAt: NOW - 5_000, lastLineAt: NOW - 40_000, block: { at: NOW - 60_000, size: 20_000, phase: "run after the good start" }, lastLine: "A line." };
+    const told: CopyWatch = { ...skewed, read: { at: NOW - 10_000, skew: 5_000, sameConfig: true, lastEnd } };
+    const withEnd = healthPayload({ ...input, copies: [told, unread] });
+    expect(withEnd.copies[0]?.read?.lastEnd).toEqual(lastEnd);
+    expect(healthPayloadSchema.safeParse(JSON.parse(JSON.stringify(withEnd)))).toMatchObject({ success: true });
+    // A copy of an older build tells no end. Its read keeps the old fields, and it passes too.
+    expect(payload.copies[0]?.read).toEqual({ at: NOW - 10_000, skew: 5_000, sameConfig: true });
+    expect(healthPayloadSchema.safeParse(JSON.parse(JSON.stringify(payload))).success).toBe(true);
+    // A run with no log gives null facts, and they pass.
+    const empty: LastEndReport = { startedAt: NOW, lastLineAt: null, block: null, lastLine: null };
+    expect(copyReadSchema.safeParse({ at: NOW, skew: 0, sameConfig: true, lastEnd: empty }).success).toBe(true);
+  });
+
+  it("refuses an end of the last run with a long last line, a bad block or an unknown field (AL-222)", () => {
+    const read = { at: NOW, skew: 0, sameConfig: true };
+    const end = { startedAt: NOW, lastLineAt: NOW - 1_000, block: null, lastLine: "A line." };
+    expect(copyReadSchema.safeParse({ ...read, lastEnd: { ...end, lastLine: "x".repeat(LAST_LINE_LIMIT) } }).success).toBe(true);
+    expect(copyReadSchema.safeParse({ ...read, lastEnd: { ...end, lastLine: "x".repeat(LAST_LINE_LIMIT + 1) } }).success).toBe(false);
+    expect(copyReadSchema.safeParse({ ...read, lastEnd: { ...end, block: { at: NOW, size: -1, phase: "none" } } }).success).toBe(false);
+    expect(copyReadSchema.safeParse({ ...read, lastEnd: { ...end, block: { at: NOW, size: 1_000, phase: "" } } }).success).toBe(false);
+    expect(copyReadSchema.safeParse({ ...read, lastEnd: { ...end, extra: 1 } }).success).toBe(false);
+    expect(copyReadSchema.safeParse({ ...read, lastEnd: { lastLineAt: null, block: null, lastLine: null } }).success).toBe(false);
   });
 
   it("gives a payload before the first pass, with empty lists", () => {

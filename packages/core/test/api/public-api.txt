@@ -30,7 +30,9 @@ BalanceStage: build/index.d.ts#BalanceStage
 BaselinePolicy: build/index.d.ts#BaselinePolicy
 Breadth: build/index.d.ts#Breadth
 BucketReads: build/index.d.ts#BucketReads
+CANARY_AGE_WINDOW: build/index.d.ts#CANARY_AGE_WINDOW
 CANARY_LIMITS: build/index.d.ts#CANARY_LIMITS
+CANARY_LIMIT_CEILING: build/index.d.ts#CANARY_LIMIT_CEILING
 CAP_MESSAGE_SYSTEM: build/index.d.ts#CAP_MESSAGE_SYSTEM
 CATEGORIES: build/index.d.ts#CATEGORIES
 CATEGORY_LABELS: build/index.d.ts#CATEGORY_LABELS
@@ -99,6 +101,7 @@ CopyBillingState: build/index.d.ts#CopyBillingState
 CopyHealth: build/index.d.ts#CopyHealth
 CopyListen: build/index.d.ts#CopyListen
 CopyMeasureOptions: build/index.d.ts#CopyMeasureOptions
+CopyMesh: build/index.d.ts#CopyMesh
 CopyPeer: build/index.d.ts#CopyPeer
 CopyRead: build/index.d.ts#CopyRead
 CopySettings: build/index.d.ts#CopySettings
@@ -264,6 +267,7 @@ Kind: build/index.d.ts#Kind
 KindClass: build/index.d.ts#KindClass
 KindEntry: build/index.d.ts#KindEntry
 KindPrior: build/index.d.ts#KindPrior
+LAST_LINE_LIMIT: build/index.d.ts#LAST_LINE_LIMIT
 LEVELS: build/index.d.ts#LEVELS
 LIFELINES: build/index.d.ts#LIFELINES
 LIFELINES_SOURCE: build/index.d.ts#LIFELINES_SOURCE
@@ -281,6 +285,9 @@ LOOP_BLOCK_CLASSES: build/index.d.ts#LOOP_BLOCK_CLASSES
 LOOP_BLOCK_LIMIT: build/index.d.ts#LOOP_BLOCK_LIMIT
 LOOP_BLOCK_WINDOW: build/index.d.ts#LOOP_BLOCK_WINDOW
 LOOP_KIND: build/index.d.ts#LOOP_KIND
+LastBlock: build/index.d.ts#LastBlock
+LastEnd: build/index.d.ts#LastEnd
+LastEndReport: build/index.d.ts#LastEndReport
 LateOptions: build/index.d.ts#LateOptions
 Lateness: build/index.d.ts#Lateness
 LatenessFolds: build/index.d.ts#LatenessFolds
@@ -305,6 +312,7 @@ LinkPolicy: build/index.d.ts#LinkPolicy
 LinkRule: build/index.d.ts#LinkRule
 LoadedConfig: build/index.d.ts#LoadedConfig
 LocateOutcome: build/index.d.ts#LocateOutcome
+LogIntegrity: build/index.d.ts#LogIntegrity
 LogRecovery: build/index.d.ts#LogRecovery
 LoopBlock: build/index.d.ts#LoopBlock
 MAGNITUDE_PARAMETER: build/index.d.ts#MAGNITUDE_PARAMETER
@@ -675,6 +683,7 @@ copyHealthSchema: build/index.d.ts#copyHealthSchema
 copyIdSchema: build/index.d.ts#copyIdSchema
 copyListenSchema: build/index.d.ts#copyListenSchema
 copyMeasure: build/index.d.ts#copyMeasure
+copyMeshSchema: build/index.d.ts#copyMeshSchema
 copyPeerSchema: build/index.d.ts#copyPeerSchema
 copyProblems: build/index.d.ts#copyProblems
 copyReadSchema: build/index.d.ts#copyReadSchema
@@ -804,6 +813,7 @@ join: build/index.d.ts#join
 joinRuns: build/index.d.ts#joinRuns
 jointStages: build/index.d.ts#jointStages
 jointUnreadAt: build/index.d.ts#jointUnreadAt
+judgeCanary: build/index.d.ts#judgeCanary
 kindClassSchema: build/index.d.ts#kindClassSchema
 kindCodeSchema: build/index.d.ts#kindCodeSchema
 kindLabel: build/index.d.ts#kindLabel
@@ -812,6 +822,8 @@ kindPriorSchema: build/index.d.ts#kindPriorSchema
 kindSchema: build/index.d.ts#kindSchema
 knownKind: build/index.d.ts#knownKind
 knowsReport: build/index.d.ts#knowsReport
+lastBlockSchema: build/index.d.ts#lastBlockSchema
+lastEndReportSchema: build/index.d.ts#lastEndReportSchema
 lastRun: build/index.d.ts#lastRun
 lateRetirements: build/index.d.ts#lateRetirements
 lateSources: build/index.d.ts#lateSources
@@ -833,6 +845,7 @@ linesAt: build/index.d.ts#linesAt
 linkFamilySchema: build/index.d.ts#linkFamilySchema
 linkPolicySchema: build/index.d.ts#linkPolicySchema
 linkRule: build/index.d.ts#linkRule
+liveCanaryLimit: build/index.d.ts#liveCanaryLimit
 loadConfig: build/index.d.ts#loadConfig
 localPlaces: build/index.d.ts#localPlaces
 locateOutcomeSchema: build/index.d.ts#locateOutcomeSchema
@@ -1301,8 +1314,14 @@ export interface BucketReads {
   readonly units: readonly SignalUnit[];
 }
 
+### build/index.d.ts#CANARY_AGE_WINDOW
+export declare const CANARY_AGE_WINDOW: number;
+
 ### build/index.d.ts#CANARY_LIMITS
 export declare const CANARY_LIMITS: DelayLimitOptions;
+
+### build/index.d.ts#CANARY_LIMIT_CEILING
+export declare const CANARY_LIMIT_CEILING = 2;
 
 ### build/index.d.ts#CAP_MESSAGE_SYSTEM
 export declare const CAP_MESSAGE_SYSTEM = "cap";
@@ -1393,6 +1412,9 @@ export interface CanaryLimitOptions {
 export interface CanaryResult {
   readonly pass: boolean;
   readonly reason: string;
+  readonly late?: true;
+  readonly age?: Duration;
+  readonly limit?: Duration;
 }
 
 ### build/index.d.ts#CancelTarget
@@ -1676,6 +1698,16 @@ export interface CopyMeasureOptions {
   readonly link?: LinkRule;
 }
 
+### build/index.d.ts#CopyMesh
+export interface CopyMesh {
+  readonly node: string;
+  readonly send: readonly string[];
+  readonly listen: readonly string[];
+  readonly ackNodes?: readonly string[];
+  readonly beatMs?: Duration;
+  readonly levels?: readonly Level[];
+}
+
 ### build/index.d.ts#CopyPeer
 export interface CopyPeer {
   readonly id: string;
@@ -1688,6 +1720,7 @@ export interface CopyRead {
   readonly at: Instant;
   readonly skew: Duration;
   readonly sameConfig: boolean;
+  readonly lastEnd?: LastEndReport;
 }
 
 ### build/index.d.ts#CopySettings
@@ -1703,6 +1736,7 @@ export interface CopySettings {
   readonly leaveChannels?: readonly ChannelId[];
   readonly leaveSources?: readonly SourceId[];
   readonly sounder?: CopySounder;
+  readonly mesh?: CopyMesh;
   readonly drift?: DriftConfig;
 }
 
@@ -2889,6 +2923,9 @@ export interface KindPrior {
   readonly causes?: Readonly<Record<string, CauseShare>>;
 }
 
+### build/index.d.ts#LAST_LINE_LIMIT
+export declare const LAST_LINE_LIMIT = 200;
+
 ### build/index.d.ts#LEVELS
 export declare const LEVELS: readonly Level[];
 
@@ -2939,6 +2976,25 @@ export declare const LOOP_BLOCK_WINDOW: Duration;
 
 ### build/index.d.ts#LOOP_KIND
 export declare const LOOP_KIND = "system.loop";
+
+### build/index.d.ts#LastBlock
+export interface LastBlock {
+  readonly at: Instant;
+  readonly size: Duration;
+  readonly phase: string;
+}
+
+### build/index.d.ts#LastEnd
+export interface LastEnd {
+  readonly lastLineAt: Instant | null;
+  readonly block: LastBlock | null;
+  readonly lastLine: string | null;
+}
+
+### build/index.d.ts#LastEndReport
+export interface LastEndReport extends LastEnd {
+  readonly startedAt: Instant;
+}
 
 ### build/index.d.ts#LateOptions
 export interface LateOptions {
@@ -3106,6 +3162,12 @@ export type LocateOutcome = {
   readonly ok: false;
   readonly failure: FetchFailure;
 };
+
+### build/index.d.ts#LogIntegrity
+export interface LogIntegrity {
+  readonly at: Instant;
+  readonly problems: readonly string[];
+}
 
 ### build/index.d.ts#LogRecovery
 export interface LogRecovery {
@@ -4633,6 +4695,7 @@ export interface SystemSnapshot {
   readonly copies?: readonly CopyWatch[];
   readonly steps?: readonly ClockStep[];
   readonly recoveries?: readonly LogRecovery[];
+  readonly integrity?: LogIntegrity | null;
   readonly blocks?: readonly LoopBlock[];
   readonly stores?: readonly StoreFill[];
   readonly bounds?: readonly StoreBound[];
@@ -5156,6 +5219,9 @@ export declare const copyListenSchema: z.ZodType<CopyListen, CopyListen>;
 ### build/index.d.ts#copyMeasure
 export declare function copyMeasure(reports: readonly Report[], expectation: Expectation, options?: CopyMeasureOptions): SentMeasure;
 
+### build/index.d.ts#copyMeshSchema
+export declare const copyMeshSchema: z.ZodType<CopyMesh, CopyMesh>;
+
 ### build/index.d.ts#copyPeerSchema
 export declare const copyPeerSchema: z.ZodType<CopyPeer, CopyPeer>;
 
@@ -5549,6 +5615,9 @@ export declare function jointStages(joint: JointDown, at: Instant): JointStage[]
 ### build/index.d.ts#jointUnreadAt
 export declare function jointUnreadAt(joint: JointDown): Instant;
 
+### build/index.d.ts#judgeCanary
+export declare function judgeCanary(result: CanaryResult, limit: Duration): CanaryResult;
+
 ### build/index.d.ts#kindClassSchema
 export declare const kindClassSchema: z.ZodType<KindClass, KindClass>;
 
@@ -5572,6 +5641,12 @@ export declare function knownKind(code: string): boolean;
 
 ### build/index.d.ts#knowsReport
 export declare function knowsReport(state: MergeState, id: ReportId): boolean;
+
+### build/index.d.ts#lastBlockSchema
+export declare const lastBlockSchema: z.ZodType<LastBlock, LastBlock>;
+
+### build/index.d.ts#lastEndReportSchema
+export declare const lastEndReportSchema: z.ZodType<LastEndReport, LastEndReport>;
 
 ### build/index.d.ts#lastRun
 export declare function lastRun(runs: readonly DrillRun[], id: string): DrillRun | undefined;
@@ -5637,6 +5712,9 @@ export declare const linkPolicySchema: z.ZodType<LinkPolicy, LinkPolicy>;
 
 ### build/index.d.ts#linkRule
 export declare function linkRule(policy: LinkPolicy): LinkRule;
+
+### build/index.d.ts#liveCanaryLimit
+export declare function liveCanaryLimit(ages: readonly Duration[], hand: Duration, options?: DelayLimitOptions): Duration;
 
 ### build/index.d.ts#loadConfig
 export declare function loadConfig(config: AlertConfig, channels: readonly ChannelDescriptor[], secret: SecretLookup, services?: ContactServices): LoadedConfig;

@@ -363,11 +363,13 @@ The core calculates the health of each source from the records of its fetches, n
 | `unknown` | No fetch passed yet. |
 | `healthy` | The last fetch passed, in less than `slowAfter`. |
 | `slow` | The last fetch passed, in `slowAfter` or more. |
-| `failing` | The last `failAfter` fetches failed, or no fetch passed for `staleAfter`, or the last canary check failed. |
-| `silent` | No fresh observation for `maxQuiet`, for a source where quiet is not normal. |
+| `failing` | The last `failAfter` fetches failed, or no fetch passed for `staleAfter`, or the last canary check failed for a cause other than old data. |
+| `silent` | No fresh observation for `maxQuiet`, for a source where quiet is not normal, or the last canary check found old data (`late`). |
 | `changed` | The map gave fatal or lossy problems for the last passed fetch. |
 
-The default of `failAfter` is 2 fetches, and the default of `staleAfter` is 3 intervals. When two conditions are true, the first state of this order applies: `failing`, `unknown`, `changed`, `silent`, `slow`, `healthy`. A stuck loop of the runtime writes no record, so the stale timer makes the source `failing`. A failed canary holds until a canary check passes.
+The default of `failAfter` is 2 fetches, and the default of `staleAfter` is 3 intervals. When two conditions are true, the first state of this order applies: `failing`, `unknown`, `changed`, `silent`, `slow`, `healthy`. A stuck loop of the runtime writes no record, so the stale timer makes the source `failing`. A failed canary holds until a canary check passes. A canary check that finds old data sets `late`. Old data of a source is `silent`, not `failing`: the fetches pass, but the source gives no new data.
+
+An age check gives `age`, the age of the newest item, and `limit`, its hand limit (AL-207). The runtime keeps the last `CANARY_AGE_WINDOW` ages of each source. `liveCanaryLimit` gives the upper bound of the 0.99 quantile of the ages. The hand limit is its floor, and two times the hand limit is its ceiling. With fewer than 368 ages, the limit is the hand limit. The runtime judges each age check with this live limit before it writes the record.
 
 The health is a pure fold. `observeFetch` adds one record, and `advanceHealth` moves the time. Each step gives the changes of state as transitions, and the time of its next timer in `wakeAt`. A replay of the transitions against the document finds each change that the document does not permit. Tests replay random records, and compare each state with a direct calculation from the records.
 
@@ -625,6 +627,14 @@ A copy that deploys tells the other copies (AL-208). A copy that stages is up an
 - The answer of the exchange gives the end of the mark (`deployUntil`) while the mark did not end. The watch keeps it on its own clock (`CopyWatch.deployUntil`), and `GET /status` gives it.
 - A deploy does not stop its runtime while another copy has a mark that did not end.
 - Before that check, the deploy waits for a read of each other copy that started after its own mark. Thus two deploys that start at about the same time both refuse, and no deploy stops two copies.
+
+Each start of a copy tells the end of its last run to the other copies (AL-222). A small host can have no room for a read over ssh.
+
+- The start reads the last 64 KiB of the log of the program, `host/logs/runtime.log`, before its first line. It writes one line `The last run: ...`.
+- The facts are the time of the last line with a time, the last line, and a block of the event loop that did not end.
+- A line of the watch of long blocks (AL-119) with no later line of the runtime is a block that did not end. A liveness stop in a block gives it.
+- The answer of the exchange gives the facts with the time of the start (`lastEnd`). The read keeps them on the clock of that copy (`CopyRead.lastEnd`), and `GET /health` gives them.
+- A copy of an older build tells nothing. Its read has no `lastEnd`.
 
 An account can stop the billing of a copy host at a spend limit. Then the host stops, and the line `unread` of the copy names the billing stop (AL-70).
 
@@ -900,7 +910,8 @@ The mesh channel (`@mark1russell7/alerts-channel-mesh`, AL-41) sounds a siren on
 - The channel sounds only for the levels `urgent` and `life-safety`. It refuses each other level.
 - The settings of the bed node are data (`node-config.ts`). They name the channel and the name of its key in `secrets.env`, and never the key.
 - The entry `/testing` has a simulated node and a simulated mesh. A fault test applies seeded plans of `rigor-chaos` to the two directions of the mesh.
-- The runtime does not load the channel at this time. A later step adds it to the instance, and a bench test uses real radios.
+- The command link (`commandLink`, AL-41-wire) connects the channel to the home node through two programs. The section "The mesh link of a copy" tells the rules.
+- The runtime loads the channel from the field `mesh` of `copy.json`. A bench test with real radios comes next (AL-41-bench).
 
 The supervisor sends a notice to a receiver when the runtime stops again and again (`loop-notice.ts`, AL-55). A runtime in a loop sends no alert, because the runtime is the sender:
 
@@ -943,6 +954,7 @@ Each copy loads the same configuration: `config.json` and the parts. The sync of
 - `configFrom`: the id of the copy that gives the configuration of this copy. It is the id of a copy of `peers`. The section "The sync of the configuration" tells the steps.
 - `leaveChannels`: the ids of the channels that this copy leaves to the other copies (AL-55). The section "The channels that a copy leaves" tells the rules.
 - `sounder`: the sounder channel of this copy (AL-41). The section "The sounder of a copy" tells the rules.
+- `mesh`: the mesh channel of this copy (AL-41-wire). The section "The mesh link of a copy" tells the rules.
 - `drift`: the drift checks of the host of this copy (AL-139). The section "System reports" tells their lines.
 
 Without `copy.json`, the runtime is the only copy. It has rank 0 and no exchange. The key `COPY_TOKEN` of `secrets.env` gives the token of the exchange, the same for each copy. The check of the profile `daemon` needs it when the copy has other copies.
@@ -971,6 +983,21 @@ A sounder is a device in the home of one copy, for example the speaker of its co
 - The runtime starts each program with no shell. A problem names the field and no argument, because an argument can be a private path.
 - A copy with no field `sounder` names the channel `sounder` in `leaveChannels`. Without it, a step on the channel stops the start of that copy.
 - A copy with the field `sounder` does not leave the channel.
+
+### The mesh link of a copy
+
+The home node of the mesh channel is on the computer of one copy. Only that copy can write the frames. Thus the field `mesh` of `copy.json` holds the link, and the configuration holds the contacts and the steps:
+
+- `node`: the name of the bed node, for example `bed-node`.
+- `send`: the program that writes one frame to the home node, and its arguments. The runtime adds the frame as the last argument.
+- `listen`: the program that writes each frame of the home node on one line. It operates until the runtime stops.
+- `ackNodes`, `beatMs` and `levels`: the nodes whose ack counts, the beat period and the levels that sound. The channel gives the defaults.
+- A send passes only when the program `send` exits with the code 0 in 10 seconds.
+- The worker `mesh` of the service reads the program `listen`. When the program stops, the worker starts it again after its backoff.
+- The two programs are the adapter of the radio. Thus the runtime knows no radio, and it uses no library of the radio.
+- The runtime starts each program with no shell. A problem names the field and no argument, because an argument can be a private path.
+- A copy with no field `mesh` names the channel `mesh` in `leaveChannels`. Without it, a step on the channel stops the start of that copy.
+- A copy with the field `mesh` does not leave the channel.
 
 ### The rank wait
 
@@ -1696,7 +1723,7 @@ The instance does not start when it finds one of these problems:
 - a watch of a limit of a provider with no reader, or a limit of GitHub with no value for the key of its token
 - a place that no regional source covers. Usually the place does not have a code of each level: the zone, the county, SAME, the state and the country. A source with the coverage `global`, for example the SWPC, covers each place with no code. Thus the check does not count it.
 
-The environment gives `PORT` (8080), `PROBE_PORT` (9090) and `SERVICE_PROFILE` (`local`, `daemon` or `pod`). The folder `ALERTS_HOME` (`.alerts` in the home folder) holds the private files: `config.json`, `secrets.env`, the log `runtime.sqlite` and the outlines of the zones `shapes.sqlite`. It also holds the counts of the quotas, `quotas.sqlite`, the use reads of the caps, `use.json`, and the copy of the transit catalog, `transit-catalog.json`. No repository holds them. A problem of `secrets.env` names its line and its key, and no value. The output of a failed pass shows no value of `secrets.env`.
+The environment gives `PORT` (8080), `PROBE_PORT` (9090) and `SERVICE_PROFILE` (`local`, `daemon` or `pod`). The folder `ALERTS_HOME` (`.alerts` in the home folder) holds the private files: `config.json`, `secrets.env`, the log `runtime.sqlite` and the outlines of the zones `shapes.sqlite`. It also holds the counts of the quotas, `quotas.sqlite`, the use reads of the caps, `use.json`, and the copy of the transit catalog, `transit-catalog.json`. The file `canary-ages.json` holds the measured ages of the canary checks. No repository holds them. A problem of `secrets.env` names its line and its key, and no value. The output of a failed pass shows no value of `secrets.env`.
 
 Each runtime takes the lock `home.lock` of the folder at its start, before it reads or writes a file of the folder (AL-58). The lock is the instance lock of `@mark1russell7/service/host`:
 

@@ -14,12 +14,12 @@ const kIndex = (fetched: number, valid_time = "2026-11-17 18:00:00") => observat
 
 describe("checkCanary", () => {
   it("passes when the newest period of the K index started at most 6 hours before the fetch", () => {
-    expect(checkCanary([kIndex(START + 7_200_000)])).toEqual({ pass: true, reason: "the newest period of the K index starts at 2026-11-17 18:00:00 UTC, 2.0 hours before the fetch" });
+    expect(checkCanary([kIndex(START + 7_200_000)])).toEqual({ pass: true, reason: "the newest period of the K index starts at 2026-11-17 18:00:00 UTC, 2.0 hours before the fetch", age: 7_200_000, limit: NEWEST_MAX_AGE_MS });
     expect(checkCanary([kIndex(START + NEWEST_MAX_AGE_MS)]).pass).toBe(true);
   });
 
   it("fails for an old K index, and for a fetch with no K index", () => {
-    expect(checkCanary([kIndex(START + NEWEST_MAX_AGE_MS + 1000)])).toMatchObject({ pass: false });
+    expect(checkCanary([kIndex(START + NEWEST_MAX_AGE_MS + 1000)])).toMatchObject({ pass: false, late: true });
     expect(checkCanary([kIndex(START + NEWEST_MAX_AGE_MS + 1000)]).reason).toContain("the limit is 6 hours");
     const alert = observationOf(METHODS.alert, { start_time: "2026-11-17 19:45:00", g_scale: 1 }, START);
     expect(checkCanary([alert])).toEqual({ pass: false, reason: "the fetch has no K index of the Australian region" });

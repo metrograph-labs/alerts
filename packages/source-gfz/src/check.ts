@@ -40,7 +40,7 @@ export function checkIndexCanary(index: GfzIndex, observations: readonly Observa
   if (newest === undefined) return { pass: false, reason: `the fetch has no interval of the index ${index.name} of the past ${limit}` };
   const hours = ((newest.fetched - newest.start) / 3_600_000).toFixed(1);
   if (newest.fetched - newest.start > index.newestMaxAgeMs) {
-    return { pass: false, reason: `the newest interval of the index ${index.name} starts at ${intervalText(newest.start)}, ${hours} hours before the fetch: the limit is ${limit}` };
+    return { pass: false, reason: `the newest interval of the index ${index.name} starts at ${intervalText(newest.start)}, ${hours} hours before the fetch: the limit is ${limit}`, late: true, age: newest.fetched - newest.start, limit: index.newestMaxAgeMs };
   }
-  return { pass: true, reason: `the newest interval of the index ${index.name} starts at ${intervalText(newest.start)}, ${hours} hours before the fetch` };
+  return { pass: true, reason: `the newest interval of the index ${index.name} starts at ${intervalText(newest.start)}, ${hours} hours before the fetch`, age: newest.fetched - newest.start, limit: index.newestMaxAgeMs };
 }

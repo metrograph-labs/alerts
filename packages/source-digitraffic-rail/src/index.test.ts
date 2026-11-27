@@ -43,6 +43,7 @@ describe("checkCanary", () => {
     expect(checkCanary([observe(NEWEST + NEWEST_MAX_AGE_MS)]).pass).toBe(true);
     const old = checkCanary([observe(NEWEST + NEWEST_MAX_AGE_MS + 1)]);
     expect(old.pass).toBe(false);
+    expect(old.late).toBe(true);
     expect(old.reason).toContain("2026-11-25T13:32:43.000Z");
   });
 

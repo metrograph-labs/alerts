@@ -340,7 +340,7 @@ describe("checkCanary and the head", () => {
     move(60 * MIN);
     const old = await fetch();
     const result = checkCanary(old.ok ? old.observations : []);
-    expect(result.pass).toBe(false);
+    expect(result).toMatchObject({ pass: false, late: true });
     expect(result.reason).toMatch(/limit is 60 minutes/);
     expect(checkCanary([]).pass).toBe(false);
   });

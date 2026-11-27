@@ -38,6 +38,8 @@ import {
   type ChannelProcedures,
   type ChannelQuota,
   type LoopBlock,
+  type LastEndReport,
+  type LogIntegrity,
   type ContactServices,
   type CopySettings,
   type Duration,
@@ -87,6 +89,7 @@ import {
   type TwilioFetch,
 } from "@mark1russell7/alerts-channel-twilio";
 import { createWebhookChannel, parseWebhookSecrets, WEBHOOK_CHANNEL, webhookDescriptor, type WebhookFetch, type WebhookSecret } from "@mark1russell7/alerts-channel-webhook";
+import { commandLink, MESH_CHANNEL, meshChannel, meshDescriptor, meshProblems, meshReceiver, meshReceiverWorker, type LineReader, type LinkRunner, type MeshChannelOptions } from "@mark1russell7/alerts-channel-mesh";
 import { commandSounder, createSounderChannel, SOUNDER_CHANNEL, sounderDescriptor, sounderProblems, type CommandRunner, type SounderChannelOptions } from "@mark1russell7/alerts-channel-sounder";
 import { CHANNEL_ID, createPushoverChannel, isPushoverKey, pushoverDescriptor, PUSHOVER_REPEAT_MS, PUSHOVER_TIMEOUT_MS, type PushoverChannelOptions } from "@mark1russell7/alerts-channel-pushover";
 import { createEmscSource, EMSC_DESCRIPTOR } from "@mark1russell7/alerts-source-emsc";
@@ -125,7 +128,7 @@ import type { Meter } from "@opentelemetry/api";
 import type { UseRead } from "@mark1russell7/stack-spend";
 import { limitProblems, limitWatches, type LimitWatch } from "./use.ts";
 import { jointReader, jointWatch, type JointWatch } from "./joint.ts";
-import { commandRunner, driftWatch, type DriftRunner, type DriftWatch } from "./drift.ts";
+import { commandLines, commandRunner, driftWatch, type DriftRunner, type DriftWatch } from "./drift.ts";
 import { billingWatch, type BillingWatch } from "./billing.ts";
 import { chainProblems, chainWatch, readChain } from "./chain.ts";
 import { balanceWatch, SPEND_UNIT, spendEntryOf, spendGates, spendQuota, spendUnits, spendWatch, type BalanceWatch, type SpendGates, type SpendWatch } from "./balance.ts";
@@ -260,7 +263,7 @@ export { DELAY_LIMITS };
  * recipient against this list: the channel of each step, and the fields of each address. Thus the loader
  * and the instance agree on the channels.
  */
-export const INSTANCE_CHANNELS: readonly ChannelDescriptor[] = [pushoverDescriptor(), twilioCallDescriptor(), twilioTextDescriptor(), webhookDescriptor(), sounderDescriptor()];
+export const INSTANCE_CHANNELS: readonly ChannelDescriptor[] = [pushoverDescriptor(), twilioCallDescriptor(), twilioTextDescriptor(), webhookDescriptor(), sounderDescriptor(), meshDescriptor()];
 
 /**
  * The names of the keys of `secrets.env` for the Twilio call channel. The secret is the secret of an API key
@@ -400,14 +403,55 @@ export function copySounderProblems(copy: CopySettings): string[] {
   return [...sounderProblems(options).map((problem) => `The file ${COPY_FILE}: the field sounder: ${problem}`), ...left];
 }
 
+/** The link programs of the mesh channel of a copy: the runner of the program `send` and the reader of the program `listen`. */
+export interface MeshPrograms {
+  readonly run: LinkRunner;
+  readonly read: LineReader;
+}
+
+/**
+ * This function gives the options of the mesh channel of a copy (AL-41-wire), with no receiver and no clock. It gives
+ * `undefined` when the copy has no field `mesh`. The link starts its two programs with `programs`, with no shell.
+ *
+ * @throws RangeError when a program of the link is empty (`copyMeshProblems` tells it first)
+ */
+export function meshLinkOptions(copy: CopySettings, programs: MeshPrograms): Omit<MeshChannelOptions, "receiver" | "clock"> | undefined {
+  const mesh = copy.mesh;
+  if (mesh === undefined) return undefined;
+  return {
+    link: commandLink({ send: mesh.send, listen: mesh.listen, run: programs.run, read: programs.read }),
+    node: mesh.node,
+    ...(mesh.ackNodes === undefined ? {} : { ackNodes: mesh.ackNodes }),
+    ...(mesh.beatMs === undefined ? {} : { beatMs: mesh.beatMs }),
+    ...(mesh.levels === undefined ? {} : { levels: mesh.levels }),
+  };
+}
+
+/**
+ * This function gives the problems of the field `mesh` of a copy (AL-41-wire). These are the problems of `meshProblems`.
+ * Also, a copy with a mesh channel does not leave the channel to the other copies. The problems name no program and no argument.
+ */
+export function copyMeshProblems(copy: CopySettings): string[] {
+  const mesh = copy.mesh;
+  if (mesh === undefined) return [];
+  const empty = [mesh.send, mesh.listen].some((argv) => argv.length === 0 || argv.some((arg) => arg.length === 0));
+  if (empty) return [`The file ${COPY_FILE}: the field mesh: a program of the link is empty.`];
+  const options = meshLinkOptions(copy, { run: () => Promise.resolve({ exitCode: 0 }), read: async function* () {} });
+  const problems = options === undefined ? [] : meshProblems({ ...options, receiver: meshReceiver({ clock: { now: () => 0 } }) });
+  const left = (copy.leaveChannels ?? []).includes(MESH_CHANNEL)
+    ? [`The file ${COPY_FILE}: the copy has the field mesh, and its field leaveChannels names the channel ${MESH_CHANNEL}. Remove one of the two.`]
+    : [];
+  return [...problems.map((problem) => `The file ${COPY_FILE}: the field mesh: ${problem}`), ...left];
+}
+
 /**
  * This function gives the channels that the instance sends on. Pushover is always one. The Twilio call channel needs the keys of
  * `TWILIO_KEYS`, and the text channel also needs `TWILIO_TEXT_FROM_KEY`. The webhook channel needs `WEBHOOK_SECRET_KEY`. The sounder channel
- * needs the field `sounder` of the copy (AL-41). A step on another channel of `INSTANCE_CHANNELS` stops the start.
+ * needs the field `sounder` of the copy (AL-41). The mesh channel needs the field `mesh` (AL-41-wire). A step on another channel of `INSTANCE_CHANNELS` stops the start.
  */
 export function instanceSenders(secret: SecretLookup, copy: CopySettings = ONLY_COPY): readonly ChannelId[] {
   const webhook = webhookSetup(secret);
-  const hooks = [...(webhook.tag === "ok" && webhook.value !== undefined ? [WEBHOOK_CHANNEL] : []), ...(copy.sounder === undefined ? [] : [SOUNDER_CHANNEL])];
+  const hooks = [...(webhook.tag === "ok" && webhook.value !== undefined ? [WEBHOOK_CHANNEL] : []), ...(copy.sounder === undefined ? [] : [SOUNDER_CHANNEL]), ...(copy.mesh === undefined ? [] : [MESH_CHANNEL])];
   const twilio = twilioSetup(secret);
   if (twilio.tag === "err" || twilio.value === undefined) return [CHANNEL_ID, ...hooks];
   return twilio.value.textFrom === undefined ? [CHANNEL_ID, TWILIO_CHANNEL, ...hooks] : [CHANNEL_ID, TWILIO_CHANNEL, TEXT_CHANNEL_ID, ...hooks];
@@ -653,6 +697,7 @@ export const RANK_FLOOR: Duration = DELIVERY_TIMES.callLimit + 3 * EXCHANGE_EVER
  * - an id of a source with no account in the field `accounts` of the copy
  * - an id in the field `leaveChannels` of the copy that is not a channel of `INSTANCE_CHANNELS`
  * - each problem of `copySounderProblems`: a bad field `sounder` of the copy (AL-41)
+ * - each problem of `copyMeshProblems`: a bad field `mesh` of the copy (AL-41-wire)
  * - a step of a policy on a channel with no sender, when the copy does not leave the channel to the other copies
  * - a step on a channel with a cost, when the configuration has no spend entry for its provider
  * - a place that no regional source covers. A source with the coverage `global` covers each place, with no code.
@@ -725,6 +770,7 @@ export function instanceProblems(parsed: ParsedConfig, secret: SecretLookup, des
     ...accountProblems(copy),
     ...leaveProblems(copy),
     ...copySounderProblems(copy),
+    ...copyMeshProblems(copy),
     ...senderProblems,
     ...spendProblems,
     ...placeProblems,
@@ -875,6 +921,11 @@ export interface InstanceOptions {
    * gives a fake. The instance starts a program only when the copy has the field `sounder`.
    */
   readonly sounderRunner?: CommandRunner;
+  /**
+   * The programs of the mesh link of the copy (AL-41-wire). The default is `commandRunner` and `commandLines` of `drift.ts`.
+   * A test gives fakes. The instance starts a program only when the copy has the field `mesh`.
+   */
+  readonly meshPrograms?: MeshPrograms;
   /** The store of the file of the outage bundles. The entry gives the file of the slot. Without it, each deploy makes the bundles. */
   readonly outageBundles?: BundleStore;
   /**
@@ -942,6 +993,11 @@ export interface InstanceOptions {
    * closes it. Without it, the instance keeps no reading.
    */
   readonly readings?: RuntimeOptions["readings"];
+  /**
+   * The measured ages of the canary checks of each source (AL-207). The entry gives the file `canary-ages.json` of the private
+   * folder, and the service closes it. Without it, each age check keeps its hand limit.
+   */
+  readonly canaryAges?: RuntimeOptions["canaryAges"];
   /** The instance gives each fault of the store of the readings to this function. */
   readonly onReadingsFault?: RuntimeOptions["onReadingsFault"];
   /**
@@ -972,6 +1028,8 @@ export interface InstanceOptions {
   readonly onOutageLog?: (line: string) => void;
   /** This function gives the blocks of the event loop of the runtime (AL-88). Each pass writes the new blocks into the log. */
   readonly loopBlocks?: () => readonly LoopBlock[];
+  /** This function gives the last integrity check of the log when it failed, or `null` (AL-223). Its report is a system report. */
+  readonly logIntegrity?: () => LogIntegrity | null;
 }
 
 /** The parts of the exchange that the entry gives to the instance. */
@@ -984,6 +1042,8 @@ export interface InstanceExchange {
   readonly deployUntil?: () => Instant | undefined;
   /** This function gets the notes of the large or slow imports of pages of the other copies (AL-222). */
   readonly onTake?: (note: TakeNote) => void;
+  /** The report of the start of this run: its time and the end of the run before it (AL-222). The answer of the exchange tells it. */
+  readonly lastEnd?: LastEndReport;
 }
 
 /** The exchange of an instance with the other copies. */
@@ -1048,6 +1108,8 @@ export interface Instance {
   readonly interests: () => InterestsPayload;
   /** The worker of the deploy of the outage call, when the configuration has an outage call. The service declares it. */
   readonly outage?: OutageDeployWorker;
+  /** The worker of the receiver of the mesh channel, when the copy has the field `mesh` (AL-41-wire). The service declares it. */
+  readonly mesh?: WorkerLoop;
   /** The exchange with the other copies, when the options give it. */
   readonly copies?: InstanceCopies;
 }
@@ -1315,6 +1377,13 @@ export function openInstance(options: InstanceOptions): Instance {
   const webhook = webhookChannel(options, () => wall.now());
   const sounding = sounderOptions(copy, options.sounderRunner ?? commandRunner, () => wall.now());
   const sounder = sounding === undefined ? undefined : createSounderChannel(sounding);
+  // The receiver of the mesh channel reads the link in a worker of the service. The channel reads the acks and the beats of the receiver.
+  const meshing = meshLinkOptions(copy, options.meshPrograms ?? { run: commandRunner, read: commandLines });
+  const meshReceived = meshing === undefined ? undefined : meshReceiver({ clock: wall });
+  const mesh =
+    meshing === undefined || meshReceived === undefined
+      ? undefined
+      : { channel: meshChannel({ ...meshing, receiver: meshReceived, clock: wall }), worker: meshReceiverWorker({ receiver: meshReceived, link: meshing.link, clock }) };
   // The worker of the exchange reads the runtime only in its rounds, after the start of the service. Thus it gets the runtime through a function.
   const peers = copy.peers ?? [];
   const worker =
@@ -1354,6 +1423,7 @@ export function openInstance(options: InstanceOptions): Instance {
     ...(twilio === undefined ? [] : [twilio.channel, ...(twilio.text === undefined ? [] : [twilio.text])]),
     ...(webhook === undefined ? [] : [webhook]),
     ...(sounder === undefined ? [] : [sounder]),
+    ...(mesh === undefined ? [] : [mesh.channel]),
   ];
   // The labels of the places go only into the why line of each message. The policy of the configuration replaces the default policy of the core.
   // A person with a score rule needs the priors in the policy (AL-31). With no score rule, the policy stays the same.
@@ -1451,6 +1521,8 @@ export function openInstance(options: InstanceOptions): Instance {
     stores: () => shapes.fill(startedAt, STORE_FILL_WINDOW, shapeSources(runtime.config.sources).map((source) => source.id)),
     // Each block of the event loop of 1 s or more is a line of system reports (AL-88).
     ...(options.loopBlocks === undefined ? {} : { blocks: options.loopBlocks }),
+    // A failed integrity check of the log is a line of system reports (AL-223).
+    ...(options.logIntegrity === undefined ? {} : { integrity: options.logIntegrity }),
     // Each pass reads the replies of the texts and the spend of Twilio when each read is due.
     // The billing watch reads the billing of a down copy (AL-70).
     ...(reads.length === 0 && billing === undefined ? {} : { reads: [...reads, ...(billing === undefined ? [] : [billing])] }),
@@ -1458,6 +1530,8 @@ export function openInstance(options: InstanceOptions): Instance {
     ...(copyChecks === undefined ? {} : { copies: copyChecks }),
     // The readings of each fetch go to their store, not to the log.
     ...(options.readings === undefined ? {} : { readings: options.readings }),
+    // Each age check gets its live limit from the measured ages of its source (AL-207).
+    ...(options.canaryAges === undefined ? {} : { canaryAges: options.canaryAges }),
     ...(options.onReadingsFault === undefined ? {} : { onReadingsFault: options.onReadingsFault }),
     // The new reports of each fetch go to the counters of the live metrics.
     ...(metrics === undefined ? {} : { onReports: (reports) => metrics.reports(reports) }),
@@ -1579,7 +1653,7 @@ export function openInstance(options: InstanceOptions): Instance {
   const copies: InstanceCopies | undefined =
     options.exchange === undefined
       ? undefined
-      : { source: { runtime, clock: wall, configHash: options.exchange.configHash, drills: () => runtime.state().drills, steady: () => steadyPasses(first, latest), ...(options.exchange.deployUntil === undefined ? {} : { deployUntil: options.exchange.deployUntil }) }, ...(worker === undefined || rounds === undefined ? {} : { worker, loop: rounds }) };
+      : { source: { runtime, clock: wall, configHash: options.exchange.configHash, drills: () => runtime.state().drills, steady: () => steadyPasses(first, latest), ...(options.exchange.deployUntil === undefined ? {} : { deployUntil: options.exchange.deployUntil }), ...(options.exchange.lastEnd === undefined ? {} : { lastEnd: options.exchange.lastEnd }) }, ...(worker === undefined || rounds === undefined ? {} : { worker, loop: rounds }) };
   const outage = outageWorker(options, loop.times.passLimit);
   return {
     runtime,
@@ -1602,6 +1676,7 @@ export function openInstance(options: InstanceOptions): Instance {
     history,
     interests: () => interests,
     ...(outage === undefined ? {} : { outage }),
+    ...(mesh === undefined ? {} : { mesh: mesh.worker }),
     ...(copies === undefined ? {} : { copies }),
   };
 }

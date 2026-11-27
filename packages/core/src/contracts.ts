@@ -551,6 +551,18 @@ export interface MapResult {
 export interface CanaryResult {
   readonly pass: boolean;
   readonly reason: string;
+  /**
+   * This field is `true` when the check failed because the newest data of the source is older than its limit (AL-207).
+   * Then the health of the source is `silent`, not `failing`. A check that passed, or that failed for another cause, gives no field.
+   */
+  readonly late?: true;
+  /**
+   * The age of the newest item at the fetch, for an age check (AL-207). The runtime keeps the ages of each source, and the live
+   * limit of the source comes from them. A check of another kind gives no field.
+   */
+  readonly age?: Duration;
+  /** The age limit that the check used, for an age check (AL-207). A check of another kind gives no field. */
+  readonly limit?: Duration;
 }
 
 /**
@@ -940,6 +952,46 @@ export interface CopyRead {
   readonly skew: Duration;
   /** This value tells if the other copy has the hash of the configuration of this copy. */
   readonly sameConfig: boolean;
+  /**
+   * The end of the run before the current run of the other copy, as the other copy tells it at its start (AL-222). The
+   * times are on the clock of that copy. A copy of an older build tells nothing, thus its read has none.
+   */
+  readonly lastEnd?: LastEndReport;
+}
+
+/** The most characters of the last line of a run in `LastEnd`. A longer line ends in the ellipsis "…". */
+export const LAST_LINE_LIMIT = 200;
+
+/**
+ * A block of the event loop that did not end in its run (AL-222). The watch of long blocks (AL-119) wrote its line, and the
+ * run wrote no line after it. Thus the block is the likely cause of the end of the run, for example a liveness stop.
+ */
+export interface LastBlock {
+  /** The start of the block, on the wall clock of the run. */
+  readonly at: Instant;
+  /** The length of the block in the last line of the watch. The block was at least this long. */
+  readonly size: Duration;
+  /** The phase of the runtime during the block, as the line of the watch names it. */
+  readonly phase: string;
+}
+
+/**
+ * The facts about the end of a run of the runtime, from the end of the log of its output (AL-222). Each field is `null` when
+ * the log does not tell it.
+ */
+export interface LastEnd {
+  /** The time of the last line of the run that has a time. */
+  readonly lastLineAt: Instant | null;
+  /** The block of the event loop that did not end in the run. */
+  readonly block: LastBlock | null;
+  /** The last line of the run, at most `LAST_LINE_LIMIT` characters. */
+  readonly lastLine: string | null;
+}
+
+/** The report of a start of the runtime: the time of the start, and the facts about the end of the run before it (AL-222). */
+export interface LastEndReport extends LastEnd {
+  /** The start of the current run, on the wall clock of the runtime. */
+  readonly startedAt: Instant;
 }
 
 /**

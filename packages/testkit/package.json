@@ -36,7 +36,7 @@
     "@mark1russell7/rigor-proxy": "^0.3.2",
     "@mark1russell7/rigor-testkit": "^0.1.20",
     "@mark1russell7/service": "^0.12.4",
-    "@mark1russell7/sqlite": "^0.7.0",
+    "@mark1russell7/sqlite": "^0.7.1",
     "@mark1russell7/text": "^0.0.18",
     "@opentelemetry/sdk-metrics": "^3.1.1",
     "@procedures/json": "^0.68.0",

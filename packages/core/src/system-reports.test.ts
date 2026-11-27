@@ -6,6 +6,7 @@ import { messageOf } from "./delivery.ts";
 import type { ChannelId, ChannelQuota, CopyRead, CopyWatch, Coverage, DriftCheck, HealthState, Incident, JointDown, Observation, PersonId, PersonWatch, PlaceId, LimitUse, ProviderBalance, RedundancyState, Report, ReportId, SourceDescriptor, SourceHealth, SourceId, WatchedPlace } from "./contracts.ts";
 import { SYSTEM_SOURCE } from "./contracts.ts";
 import { DRILL_WATCH_GRACE, type DrillConfig, type DrillRun, type DrillWatch } from "./drill.ts";
+import { health } from "./health.ts";
 import type { Lateness } from "./lateness.ts";
 import type { ObserveCondition } from "./observe.ts";
 import { incidents, normalize } from "./merge.ts";
@@ -72,6 +73,7 @@ import {
   useStages,
   useUnreadAt,
   type LogRecovery,
+  type LogIntegrity,
   type StalePlace,
   type RouteLoad,
   type StoreBound,
@@ -171,6 +173,24 @@ describe("the health reports", () => {
     const downAgain = systemReports(up.lines, snapshot({ health: [healthOf("changed", 500)] }), 500);
     expect(downAgain.reports).toMatchObject([{ op: "alert", references: [] }]);
     expect(new Set([alert, ...silent.reports, ...up.reports, ...downAgain.reports].map((report) => report!.key)).size).toBe(4);
+  });
+
+  it("tells old data of a source as silent, not as failed fetches (AL-207)", () => {
+    // A keepalive at 15.1 minutes against a limit of 15 minutes: each fetch passed.
+    const reason = "the newest keepalive message is 15.1 minutes old: the limit is 15 minutes";
+    const fetches = [
+      { source: API.id, at: 0, took: 1_000, fresh: 1, fatal: 0 },
+      { source: API.id, at: 60_000, took: 1_000, fresh: 0, fatal: 0, canary: { pass: false, reason, late: true } },
+    ] as const;
+    const late = health(API, 0, fetches, 62_000).health;
+    expect(late).toMatchObject({ state: "silent", reason: `The canary failed: ${reason}` });
+    const down = systemReports(NO_SYSTEM_LINES, snapshot({ health: [late] }), 62_000);
+    expect(down.reports).toMatchObject([{ op: "alert", kind: { code: "system.health.silent" }, headline: "The API: the source gives no new data." }]);
+
+    // A canary that fails for another cause still gives the headline of failed fetches.
+    const other = health(API, 0, [fetches[0], { ...fetches[1], canary: { pass: false, reason: "the feed has no head" } }], 62_000).health;
+    expect(other.state).toBe("failing");
+    expect(systemReports(NO_SYSTEM_LINES, snapshot({ health: [other] }), 62_000).reports).toMatchObject([{ headline: "The API: the fetches fail." }]);
   });
 
   it("starts no line for a source that is up or unknown", () => {
@@ -1354,6 +1374,40 @@ describe("the log reports", () => {
     expect(none.reports).toMatchObject([{ severity: "moderate", urgency: "expected" }]);
     expect(none.reports[0]!.description).toContain("It kept 0 events, and it could not read each part of the file. A lost event");
     expect(levels(none.reports, WATCHER, START)).toEqual(["notice"]);
+  });
+});
+
+describe("the report of a failed integrity check of the log (AL-223)", () => {
+  const START = Date.UTC(2026, 11, 1, 12);
+  const WATCHER: PersonWatch = { ...NEIGHBOR, subjects: [{ system: LOG_SUBJECT }] };
+  const failed: LogIntegrity = { at: START, problems: ["Tree 4 page 9: btreeInitPage() returns error code 11", "Tree 4 page 10: never used"] };
+  const codes = (reports: readonly Report[]) => reports.map((report) => [report.op, report.kind.code]);
+
+  it("gives an alert, no report for the same check, an update for a later check, and a cancel for null", () => {
+    expect(unknownKinds(["system.log.check"])).toEqual([]);
+    const first = systemReports(NO_SYSTEM_LINES, snapshot({ integrity: failed }), START);
+    expect(first.reports).toMatchObject([
+      {
+        op: "alert",
+        status: "system",
+        kind: { code: "system.log.check", label: "Check of the log" },
+        severity: "moderate",
+        urgency: "expected",
+        onset: START,
+        about: [{ system: LOG_SUBJECT, id: "runtime" }],
+        headline: "The integrity check of the log file of the alert system failed.",
+        parameters: { problems: ["2"] },
+      },
+    ]);
+    expect(first.reports[0]!.description).toContain("The check found 2 problems in the log file.");
+    expect(Object.keys(first.lines.open)).toEqual(["log-check"]);
+    expect(systemReports(first.lines, snapshot({ integrity: failed }), START + 60_000).reports).toEqual([]);
+    // With no field, the open line stays open. A copy with no check of the log ends nothing.
+    expect(systemReports(first.lines, snapshot({}), START + 60_000).reports).toEqual([]);
+    const later = systemReports(first.lines, snapshot({ integrity: { ...failed, at: START + 1_000 } }), START + 1_000);
+    expect(codes(later.reports)).toEqual([["update", "system.log.check"]]);
+    expect(codes(systemReports(later.lines, snapshot({ integrity: null }), START + 2_000).reports)).toEqual([["cancel", "system.log.check"]]);
+    expect(levels(first.reports, WATCHER, START)).toEqual(["notice"]);
   });
 });
 

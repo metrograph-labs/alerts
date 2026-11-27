@@ -31,7 +31,7 @@ export function checkCanary(observations: readonly Observation[]): CanaryResult 
   const minutes = ((newest.fetched - newest.update) / 60_000).toFixed(1);
   const text = new Date(newest.update).toISOString().replace(".000Z", "Z");
   if (newest.fetched - newest.update > STATUS_MAX_AGE_MS) {
-    return { pass: false, reason: `the airport status has the update ${text}, ${minutes} minutes before the fetch: the limit is 15 minutes` };
+    return { pass: false, reason: `the airport status has the update ${text}, ${minutes} minutes before the fetch: the limit is 15 minutes`, late: true, age: newest.fetched - newest.update, limit: STATUS_MAX_AGE_MS };
   }
-  return { pass: true, reason: `the airport status has the update ${text}, ${minutes} minutes before the fetch` };
+  return { pass: true, reason: `the airport status has the update ${text}, ${minutes} minutes before the fetch`, age: newest.fetched - newest.update, limit: STATUS_MAX_AGE_MS };
 }

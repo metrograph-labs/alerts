@@ -13,7 +13,7 @@
  * - The watch keeps no record. After a restart, the first check reads again.
  */
 import type { DriftCheck, DriftCommandConfig, DriftCommandKind, DriftRead, Duration, Instant, ReadHealth } from "@mark1russell7/alerts";
-import { runCommand } from "@procedures/shell/command";
+import { runCommand, streamCommand } from "@procedures/shell/command";
 import { compareCodeUnits } from "@mark1russell7/text/order";
 import { readHealth, readSchedule, type ReadFailure, type ReadSchedule, type ReadWatch } from "./schedule.ts";
 
@@ -85,6 +85,16 @@ export const commandRunner: DriftRunner = async (argv, signal, limit) => {
     ...(result.truncated?.stdout === true ? { truncated: true } : {}),
   };
 };
+
+/**
+ * This reader starts a program through `streamCommand` of `@procedures/shell`, with no shell, and it gives each line of
+ * its standard output. The lines end when the program ends. The abort stops the program. The mesh link uses it (AL-41-wire).
+ */
+export async function* commandLines(argv: readonly string[], signal: AbortSignal): AsyncGenerator<string, void, undefined> {
+  const [program, ...args] = argv;
+  if (program === undefined) throw new Error("The command names no program.");
+  for await (const item of streamCommand(program, { args, signal })) if (item.type === "stdout") yield item.line;
+}
 
 /** A read of a drift check that passed: the count of the changes and their names. */
 export type DriftFound = { readonly ok: true } & Omit<DriftRead, "at">;

@@ -26,6 +26,7 @@ import {
   type ReportId,
   type SecretLookup,
   type CopySettings,
+  type CopyMesh,
   type CopySounder,
   type SourceId,
   type SpendConfig,
@@ -33,6 +34,7 @@ import {
 } from "@mark1russell7/alerts";
 import type { TwilioFetch } from "@mark1russell7/alerts-channel-twilio";
 import { WEBHOOK_CHANNEL, WEBHOOK_EVENT, type WebhookFetch } from "@mark1russell7/alerts-channel-webhook";
+import { MESH_CHANNEL, type LineReader, type LinkRunner } from "@mark1russell7/alerts-channel-mesh";
 import { SOUNDER_CHANNEL, type CommandRunner } from "@mark1russell7/alerts-channel-sounder";
 import { PUSHOVER_QUOTA, PUSHOVER_RESERVE_NOTICES, PUSHOVER_TIMEOUT_MS, type PushoverChannelOptions } from "@mark1russell7/alerts-channel-pushover";
 import { memoryCache, type ShapeCache } from "@mark1russell7/alerts-shapes-nws";
@@ -57,7 +59,7 @@ import { DATE_FORMAT as EIA_DATE_FORMAT, EIA_930_DESCRIPTOR, HOUR_MS, periodEnd,
 import { memoryQuotaStore, quotaGate, type Exchange, type Transport } from "polite-crawler/api";
 import { DEFAULT_POLICY } from "polite-crawler/politeness";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ACCOUNT_SOURCES, BOM_SWS_KEY, FIRMS_KEY, readsFirms, readsGdelt, strayLeaveIds, strayLeavesText, CHECKS_KEY, EIA_KEY, CLOUDFLARE_RADAR_KEY, checksKeys, DAEMON_CHECK, daemonCheck, DELIVERY_TIMES, INSTANCE_CHANNELS, INSTANCE_CHECK, INSTANCE_EXPECTATIONS, instanceExpectations, INSTANCE_FETCH_LIMIT, INSTANCE_SOURCES, INSTANCE_TIMES, instanceCheck, instanceContextKey, instanceProblems, instanceServices, shownNode, shownServices, LOUD_PING_URL_KEY, LOUD_STEADY, nwwsKeys, nwwsSetup, openInstance, PING_URL_KEY, pingKeyOf, pingTargets, RANK_DELAY, RANK_FLOOR, SOURCE_POLICY, sourcePace, twilioSetup, USER_AGENT_NAME, instanceSenders, copySounderProblems, sounderOptions, WEBHOOK_SECRET_KEY, WEBHOOK_USER_AGENT, webhookSetup, type Instance, type InstanceOptions } from "./instance.ts";
+import { ACCOUNT_SOURCES, BOM_SWS_KEY, FIRMS_KEY, readsFirms, readsGdelt, strayLeaveIds, strayLeavesText, CHECKS_KEY, EIA_KEY, CLOUDFLARE_RADAR_KEY, checksKeys, DAEMON_CHECK, daemonCheck, DELIVERY_TIMES, INSTANCE_CHANNELS, INSTANCE_CHECK, INSTANCE_EXPECTATIONS, instanceExpectations, INSTANCE_FETCH_LIMIT, INSTANCE_SOURCES, INSTANCE_TIMES, instanceCheck, instanceContextKey, instanceProblems, instanceServices, shownNode, shownServices, LOUD_PING_URL_KEY, LOUD_STEADY, nwwsKeys, nwwsSetup, openInstance, PING_URL_KEY, pingKeyOf, pingTargets, RANK_DELAY, RANK_FLOOR, SOURCE_POLICY, sourcePace, twilioSetup, USER_AGENT_NAME, instanceSenders, copySounderProblems, sounderOptions, WEBHOOK_SECRET_KEY, WEBHOOK_USER_AGENT, webhookSetup, type Instance, type InstanceOptions, copyMeshProblems, meshLinkOptions } from "./instance.ts";
 import { heartbeatGap } from "./heartbeat.ts";
 import { NO_PARTS } from "./config.ts";
 import { configFilesOf } from "./config-sync.ts";
@@ -1729,6 +1731,72 @@ describe("the sounder channel of the instance (AL-41)", () => {
     expect(messageOf(() => open(store(SECRETS), sounded()))).toContain("uses the channel sounder, and the instance has no sender on it.");
     expect(() => open(store(SECRETS), sounded(false))).not.toThrow();
     expect(copySounderProblems({ ...CLOUD, leaveChannels: [SOUNDER_CHANNEL] })).toEqual([]);
+  });
+});
+
+describe("the mesh channel of the instance (AL-41-wire)", () => {
+  // Made-up programs. A test looks for their arguments in each problem.
+  const SEND = ["mesh-send-tool", "--private-send"];
+  const LISTEN = ["mesh-listen-tool", "--private-listen"];
+  // Each level sounds. Thus the test does not depend on the level of the recorded alert.
+  const MESH: CopyMesh = { node: "bed-node", send: SEND, listen: LISTEN, levels: ["digest", "notice", "urgent", "life-safety"] };
+  const MESHED: CopySettings = { ...ONLY_COPY, mesh: MESH };
+  // Each policy sends the alert to the bed node at once, next to the Pushover message.
+  const meshed = (steps = true): AlertConfig => ({
+    ...CONFIG,
+    contacts: [...CONFIG.contacts, { person, channel: MESH_CHANNEL, address: {} }],
+    policies: steps ? CONFIG.policies.map((entry) => ({ ...entry, steps: [...entry.steps, { channel: MESH_CHANNEL, at: 0 }] })) : CONFIG.policies,
+  });
+
+  /** Fake programs of the link: each send ends with the exit code 0, and the listen program gives no line. */
+  function programs() {
+    const sends: (readonly string[])[] = [];
+    const listens: (readonly string[])[] = [];
+    const run: LinkRunner = async (argv) => {
+      sends.push(argv);
+      return { exitCode: 0 };
+    };
+    const read: LineReader = async function* (argv) {
+      listens.push(argv);
+    };
+    return { run, read, sends, listens };
+  }
+
+  it("writes an alarm frame with the program send of copy.json for an alert, and has a receiver worker", async () => {
+    const link = programs();
+    const { instance, clock } = open(store(SECRETS), meshed(), undefined, undefined, { copy: MESHED, meshPrograms: link });
+    const pass = await finish(clock, instance.runtime.pass());
+    expect(pass.delivery?.sent.map((sent) => sent.channel)).toContain(MESH_CHANNEL);
+    // The channel writes the frame again on its backoff until the ack. Thus the first send is the frame of the alarm.
+    expect(link.sends[0]?.slice(0, SEND.length)).toEqual(SEND);
+    expect(link.sends[0]?.at(-1)).toMatch(/^M1 A /u);
+    expect(instance.mesh).toBeDefined();
+  });
+
+  it("has a sender and a worker on the channel only for a copy with the field mesh", () => {
+    expect(instanceSenders(store(SECRETS), MESHED)).toContain(MESH_CHANNEL);
+    expect(instanceSenders(store(SECRETS))).not.toContain(MESH_CHANNEL);
+    expect(meshLinkOptions(ONLY_COPY, programs())).toBeUndefined();
+    expect(meshLinkOptions(MESHED, programs())?.node).toBe("bed-node");
+    expect(open(store(SECRETS)).instance.mesh).toBeUndefined();
+  });
+
+  it("does not start with a bad field mesh, and no message holds a program or an argument", () => {
+    const bad: CopySettings = { ...ONLY_COPY, mesh: { ...MESH, node: "Bad Node" } };
+    const message = messageOf(() => open(store(SECRETS), CONFIG, 0, TEST_FETCH_LIMIT, { copy: bad, meshPrograms: programs() }));
+    expect(message).toContain("The file copy.json: the field mesh:");
+    for (const arg of [...SEND, ...LISTEN]) expect(message).not.toContain(arg);
+    expect(copyMeshProblems({ ...ONLY_COPY, mesh: { ...MESH, send: [""] } })).toEqual(["The file copy.json: the field mesh: a program of the link is empty."]);
+    expect(copyMeshProblems({ ...CLOUD, leaveChannels: [MESH_CHANNEL], mesh: MESH })).toEqual([
+      "The file copy.json: the copy has the field mesh, and its field leaveChannels names the channel mesh. Remove one of the two.",
+    ]);
+    expect(copyMeshProblems(MESHED)).toEqual([]);
+  });
+
+  it("does not start with a step on the channel and no field mesh, and starts when the copy leaves the channel", () => {
+    expect(messageOf(() => open(store(SECRETS), meshed()))).toContain("uses the channel mesh, and the instance has no sender on it.");
+    expect(() => open(store(SECRETS), meshed(false))).not.toThrow();
+    expect(copyMeshProblems({ ...CLOUD, leaveChannels: [MESH_CHANNEL] })).toEqual([]);
   });
 });
 
