@@ -3,8 +3,8 @@
 # measures the merge base of the pull request, thus each head has a base arm on the same runner (CAP-105, AL-228).
 # It fails when the start.live of the head passes its base by more than the paired limit, or when the head passes a
 # ceiling that its base holds. A head past a ceiling that its base also passes is a drift: the limits need new runs.
-# It also fails when a child does not fit the target, and when the records cannot decide: a no read is not a pass. A pull request that changes the start on purpose gets the label
-# start-change. Then the gate accepts the new values.
+# It also fails when a child does not fit the target, and when the records cannot decide: a no read is not a pass.
+# A pull request that changes the start on purpose gets the label start-change. Then the gate accepts the new values.
 # The limits are the worst value of 5 or more CI runs plus their spread. They live in the capacity repository.
 #
 # The uses line and the input capacity name the same commit, thus the code and the limits match. A change of the limits
