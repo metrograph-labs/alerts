@@ -626,6 +626,14 @@ A copy that deploys tells the other copies (AL-208). A copy that stages is up an
 - A deploy does not stop its runtime while another copy has a mark that did not end.
 - Before that check, the deploy waits for a read of each other copy that started after its own mark. Thus two deploys that start at about the same time both refuse, and no deploy stops two copies.
 
+Each start of a copy tells the end of its last run to the other copies (AL-222). A small host can have no room for a read over ssh.
+
+- The start reads the last 64 KiB of the log of the program, `host/logs/runtime.log`, before its first line. It writes one line `The last run: ...`.
+- The facts are the time of the last line with a time, the last line, and a block of the event loop that did not end.
+- A line of the watch of long blocks (AL-119) with no later line of the runtime is a block that did not end. A liveness stop in a block gives it.
+- The answer of the exchange gives the facts with the time of the start (`lastEnd`). The read keeps them on the clock of that copy (`CopyRead.lastEnd`), and `GET /health` gives them.
+- A copy of an older build tells nothing. Its read has no `lastEnd`.
+
 An account can stop the billing of a copy host at a spend limit. Then the host stops, and the line `unread` of the copy names the billing stop (AL-70).
 
 - The field `billing` of a peer in `copy.json` names a command: `argv`, a JSON `field` and the values of a stop (`stoppedWhen`). It names no provider.

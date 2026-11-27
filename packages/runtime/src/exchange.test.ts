@@ -1,5 +1,5 @@
 import { fakeWallClock, type WallClock } from "@mark1russell7/algebra/clock";
-import { COPY_SUBJECT, copyStages, join, reportId, SYSTEM_SOURCE, type ChannelId, type CopyPeer, type Delivery, type Observation, type ObservationId, type PersonId, type PlaceId, type Report, type ReportId, type SourceId, type SourceProcedures, type WatchedPlace } from "@mark1russell7/alerts";
+import { COPY_SUBJECT, copyStages, join, reportId, SYSTEM_SOURCE, type ChannelId, type CopyPeer, type Delivery, type Observation, type ObservationId, type PersonId, type PlaceId, type Report, type ReportId, type SourceId, type SourceProcedures, type WatchedPlace, type LastEndReport } from "@mark1russell7/alerts";
 import { describe, expect, it } from "vitest";
 import { envelope, type RuntimeEvent } from "./events.ts";
 import { CLOCK_SKEW_LIMIT, COPY_MAX_AGE, EXCHANGE_LIMIT } from "./copy.ts";
@@ -880,6 +880,27 @@ describe("two runtimes", () => {
       expect(bad.watches()[0]!.read).toBeDefined();
       // The source with no mark gives no field.
       expect(serveEntries({ runtime: b.runtime, clock, configHash: HASH, deployUntil: () => undefined }, { after: 0 })).not.toHaveProperty("deployUntil");
+    });
+
+    it("keeps the end of the last run of a copy in its read, on the clock of that copy (AL-222)", async () => {
+      const clock = fakeWallClock(T0);
+      const a = open("a", [], clock);
+      const b = open("b", [], clock);
+      const lastEnd: LastEndReport = { startedAt: T0 - MINUTE, lastLineAt: T0 - 2 * MINUTE, block: { at: T0 - 3 * MINUTE, size: 20 * SECOND, phase: "run after the good start" }, lastLine: "A line." };
+      let told: LastEndReport | undefined = lastEnd;
+      const worker = workerOf(a.runtime, async (_peer, input) => wire(serveEntries({ runtime: b.runtime, clock, configHash: HASH, ...(told === undefined ? {} : { lastEnd: told }) }, input)), clock);
+      await worker.round();
+      expect(worker.watches()[0]!.read).toEqual({ at: T0, skew: 0, sameConfig: true, lastEnd });
+      // A copy of an older build gives no report. Its read keeps the old fields only.
+      told = undefined;
+      await worker.round();
+      expect(worker.watches()[0]!.read).toEqual({ at: T0, skew: 0, sameConfig: true });
+      // A report that does not pass its schema gives none, and the read still passes.
+      const bad = workerOf(a.runtime, async (_peer, input) => ({ ...(wire(serveEntries({ runtime: b.runtime, clock, configHash: HASH }, input)) as object), lastEnd: { ...lastEnd, lastLine: 7 } }), clock);
+      expect((await bad.round()).problems).toEqual([]);
+      expect(bad.watches()[0]!.read).toEqual({ at: T0, skew: 0, sameConfig: true });
+      // The source with no report gives no field.
+      expect(serveEntries({ runtime: b.runtime, clock, configHash: HASH }, { after: 0 })).not.toHaveProperty("lastEnd");
     });
 
     it("tells that a start is steady after LOUD_STEADY of passes", () => {

@@ -38,6 +38,7 @@ import {
   type ChannelProcedures,
   type ChannelQuota,
   type LoopBlock,
+  type LastEndReport,
   type LogIntegrity,
   type ContactServices,
   type CopySettings,
@@ -1036,6 +1037,8 @@ export interface InstanceExchange {
   readonly deployUntil?: () => Instant | undefined;
   /** This function gets the notes of the large or slow imports of pages of the other copies (AL-222). */
   readonly onTake?: (note: TakeNote) => void;
+  /** The report of the start of this run: its time and the end of the run before it (AL-222). The answer of the exchange tells it. */
+  readonly lastEnd?: LastEndReport;
 }
 
 /** The exchange of an instance with the other copies. */
@@ -1643,7 +1646,7 @@ export function openInstance(options: InstanceOptions): Instance {
   const copies: InstanceCopies | undefined =
     options.exchange === undefined
       ? undefined
-      : { source: { runtime, clock: wall, configHash: options.exchange.configHash, drills: () => runtime.state().drills, steady: () => steadyPasses(first, latest), ...(options.exchange.deployUntil === undefined ? {} : { deployUntil: options.exchange.deployUntil }) }, ...(worker === undefined || rounds === undefined ? {} : { worker, loop: rounds }) };
+      : { source: { runtime, clock: wall, configHash: options.exchange.configHash, drills: () => runtime.state().drills, steady: () => steadyPasses(first, latest), ...(options.exchange.deployUntil === undefined ? {} : { deployUntil: options.exchange.deployUntil }), ...(options.exchange.lastEnd === undefined ? {} : { lastEnd: options.exchange.lastEnd }) }, ...(worker === undefined || rounds === undefined ? {} : { worker, loop: rounds }) };
   const outage = outageWorker(options, loop.times.passLimit);
   return {
     runtime,

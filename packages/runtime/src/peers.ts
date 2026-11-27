@@ -8,7 +8,7 @@
  * - The worker keeps the watches in memory only. After a restart, the watch of each copy starts again.
  */
 import type { Clock, WallClock } from "@mark1russell7/algebra/clock";
-import { copyStages, type CopyPeer, type CopyRead, type CopyWatch, type Duration, type Instant } from "@mark1russell7/alerts";
+import { copyStages, lastEndReportSchema, type CopyPeer, type CopyRead, type CopyWatch, type Duration, type Instant, type LastEndReport } from "@mark1russell7/alerts";
 import { err, ok, type Result } from "@mark1russell7/optional";
 import { workerLoop, type WorkerLoop } from "@mark1russell7/service";
 import { errorMessage } from "@mark1russell7/text";
@@ -47,6 +47,11 @@ export interface EntriesOutput {
    * the mark did not end. The watch of each other copy reads it. A copy of an older build gives none.
    */
   readonly deployUntil?: Instant;
+  /**
+   * The report of the start of the current run of the copy: its time and the end of the run before it (AL-222). The watch of
+   * each other copy keeps it in its read. A copy of an older build gives none.
+   */
+  readonly lastEnd?: LastEndReport;
 }
 
 /** The output of the procedure `alerts.log.entries` after its checks on the side of the reader. */
@@ -60,6 +65,8 @@ export interface ReceivedEntries {
   readonly steady?: boolean;
   /** The end of the deploy mark of the copy, on its clock. An answer with no end, or with an end that is not a finite number, gives none. */
   readonly deployUntil?: Instant;
+  /** The report of the start of the copy. An answer with no report, or with a report that does not pass its schema, gives none. */
+  readonly lastEnd?: LastEndReport;
 }
 
 /** The parts of a runtime that serve the procedure `alerts.log.entries`. */
@@ -75,6 +82,8 @@ export interface EntriesSource {
   readonly steady?: () => boolean;
   /** This function gives the end of the deploy mark of the host, or `undefined` with no mark (AL-208). Without it, the answer tells nothing. */
   readonly deployUntil?: () => Instant | undefined;
+  /** The report of the start of the runtime (AL-222). Without it, the answer tells nothing. */
+  readonly lastEnd?: LastEndReport;
 }
 
 /** The longest hash of a configuration that a reader accepts. */
@@ -98,13 +107,14 @@ export function serveEntries(source: EntriesSource, input: EntriesInput): Entrie
     ...(source.drills === undefined ? {} : { drills: source.drills() }),
     ...(source.steady === undefined ? {} : { steady: source.steady() }),
     ...(deployUntil === undefined ? {} : { deployUntil }),
+    ...(source.lastEnd === undefined ? {} : { lastEnd: source.lastEnd }),
   };
 }
 
 /** This function checks the output of the procedure `alerts.log.entries` on the side of the reader. A problem holds no value. */
 export function parseEntries(value: unknown): Result<ReceivedEntries, readonly string[]> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return err(["The answer is not an object."]);
-  const { page, time, configHash, drills, steady, deployUntil } = value as Readonly<Record<string, unknown>>;
+  const { page, time, configHash, drills, steady, deployUntil, lastEnd } = value as Readonly<Record<string, unknown>>;
   const problems: string[] = [];
   if (!(typeof time === "number" && Number.isFinite(time))) problems.push("The time of the answer is not a finite number.");
   if (!(typeof configHash === "string" && configHash.length > 0 && configHash.length <= HASH_LENGTH)) problems.push(`The hash of the configuration is not a text of 1 to ${HASH_LENGTH} characters.`);
@@ -114,7 +124,10 @@ export function parseEntries(value: unknown): Result<ReceivedEntries, readonly s
   const starts = drillStarts(drills);
   // A steady value that is not a boolean gives none, and the read still passes, as with the starts of the drills. A bad end of a deploy mark gives none too.
   const until = typeof deployUntil === "number" && Number.isFinite(deployUntil) ? { deployUntil: deployUntil as Instant } : {};
-  return ok({ page: parsed.value, time: time as Instant, configHash: configHash as string, ...(starts === undefined ? {} : { drills: starts }), ...(typeof steady === "boolean" ? { steady } : {}), ...until });
+  // A report of the start that does not pass its schema gives none, and the read still passes (AL-222).
+  const report = lastEnd === undefined ? undefined : lastEndReportSchema.safeParse(lastEnd);
+  const end = report?.success === true ? { lastEnd: report.data } : {};
+  return ok({ page: parsed.value, time: time as Instant, configHash: configHash as string, ...(starts === undefined ? {} : { drills: starts }), ...(typeof steady === "boolean" ? { steady } : {}), ...until, ...end });
 }
 
 // The longest id of a drill, as the schema of the configuration has it.
@@ -350,7 +363,8 @@ export function exchangeWorker(options: ExchangeWorkerOptions): ExchangeWorker {
       // thus the read keeps its imports and gives no times. The next read gives them.
       if (frames === frame) {
         const at = Math.round(started + (ended - started) / 2);
-        reads.set(peer.id, { at, skew: entries.time - at, sameConfig: entries.configHash === configHash });
+        // The report of the start of the copy stays on the clock of that copy (AL-222). An answer with no report gives a read with no report.
+        reads.set(peer.id, { at, skew: entries.time - at, sameConfig: entries.configHash === configHash, ...(entries.lastEnd === undefined ? {} : { lastEnd: entries.lastEnd }) });
         if (entries.drills === undefined) starts.delete(peer.id);
         else starts.set(peer.id, entries.drills);
         // A copy of an older build tells nothing. Thus only an answer that tells `false` keeps the copy unsteady.
