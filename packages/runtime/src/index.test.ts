@@ -6,7 +6,7 @@ import type { AddressInfo } from "node:net";
 import { embeddedProcess, lint, localDev } from "@mark1russell7/service";
 import type { Rule, Scenario } from "@mark1russell7/service";
 import { fakeWallClock, realClock, wallClock } from "@mark1russell7/algebra/clock";
-import { HEALTH_FORMAT, HISTORY_FORMAT, INTERESTS_FORMAT, MAP_FORMAT, type HealthPayload, type HistoryPayload, type Instant, type InterestsPayload, type MapPayload, type SourceId } from "@mark1russell7/alerts";
+import { HEALTH_FORMAT, HISTORY_FORMAT, INTERESTS_FORMAT, MAP_FORMAT, packMap, type HealthPayload, type HistoryPayload, type Instant, type InterestsPayload, type MapPayload, type SourceId } from "@mark1russell7/alerts";
 import { describe, expect, it } from "vitest";
 import { EXCHANGE_FORMAT } from "./exchange.ts";
 import { EXCHANGE_TOKEN_LENGTH } from "./exchange-http.ts";
@@ -251,7 +251,7 @@ describe("the lifecycle of the service", () => {
       expect(body).toEqual({ at: loop.last()?.at, wakeAt: loop.last()?.wakeAt, fetched: ["nws-api"], sent: 0, conflicts: 0, stuck: null });
       const map = await fetch(`http://127.0.0.1:${port}/map`);
       expect(map.status).toBe(200);
-      expect(await map.json()).toEqual(EMPTY_MAP);
+      expect(await map.json()).toEqual(packMap(EMPTY_MAP));
       const health = await fetch(`http://127.0.0.1:${port}/health`);
       expect(health.status).toBe(200);
       expect(await health.json()).toEqual(EMPTY_HEALTH);

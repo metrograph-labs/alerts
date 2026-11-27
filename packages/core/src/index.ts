@@ -46,6 +46,7 @@ export * from "./breadth.ts";
 export * from "./threat.ts";
 export * from "./history-reader.ts";
 export * from "./map.ts";
+export * from "./map-wire.ts";
 export * from "./problems.ts";
 export * from "./interest-defaults.ts";
 export * from "./interests-payload.ts";
