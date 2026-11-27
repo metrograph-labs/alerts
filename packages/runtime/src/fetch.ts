@@ -12,10 +12,13 @@
  */
 import {
   checkWith,
+  judgeCanary,
+  liveCanaryLimit,
   readingProblems,
   readingSchema,
   reportSchema,
   type CanaryResult,
+  type Duration,
   type FetchOutcome,
   type FetchRecord,
   type Instant,
@@ -55,6 +58,11 @@ export interface FetchInput {
    * observation, in the order of the fetch. The default takes each observation.
    */
   readonly admit?: (reports: readonly Report[]) => boolean;
+  /**
+   * The measured ages of the canary checks of the source before this fetch, the oldest first (AL-207). An age check then gets
+   * its live limit from them with `liveCanaryLimit`. Without them, each check keeps its hand limit.
+   */
+  readonly canaryAges?: readonly Duration[];
 }
 
 /** The events and the readings of one fetch. The log keeps the events, and the store of the readings keeps the readings. */
@@ -64,6 +72,8 @@ export interface FetchStep {
   readonly readings: readonly Reading[];
   /** The count of the new observations that `admit` refused. They wait outside the log. */
   readonly waiting: number;
+  /** The age that the canary check of the fetch measured (AL-207). The runtime adds it to the ages of the source. */
+  readonly age?: Duration;
 }
 
 /** This function gives the events of one fetch: one event for each new observation, then the fetch event. */
@@ -114,7 +124,9 @@ export function fetchStep(input: FetchInput): FetchStep {
     problems.push(...found);
     readings.push(...checked.readings);
   }
-  const canary = checkSafely(input.procedures, outcome.observations);
+  // An age check gets its live limit from the measured ages of the source (AL-207). The record keeps the judged result.
+  const measured = checkSafely(input.procedures, outcome.observations);
+  const canary = measured?.limit === undefined || input.canaryAges === undefined ? measured : judgeCanary(measured, liveCanaryLimit(input.canaryAges, measured.limit));
   const record: FetchRecord = {
     source,
     at: started,
@@ -127,7 +139,7 @@ export function fetchStep(input: FetchInput): FetchStep {
   };
   const observed = fresh.map((observation): ObservationEvent => ({ ...envelope("observation", observation.id, ended), observation }));
   const events = [...observed, { ...envelope("fetch", id, ended), record, ...(outcome.cursor === undefined || waiting > 0 ? {} : { cursor: outcome.cursor }), reports, problems }];
-  return { events, readings, waiting };
+  return { events, readings, waiting, ...(canary?.age === undefined ? {} : { age: canary.age }) };
 }
 
 // A lossy problem at a path: the map lost a value of the message.

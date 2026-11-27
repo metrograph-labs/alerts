@@ -993,6 +993,11 @@ export interface InstanceOptions {
    * closes it. Without it, the instance keeps no reading.
    */
   readonly readings?: RuntimeOptions["readings"];
+  /**
+   * The measured ages of the canary checks of each source (AL-207). The entry gives the file `canary-ages.json` of the private
+   * folder, and the service closes it. Without it, each age check keeps its hand limit.
+   */
+  readonly canaryAges?: RuntimeOptions["canaryAges"];
   /** The instance gives each fault of the store of the readings to this function. */
   readonly onReadingsFault?: RuntimeOptions["onReadingsFault"];
   /**
@@ -1525,6 +1530,8 @@ export function openInstance(options: InstanceOptions): Instance {
     ...(copyChecks === undefined ? {} : { copies: copyChecks }),
     // The readings of each fetch go to their store, not to the log.
     ...(options.readings === undefined ? {} : { readings: options.readings }),
+    // Each age check gets its live limit from the measured ages of its source (AL-207).
+    ...(options.canaryAges === undefined ? {} : { canaryAges: options.canaryAges }),
     ...(options.onReadingsFault === undefined ? {} : { onReadingsFault: options.onReadingsFault }),
     // The new reports of each fetch go to the counters of the live metrics.
     ...(metrics === undefined ? {} : { onReports: (reports) => metrics.reports(reports) }),

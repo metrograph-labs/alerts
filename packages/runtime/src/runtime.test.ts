@@ -2,11 +2,12 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fakeWallClock, type WallClock } from "@mark1russell7/algebra/clock";
-import { reportId, type ChannelId, type ChannelProcedures, type ChannelQuota, type Expectation, LOOP_BLOCK_WINDOW, type LoopBlock, type FetchOutcome, type FetchSignal, type MeasureDeclaration, type Observation, type ObservationId, type PersonId, type PlaceId, type Reading, type Report, type SourceDescriptor, type SourceId, type SourceProcedures, type Watch, type WatchedPlace } from "@mark1russell7/alerts";
+import { reportId, type CanaryResult, type ChannelId, type ChannelProcedures, type ChannelQuota, type Expectation, LOOP_BLOCK_WINDOW, type LoopBlock, type FetchOutcome, type FetchSignal, type MeasureDeclaration, type Observation, type ObservationId, type PersonId, type PlaceId, type Reading, type Report, type SourceDescriptor, type SourceId, type SourceProcedures, type Watch, type WatchedPlace } from "@mark1russell7/alerts";
 import { random, seedsFrom } from "@mark1russell7/rigor-generators";
 import { openFoldSnapshot, type FoldSnapshot } from "@mark1russell7/sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import { balanceWatch, type BalanceReading } from "./balance.ts";
+import { openCanaryAges } from "./canary-ages.ts";
 import { limitWatch, type UseReading } from "./use.ts";
 import { DRIFT_LIMIT, driftWatch, type DriftRunner } from "./drift.ts";
 import { envelope, EVENT_TYPES, FOLD_TYPES, type RuntimeEvent } from "./events.ts";
@@ -872,6 +873,22 @@ describe("one pass of the runtime", () => {
     const fetches = [...log.read()].flatMap((event) => (event.type === "fetch" ? [event.record.fresh] : []));
     expect(fetches).toEqual([1, 0]);
     expect([...log.read()].filter((event) => event.type === "observation")).toHaveLength(1);
+    log.close();
+  });
+
+  it("judges each age check with the measured ages of its source, then adds the age of the fetch (AL-207)", async () => {
+    const ages = openCanaryAges(undefined);
+    // 368 ages: the bound is the largest age, 65 minutes.
+    for (let index = 0; index < 368; index += 1) ages.note(API, index === 0 ? 65 * MINUTE : 20 * MINUTE, T0);
+    const check = (): CanaryResult => ({ pass: false, reason: "the newest item is 65 minutes old", late: true, age: 65 * MINUTE, limit: 60 * MINUTE });
+    const source: SourceProcedures = { ...scripted(API, async () => ({ ok: true, observations: [], complete: true })), check };
+    const { runtime, log } = open([source], { canaryAges: ages });
+    await runtime.pass();
+    const canaries = [...log.read()].flatMap((event) => (event.type === "fetch" && event.record.canary !== undefined ? [event.record.canary] : []));
+    expect(canaries).toHaveLength(1);
+    expect(canaries[0]).toMatchObject({ pass: true, age: 65 * MINUTE, limit: 65 * MINUTE });
+    expect(ages.ages(API)).toHaveLength(369);
+    expect(ages.ages(API).at(-1)).toBe(65 * MINUTE);
     log.close();
   });
 
