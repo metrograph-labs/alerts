@@ -32,13 +32,15 @@ describe("keepaliveSent", () => {
 describe("checkCanary", () => {
   it("passes with the real keepalive at its receipt, and fails 15 minutes after its sent time", () => {
     const all = observations();
-    expect(checkCanary(all)).toEqual({ pass: true, reason: "the newest keepalive message of the NWS is 0.2 minutes old" });
+    expect(checkCanary(all)).toMatchObject({ pass: true, reason: "the newest keepalive message of the NWS is 0.2 minutes old", limit: 15 * MINUTE });
     const keepalive = all[0]!;
     expect(checkCanary([{ ...keepalive, fetched: SENT + 15 * MINUTE }])?.pass).toBe(true);
     expect(checkCanary([{ ...keepalive, fetched: SENT + 15 * MINUTE + 1 }])).toEqual({
       pass: false,
       reason: "the newest keepalive message of the NWS is 15.0 minutes old: the limit is 15 minutes",
       late: true,
+      age: 15 * MINUTE + 1,
+      limit: 15 * MINUTE,
     });
   });
 
