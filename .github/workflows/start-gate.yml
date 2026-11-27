@@ -1,6 +1,9 @@
 # The start gate (AL-102): the start of the runtime fits in a small host. The shared workflow of the capacity repository
-# measures the start case of its limits file at the head of each pull request, in 5 runs on 5 runners. It fails when a
-# run passes a ceiling, when a child does not fit the target, and when the records cannot decide: a no read is not a pass.
+# measures the start case of its limits file at the head of each pull request, in 5 runs on 5 runners. Each job also
+# measures the merge base of the pull request, thus each head has a base arm on the same runner (CAP-105, AL-228).
+# It fails when the head is slower than its base past the limit, when a child does not fit the target, and when the
+# records cannot decide: a no read is not a pass. A pull request that changes the start on purpose gets the label
+# start-change. Then the gate accepts the new values.
 # The limits are the worst value of 5 or more CI runs plus their spread. They live in the capacity repository.
 #
 # The uses line and the input capacity name the same commit, thus the code and the limits match. A change of the limits
@@ -10,6 +13,8 @@ name: Start gate
 # This file is a gate with paths (CI.md): the job changes gives the match, and the job Start gate OK gives the result.
 on:
   pull_request:
+    # The type labeled starts the gate again when a person adds the label start-change.
+    types: [opened, synchronize, reopened, labeled]
   # A person starts a run of the head of a branch with gh workflow run start-gate.yml --ref <branch>.
   workflow_dispatch:
 
@@ -41,10 +46,13 @@ jobs:
   start-gate:
     needs: changes
     if: needs.changes.outputs.match == 'true'
-    uses: metrograph-labs/capacity/.github/workflows/start-gate.yml@e8ce52b57ab46ac6b2de711f23563803ad735c7d
+    uses: metrograph-labs/capacity/.github/workflows/start-gate.yml@cde48d0eff5134c62a03b8eda05808e6a9d5ea19
     with:
       commit: ${{ github.event.pull_request.head.sha || github.sha }}
-      capacity: e8ce52b57ab46ac6b2de711f23563803ad735c7d
+      # A dispatch has no base: the empty value keeps the commit of the plan.
+      base: ${{ github.event.pull_request.base.sha || '' }}
+      accept: ${{ contains(github.event.pull_request.labels.*.name, 'start-change') }}
+      capacity: cde48d0eff5134c62a03b8eda05808e6a9d5ea19
 
   summary:
     name: Start gate OK
