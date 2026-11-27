@@ -77,7 +77,7 @@ describe("the end of the last run in the log of the program (AL-222)", () => {
     const end = lastEndOf(line(T0, `A long line \u0007 ${"x".repeat(400)}`));
     expect(end.lastLine).toHaveLength(LAST_LINE_LIMIT);
     expect(end.lastLine?.endsWith("…")).toBe(true);
-    expect(end.lastLine).toMatch(/^S+Z A long line {3}x+/u);
+    expect(end.lastLine?.startsWith(`${new Date(T0).toISOString()} A long line   xxx`)).toBe(true);
     expect(lastEndOf("A line with a CR\r\n").lastLine).toBe("A line with a CR");
   });
 
