@@ -177,22 +177,22 @@ importers:
     devDependencies:
       '@mark1russell7/api-report':
         specifier: ^0.5.6
-        version: 0.5.23
+        version: 0.5.25
       '@mark1russell7/boundaries':
         specifier: ^0.3.2
-        version: 0.3.2(@swc/core@1.16.22)(dependency-cruiser@18.9.0)
+        version: 0.3.3(@swc/core@1.16.22)(dependency-cruiser@18.9.0)
       '@mark1russell7/conventions':
-        specifier: ^0.52.0
-        version: 0.52.8
+        specifier: ^0.56.0
+        version: 0.56.0
       '@mark1russell7/cue':
         specifier: ^2.0.0
         version: 2.1.4
       '@mark1russell7/ste-lint':
-        specifier: ^0.6.0
-        version: 0.6.0
+        specifier: ^0.7.0
+        version: 0.7.0
       '@mark1russell7/template-cli':
         specifier: ^0.1.7
-        version: 0.1.10
+        version: 0.1.13
       '@swc/core':
         specifier: ^1.15.0
         version: 1.16.22
@@ -489,10 +489,10 @@ importers:
         version: 0.11.6(zod@4.6.7)
       '@mark1russell7/geo':
         specifier: ^0.5.19
-        version: 0.5.19
+        version: 0.5.20
       '@mark1russell7/interval':
         specifier: ^0.1.0
-        version: 0.1.0
+        version: 0.1.1
       '@mark1russell7/optional':
         specifier: ^1.5.0
         version: 1.5.1
@@ -846,8 +846,8 @@ importers:
         specifier: ^0.9.9
         version: 0.9.12(zod@4.6.7)
       '@mark1russell7/files':
-        specifier: ^0.0.6
-        version: 0.0.6
+        specifier: ^0.0.7
+        version: 0.0.7
       '@mark1russell7/lag':
         specifier: ^0.5.4
         version: 0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)))
@@ -877,7 +877,7 @@ importers:
         version: 0.12.5(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
       '@mark1russell7/sqlite':
         specifier: ^0.7.1
-        version: 0.7.1
+        version: 0.7.2
       '@mark1russell7/stack-placement':
         specifier: ^0.1.3
         version: 0.1.10
@@ -968,13 +968,13 @@ importers:
         version: link:../source-nws-api
       '@mark1russell7/geo':
         specifier: ^0.5.3
-        version: 0.5.19
+        version: 0.5.20
       '@mark1russell7/optional':
         specifier: ^1.5.0
         version: 1.5.1
       '@mark1russell7/sqlite':
         specifier: ^0.7.1
-        version: 0.7.1
+        version: 0.7.2
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
@@ -1014,7 +1014,7 @@ importers:
         version: 2.1.4
       '@mark1russell7/geo':
         specifier: ^0.5.2
-        version: 0.5.19
+        version: 0.5.20
       '@mark1russell7/optional':
         specifier: ^1.5.0
         version: 1.5.1
@@ -1023,13 +1023,13 @@ importers:
         version: 0.10.5(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3)
       '@mark1russell7/site-pages':
         specifier: ^0.8.0
-        version: 0.8.7
+        version: 0.8.8
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
       '@mark1russell7/visuals':
-        specifier: ^0.4.0
-        version: 0.4.1(three@0.187.0)
+        specifier: ^0.5.1
+        version: 0.5.1(three@0.187.0)(zod@4.6.7)
       '@types/d3-geo':
         specifier: ^3.1.1
         version: 3.1.1
@@ -1570,7 +1570,7 @@ importers:
         version: link:../fetch
       '@mark1russell7/geo':
         specifier: ^0.5.15
-        version: 0.5.19
+        version: 0.5.20
       '@mark1russell7/optional':
         specifier: ^1.5.0
         version: 1.5.1
@@ -1646,8 +1646,8 @@ importers:
         specifier: workspace:*
         version: link:../fetch
       '@mark1russell7/files':
-        specifier: ^0.0.6
-        version: 0.0.6
+        specifier: ^0.0.7
+        version: 0.0.7
       '@mark1russell7/optional':
         specifier: ^1.5.0
         version: 1.5.1
@@ -1871,7 +1871,7 @@ importers:
         version: link:../format-datex
       '@mark1russell7/geo':
         specifier: ^0.5.15
-        version: 0.5.19
+        version: 0.5.20
       '@mark1russell7/optional':
         specifier: ^1.5.0
         version: 1.5.1
@@ -2212,7 +2212,7 @@ importers:
         version: link:../quake
       '@mark1russell7/geo':
         specifier: ^0.5.15
-        version: 0.5.19
+        version: 0.5.20
       '@mark1russell7/optional':
         specifier: ^1.5.0
         version: 1.5.1
@@ -2249,7 +2249,7 @@ importers:
         version: link:../core
       '@mark1russell7/geo':
         specifier: ^0.5.3
-        version: 0.5.19
+        version: 0.5.20
     devDependencies:
       '@mark1russell7/cue':
         specifier: ^2.0.0
@@ -2312,8 +2312,8 @@ importers:
         specifier: ^0.9.9
         version: 0.9.12(zod@4.6.7)
       '@mark1russell7/files':
-        specifier: ^0.0.6
-        version: 0.0.6
+        specifier: ^0.0.7
+        version: 0.0.7
       '@mark1russell7/lag':
         specifier: ^0.5.4
         version: 0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)))
@@ -2343,7 +2343,7 @@ importers:
         version: 0.12.5(@mark1russell7/otel-ts@0.8.7(@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))))(supports-color@7.2.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))(zone.js@0.16.3))(@opentelemetry/api@1.10.0)(ws@8.23.0)(zod@4.6.7)
       '@mark1russell7/sqlite':
         specifier: ^0.7.1
-        version: 0.7.1
+        version: 0.7.2
       '@mark1russell7/text':
         specifier: ^0.0.18
         version: 0.0.18
@@ -2729,13 +2729,13 @@ packages:
       zod:
         optional: true
 
-  '@mark1russell7/api-report@0.5.23':
-    resolution: {integrity: sha512-1iBcuSmTtbQteJVLZ6nZ7/2cJWsbzEpnwUZ0Pk4H3TtoX9DV5bJYNPVy9BXxyKFBVUMzqNQoohoaCaA8n5D+Ug==}
+  '@mark1russell7/api-report@0.5.25':
+    resolution: {integrity: sha512-CCcG9TD0eIglTCH1BTPYZZGxBWs9MHpjv9C8S5m8u7nvnmcO0+Zu0tspV4K1HCqyNmsuP8MLDVn2ISMJ86uoaQ==}
     engines: {node: '>=22'}
     hasBin: true
 
-  '@mark1russell7/boundaries@0.3.2':
-    resolution: {integrity: sha512-PlgXsF+iJ6EoOusW61gx5Om1Oq86xySyTeMgmxEon6MM4/Eyi2ylDhf5a2YiwoWfpYJqPQE9zWj6pCcXvezFtQ==}
+  '@mark1russell7/boundaries@0.3.3':
+    resolution: {integrity: sha512-TzPoketlyE5OaabEtkPdtmjN6YHciqdOgrT57QixpEAS3riBMcNowsVYmDQUDAgXjGjtRK0Fe3qDWLNUFqLlaw==}
     engines: {node: '>=22'}
     peerDependencies:
       '@swc/core': ^1.10.0
@@ -2764,13 +2764,12 @@ packages:
     resolution: {integrity: sha512-7vYnlTkNTuPia5GXimxVildlFreRrbpZBqNEq92sNzd9e4pNRQ1r+BbAAH8x/uLzBLA3nr5oNJNp64tDs5zA8A==}
     engines: {node: '>=22.12'}
 
-  '@mark1russell7/conventions@0.52.8':
-    resolution: {integrity: sha512-5LO7USK9u46LM/EE4pppMCSMepB8aszEyNNPUavXb4RIcE7nDgJTpZ4i9hzLhlXIh3iZykMUDisu6xJUp70vow==}
-    engines: {node: '>=22'}
-    hasBin: true
+  '@mark1russell7/collections@0.12.1':
+    resolution: {integrity: sha512-PlARqGiGhl3710Fz4UIlHcr9TDKBAiQn/3HrWhq++9bLR/jeOkxKYlxFULTyhBUy/7lOSxkYr2s222GRD9D2qg==}
+    engines: {node: '>=22.12'}
 
-  '@mark1russell7/conventions@0.55.0':
-    resolution: {integrity: sha512-uyZtnGFWm2f61k9y7nTmT6oKzlE6YsbY2WTTMySiTAmnN159zJ+j9pOWAumvc2Mwv/yPrLt9KN+DXfwhS66zHw==}
+  '@mark1russell7/conventions@0.56.0':
+    resolution: {integrity: sha512-GXx6q5GEGo8VmXrSo1vpraLT6Qbed+J9RzW1ezEOWVs/V09g+1oJ+VpwNHXBbri5h8FErg1/pdi3GRSyFMAw6w==}
     engines: {node: '>=22'}
     hasBin: true
 
@@ -2787,20 +2786,20 @@ packages:
     resolution: {integrity: sha512-Pb978ZnvlAxzcdWtRtqTGb7mZFCvlNrdKnpZqhxQ7gafzeNGf1JqYFuB4RWiLbJzRuFUWjEoAVG5f2TndCIlSg==}
     engines: {node: '>=22'}
 
-  '@mark1russell7/files@0.0.6':
-    resolution: {integrity: sha512-VLsy9pwIP1LuDEOkzVpUKU/SOTw+/d3F/IYjSp0Fj+Cqfl440Qs/ad5islvClQEKPNmiDp5Zs+VraNO2QQ/MkQ==}
+  '@mark1russell7/files@0.0.7':
+    resolution: {integrity: sha512-Fa848T4nRyQClxX1eAH9rpnJFdxQ2apKsty1wUIg/OYHVIDR2Yw845upYSrafMQbN2DVMS3EFDCTj7C5Ebj2pQ==}
     engines: {node: '>=22'}
 
-  '@mark1russell7/geo@0.5.19':
-    resolution: {integrity: sha512-FYY9jzeuvMjBjDrLIkzhmIXlWnj/1KpGIdzEedEYJlI4G1T+rDct1BNA680egTJFtcF7olTCXwP0Th0QaiHGhw==}
+  '@mark1russell7/geo@0.5.20':
+    resolution: {integrity: sha512-uTIYLJ7/u5G1RdFwV799vd6aPYQKrzs+8wKI5KyHe09vwcsgP5T7Zplk2eZfNZo9pw4GFSNL6yU/YMyeF+/ojA==}
     engines: {node: '>=22.12'}
 
   '@mark1russell7/guidebook@0.5.2':
     resolution: {integrity: sha512-s/jo9l4FWYX8JlFoQv9bMyipisrtUaYRLNmp5zzAXUy/lwtVskO9TwCX/qhpypx99Rhveo0+APzebHVo4onE/w==}
     engines: {node: '>=22.12'}
 
-  '@mark1russell7/interval@0.1.0':
-    resolution: {integrity: sha512-gxOyU9JQ4ikiomiisbOmNPwwKuOtWqQ6hPWcJANOWvIipjwQu2aYOvCeLokYpMEoCEhJHoY5FxzBGpn/mbgx+A==}
+  '@mark1russell7/interval@0.1.1':
+    resolution: {integrity: sha512-krKn7z8FCan1pw8ae3tlzyBSZKxyN935tIpBaQwAwn5N8eJyRK52kDKdxac0BBT3rflecm701hswW+IW5mjhzw==}
     engines: {node: '>=22'}
 
   '@mark1russell7/lag@0.5.4':
@@ -2814,8 +2813,8 @@ packages:
       async-browser-context:
         optional: true
 
-  '@mark1russell7/layout-contract@0.11.5':
-    resolution: {integrity: sha512-wxn1W6ibbSaIFyGnRXTfNi/X8lci8fCUj245Dk2F0JXUfO58OCSbwa0So7yZNEb2AX4UyLionmqDh3eZHhvlcA==}
+  '@mark1russell7/layout-contract@0.12.0':
+    resolution: {integrity: sha512-3Ga3bVOwDX4umhn1ijh5inFX3Ge0hu1A7tnfXHOVK53y/noMKbSbwoLlyLhWm5pcPsYnPUJQiNYI0VKDMZUCgA==}
     engines: {node: '>=22.12'}
 
   '@mark1russell7/market-sources@0.5.11':
@@ -3090,8 +3089,8 @@ packages:
       zod:
         optional: true
 
-  '@mark1russell7/site-pages@0.8.7':
-    resolution: {integrity: sha512-0U814F6nv69ueZ82B+PKkHH/Y8qapXNTFo2KMchvfqBcEkYh+2eQYAGdPzJANR+xni9HJZVpeC2nu+/lCeaEDQ==}
+  '@mark1russell7/site-pages@0.8.8':
+    resolution: {integrity: sha512-08GVIxJmzOmcPoq6dw9q1xR3tB3VRh0fzyJGyFGeMJqQlyWQLQOp2GWmoskCSEekXsrTkxrGTWuZGQ1JgQg02Q==}
     engines: {node: '>=22'}
     hasBin: true
 
@@ -3099,8 +3098,8 @@ packages:
     resolution: {integrity: sha512-LANgtuaGCvL1VGbU61F51sgd3ytmqrgMN3pSihPs5EdD1xq93te7rPllmyPV9mH7QetUabHlcVVUZsf+Ju98cA==}
     engines: {node: '>=22.13'}
 
-  '@mark1russell7/sqlite@0.7.1':
-    resolution: {integrity: sha512-A2x/fWB8G4KPCK5pNUUaNc7s61xFA/WvZkkJJK8uggmW5wqD6uxnLujt97Y7gBjM4JXkxoHb3AR4eJAJOkIdZg==}
+  '@mark1russell7/sqlite@0.7.2':
+    resolution: {integrity: sha512-tUDmEanhoJeL/mVnGvutgKkasTBk5Q4ypchxL81fKToQlE4Pgvfi1DbCTJMHCUmfjt9O63nqJI7g79SbG0QB9Q==}
     engines: {node: '>=22.13'}
 
   '@mark1russell7/stack-placement@0.1.10':
@@ -3115,8 +3114,8 @@ packages:
     resolution: {integrity: sha512-ZjMFixHRudu3BQxdfF4lCFYsAM1Tsaj/fMDloUDhS7vCzWDogGDFvNyO6PwW/lWVCT/QhZMrg5iqdDAyKuH8Pw==}
     engines: {node: '>=22'}
 
-  '@mark1russell7/ste-lint@0.6.0':
-    resolution: {integrity: sha512-4jt/c/n4hKa3Y32/iqbCrNk4MShb9ECxedm5WG28RYpYm0eCCxkn10wn00hzRKxvFtFe9qKDS0b5XGhfSuvTWQ==}
+  '@mark1russell7/ste-lint@0.7.0':
+    resolution: {integrity: sha512-njk8Py1rEAYdm6QCk2XVcKCfPhOmISyUbmR/oE06ymhAXWifCYT0uPQYZN+aQoLlJ5QFdjo08dsXPwjx8twkQQ==}
     engines: {node: '>=22'}
     hasBin: true
 
@@ -3132,8 +3131,8 @@ packages:
     resolution: {integrity: sha512-cVXMyUh6829YGLSqiqOD4TXYk2goK+b9ofUju09jILp+8re26yyat5pvxH/ZdzXJmCCgJvBUJkRJGeBf8PDvLw==}
     engines: {node: '>=22'}
 
-  '@mark1russell7/template-cli@0.1.10':
-    resolution: {integrity: sha512-KOSH9YXVOtIbpDAJtGIaycUsQ6lEM4XE5bVnBW4vPdaY8u0g7Edx032srzRrp9j+u9UYyDkDQTyniFhdUJoE7A==}
+  '@mark1russell7/template-cli@0.1.13':
+    resolution: {integrity: sha512-NrJXTHNj4Pixaxdg+uqsT0bYHg/kV99bsztQgwX2jraoS9lTZnO8YP3OQC6DOQTaEM3GOxSyHMyoap5SbA+FjA==}
     engines: {node: '>=22.12'}
     hasBin: true
 
@@ -3157,12 +3156,16 @@ packages:
     resolution: {integrity: sha512-HrjBak4BE0fDC+bLzFi/c4NDCHqiUm7VhYR5YhJmkApRSB8mUOao4bFiO9Jy3xwpsCGJCj4echVDCUxXjV+3NA==}
     engines: {node: '>=22.12'}
 
+  '@mark1russell7/text@0.0.21':
+    resolution: {integrity: sha512-Y0ZNBrHHeIo9LPJc0dWJrhjQUoK+PQHgotitEaJo3J6xppYPIBqJ0AXQBHjzpdoL7xUWYCqriFNe+WA/4S15KQ==}
+    engines: {node: '>=22.12'}
+
   '@mark1russell7/text@0.0.6':
     resolution: {integrity: sha512-IwKQHx9U+k5AbEzZ8q4CxImQCuYXSFhvzMOSgy5UGYrZRIBO9RES7SYrXDrKqQFtMl5qD2QbibffevUPsrUW+A==}
     engines: {node: '>=22.12'}
 
-  '@mark1russell7/typeset@0.7.2':
-    resolution: {integrity: sha512-5N3VMx+02Ge6cw+9PQztyQxTeybilaxpPyl3VHAW7akoZZBCC6912VEZK2MB+u0cRfUbRojBS8bGaBYb+is9hA==}
+  '@mark1russell7/typeset@0.8.1':
+    resolution: {integrity: sha512-yLMDxfMz2LJdt0kRhMMQK8e8auAtF2Z0wzG74pjEoFCwOhsNqwFykaf5IgqfA2V/TGdDW72TBQWSHq+8n/+CXA==}
     engines: {node: '>=22.12'}
 
   '@mark1russell7/vex-domains@0.19.1':
@@ -3171,8 +3174,8 @@ packages:
   '@mark1russell7/vex@0.19.1':
     resolution: {integrity: sha512-Hl8IVbyNmhJ7xV2nyTyOgiqANGWSWhmZSdnuucSRnmBj/KSnp0kvSz7MNzcWcI+tV34wfXmTNp6Y3ewDATbXjg==}
 
-  '@mark1russell7/visuals@0.4.1':
-    resolution: {integrity: sha512-cwhajjjDDiL3nL03p0xyP4Wb3Rz41CFrIhw4wwfTC8NBUDwEy3o+EBkE2exmVUyPmsl/+g4ko1P9ecM6PImpCA==}
+  '@mark1russell7/visuals@0.5.1':
+    resolution: {integrity: sha512-sFSdiVoyOeZpasOwqz5JYLTTEh0kqQJaPJBhYDS6CWIdqTp7vizS/B4FRMuVnEOXLdLKqwjPgAbs2EKc3elI4w==}
     engines: {node: '>=22'}
     peerDependencies:
       three: '>=0.187.0'
@@ -5302,11 +5305,11 @@ snapshots:
     optionalDependencies:
       zod: 4.6.7
 
-  '@mark1russell7/api-report@0.5.23':
+  '@mark1russell7/api-report@0.5.25':
     dependencies:
-      '@mark1russell7/conventions': 0.55.0
+      '@mark1russell7/conventions': 0.56.0
 
-  '@mark1russell7/boundaries@0.3.2(@swc/core@1.16.22)(dependency-cruiser@18.9.0)':
+  '@mark1russell7/boundaries@0.3.3(@swc/core@1.16.22)(dependency-cruiser@18.9.0)':
     optionalDependencies:
       '@swc/core': 1.16.22
       dependency-cruiser: 18.9.0
@@ -5343,15 +5346,18 @@ snapshots:
     transitivePeerDependencies:
       - zod
 
-  '@mark1russell7/conventions@0.52.8':
+  '@mark1russell7/collections@0.12.1(zod@4.6.7)':
     dependencies:
-      '@mark1russell7/text': 0.0.18
-      yaml: 2.9.1
+      '@mark1russell7/algebra': 0.9.12(zod@4.6.7)
+      '@mark1russell7/optional': 1.5.1
+      '@mark1russell7/rigor-statistics': 0.2.32
+    transitivePeerDependencies:
+      - zod
 
-  '@mark1russell7/conventions@0.55.0':
+  '@mark1russell7/conventions@0.56.0':
     dependencies:
       '@mark1russell7/code-shape': 0.0.1
-      '@mark1russell7/text': 0.0.20
+      '@mark1russell7/text': 0.0.21
       yaml: 2.9.1
 
   '@mark1russell7/cue@2.1.4': {}
@@ -5360,9 +5366,9 @@ snapshots:
 
   '@mark1russell7/files@0.0.4': {}
 
-  '@mark1russell7/files@0.0.6': {}
+  '@mark1russell7/files@0.0.7': {}
 
-  '@mark1russell7/geo@0.5.19':
+  '@mark1russell7/geo@0.5.20':
     dependencies:
       '@mark1russell7/optional': 1.5.1
       '@mark1russell7/predicates': 0.1.5
@@ -5371,7 +5377,7 @@ snapshots:
     dependencies:
       '@mark1russell7/text': 0.0.18
 
-  '@mark1russell7/interval@0.1.0': {}
+  '@mark1russell7/interval@0.1.1': {}
 
   '@mark1russell7/lag@0.5.4(@opentelemetry/api@1.10.0)(async-browser-context@0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)))':
     dependencies:
@@ -5380,14 +5386,14 @@ snapshots:
       '@opentelemetry/api': 1.10.0
       async-browser-context: 0.3.2(@opentelemetry/api@1.10.0)(vite@8.3.8(@types/node@26.6.10)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
-  '@mark1russell7/layout-contract@0.11.5':
+  '@mark1russell7/layout-contract@0.12.0(zod@4.6.7)':
     dependencies:
-      '@mark1russell7/collections': 0.11.6(zod@4.6.7)
+      '@mark1russell7/collections': 0.12.1(zod@4.6.7)
       '@mark1russell7/predicates': 0.1.5
       '@mark1russell7/rigor-generators': 0.2.7
       '@mark1russell7/rigor-statistics': 0.2.32
       '@mark1russell7/strategy-space': 0.1.1
-      '@mark1russell7/typeset': 0.7.2
+      '@mark1russell7/typeset': 0.8.1(zod@4.6.7)
     transitivePeerDependencies:
       - zod
 
@@ -5612,13 +5618,13 @@ snapshots:
       ws: 8.23.0
       zod: 4.6.7
 
-  '@mark1russell7/site-pages@0.8.7':
+  '@mark1russell7/site-pages@0.8.8':
     dependencies:
       '@mark1russell7/rigor-statistics': 0.2.32
 
   '@mark1russell7/sqlite@0.3.12': {}
 
-  '@mark1russell7/sqlite@0.7.1': {}
+  '@mark1russell7/sqlite@0.7.2': {}
 
   '@mark1russell7/stack-placement@0.1.10':
     dependencies:
@@ -5640,9 +5646,9 @@ snapshots:
       '@mark1russell7/vex-domains': 0.19.1(zod@4.6.7)
       zod: 4.6.7
 
-  '@mark1russell7/ste-lint@0.6.0':
+  '@mark1russell7/ste-lint@0.7.0':
     dependencies:
-      '@mark1russell7/files': 0.0.6
+      '@mark1russell7/files': 0.0.7
       typescript: 6.0.3
 
   '@mark1russell7/strategy-search@0.1.2':
@@ -5661,7 +5667,7 @@ snapshots:
       '@mark1russell7/collections': 0.11.6(zod@4.6.7)
       zod: 4.6.7
 
-  '@mark1russell7/template-cli@0.1.10':
+  '@mark1russell7/template-cli@0.1.13':
     dependencies:
       '@clack/prompts': 1.9.0
 
@@ -5675,11 +5681,13 @@ snapshots:
 
   '@mark1russell7/text@0.0.20': {}
 
+  '@mark1russell7/text@0.0.21': {}
+
   '@mark1russell7/text@0.0.6': {}
 
-  '@mark1russell7/typeset@0.7.2':
+  '@mark1russell7/typeset@0.8.1(zod@4.6.7)':
     dependencies:
-      '@mark1russell7/collections': 0.11.6(zod@4.6.7)
+      '@mark1russell7/collections': 0.12.1(zod@4.6.7)
       '@mark1russell7/rigor-generators': 0.2.7
     transitivePeerDependencies:
       - zod
@@ -5697,10 +5705,10 @@ snapshots:
     transitivePeerDependencies:
       - zod
 
-  '@mark1russell7/visuals@0.4.1(three@0.187.0)':
+  '@mark1russell7/visuals@0.5.1(three@0.187.0)(zod@4.6.7)':
     dependencies:
-      '@mark1russell7/geo': 0.5.19
-      '@mark1russell7/layout-contract': 0.11.5
+      '@mark1russell7/geo': 0.5.20
+      '@mark1russell7/layout-contract': 0.12.0(zod@4.6.7)
     optionalDependencies:
       three: 0.187.0
     transitivePeerDependencies:

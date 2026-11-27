@@ -14,7 +14,7 @@
   "dependencies": {
     "@mark1russell7/alerts": "workspace:*",
     "@mark1russell7/alerts-fetch": "workspace:*",
-    "@mark1russell7/files": "^0.0.6",
+    "@mark1russell7/files": "^0.0.7",
     "@mark1russell7/optional": "^1.5.0",
     "@mark1russell7/text": "^0.0.18",
     "polite-crawler": "^0.7.12"
