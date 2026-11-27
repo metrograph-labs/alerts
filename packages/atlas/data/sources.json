@@ -13819,7 +13819,6 @@
     "id": "nasa-firms-api",
     "name": "NASA FIRMS active fire API",
     "classes": [
-      "fire.wildfire",
       "fire.wildfire.hotspot"
     ],
     "dimensions": [
@@ -13829,15 +13828,15 @@
     "access": "api",
     "auth": "key",
     "terms": {
-      "url": null,
-      "automated": "unclear",
-      "redistribution": "unclear",
-      "note": "A MAP_KEY is needed. Terms and rate limits not on the index page."
+      "url": "https://www.earthdata.nasa.gov/engage/open-data-services-software-policies/data-use-guidance",
+      "automated": "allowed",
+      "redistribution": "allowed",
+      "note": "NASA gives the data with no restriction (CC0 1.0) and asks for a citation of FIRMS. A free MAP_KEY is needed. The robots.txt file permits the path /api/. The check of 2026-11-26 opened the area API and the dates of the data with a key."
     },
     "cost": "free",
-    "delay": "unknown",
-    "history": "unknown",
-    "rateLimit": "unknown",
+    "delay": "Near real time: the area answer of 2026-11-26 13:50 UTC held NOAA-21 scans of the same day. The dates of the data show that VIIRS_SNPP_NRT stopped at 2026-11-02.",
+    "history": "The area API gives 1 to 5 days. Older data is in the archive downloads.",
+    "rateLimit": "5000 transactions in each 10 minutes for each MAP_KEY. The adapter sends at most 49 requests each 10 minutes.",
     "calibration": null,
     "coverage": "World satellite fire hotspots by area or country, near real time and standard products.",
     "origins": [
@@ -13846,14 +13845,18 @@
     "path": [
       "firms.modaps.eosdis.nasa.gov"
     ],
-    "subjectIds": null,
+    "subjectIds": [
+      "point"
+    ],
     "risks": [],
-    "decision": "plan",
-    "adapter": null,
+    "decision": "adopt",
+    "adapter": "@mark1russell7/alerts-source-firms",
     "reason": "Global hotspots that show fires before reports, outside the US too.",
     "evidence": [
       "https://firms.modaps.eosdis.nasa.gov/api/",
-      "https://firms.modaps.eosdis.nasa.gov/api/map_key"
+      "https://firms.modaps.eosdis.nasa.gov/api/area/",
+      "https://firms.modaps.eosdis.nasa.gov/api/data_availability/",
+      "https://www.earthdata.nasa.gov/engage/open-data-services-software-policies/data-use-guidance"
     ],
     "round": 1
   },
