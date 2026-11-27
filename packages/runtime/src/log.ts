@@ -7,6 +7,7 @@ import { basename } from "node:path";
 import type { Instant } from "@mark1russell7/alerts";
 import { listRecoveries, openCheckedEventLog, openEventLog, type EventLogFile, type RecoveryEntry } from "@mark1russell7/sqlite";
 import { envelope, EVENT_TYPES, parseEvent, type RecoveredEvent, type RuntimeEvent } from "./events.ts";
+import { blockingCheckDue, logCheckPath, readLogCheckFile } from "./log-check.ts";
 
 /** One event of the log with its position. The position of a later event is larger. */
 export interface RuntimeLogEntry {
@@ -80,12 +81,22 @@ export interface CheckedLog {
   readonly log: RuntimeLog;
   /** This value is the event of the recovery, or `undefined` when the file passed its check. */
   readonly recovered: RecoveredEvent | undefined;
+  /**
+   * This value tells if the open did the integrity check, or made a new file (AL-223). When it is `false`, the open did
+   * no check, because the state file of the check tells that the last check passed.
+   */
+  readonly checked: boolean;
 }
 
 /**
  * This function opens the log at the boot of the runtime, with `openCheckedEventLog` of `@mark1russell7/sqlite`. It
  * checks the file with `PRAGMA quick_check` first. A broken file goes into a quarantine folder `<name>.broken-<time>`
  * next to it. Then a new file gets each event that the salvage reads.
+ *
+ * The check reads the whole file, thus it is slow on a large log (AL-223). The open does no check when the state file
+ * `<name>.check.json` tells that the last check passed. Then the check comes after the start (`log-check.ts`). A state
+ * file with `running` or `failed`, a bad state file and no state file give the check before the open. With no check, a
+ * file that is not a database still goes into quarantine, and so does a WAL file with no database file.
  *
  * Each quarantine folder of the log gives one `recovered` event, with the folder name in its id. The fold of that
  * event gives a system report that names the quarantine. The function appends the event of each folder at each open,
@@ -97,19 +108,22 @@ export interface CheckedLog {
  * @param options - The clock of the recovery and the options of the file.
  */
 export function openCheckedRuntimeLog(path: string, options: CheckedLogOptions): CheckedLog {
-  const opened = openCheckedEventLog(path, parseEvent, { ...fileOptions(options), quarantine: { now: new Date(options.now()) } });
+  const memory = path === ":memory:" || path === "";
+  const open = { ...fileOptions(options), quarantine: { now: new Date(options.now()) } };
+  const opened = memory || blockingCheckDue(readLogCheckFile(logCheckPath(path))) ? openCheckedEventLog(path, parseEvent, open) : openCheckedEventLog(path, parseEvent, { ...open, check: false });
+  const checked = opened.kind !== "unchecked";
   const log = runtimeLog(opened.log);
   let events: readonly RecoveredEvent[];
   try {
-    events = path === ":memory:" || path === "" ? [] : listRecoveries(path).map((entry) => recoveredEvent(entry, options.now));
+    events = memory ? [] : listRecoveries(path).map((entry) => recoveredEvent(entry, options.now));
     log.appendAll(events, () => undefined);
   } catch (error) {
     log.close();
     throw error;
   }
-  if (opened.kind !== "recovered" && opened.kind !== "orphan-journal") return { log, recovered: undefined };
+  if (opened.kind !== "recovered" && opened.kind !== "orphan-journal") return { log, recovered: undefined, checked };
   const id = `recovered:${basename(opened.quarantined.folder)}`;
-  return { log, recovered: events.find((event) => event.id === id) };
+  return { log, recovered: events.find((event) => event.id === id), checked };
 }
 
 // The problem of a quarantine of a WAL, SHM or journal file with no database file.
