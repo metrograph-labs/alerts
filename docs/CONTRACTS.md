@@ -1815,6 +1815,9 @@ A new fold version gets its snapshot before the next start (AL-153):
 - The mode has no service, no listener and no window. It does not change the start marker or the last good set.
 - The lock of the home folder refuses the fold while a runtime runs. Thus stop the runtime, swap, fold, and then start the runtime.
 - A fold version change with an upgrade of the old snapshot needs no fold step. A fold step then only writes a new snapshot.
+- A change of a private file can change the snapshot key too: a source that the copy leaves, for example (AL-220).
+- `deploy.ts files <name> <source>` writes the file. It reads the key before and after the write, and folds before the start when the key changes.
+- New files that give no key get the old text back. Thus do not write `config.json`, `secrets.env`, `copy.json` or a part by hand.
 
 The two slots keep each start on the code of one commit:
 

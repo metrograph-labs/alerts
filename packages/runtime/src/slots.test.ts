@@ -25,6 +25,9 @@ import {
   foldStep,
   memInfoOf,
   parseDeployArgs,
+  parseFilesArgs,
+  privatePath,
+  filesOutcome,
   STAGE_MEMORY_FLOOR,
   stepsAfterStage,
   takesDown,
@@ -482,6 +485,37 @@ describe("the heap limit of the fold (AL-175)", () => {
   it("puts the limit before the entry of the fold step", () => {
     const runtime = join("slot-a", "packages", "runtime");
     expect(foldStep(runtime, "home", "node", "files", 2268).args).toEqual(["--max-old-space-size=2268", join(runtime, "src", "main.ts"), "fold", "files"]);
+  });
+});
+
+describe("the write of a private file (AL-220)", () => {
+  it("reads the name, the source and the consent to a stop with no other copy", () => {
+    expect(parseFilesArgs(["copy.json", "new.json"])).toEqual({ name: "copy.json", source: "new.json", alone: false });
+    expect(parseFilesArgs(["parts/watches.json", "w.json", "--alone"])).toEqual({ name: "parts/watches.json", source: "w.json", alone: true });
+    expect(parseFilesArgs(["secrets.env", "s.env"])?.name).toBe("secrets.env");
+    // Only the private files of a start: no start marker, no last good set, no path out of the home folder.
+    expect(parseFilesArgs(["start.good.json", "g.json"])).toBeUndefined();
+    expect(parseFilesArgs(["parts/../copy.json", "x"])).toBeUndefined();
+    expect(parseFilesArgs(["copy.json"])).toBeUndefined();
+    expect(parseFilesArgs(["copy.json", "--alone"])).toBeUndefined();
+    expect(parseFilesArgs(["copy.json", "x", "--page"])).toBeUndefined();
+    expect(parseFilesArgs(["copy.json", "x", "--alone", "--alone"])).toBeUndefined();
+  });
+
+  it("gives the path of the file in the home folder", () => {
+    expect(privatePath("home", "copy.json")).toBe(join("home", "copy.json"));
+    expect(privatePath("home", "parts/watches.json")).toBe(join("home", "parts", "watches.json"));
+  });
+
+  it("folds before the start when a key changes, and puts the old text back when the new files give no key", () => {
+    const keys = { files: "6:a", good: "6:b" };
+    expect(filesOutcome(keys, keys)).toBe("same");
+    // The change of 2026-11-26: a new list of the sources that the copy leaves gives a new key of the files.
+    expect(filesOutcome(keys, { ...keys, files: "6:c" })).toBe("fold");
+    expect(filesOutcome(keys, { ...keys, good: null })).toBe("fold");
+    expect(filesOutcome(undefined, keys)).toBe("fold");
+    expect(filesOutcome(keys, undefined)).toBe("bad");
+    expect(filesOutcome(undefined, undefined)).toBe("bad");
   });
 });
 
