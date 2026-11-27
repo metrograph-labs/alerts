@@ -2,7 +2,7 @@ import { closeSync, mkdtempSync, openSync, readdirSync, rmSync, writeFileSync, w
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openDatabase, type Integrity } from "@mark1russell7/sqlite";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { envelope, type RuntimeEvent } from "./events.ts";
 import { LOG_CHECK_PERIOD, logChecker, logCheckPath, logCheckText, parseLogCheck, type LogCheckPorts, type LogCheckState } from "./log-check.ts";
 import { openCheckedRuntimeLog, openRuntimeLog } from "./log.ts";
@@ -231,6 +231,8 @@ describe("the check of the log after the start (AL-223)", () => {
     const step = run.checker.step();
     // A second step while the check runs starts no check.
     expect(await run.checker.step()).toEqual({ kind: "busy" });
+    // The stop comes when the check runs. Before it, the first step reads the state and writes `running`.
+    await vi.waitFor(() => expect(run.checks()).toBe(1));
     run.stop.abort(new Error("The runtime stops."));
     expect(await step).toEqual({ kind: "aborted" });
     expect(run.state()).toEqual({ state: "running", at: T0 });
@@ -238,6 +240,15 @@ describe("the check of the log after the start (AL-223)", () => {
     run.move(T0 + 2 * LOG_CHECK_PERIOD);
     expect(await run.checker.step()).toEqual({ kind: "aborted" });
     expect(run.checks()).toBe(1);
+  });
+
+  it("writes nothing and starts no check after a stop before the check", async () => {
+    const run = harness({ file: { state: "passed", at: T0 - LOG_CHECK_PERIOD } });
+    run.stop.abort(new Error("The runtime stops."));
+    expect(await run.checker.step()).toEqual({ kind: "aborted" });
+    expect(run.writes).toEqual([]);
+    expect(run.state()).toEqual({ state: "passed", at: T0 - LOG_CHECK_PERIOD });
+    expect(run.checks()).toBe(0);
   });
 
   it("checks at once when the state file is not there after an open with no check", async () => {
