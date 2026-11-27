@@ -551,6 +551,11 @@ export interface MapResult {
 export interface CanaryResult {
   readonly pass: boolean;
   readonly reason: string;
+  /**
+   * This field is `true` when the check failed because the newest data of the source is older than its limit (AL-207).
+   * Then the health of the source is `silent`, not `failing`. A check that passed, or that failed for another cause, gives no field.
+   */
+  readonly late?: true;
 }
 
 /**

@@ -27,6 +27,7 @@ describe("checkCanary", () => {
     expect(checkCanary([minute(START, START + NEWEST_MAX_AGE_MS + 1)])).toEqual({
       pass: false,
       reason: "the newest minute of the grid frequency starts at 2026-11-18T03:08:00Z, 6.0 minutes before the fetch: the limit is 6 minutes",
+      late: true,
     });
     expect(checkCanary([])).toEqual({ pass: false, reason: "the fetch has no complete minute of the grid frequency" });
     expect(checkCanary([observationOf("{", START), observationOf("[1]", START), observationOf('{"minute":"soon"}', START)]).pass).toBe(false);

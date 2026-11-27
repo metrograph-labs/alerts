@@ -41,6 +41,7 @@ describe("checkCanary", () => {
   it("fails when the release is older than 27 days, or when the fetch has no head", () => {
     const late = checkCanary(observationsAt(Date.parse("2026-12-14T17:53:16Z")));
     expect(late.pass).toBe(false);
+    expect(late.late).toBe(true);
     expect(late.reason).toMatch(/: the limit is 27 days$/);
     expect(checkCanary([])).toEqual({ pass: false, reason: "the fetch has no head of the catalog with a release time" });
   });

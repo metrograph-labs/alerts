@@ -143,13 +143,15 @@ describe("checkCanary", () => {
 
   it("passes when the newest weekly test is at most 8 days old", () => {
     expect(checkCanary([weekly(AT)])).toMatchObject({ pass: true });
-    expect(checkCanary([weekly(Date.parse("2026-11-20T17:00:00Z") + TEST_MAX_AGE_MS + 60_000)])).toMatchObject({ pass: false });
+    expect(checkCanary([weekly(Date.parse("2026-11-20T17:00:00Z") + TEST_MAX_AGE_MS + 60_000)])).toMatchObject({ pass: false, late: true });
   });
 
   it("gives no read with no test in the first 8 days of the decoder, and fails after them", () => {
     expect(checkCanary([], { started: AT, now: AT + 60_000 })).toBeUndefined();
     expect(checkCanary([], { started: AT, now: AT + TEST_MAX_AGE_MS })).toMatchObject({ pass: false });
     expect(checkCanary([])).toMatchObject({ pass: false });
+    // No test is not old data: the receiver can be at fault (AL-207).
+    expect(checkCanary([])?.late).toBeUndefined();
   });
 });
 

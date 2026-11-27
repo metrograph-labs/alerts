@@ -64,8 +64,8 @@ export const HEALTH_MACHINE: Machine = {
     unknown: { initial: true, note: "no fetch passed yet" },
     healthy: { note: "the last fetch passed in less than slowAfter" },
     slow: { note: "the last fetch passed in slowAfter or more" },
-    failing: { note: "fail_after fetches in a row failed, no fetch passed for stale_after, or the canary failed" },
-    silent: { note: "no fresh observation for max_quiet, for a source where quiet is not normal" },
+    failing: { note: "fail_after fetches in a row failed, no fetch passed for stale_after, or the canary failed for a cause other than old data" },
+    silent: { note: "no fresh observation for max_quiet, for a source where quiet is not normal, or the canary found old data (AL-207)" },
     changed: { note: "the map gave fatal or lossy problems for the last passed fetch" },
   },
   events: {
@@ -74,7 +74,7 @@ export const HEALTH_MACHINE: Machine = {
     "app.fetch-changed": { kind: "app", note: "a fetch passed, and the map gave fatal or lossy problems" },
     "app.fetch-failed": { kind: "app", note: "a fetch failed" },
     "app.canary-passed": { kind: "app", note: "the canary check of a fetch passed" },
-    "app.canary-failed": { kind: "app", note: "the canary check of a fetch failed" },
+    "app.canary-failed": { kind: "app", note: "the canary check of a fetch failed, for old data (late) or for another cause" },
     "timer.quiet": { kind: "timer", note: "max_quiet passed with no fresh observation" },
     "timer.stale": { kind: "timer", note: "stale_after passed with no passed fetch" },
   },
@@ -105,18 +105,39 @@ export const HEALTH_MACHINE: Machine = {
     { id: "he.failed", from: ["unknown", "healthy", "slow", "silent", "changed"], to: "failing", on: "app.fetch-failed", guard: "fail_after fetches in a row failed" },
     { id: "he.passed", from: ["unknown", "failing", "slow", "silent", "changed"], to: "healthy", on: "app.fetch-passed", guard: "the last canary did not fail" },
     { id: "he.slow", from: ["unknown", "failing", "healthy", "silent", "changed"], to: "slow", on: "app.fetch-slow", guard: "the last canary did not fail" },
-    { id: "he.changed", from: ["unknown", "failing", "healthy", "slow", "silent"], to: "changed", on: "app.fetch-changed", guard: "the last canary did not fail" },
+    {
+      id: "he.changed",
+      from: ["unknown", "failing", "healthy", "slow", "silent"],
+      to: "changed",
+      on: "app.fetch-changed",
+      guard: "the last canary did not fail, or it found old data",
+    },
     {
       id: "he.passed-quiet",
       from: ["failing", "changed"],
       to: "silent",
       on: ["app.fetch-passed", "app.fetch-slow"],
-      guard: "no fresh observation for max_quiet",
-      note: "the quiet timer fired in the state failing or changed, which hold it",
+      guard: "no fresh observation for max_quiet, or the last canary found old data",
+      note: "the quiet timer fired in the state failing or changed, which hold it, or the last canary found old data (AL-207)",
     },
-    { id: "he.canary-failed", from: ["healthy", "slow", "silent", "changed"], to: "failing", on: "app.canary-failed" },
-    { id: "he.canary-healthy", from: "failing", to: "healthy", on: "app.canary-passed" },
-    { id: "he.canary-slow", from: "failing", to: "slow", on: "app.canary-passed" },
+    { id: "he.canary-failed", from: ["healthy", "slow", "silent", "changed"], to: "failing", on: "app.canary-failed", guard: "the canary did not find old data" },
+    {
+      id: "he.canary-late",
+      from: ["healthy", "slow", "failing"],
+      to: "silent",
+      on: "app.canary-failed",
+      guard: "the canary found old data",
+      note: "old data of a source is silent, not failing (AL-207)",
+    },
+    {
+      id: "he.canary-late-changed",
+      from: "failing",
+      to: "changed",
+      on: "app.canary-failed",
+      guard: "the canary found old data, and the map gave fatal or lossy problems for the last passed fetch",
+    },
+    { id: "he.canary-healthy", from: ["failing", "silent"], to: "healthy", on: "app.canary-passed" },
+    { id: "he.canary-slow", from: ["failing", "silent"], to: "slow", on: "app.canary-passed" },
     { id: "he.canary-silent", from: "failing", to: "silent", on: "app.canary-passed" },
     { id: "he.canary-changed", from: "failing", to: "changed", on: "app.canary-passed" },
   ],
@@ -273,7 +294,8 @@ function changedReason(passed: PassedFetch): string {
 
 /**
  * The conditions in the order of their weight. The first condition that holds gives the state:
- * failing, then unknown, then changed, then silent, then slow, then healthy.
+ * failing, then unknown, then changed, then silent, then slow, then healthy. A failed canary that found
+ * old data (`late`) gives silent, not failing (AL-207). A failed canary for another cause gives failing.
  */
 function classify(track: HealthTrack, descriptor: HealthSource, options: HealthOptions): { readonly state: HealthState; readonly reason: string } {
   const failAfter = Math.max(1, options.failAfter ?? DEFAULT_FAIL_AFTER);
@@ -284,11 +306,14 @@ function classify(track: HealthTrack, descriptor: HealthSource, options: HealthO
   if (track.time - track.staleFrom >= stale) {
     return { state: "failing", reason: `No fetch passed in ${seconds(track.time - track.staleFrom)}, and the limit is ${seconds(stale)}.` };
   }
-  if (track.canary !== undefined && !track.canary.pass) {
-    return { state: "failing", reason: `The canary failed: ${track.canary.reason}` };
+  const failedCanary = track.canary !== undefined && !track.canary.pass ? track.canary : undefined;
+  if (failedCanary !== undefined && failedCanary.late !== true) {
+    return { state: "failing", reason: `The canary failed: ${failedCanary.reason}` };
   }
   if (track.passed === undefined) return { state: "unknown", reason: "No fetch passed yet." };
   if (track.passed.fatal + (track.passed.lossy ?? 0) > 0) return { state: "changed", reason: changedReason(track.passed) };
+  // Old data of a source is silent, not failing (AL-207): the fetches pass, but the source gives no new data.
+  if (failedCanary !== undefined) return { state: "silent", reason: `The canary failed: ${failedCanary.reason}` };
   const quiet = maxQuiet(descriptor);
   if (quiet !== undefined && track.quietFrom !== undefined && track.time - track.quietFrom >= quiet) {
     return { state: "silent", reason: `No fresh observation in ${seconds(track.time - track.quietFrom)}, and the limit is ${seconds(quiet)}.` };

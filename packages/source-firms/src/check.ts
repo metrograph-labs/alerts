@@ -35,7 +35,7 @@ export function checkCanary(observations: readonly Observation[]): CanaryResult 
     if (newest === undefined) continue;
     const today = new Date(Math.floor(observation.fetched / DAY_MS) * DAY_MS).toISOString().slice(0, 10);
     const days = Math.round((Date.parse(today) - Date.parse(newest)) / DAY_MS);
-    if (days > NEWEST_MAX_DAYS) return { pass: false, reason: `the newest data of the VIIRS products is of ${newest}, ${String(days)} days before the day of the fetch: the limit is ${String(NEWEST_MAX_DAYS)} day` };
+    if (days > NEWEST_MAX_DAYS) return { pass: false, reason: `the newest data of the VIIRS products is of ${newest}, ${String(days)} days before the day of the fetch: the limit is ${String(NEWEST_MAX_DAYS)} day`, late: true };
     return { pass: true, reason: `the newest data of the VIIRS products is of ${newest}, the day of the fetch is ${today}` };
   }
   return { pass: false, reason: "the fetch has no dates of the data" };

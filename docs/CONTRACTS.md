@@ -363,11 +363,11 @@ The core calculates the health of each source from the records of its fetches, n
 | `unknown` | No fetch passed yet. |
 | `healthy` | The last fetch passed, in less than `slowAfter`. |
 | `slow` | The last fetch passed, in `slowAfter` or more. |
-| `failing` | The last `failAfter` fetches failed, or no fetch passed for `staleAfter`, or the last canary check failed. |
-| `silent` | No fresh observation for `maxQuiet`, for a source where quiet is not normal. |
+| `failing` | The last `failAfter` fetches failed, or no fetch passed for `staleAfter`, or the last canary check failed for a cause other than old data. |
+| `silent` | No fresh observation for `maxQuiet`, for a source where quiet is not normal, or the last canary check found old data (`late`). |
 | `changed` | The map gave fatal or lossy problems for the last passed fetch. |
 
-The default of `failAfter` is 2 fetches, and the default of `staleAfter` is 3 intervals. When two conditions are true, the first state of this order applies: `failing`, `unknown`, `changed`, `silent`, `slow`, `healthy`. A stuck loop of the runtime writes no record, so the stale timer makes the source `failing`. A failed canary holds until a canary check passes.
+The default of `failAfter` is 2 fetches, and the default of `staleAfter` is 3 intervals. When two conditions are true, the first state of this order applies: `failing`, `unknown`, `changed`, `silent`, `slow`, `healthy`. A stuck loop of the runtime writes no record, so the stale timer makes the source `failing`. A failed canary holds until a canary check passes. A canary check that finds old data sets `late`. Old data of a source is `silent`, not `failing`: the fetches pass, but the source gives no new data.
 
 The health is a pure fold. `observeFetch` adds one record, and `advanceHealth` moves the time. Each step gives the changes of state as transitions, and the time of its next timer in `wakeAt`. A replay of the transitions against the document finds each change that the document does not permit. Tests replay random records, and compare each state with a direct calculation from the records.
 
